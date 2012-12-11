@@ -11,6 +11,32 @@ relativesrcdir = @relativesrcdir@
 
 include $(DEPTH)/config/autoconf.mk
 
+MODULE = embedlite
+XPIDL_MODULE = embedlite
+MODULE_NAME = embedlite
+GRE_MODULE = 1
+
+LIBXUL_LIBRARY = 1
+EXPORT_LIBRARY = 1
+IS_COMPONENT = 1
+
+LIBRARY_NAME = embedlite
+
+EXPORTS_NAMESPACES = mozilla/embedlite
+EXPORTS_mozilla/embedlite = \
+    EmbedInitGlue.h \
+    EmbedLiteAPI.h \
+    EmbedLiteApp.h \
+    $(NULL)
+
+CPPSRCS = \
+    EmbedLiteApp.cpp \
+    $(NULL)
+
+LOCAL_INCLUDES += \
+    -I$(topsrcdir)/widget/xpwidgets \
+    $(NULL)
+
 include $(topsrcdir)/config/config.mk
 include $(topsrcdir)/config/rules.mk
 include $(topsrcdir)/ipc/chromium/chromium-config.mk

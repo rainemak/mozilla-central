@@ -44,7 +44,7 @@ IPDLDIRS =  \
   netwerk/protocol/websocket \
   netwerk/cookie  \
   uriloader/prefetch  \
-  embedding/embedlite/common \
+  embedding/embedlite \
   $(NULL)
 
 ifdef MOZ_IPDL_TESTS #{
