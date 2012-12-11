@@ -322,6 +322,8 @@ ifeq (qt,$(MOZ_WIDGET_TOOLKIT))
 COMPONENT_LIBS += widget_qt
 endif
 
+COMPONENT_LIBS += embedlite
+
 ifdef ACCESSIBILITY
 COMPONENT_LIBS += accessibility
 endif
