@@ -11,34 +11,34 @@ relativesrcdir = @relativesrcdir@
 
 include $(DEPTH)/config/autoconf.mk
 
-MODULE = embedlite
-XPIDL_MODULE = embedlite
-MODULE_NAME = embedlite
-GRE_MODULE = 1
-
-LIBXUL_LIBRARY = 1
-EXPORT_LIBRARY = 1
-IS_COMPONENT = 1
-
-LIBRARY_NAME = embedlite
-
-EXPORTS_NAMESPACES = mozilla/embedlite
-EXPORTS_mozilla/embedlite = \
-    EmbedInitGlue.h \
-    EmbedLiteAPI.h \
-    EmbedLiteApp.h \
-    $(NULL)
+DEFINES += -DXPCOM_GLUE
+# move me to common, when we link with common library
+STL_FLAGS=
 
 CPPSRCS = \
-    EmbedLiteApp.cpp \
+    embedLiteCoreInitTest.cpp \
     $(NULL)
 
-LOCAL_INCLUDES += \
-    -I$(topsrcdir)/widget/xpwidgets \
+SIMPLE_PROGRAMS := $(CPPSRCS:.cpp=$(BIN_SUFFIX))
+
+LOCAL_INCLUDES += -I$(topsrcdir)/xpcom/build
+
+LIBS += \
+    $(XPCOM_STANDALONE_GLUE_LDOPTS) \
     $(NULL)
 
-DIRS += tests
+ifeq (qt,$(MOZ_WIDGET_TOOLKIT))
+LIBS += \
+    $(TK_LIBS) \
+    $(NULL)
+
+LOCAL_INCLUDES = \
+    $(TK_CFLAGS) \
+    $(NULL)
+endif
+
+NSDISTMODE = copy
 
 include $(topsrcdir)/config/config.mk
-include $(topsrcdir)/config/rules.mk
 include $(topsrcdir)/ipc/chromium/chromium-config.mk
+include $(topsrcdir)/config/rules.mk

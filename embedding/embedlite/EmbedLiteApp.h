@@ -9,23 +9,40 @@
 namespace mozilla {
 namespace embedlite {
 
+class EmbedLiteAppListener
+{
+public:
+    virtual void Initialized() {};
+    virtual void Destroyed() {};
+};
+
 class EmbedLiteApp
 {
 public:
-    virtual ~EmbedLiteApp();
+    virtual ~EmbedLiteApp(); 
 
     enum EmbedType {
         EMBED_THREAD, // Initialize XPCOM in child thread
         EMBED_PROCESS // Initialize XPCOM in separate process
     };
 
+    // Set Listener interface for EmbedLiteApp notifications
+    virtual void SetListener(EmbedLiteAppListener* aListener);
+
+    // Public Embedding API
+    virtual bool Start(EmbedType aEmbedType);
+    virtual void Stop();
+
+    virtual void SetBoolPref(const char* aName, bool aValue);
+    virtual void SetCharPref(const char* aName, const char* aValue);
+    virtual void SetIntPref(const char* aName, int aValue);
+
     // Only one EmbedHelper object allowed
     static EmbedLiteApp* GetSingleton();
-
 private:
     EmbedLiteApp();
-
     static EmbedLiteApp* sSingleton;
+    EmbedLiteAppListener* mListener;
 };
 
 } // namespace embedlite

@@ -6,8 +6,20 @@
 #include "EmbedLiteApp.h"
 #include "nsISupports.h"
 
+#include "mozilla/embedlite/EmbedLiteAPI.h"
+#include "prlog.h"
+
+#ifdef PR_LOGGING
+PRLogModuleInfo* gEmbedLiteAppLog;
+#define LOG(...) PR_LOG(gEmbedLiteAppLog, PR_LOG_DEBUG, (__VA_ARGS__))
+#else
+#define LOG(...) do {} while (0)
+#endif
+
 namespace mozilla {
 namespace embedlite {
+
+EmbedLiteApp* EmbedLiteApp::sSingleton = nullptr;
 
 EmbedLiteApp*
 EmbedLiteApp::GetSingleton()
@@ -21,12 +33,54 @@ EmbedLiteApp::GetSingleton()
 
 EmbedLiteApp::EmbedLiteApp()
 {
+#ifdef PR_LOGGING
+    if (!gEmbedLiteAppLog) {
+        gEmbedLiteAppLog = PR_NewLogModule("EmbedLiteApp");
+    }
+#endif
+
     sSingleton = this;
 }
 
 EmbedLiteApp::~EmbedLiteApp()
 {
     sSingleton = NULL;
+}
+
+void
+EmbedLiteApp::SetListener(EmbedLiteAppListener* aListener)
+{
+    LOG("EmbedLiteApp::SetListener %p", aListener);
+    mListener = aListener;
+}
+
+bool
+EmbedLiteApp::Start(EmbedType aEmbedType)
+{
+    return false;
+}
+
+void
+EmbedLiteApp::Stop()
+{
+}
+
+void
+EmbedLiteApp::SetBoolPref(const char* aName, bool aValue)
+{
+//    mImpl->SetBoolPref(aName, aValue);
+}
+
+void
+EmbedLiteApp::SetCharPref(const char* aName, const char* aValue)
+{
+//    mImpl->SetCharPref(aName, aValue);
+}
+
+void
+EmbedLiteApp::SetIntPref(const char* aName, int aValue)
+{
+//    mImpl->SetIntPref(aName, aValue);
 }
 
 } // namespace embedlite

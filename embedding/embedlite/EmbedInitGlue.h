@@ -15,9 +15,6 @@
 #include <stdlib.h>
 #include <iostream>
 
-// Possibly only UNIX
-#include <unistd.h>
-
 // XPCOMGlueStartup
 #include "nsXPCOMGlue.h"
 
@@ -39,6 +36,23 @@
 #endif
 
 #include "mozilla/Telemetry.h"
+
+#ifdef WIN32
+//TODO: make this file fully X platform
+#  include <windows.h>
+#  undef MAX_PATH
+#  define MAX_PATH _MAX_PATH
+#else
+#  include <unistd.h>
+#  include <string.h>
+#  ifndef PATH_MAX
+#    define PATH_MAX 1024
+#  endif
+#  define MAX_PATH PATH_MAX
+#endif
+
+#define _NSR_TO_BOOL(_res) \
+    _res == NS_OK ? true : false;
 
 #ifdef XRE_HAS_DLL_BLOCKLIST
 XRE_SetupDllBlocklistType XRE_SetupDllBlocklist = 0;
@@ -71,14 +85,17 @@ bool LoadEmbedLite(int argc = 0, char** argv = 0)
     std::string xpcomPath;
     char temp[MAX_PATH];
     const char* greHome = getenv("GRE_HOME");
-    M_TRACE("greHome:%s", greHome);
     if (!greHome) {
         greHome = getenv("PWD");
+        if (greHome) {
+            printf("greHome from PWD:%s\n", greHome);
+        }
+    } else {
+        printf("greHome from GRE_HOME:%s\n", greHome);
     }
-    printf("greHome:%s", greHome);
     if (!greHome) {
         printf("GRE_HOME is not defined\n");
-        return NSR_TO_BOOL(NS_ERROR_FAILURE);
+        return _NSR_TO_BOOL(NS_ERROR_FAILURE);
     }
     if (!IsLibXulInThePath(greHome, xpcomPath) && argv && argc) {
         printf("libxul.so not in gre home or PWD:%s, check in executable path\n", greHome);
@@ -124,7 +141,7 @@ bool LoadEmbedLite(int argc = 0, char** argv = 0)
     rv = XPCOMGlueStartup(xpcomPath.c_str());
     if (NS_FAILED(rv)) {
         printf("Could not start XPCOM glue.\n");
-        return NSR_TO_BOOL(NS_ERROR_FAILURE);
+        return _NSR_TO_BOOL(NS_ERROR_FAILURE);
     }
 
     // load XUL functions
@@ -146,7 +163,7 @@ bool LoadEmbedLite(int argc = 0, char** argv = 0)
     rv = XPCOMGlueLoadXULFunctions(nsFuncs);
     if (NS_FAILED(rv)) {
         printf("Could not load XUL functions.\n");
-        return NSR_TO_BOOL(NS_ERROR_FAILURE);
+        return _NSR_TO_BOOL(NS_ERROR_FAILURE);
     }
 
 #ifdef XRE_HAS_DLL_BLOCKLIST
@@ -176,8 +193,6 @@ bool LoadEmbedLite(int argc = 0, char** argv = 0)
         }
 #endif
     }
-
-    printf("XPCOM FUNCTIONS SUCCESEFULLY LOADED");
 
     return true;
 }
