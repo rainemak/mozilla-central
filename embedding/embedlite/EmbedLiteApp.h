@@ -16,6 +16,7 @@ class EmbedLiteSubThread;
 class EmbedLiteAppListener
 {
 public:
+    virtual bool ExecuteChildThread() { return false; };
     virtual void Initialized() {};
     virtual void Destroyed() {};
 };
@@ -41,6 +42,11 @@ public:
     // Exit from UI embedding loop started with Start()
     virtual void Stop();
 
+    // This must be called in native toolkit child thread, only after ExecuteChildThread call
+    virtual bool StartChildThread();
+    // Must be called from same thread as StartChildThread, and before Stop()
+    virtual bool StopChildThread();
+
     // Setup preferences
     virtual void SetBoolPref(const char* aName, bool aValue);
     virtual void SetCharPref(const char* aName, const char* aValue);
@@ -52,6 +58,8 @@ public:
     // Only one EmbedHelper object allowed
     static EmbedLiteApp* GetSingleton();
 private:
+    static void StartChild(EmbedLiteApp* aApp, EmbedType aEmbedType);
+
     EmbedLiteApp();
     static EmbedLiteApp* sSingleton;
     EmbedLiteAppListener* mListener;

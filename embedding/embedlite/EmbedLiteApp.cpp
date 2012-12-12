@@ -13,6 +13,7 @@
 #include "EmbedLog.h"
 #include "EmbedLiteUILoop.h"
 #include "EmbedLiteSubThread.h"
+#include "GeckoLoader.h"
 
 namespace mozilla {
 namespace embedlite {
@@ -54,6 +55,20 @@ EmbedLiteApp::SetListener(EmbedLiteAppListener* aListener)
     mListener = aListener;
 }
 
+void
+EmbedLiteApp::StartChild(EmbedLiteApp* aApp, EmbedType aEmbedType)
+{
+    LOGT();
+    if (!aApp->GetListener() || !aApp->GetListener()->ExecuteChildThread()) {
+        if (aEmbedType == EMBED_THREAD) {
+            aApp->mSubThread = new EmbedLiteSubThread(aApp);
+            if (!aApp->mSubThread->StartEmbedThread()) {
+                LOGE("Failed to start child thread");
+            }
+        }
+    }
+}
+
 bool
 EmbedLiteApp::Start(EmbedType aEmbedType)
 {
@@ -61,12 +76,8 @@ EmbedLiteApp::Start(EmbedType aEmbedType)
     NS_ASSERTION(!mUILoop, "Start called twice");
     base::AtExitManager exitManager;
     mUILoop = new EmbedLiteUILoop();
-    if (aEmbedType == EMBED_THREAD) {
-        mSubThread = new EmbedLiteSubThread(this);
-        if (!mSubThread->StartEmbedThread()) {
-            LOGE("Failed to start child thread");
-        }
-    }
+    mUILoop->PostTask(FROM_HERE,
+                      NewRunnableFunction(&EmbedLiteApp::StartChild, this, aEmbedType));
     mUILoop->StartLoop();
     if (mSubThread) {
         mSubThread->Stop();
@@ -74,6 +85,29 @@ EmbedLiteApp::Start(EmbedType aEmbedType)
     }
     delete mUILoop;
     mUILoop = NULL;
+    return true;
+}
+
+bool
+EmbedLiteApp::StartChildThread()
+{
+    LOGT("mUILoop:%p, current:%p", mUILoop, MessageLoop::current());
+    NS_ASSERTION(MessageLoop::current(),
+                 "Current message loop must be null and not equals to mUILoop");
+    GeckoLoader::InitEmbedding("mozembed");
+    return !MessageLoop::current();
+}
+
+bool
+EmbedLiteApp::StopChildThread()
+{
+    LOGT("mUILoop:%p, current:%p", mUILoop, MessageLoop::current());
+    if (mSubThread || !mUILoop || !MessageLoop::current() ||
+        mUILoop == MessageLoop::current()) {
+        NS_ERROR("Wrong thread? StartChildThread called? Stop() already called?");
+        return false;
+    }
+    GeckoLoader::TermEmbedding();
     return true;
 }
 

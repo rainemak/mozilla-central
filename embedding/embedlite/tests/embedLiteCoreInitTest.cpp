@@ -81,6 +81,12 @@ public:
         mApp->SetBoolPref("layers.async-video.enabled", true);
         mApp->Stop();
     };
+    bool ExecuteChildThread()
+    {
+        printf("Embedding ExecuteChildThread, return false\n");
+        return true;
+    };
+
 
 private:
     EmbedLiteApp* mApp;
