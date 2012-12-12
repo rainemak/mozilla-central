@@ -27,6 +27,7 @@ public:
     virtual ~EmbedLiteApp(); 
 
     enum EmbedType {
+        EMBED_INVALID,// Default value 
         EMBED_THREAD, // Initialize XPCOM in child thread
         EMBED_PROCESS // Initialize XPCOM in separate process
     };
@@ -58,13 +59,15 @@ public:
     // Only one EmbedHelper object allowed
     static EmbedLiteApp* GetSingleton();
 private:
-    static void StartChild(EmbedLiteApp* aApp, EmbedType aEmbedType);
+    static void StartChild(EmbedLiteApp* aApp);
 
     EmbedLiteApp();
     static EmbedLiteApp* sSingleton;
     EmbedLiteAppListener* mListener;
     EmbedLiteUILoop* mUILoop;
     RefPtr<EmbedLiteSubThread> mSubThread;
+    EmbedType mEmbedType;
+    bool mCustomThread;
 };
 
 } // namespace embedlite
