@@ -187,11 +187,12 @@ GeckoLoader::TermEmbedding()
     // get rid of the bogus TLS warnings
     NS_LogInit();
 
-    XRE_TermEmbedding();
-
     // make sure this is freed before shutting down xpcom
     NS_IF_RELEASE(kDirectoryProvider.sProfileLock);
     kDirectoryProvider.sProfileDir = 0;
+    kDirectoryProvider.sGREDir = 0;
+
+    XRE_TermEmbedding();
 
     NS_LogTerm();
 
