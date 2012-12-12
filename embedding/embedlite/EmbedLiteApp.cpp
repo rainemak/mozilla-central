@@ -97,7 +97,7 @@ EmbedLiteApp::StartChildThread()
 {
     NS_ENSURE_TRUE(mEmbedType == EMBED_THREAD, false);
     LOGT("mUILoop:%p, current:%p", mUILoop, MessageLoop::current());
-    NS_ASSERTION(MessageLoop::current(),
+    NS_ASSERTION(!MessageLoop::current(),
                  "Current message loop must be null and not equals to mUILoop");
     GeckoLoader::InitEmbedding("mozembed");
     mCustomThread = true;

@@ -84,7 +84,7 @@ public:
     bool ExecuteChildThread()
     {
         printf("Embedding ExecuteChildThread, return false\n");
-        return true;
+        return false;
     };
 
 
