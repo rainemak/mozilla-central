@@ -80,6 +80,9 @@ bool LoadEmbedLite(int argc = 0, char** argv = 0)
         printf("EmbedLite already loaded\n");
         return false;
     }
+
+    NS_LogInit();
+
     nsresult rv;
     // find xpcom shared lib (uses GRE_HOME env var if set, current DIR, or executable binary path)
     std::string xpcomPath;
@@ -116,8 +119,6 @@ bool LoadEmbedLite(int argc = 0, char** argv = 0)
 #ifdef XP_MACOSX
     TriggerQuirks();
 #endif
-
-    NS_LogInit();
 
     int gotCounters;
 #if defined(XP_UNIX)

@@ -6,9 +6,13 @@
 #ifndef EMBED_LITE_APP_H
 #define EMBED_LITE_APP_H
 
+#include "mozilla/RefPtr.h"
+
 namespace mozilla {
 namespace embedlite {
 
+class EmbedLiteUILoop;
+class EmbedLiteSubThread;
 class EmbedLiteAppListener
 {
 public:
@@ -28,14 +32,22 @@ public:
 
     // Set Listener interface for EmbedLiteApp notifications
     virtual void SetListener(EmbedLiteAppListener* aListener);
+    
 
     // Public Embedding API
+
+    // Start UI embedding loop merged with Gecko GFX, blocking call until Stop() called
     virtual bool Start(EmbedType aEmbedType);
+    // Exit from UI embedding loop started with Start()
     virtual void Stop();
 
+    // Setup preferences
     virtual void SetBoolPref(const char* aName, bool aValue);
     virtual void SetCharPref(const char* aName, const char* aValue);
     virtual void SetIntPref(const char* aName, int aValue);
+
+    // Internal
+    EmbedLiteAppListener* GetListener() { return mListener; }
 
     // Only one EmbedHelper object allowed
     static EmbedLiteApp* GetSingleton();
@@ -43,6 +55,8 @@ private:
     EmbedLiteApp();
     static EmbedLiteApp* sSingleton;
     EmbedLiteAppListener* mListener;
+    EmbedLiteUILoop* mUILoop;
+    RefPtr<EmbedLiteSubThread> mSubThread;
 };
 
 } // namespace embedlite

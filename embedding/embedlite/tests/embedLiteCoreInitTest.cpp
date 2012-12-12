@@ -79,6 +79,7 @@ public:
         mApp->SetBoolPref("layers.offmainthreadcomposition.animate-opacity", true);
         mApp->SetBoolPref("layers.offmainthreadcomposition.animate-transform", true);
         mApp->SetBoolPref("layers.async-video.enabled", true);
+        mApp->Stop();
     };
 
 private:
@@ -106,10 +107,6 @@ int main(int argc, char** argv)
     } else {
         printf("XUL Symbols failed to load\n");
     }
-    int val = 0;
-#ifdef MOZ_WIDGET_QT
-    val = app.exec();
-#endif
     UnloadEmbedLite();
-    return val;
+    return 0;
 }
