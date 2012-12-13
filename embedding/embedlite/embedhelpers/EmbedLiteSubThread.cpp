@@ -32,26 +32,16 @@ EmbedLiteSubThread::~EmbedLiteSubThread()
     LOGT();
 }
 
-void EmbedLiteSubThread::PostToParent()
-{
-    if (mApp->GetListener()) {
-        mApp->GetListener()->Initialized();
-    }
-}
-
 void EmbedLiteSubThread::Init()
 {
     LOGT();
-    GeckoLoader::InitEmbedding("mozembed");
-    mParentLoop->PostTask(FROM_HERE,
-                          NewRunnableMethod(this,
-                                            &EmbedLiteSubThread::PostToParent));
+    mApp->StartChildThread();
 }
 
 void EmbedLiteSubThread::CleanUp()
 {
     LOGT();
-    GeckoLoader::TermEmbedding();
+    mApp->StopChildThread();
 }
 
 bool EmbedLiteSubThread::StartEmbedThread()

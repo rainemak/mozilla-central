@@ -36,7 +36,6 @@ EmbedLiteApp::EmbedLiteApp()
   , mUILoop(NULL)
   , mSubThread(NULL)
   , mEmbedType(EMBED_INVALID)
-  , mCustomThread(false)
 {
     LOGT();
     sSingleton = this;
@@ -92,6 +91,13 @@ EmbedLiteApp::Start(EmbedType aEmbedType)
     return true;
 }
 
+void
+EmbedLiteApp::PostInitialized(EmbedLiteApp* aSelf)
+{
+    LOGT();
+    aSelf->GetListener()->Initialized();
+}
+
 bool
 EmbedLiteApp::StartChildThread()
 {
@@ -100,7 +106,8 @@ EmbedLiteApp::StartChildThread()
     NS_ASSERTION(!MessageLoop::current(),
                  "Current message loop must be null and not equals to mUILoop");
     GeckoLoader::InitEmbedding("mozembed");
-    mCustomThread = true;
+    mUILoop->PostTask(FROM_HERE,
+                      NewRunnableFunction(&EmbedLiteApp::PostInitialized, this));
     return true;
 }
 
@@ -108,15 +115,13 @@ bool
 EmbedLiteApp::StopChildThread()
 {
     NS_ENSURE_TRUE(mEmbedType == EMBED_THREAD, false);
-    NS_ENSURE_TRUE(mCustomThread, false);
     LOGT("mUILoop:%p, current:%p", mUILoop, MessageLoop::current());
-    if (mSubThread || !mUILoop || !MessageLoop::current() ||
+    if (!mUILoop || !MessageLoop::current() ||
         mUILoop == MessageLoop::current()) {
         NS_ERROR("Wrong thread? StartChildThread called? Stop() already called?");
         return false;
     }
     GeckoLoader::TermEmbedding();
-    mCustomThread = false;
     return true;
 }
 
@@ -125,7 +130,6 @@ EmbedLiteApp::Stop()
 {
     LOGT();
     NS_ASSERTION(mUILoop, "Start was not called before stop");
-    NS_ASSERTION(!mCustomThread, "Custom thread used, StopChildThread must be called first");
     mUILoop->DoQuit();
 }
 

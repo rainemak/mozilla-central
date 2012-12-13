@@ -28,9 +28,8 @@ public:
 protected:
     virtual void Init();
     virtual void CleanUp();
-private:
-    void PostToParent();
 
+private:
     MessageLoop* mParentLoop;
     EmbedLiteApp* mApp;
 };

@@ -60,6 +60,7 @@ public:
     static EmbedLiteApp* GetSingleton();
 private:
     static void StartChild(EmbedLiteApp* aApp);
+    static void PostInitialized(EmbedLiteApp* aSelf);
 
     EmbedLiteApp();
     static EmbedLiteApp* sSingleton;
@@ -67,7 +68,6 @@ private:
     EmbedLiteUILoop* mUILoop;
     RefPtr<EmbedLiteSubThread> mSubThread;
     EmbedType mEmbedType;
-    bool mCustomThread;
 };
 
 } // namespace embedlite
