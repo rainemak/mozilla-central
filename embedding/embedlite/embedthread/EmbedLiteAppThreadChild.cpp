@@ -24,7 +24,7 @@ namespace embedlite {
 static EmbedLiteAppThreadChild* sAppThreadChild = nullptr;
 
 EmbedLiteAppThreadChild*
-EmbedLiteAppThreadChild::GetAppThreadChild()
+EmbedLiteAppThreadChild::GetInstance()
 {
     return sAppThreadChild;
 }
@@ -75,16 +75,6 @@ void
 EmbedLiteAppThreadChild::ActorDestroy(ActorDestroyReason aWhy)
 {
     LOGT("reason:%i", aWhy);
-    MessageLoop::current()->PostTask(
-        FROM_HERE,
-        NewRunnableMethod(this, &EmbedLiteAppThreadChild::Destroy));
-}
-
-void
-EmbedLiteAppThreadChild::Destroy()
-{
-    LOGT();
-//    SendStop();
 }
 
 bool EmbedLiteAppThreadChild::RecvSetBoolPref(const nsCString& aName, const bool& aValue)

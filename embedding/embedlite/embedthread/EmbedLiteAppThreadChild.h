@@ -20,9 +20,8 @@ public:
     virtual ~EmbedLiteAppThreadChild();
 
     void Init(EmbedLiteAppThreadParent*);
-    void Destroy();
 
-    static EmbedLiteAppThreadChild* GetAppThreadChild();
+    static EmbedLiteAppThreadChild* GetInstance();
 
 protected:
     // Embed API ipdl interface

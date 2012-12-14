@@ -19,7 +19,7 @@
 #include "EmbedLiteAppThread.h"
 #include "EmbedLiteAppThreadParent.h"
 
-#define STHREADAPP EmbedLiteAppThreadParent::GetAppThreadParent
+#define STHREADAPP EmbedLiteAppThreadParent::GetInstance
 
 namespace mozilla {
 namespace embedlite {
@@ -27,7 +27,7 @@ namespace embedlite {
 EmbedLiteApp* EmbedLiteApp::sSingleton = nullptr;
 
 EmbedLiteApp*
-EmbedLiteApp::GetSingleton()
+EmbedLiteApp::GetInstance()
 {
     LOGT();
     if (!sSingleton) {
@@ -158,5 +158,5 @@ EmbedLiteApp::SetIntPref(const char* aName, int aValue)
 mozilla::embedlite::EmbedLiteApp*
 XRE_GetEmbedLite()
 {
-    return mozilla::embedlite::EmbedLiteApp::GetSingleton();
+    return mozilla::embedlite::EmbedLiteApp::GetInstance();
 }

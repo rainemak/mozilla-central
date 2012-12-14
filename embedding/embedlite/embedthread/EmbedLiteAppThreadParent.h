@@ -19,24 +19,13 @@ public:
     EmbedLiteAppThreadParent();
     virtual ~EmbedLiteAppThreadParent();
 
-    virtual bool Start();
-    virtual void Stop();
     virtual void SetBoolPref(const char* aName, bool aValue);
     virtual void SetCharPref(const char* aName, const char* aValue);
     virtual void SetIntPref(const char* aName, int aValue);
 
     // IPDL
     virtual bool
-    RecvStopped();
-
-    virtual bool
     RecvInitialized();
-
-    virtual bool
-    RecvWillStop();
-
-    virtual bool
-    RecvStop();
 
     /**
      * Returns the compositor thread's message loop.
@@ -45,7 +34,7 @@ public:
      */
     MessageLoop* EmbedLiteAppLoop();
 
-    static EmbedLiteAppThreadParent* GetAppThreadParent();
+    static EmbedLiteAppThreadParent* GetInstance();
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;

@@ -20,13 +20,13 @@ namespace embedlite {
 static EmbedLiteAppThreadParent* sAppThreadParent = nullptr;
 
 EmbedLiteAppThreadParent*
-EmbedLiteAppThreadParent::GetAppThreadParent()
+EmbedLiteAppThreadParent::GetInstance()
 {
     return sAppThreadParent;
 }
 
 EmbedLiteAppThreadParent::EmbedLiteAppThreadParent()
-  : mApp(EmbedLiteApp::GetSingleton())
+  : mApp(EmbedLiteApp::GetInstance())
 {
     LOGT();
     MOZ_COUNT_CTOR(EmbedLiteAppThreadParent);
@@ -41,51 +41,6 @@ EmbedLiteAppThreadParent::~EmbedLiteAppThreadParent()
 }
 
 bool
-EmbedLiteAppThreadParent::RecvWillStop()
-{
-    LOGT();
-    return true;
-}
-
-static void DeferredDeleteEmbedLiteAppThreadParent(EmbedLiteAppThreadParent* aNowReadyToDie)
-{
-    LOGT();
-    aNowReadyToDie->Release();
-}
-
-bool
-EmbedLiteAppThreadParent::RecvStop()
-{
-    LOGT();
-    this->AddRef(); // Corresponds to DeferredDeleteEmbedLiteAppThreadParent's Release
-    MessageLoop::current()->PostTask(FROM_HERE, 
-        NewRunnableFunction(&DeferredDeleteEmbedLiteAppThreadParent,
-                            this));
-    return true;
-}
-
-void
-EmbedLiteAppThreadParent::Stop()
-{
-    LOGT();
-//    Close();
-}
-
-bool
-EmbedLiteAppThreadParent::RecvStopped()
-{
-    LOGT();
-    return true;
-}
-
-bool
-EmbedLiteAppThreadParent::Start()
-{
-    LOGT();
-    return true;
-}
-
-bool
 EmbedLiteAppThreadParent::RecvInitialized()
 {
     LOGT();
@@ -97,9 +52,6 @@ void
 EmbedLiteAppThreadParent::ActorDestroy(ActorDestroyReason aWhy)
 {
     LOGT("reason:%i", aWhy);
-    MessageLoop::current()->PostTask(
-        FROM_HERE,
-        NewRunnableMethod(this, &EmbedLiteAppThreadParent::Stop));
 }
 
 void EmbedLiteAppThreadParent::SetBoolPref(const char* aName, bool aValue)

@@ -58,7 +58,7 @@ public:
     EmbedLiteAppListener* GetListener() { return mListener; }
 
     // Only one EmbedHelper object allowed
-    static EmbedLiteApp* GetSingleton();
+    static EmbedLiteApp* GetInstance();
 private:
     static void StartChild(EmbedLiteApp* aApp);
 
