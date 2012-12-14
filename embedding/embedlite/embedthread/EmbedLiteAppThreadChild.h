@@ -32,6 +32,11 @@ protected:
     // IPDL protocol impl
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
 
+    virtual bool RecvCreateView(const uint32_t&);
+    virtual PEmbedLiteViewChild* AllocPEmbedLiteView(const uint32_t&);
+    virtual bool DeallocPEmbedLiteView(PEmbedLiteViewChild*);
+
+
 private:
     void InitWindowWatcher();
 

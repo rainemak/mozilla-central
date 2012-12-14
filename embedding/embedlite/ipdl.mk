@@ -4,4 +4,5 @@
 
 IPDLSRCS = \
     PEmbedLiteApp.ipdl \
+    PEmbedLiteView.ipdl \
     $(NULL)

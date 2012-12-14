@@ -42,6 +42,9 @@ CPPSRCS = \
     EmbedLiteAppThread.cpp \
     EmbedLiteAppThreadParent.cpp \
     EmbedLiteAppThreadChild.cpp \
+    EmbedLiteView.cpp \
+    EmbedLiteViewThreadParent.cpp \
+    EmbedLiteViewThreadChild.cpp \
     GeckoLoader.cpp \
     DirProvider.cpp \
     WindowCreator.cpp \

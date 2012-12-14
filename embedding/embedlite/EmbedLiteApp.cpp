@@ -18,6 +18,7 @@
 
 #include "EmbedLiteAppThread.h"
 #include "EmbedLiteAppThreadParent.h"
+#include "EmbedLiteView.h"
 
 #define STHREADAPP EmbedLiteAppThreadParent::GetInstance
 
@@ -43,6 +44,7 @@ EmbedLiteApp::EmbedLiteApp()
   , mSubThread(NULL)
   , mEmbedType(EMBED_INVALID)
   , mAppThread(NULL)
+  , mViewCreateID(0)
 {
     LOGT();
     sSingleton = this;
@@ -150,6 +152,36 @@ void
 EmbedLiteApp::SetIntPref(const char* aName, int aValue)
 {
     unused << STHREADAPP()->SendSetIntPref(nsCString(aName), aValue);
+}
+
+EmbedLiteView*
+EmbedLiteApp::CreateView()
+{
+    LOGT();
+    EmbedLiteView* view = new EmbedLiteView(this);
+    mViews[mViewCreateID] = view;
+    unused << STHREADAPP()->SendCreateView(mViewCreateID);
+    mViewCreateID++;
+    return view;
+}
+
+void EmbedLiteApp::RegisterViewImpl(void* view, uint32_t id)
+{
+    std::map<uint32_t, EmbedLiteView*>::iterator it = mViews.find(id);
+    it->second->SetImpl(view);
+}
+
+void EmbedLiteApp::DestroyView(EmbedLiteView* aView)
+{
+    LOGT();
+    std::map<uint32_t, EmbedLiteView*>::iterator it;
+    for (it = mViews.begin(); it != mViews.end(); it++) {
+        if (it->second == aView)
+            break;
+    }
+    EmbedLiteView* view = it->second;
+    mViews.erase(it);
+    delete view;
 }
 
 } // namespace embedlite

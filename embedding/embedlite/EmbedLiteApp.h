@@ -7,6 +7,7 @@
 #define EMBED_LITE_APP_H
 
 #include "mozilla/RefPtr.h"
+#include <map>
 
 namespace mozilla {
 namespace embedlite {
@@ -14,6 +15,7 @@ namespace embedlite {
 class EmbedLiteUILoop;
 class EmbedLiteSubThread;
 class EmbedLiteAppThread;
+class EmbedLiteView;
 class EmbedLiteAppListener
 {
 public:
@@ -49,6 +51,9 @@ public:
     // Must be called from same thread as StartChildThread, and before Stop()
     virtual bool StopChildThread();
 
+    virtual EmbedLiteView* CreateView();
+    virtual void DestroyView(EmbedLiteView* aView);
+
     // Setup preferences
     virtual void SetBoolPref(const char* aName, bool aValue);
     virtual void SetCharPref(const char* aName, const char* aValue);
@@ -62,6 +67,9 @@ public:
 private:
     static void StartChild(EmbedLiteApp* aApp);
 
+    friend class EmbedLiteViewThreadParent;
+    void RegisterViewImpl(void* view, uint32_t id);
+
     EmbedLiteApp();
     static EmbedLiteApp* sSingleton;
     EmbedLiteAppListener* mListener;
@@ -69,6 +77,8 @@ private:
     RefPtr<EmbedLiteSubThread> mSubThread;
     EmbedType mEmbedType;
     RefPtr<EmbedLiteAppThread> mAppThread;
+    std::map<uint32_t, EmbedLiteView*> mViews;
+    uint32_t mViewCreateID;
 };
 
 } // namespace embedlite

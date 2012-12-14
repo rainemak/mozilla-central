@@ -14,6 +14,8 @@
 #include "WindowCreator.h"
 
 #include "EmbedLiteAppThreadParent.h"
+#include "EmbedLiteViewThreadChild.h"
+#include "mozilla/unused.h"
 
 using namespace base;
 using namespace mozilla::ipc;
@@ -77,7 +79,31 @@ EmbedLiteAppThreadChild::ActorDestroy(ActorDestroyReason aWhy)
     LOGT("reason:%i", aWhy);
 }
 
-bool EmbedLiteAppThreadChild::RecvSetBoolPref(const nsCString& aName, const bool& aValue)
+bool
+EmbedLiteAppThreadChild::RecvCreateView(const uint32_t& id)
+{
+    LOGT("id:%u", id);
+    unused << SendPEmbedLiteViewConstructor(id);
+    return true;
+}
+
+PEmbedLiteViewChild*
+EmbedLiteAppThreadChild::AllocPEmbedLiteView(const uint32_t& id)
+{
+    LOGT();
+    return new EmbedLiteViewThreadChild();
+}
+
+bool
+EmbedLiteAppThreadChild::DeallocPEmbedLiteView(PEmbedLiteViewChild* actor)
+{
+    LOGT();
+    delete actor;
+    return true;
+}
+
+bool
+EmbedLiteAppThreadChild::RecvSetBoolPref(const nsCString& aName, const bool& aValue)
 {
     LOGC("EmbedPrefs", "n:%s, v:%i", aName.get(), aValue);
     nsresult rv;

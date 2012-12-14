@@ -5,6 +5,7 @@
 
 #define LOG_COMPONENT "EmbedLiteAppThreadParent"
 
+#include "EmbedLiteViewThreadParent.h"
 #include "EmbedLiteAppThreadParent.h"
 #include "EmbedLiteApp.h"
 #include "EmbedLog.h"
@@ -52,6 +53,22 @@ void
 EmbedLiteAppThreadParent::ActorDestroy(ActorDestroyReason aWhy)
 {
     LOGT("reason:%i", aWhy);
+}
+
+PEmbedLiteViewParent*
+EmbedLiteAppThreadParent::AllocPEmbedLiteView(const uint32_t& id)
+{
+    LOGT();
+    EmbedLiteViewThreadParent* tview = new EmbedLiteViewThreadParent(id);
+    return tview;
+}
+
+bool
+EmbedLiteAppThreadParent::DeallocPEmbedLiteView(PEmbedLiteViewParent* actor)
+{
+    LOGT();
+    delete actor;
+    return true;
 }
 
 void EmbedLiteAppThreadParent::SetBoolPref(const char* aName, bool aValue)
