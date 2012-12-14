@@ -8,12 +8,18 @@
 #include "EmbedLiteApp.h"
 #include "nsISupports.h"
 #include "base/at_exit.h"
+#include "mozilla/unused.h"
 
 #include "mozilla/embedlite/EmbedLiteAPI.h"
 #include "EmbedLog.h"
 #include "EmbedLiteUILoop.h"
 #include "EmbedLiteSubThread.h"
 #include "GeckoLoader.h"
+
+#include "EmbedLiteAppThread.h"
+#include "EmbedLiteAppThreadParent.h"
+
+#define STHREADAPP EmbedLiteAppThreadParent::GetAppThreadParent
 
 namespace mozilla {
 namespace embedlite {
@@ -36,6 +42,7 @@ EmbedLiteApp::EmbedLiteApp()
   , mUILoop(NULL)
   , mSubThread(NULL)
   , mEmbedType(EMBED_INVALID)
+  , mAppThread(NULL)
 {
     LOGT();
     sSingleton = this;
@@ -91,23 +98,15 @@ EmbedLiteApp::Start(EmbedType aEmbedType)
     return true;
 }
 
-void
-EmbedLiteApp::PostInitialized(EmbedLiteApp* aSelf)
-{
-    LOGT();
-    aSelf->GetListener()->Initialized();
-}
-
 bool
 EmbedLiteApp::StartChildThread()
 {
     NS_ENSURE_TRUE(mEmbedType == EMBED_THREAD, false);
     LOGT("mUILoop:%p, current:%p", mUILoop, MessageLoop::current());
-    NS_ASSERTION(!MessageLoop::current(),
+    NS_ASSERTION(MessageLoop::current() != mUILoop,
                  "Current message loop must be null and not equals to mUILoop");
     GeckoLoader::InitEmbedding("mozembed");
-    mUILoop->PostTask(FROM_HERE,
-                      NewRunnableFunction(&EmbedLiteApp::PostInitialized, this));
+    mAppThread = new EmbedLiteAppThread(mUILoop);
     return true;
 }
 
@@ -121,6 +120,8 @@ EmbedLiteApp::StopChildThread()
         NS_ERROR("Wrong thread? StartChildThread called? Stop() already called?");
         return false;
     }
+    mAppThread->Destroy();
+    mAppThread = nullptr;
     GeckoLoader::TermEmbedding();
     return true;
 }
@@ -136,19 +137,19 @@ EmbedLiteApp::Stop()
 void
 EmbedLiteApp::SetBoolPref(const char* aName, bool aValue)
 {
-    LOGNI("n:%s, v:%i", aName, aValue);
+    unused << STHREADAPP()->SendSetBoolPref(nsCString(aName), aValue);
 }
 
 void
 EmbedLiteApp::SetCharPref(const char* aName, const char* aValue)
 {
-    LOGNI("n:%s, v:%s", aName, aValue);
+    unused << STHREADAPP()->SendSetCharPref(nsCString(aName), nsCString(aValue));
 }
 
 void
 EmbedLiteApp::SetIntPref(const char* aName, int aValue)
 {
-    LOGNI("n:%s, v:%i", aName, aValue);
+    unused << STHREADAPP()->SendSetIntPref(nsCString(aName), aValue);
 }
 
 } // namespace embedlite

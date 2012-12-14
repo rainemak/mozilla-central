@@ -39,6 +39,7 @@ CPPSRCS = \
     EmbedLiteApp.cpp \
     EmbedLiteUILoop.cpp \
     EmbedLiteSubThread.cpp \
+    EmbedLiteAppThread.cpp \
     EmbedLiteAppThreadParent.cpp \
     EmbedLiteAppThreadChild.cpp \
     GeckoLoader.cpp \

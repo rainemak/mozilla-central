@@ -29,12 +29,15 @@ extern PRLogModuleInfo* GetEmbedCommonLog(const char* aModule);
 #define LOGNI(FMT, ARG...) PR_LOG(GetEmbedCommonLog("EmbedLite"), PR_LOG_ALWAYS, ("NON_IMPL: EmbedLite::%s:%d " FMT , __FUNCTION__, __LINE__, ##ARG))
 #endif
 
+#define LOGC(CUSTOMNAME, FMT, ARG...) PR_LOG(GetEmbedCommonLog(CUSTOMNAME), PR_LOG_DEBUG, (CUSTOMNAME "::%s:%d " FMT , __FUNCTION__, __LINE__, ##ARG))
+
 #else
 
 #define LOGF(...) do {} while (0)
 #define LOGT(...) do {} while (0)
 #define LOGW(...) do {} while (0)
 #define LOGE(...) do {} while (0)
+#define LOGC(...) do {} while (0)
 
 #endif
 

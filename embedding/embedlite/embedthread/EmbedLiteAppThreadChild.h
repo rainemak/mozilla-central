@@ -11,12 +11,18 @@
 namespace mozilla {
 namespace embedlite {
 
+class EmbedLiteAppThreadParent;
 class EmbedLiteAppThreadChild : public PEmbedLiteAppChild
 {
     NS_INLINE_DECL_REFCOUNTING(EmbedLiteAppThreadChild)
 public:
-    EmbedLiteAppThreadChild();
+    EmbedLiteAppThreadChild(MessageLoop* aParentLoop);
     virtual ~EmbedLiteAppThreadChild();
+
+    void Init(EmbedLiteAppThreadParent*);
+    void Destroy();
+
+    static EmbedLiteAppThreadChild* GetAppThreadChild();
 
 protected:
     // Embed API ipdl interface
@@ -29,6 +35,9 @@ protected:
 
 private:
     void InitWindowWatcher();
+
+    MessageLoop* mParentLoop;
+    RefPtr<EmbedLiteAppThreadParent> mThreadParent;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteAppThreadChild);
 };

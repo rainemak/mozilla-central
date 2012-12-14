@@ -8,6 +8,10 @@ namespace embedlite {
 rpc protocol PEmbedLiteApp {
 parent:
     async Initialized();
+    // The child is about to be destroyed, so perform any necessary cleanup.
+    sync WillStop();
+    // Clean up in preparation for own destruction.
+    sync Stop();
 
 child:
     async SetBoolPref(nsCString name, bool value);

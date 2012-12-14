@@ -17,6 +17,7 @@ GetEmbedCommonLog(const char* aModule)
     std::map<std::string, PRLogModuleInfo*>::iterator it = sLogMap.find(aModule);
     PRLogModuleInfo* retVal;
     if (sLogMap.end() == it) {
+        printf("Created LOG for %s\n", aModule);
         sLogMap[aModule] = retVal = PR_NewLogModule(aModule);
     } else {
         retVal = it->second;

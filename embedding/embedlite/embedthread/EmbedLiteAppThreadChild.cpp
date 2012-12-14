@@ -13,20 +13,44 @@
 #include "nsIWindowWatcher.h"
 #include "WindowCreator.h"
 
+#include "EmbedLiteAppThreadParent.h"
+
 using namespace base;
 using namespace mozilla::ipc;
 
 namespace mozilla {
 namespace embedlite {
 
-EmbedLiteAppThreadChild::EmbedLiteAppThreadChild()
+static EmbedLiteAppThreadChild* sAppThreadChild = nullptr;
+
+EmbedLiteAppThreadChild*
+EmbedLiteAppThreadChild::GetAppThreadChild()
+{
+    return sAppThreadChild;
+}
+
+EmbedLiteAppThreadChild::EmbedLiteAppThreadChild(MessageLoop* aParentLoop)
+  : mParentLoop(aParentLoop)
 {
     LOGT();
+    sAppThreadChild = this;
 }
 
 EmbedLiteAppThreadChild::~EmbedLiteAppThreadChild()
 {
     LOGT();
+    sAppThreadChild = nullptr;
+}
+
+void
+EmbedLiteAppThreadChild::Init(EmbedLiteAppThreadParent* aParent)
+{
+    LOGT();
+    InitWindowWatcher();
+    AsyncChannel *parentChannel = aParent->GetIPCChannel();
+    AsyncChannel::Side childSide = mozilla::ipc::AsyncChannel::Child;
+    Open(parentChannel, mParentLoop, childSide);
+    SendInitialized();
 }
 
 void
@@ -51,10 +75,21 @@ void
 EmbedLiteAppThreadChild::ActorDestroy(ActorDestroyReason aWhy)
 {
     LOGT("reason:%i", aWhy);
+    MessageLoop::current()->PostTask(
+        FROM_HERE,
+        NewRunnableMethod(this, &EmbedLiteAppThreadChild::Destroy));
+}
+
+void
+EmbedLiteAppThreadChild::Destroy()
+{
+    LOGT();
+//    SendStop();
 }
 
 bool EmbedLiteAppThreadChild::RecvSetBoolPref(const nsCString& aName, const bool& aValue)
 {
+    LOGC("EmbedPrefs", "n:%s, v:%i", aName.get(), aValue);
     nsresult rv;
     nsCOMPtr<nsIPrefBranch> pref(do_GetService(NS_PREFSERVICE_CONTRACTID, &rv));
     if (NS_FAILED(rv)) {
@@ -68,6 +103,7 @@ bool EmbedLiteAppThreadChild::RecvSetBoolPref(const nsCString& aName, const bool
 
 bool EmbedLiteAppThreadChild::RecvSetCharPref(const nsCString& aName, const nsCString& aValue)
 {
+    LOGC("EmbedPrefs", "n:%s, v:%s", aName.get(), aValue.get());
     nsresult rv;
     nsCOMPtr<nsIPrefBranch> pref(do_GetService(NS_PREFSERVICE_CONTRACTID, &rv));
     if (NS_FAILED(rv)) {
@@ -81,6 +117,7 @@ bool EmbedLiteAppThreadChild::RecvSetCharPref(const nsCString& aName, const nsCS
 
 bool EmbedLiteAppThreadChild::RecvSetIntPref(const nsCString& aName, const int& aValue)
 {
+    LOGC("EmbedPrefs", "n:%s, v:%i", aName.get(), aValue);
     nsresult rv;
     nsCOMPtr<nsIPrefBranch> pref(do_GetService(NS_PREFSERVICE_CONTRACTID, &rv));
     if (NS_FAILED(rv)) {

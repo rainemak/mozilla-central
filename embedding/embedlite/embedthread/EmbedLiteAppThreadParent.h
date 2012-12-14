@@ -16,7 +16,7 @@ class EmbedLiteAppThreadParent : public PEmbedLiteAppParent
 {
     NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EmbedLiteAppThreadParent)
 public:
-    EmbedLiteAppThreadParent(EmbedLiteApp* aApp);
+    EmbedLiteAppThreadParent();
     virtual ~EmbedLiteAppThreadParent();
 
     virtual bool Start();
@@ -31,6 +31,12 @@ public:
 
     virtual bool
     RecvInitialized();
+
+    virtual bool
+    RecvWillStop();
+
+    virtual bool
+    RecvStop();
 
     /**
      * Returns the compositor thread's message loop.
