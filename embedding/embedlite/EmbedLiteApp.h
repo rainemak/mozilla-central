@@ -35,9 +35,10 @@ public:
         EMBED_PROCESS // Initialize XPCOM in separate process
     };
 
+    virtual EmbedType GetType() { return mEmbedType; }
+
     // Set Listener interface for EmbedLiteApp notifications
     virtual void SetListener(EmbedLiteAppListener* aListener);
-    
 
     // Public Embedding API
 
@@ -64,11 +65,12 @@ public:
 
     // Only one EmbedHelper object allowed
     static EmbedLiteApp* GetInstance();
+
 private:
     static void StartChild(EmbedLiteApp* aApp);
 
     friend class EmbedLiteViewThreadParent;
-    void RegisterViewImpl(void* view, uint32_t id);
+    EmbedLiteView* GetViewByID(uint32_t id);
 
     EmbedLiteApp();
     static EmbedLiteApp* sSingleton;

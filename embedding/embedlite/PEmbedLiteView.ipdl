@@ -10,8 +10,11 @@ namespace embedlite {
 rpc protocol PEmbedLiteView {
     manager PEmbedLiteApp;
 child:
+    async LoadURL(nsString url);
+
     async Destroy();
 parent:
+    async Initialized();
     async __delete__();
 };
 

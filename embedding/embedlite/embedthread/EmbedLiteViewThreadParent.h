@@ -11,6 +11,7 @@
 namespace mozilla {
 namespace embedlite {
 
+class EmbedLiteView;
 class EmbedLiteViewThreadParent : public PEmbedLiteViewParent
 {
     NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EmbedLiteViewThreadParent)
@@ -20,9 +21,11 @@ public:
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
+    virtual bool RecvInitialized();
 
 private:
     uint32_t mId;
+    EmbedLiteView* mView;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadParent);
 };

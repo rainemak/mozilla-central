@@ -91,7 +91,7 @@ PEmbedLiteViewChild*
 EmbedLiteAppThreadChild::AllocPEmbedLiteView(const uint32_t& id)
 {
     LOGT();
-    return new EmbedLiteViewThreadChild();
+    return new EmbedLiteViewThreadChild(id);
 }
 
 bool

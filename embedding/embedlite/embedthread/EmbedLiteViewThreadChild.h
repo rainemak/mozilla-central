@@ -8,6 +8,11 @@
 
 #include "mozilla/embedlite/PEmbedLiteViewChild.h"
 
+#include "nsIWebBrowser.h"
+#include "nsIWidget.h"
+#include "nsIWebNavigation.h"
+#include "WebBrowserChrome.h"
+
 namespace mozilla {
 namespace embedlite {
 
@@ -15,14 +20,24 @@ class EmbedLiteViewThreadChild : public PEmbedLiteViewChild
 {
     NS_INLINE_DECL_REFCOUNTING(EmbedLiteViewThreadChild)
 public:
-    EmbedLiteViewThreadChild();
+    EmbedLiteViewThreadChild(uint32_t);
     virtual ~EmbedLiteViewThreadChild();
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
     virtual bool RecvDestroy();
+    virtual bool RecvLoadURL(const nsString&);
 
 private:
+    void InitGeckoWindow();
+
+    uint32_t mId;
+    nsCOMPtr<nsIWidget> mWidget;
+    nsCOMPtr<nsIWebBrowser> mWebBrowser;
+    nsCOMPtr<nsIWebBrowserChrome> mChrome;
+    nsCOMPtr<nsIDOMWindow> mDOMWindow;
+    nsCOMPtr<nsIWebNavigation> mWebNavigation;
+    WebBrowserChrome* mBChrome;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadChild);
 };

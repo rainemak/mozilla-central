@@ -26,11 +26,15 @@ public:
     EmbedLiteView(EmbedLiteApp* aApp);
     virtual ~EmbedLiteView();
 
+    // Listener setup
     virtual void SetListener(EmbedLiteViewListener* aListener) { mListener = aListener; }
+    virtual EmbedLiteViewListener* GetListener() { return mListener; }
+
+    // Embed Interface
+    virtual void LoadURL(const char* aUrl);
 
 private:
-    friend class EmbedLiteApp;
-
+    friend class EmbedLiteViewThreadParent;
     void SetImpl(void*);
 
     EmbedLiteApp* mApp;

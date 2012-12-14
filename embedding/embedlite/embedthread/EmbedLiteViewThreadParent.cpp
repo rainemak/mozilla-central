@@ -3,19 +3,23 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#define LOG_COMPONENT "EmbedLiteViewThreadParent"
+
 #include "EmbedLiteViewThreadParent.h"
 #include "EmbedLog.h"
 #include "EmbedLiteApp.h"
+#include "EmbedLiteView.h"
 
 namespace mozilla {
 namespace embedlite {
 
 EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id)
   : mId(id)
+  , mView(EmbedLiteApp::GetInstance()->GetViewByID(id))
 {
     MOZ_COUNT_CTOR(EmbedLiteViewThreadParent);
     LOGT("id:%u", mId);
-    EmbedLiteApp::GetInstance()->RegisterViewImpl(this, id);
+    mView->SetImpl(this);
 }
 
 EmbedLiteViewThreadParent::~EmbedLiteViewThreadParent()
@@ -28,6 +32,14 @@ void
 EmbedLiteViewThreadParent::ActorDestroy(ActorDestroyReason aWhy)
 {
     LOGT("reason:%i", aWhy);
+}
+
+bool
+EmbedLiteViewThreadParent::RecvInitialized()
+{
+    LOGT();
+    mView->GetListener()->ViewInitialized();
+    return true;
 }
 
 } // namespace embedlite

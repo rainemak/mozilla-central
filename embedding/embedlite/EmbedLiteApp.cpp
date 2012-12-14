@@ -38,8 +38,9 @@ EmbedLiteApp::GetInstance()
     return sSingleton;
 }
 
+class FakeListener : public EmbedLiteAppListener {};
 EmbedLiteApp::EmbedLiteApp()
-  : mListener(NULL)
+  : mListener(new FakeListener())
   , mUILoop(NULL)
   , mSubThread(NULL)
   , mEmbedType(EMBED_INVALID)
@@ -165,10 +166,10 @@ EmbedLiteApp::CreateView()
     return view;
 }
 
-void EmbedLiteApp::RegisterViewImpl(void* view, uint32_t id)
+EmbedLiteView* EmbedLiteApp::GetViewByID(uint32_t id)
 {
     std::map<uint32_t, EmbedLiteView*>::iterator it = mViews.find(id);
-    it->second->SetImpl(view);
+    return it->second;
 }
 
 void EmbedLiteApp::DestroyView(EmbedLiteView* aView)

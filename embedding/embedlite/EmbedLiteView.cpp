@@ -16,9 +16,10 @@
 namespace mozilla {
 namespace embedlite {
 
+class FakeListener : public EmbedLiteViewListener {};
 EmbedLiteView::EmbedLiteView(EmbedLiteApp* aApp)
   : mApp(aApp)
-  , mListener(NULL)
+  , mListener(new FakeListener())
 {
     LOGT();
 }
@@ -26,8 +27,12 @@ EmbedLiteView::EmbedLiteView(EmbedLiteApp* aApp)
 EmbedLiteView::~EmbedLiteView()
 {
     LOGT("impl:%p", mViewImpl);
-    EmbedLiteViewThreadParent* impl = static_cast<EmbedLiteViewThreadParent*>(mViewImpl);
-    impl->SendDestroy();
+    if (mApp->GetType() == EmbedLiteApp::EMBED_THREAD) {
+        EmbedLiteViewThreadParent* impl = static_cast<EmbedLiteViewThreadParent*>(mViewImpl);
+        unused << impl->SendDestroy();
+    } else {
+        LOGNI();
+    }
     mViewImpl = NULL;
 }
 
@@ -36,6 +41,13 @@ EmbedLiteView::SetImpl(void* aViewImpl)
 {
     LOGT();
     mViewImpl = aViewImpl;
+}
+
+void
+EmbedLiteView::LoadURL(const char* aUrl)
+{
+    LOGT("url:%s", aUrl);
+    unused << static_cast<EmbedLiteViewThreadParent*>(mViewImpl)->SendLoadURL(NS_ConvertUTF8toUTF16(nsCString(aUrl)));
 }
 
 } // namespace embedlite

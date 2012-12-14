@@ -33,6 +33,7 @@ EXPORTS_mozilla/embedlite = \
     EmbedInitGlue.h \
     EmbedLiteAPI.h \
     EmbedLiteApp.h \
+    EmbedLiteView.h \
     $(NULL)
 
 CPPSRCS = \
@@ -45,6 +46,9 @@ CPPSRCS = \
     EmbedLiteView.cpp \
     EmbedLiteViewThreadParent.cpp \
     EmbedLiteViewThreadChild.cpp \
+    EmbedLitePuppetWidget.cpp \
+    EmbedLiteCompositorParent.cpp \
+    WebBrowserChrome.cpp \
     GeckoLoader.cpp \
     DirProvider.cpp \
     WindowCreator.cpp \
