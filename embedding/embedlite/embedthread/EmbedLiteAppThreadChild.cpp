@@ -52,6 +52,7 @@ EmbedLiteAppThreadChild::Init(EmbedLiteAppThreadParent* aParent)
     AsyncChannel *parentChannel = aParent->GetIPCChannel();
     AsyncChannel::Side childSide = mozilla::ipc::AsyncChannel::Child;
     Open(parentChannel, mParentLoop, childSide);
+    RecvSetBoolPref(nsCString("layers.offmainthreadcomposition.enabled"), true);
     SendInitialized();
 }
 
