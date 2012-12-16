@@ -17,6 +17,7 @@ STL_FLAGS=
 
 CPPSRCS = \
     embedLiteCoreInitTest.cpp \
+    embedLiteViewInitTest.cpp \
     $(NULL)
 
 SIMPLE_PROGRAMS := $(CPPSRCS:.cpp=$(BIN_SUFFIX))

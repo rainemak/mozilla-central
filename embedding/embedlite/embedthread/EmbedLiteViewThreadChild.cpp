@@ -51,7 +51,6 @@ bool EmbedLiteViewThreadChild::RecvDestroy()
     mChrome = nullptr;
     mDOMWindow = nullptr;
     mWebNavigation = nullptr;
-
     PEmbedLiteViewChild::Send__delete__(this);
     return true;
 }
@@ -85,7 +84,6 @@ EmbedLiteViewThreadChild::InitGeckoWindow()
         NS_ERROR("couldn't create fake widget");
         return;
     }
-
 
     rv = baseWindow->InitWindow(0, mWidget, 0, 0, 800, 600);
     if (NS_FAILED(rv))

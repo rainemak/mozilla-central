@@ -5,6 +5,7 @@
 
 #include "mozilla/embedlite/EmbedInitGlue.h"
 #include "mozilla/embedlite/EmbedLiteApp.h"
+#include "mozilla/embedlite/EmbedLiteView.h"
 
 #ifdef MOZ_WIDGET_QT
 #include <QApplication>
@@ -16,10 +17,10 @@ using namespace mozilla::embedlite;
 
 static bool sDoExit = getenv("NORMAL_EXIT");
 
-class MyListener : public EmbedLiteAppListener
+class MyListener : public EmbedLiteAppListener, public EmbedLiteViewListener
 {
 public:
-    MyListener(EmbedLiteApp* aApp) : mApp(aApp) {}
+    MyListener(EmbedLiteApp* aApp) : mApp(aApp), mView(NULL) {}
     virtual ~MyListener()
     {
     }
@@ -79,11 +80,18 @@ public:
         mApp->SetBoolPref("layers.offmainthreadcomposition.animate-opacity", true);
         mApp->SetBoolPref("layers.offmainthreadcomposition.animate-transform", true);
         mApp->SetBoolPref("layers.async-video.enabled", true);
-        mApp->Stop();
+        mView = mApp->CreateView();
+        mView->SetListener(this);
     };
+    virtual void ViewInitialized()
+    {
+        printf("Embedding has created view:%p, Yay\n", mView);
+        mView->LoadURL("data:text/html,<body bgcolor=red>");
+    }
 
 private:
     EmbedLiteApp* mApp;
+    EmbedLiteView* mView;
 };
 
 int main(int argc, char** argv)
