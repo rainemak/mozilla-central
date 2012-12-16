@@ -27,13 +27,14 @@ EmbedLiteView::EmbedLiteView(EmbedLiteApp* aApp)
 EmbedLiteView::~EmbedLiteView()
 {
     LOGT("impl:%p", mViewImpl);
-    if (mApp->GetType() == EmbedLiteApp::EMBED_THREAD) {
+    if (mViewImpl && mApp->GetType() == EmbedLiteApp::EMBED_THREAD) {
         EmbedLiteViewThreadParent* impl = static_cast<EmbedLiteViewThreadParent*>(mViewImpl);
         unused << impl->SendDestroy();
     } else {
         LOGNI();
     }
     mViewImpl = NULL;
+    mListener->Destroyed();
 }
 
 void

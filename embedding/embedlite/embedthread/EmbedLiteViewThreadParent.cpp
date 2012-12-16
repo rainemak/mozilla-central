@@ -28,6 +28,7 @@ EmbedLiteViewThreadParent::~EmbedLiteViewThreadParent()
 {
     MOZ_COUNT_DTOR(EmbedLiteViewThreadParent);
     LOGT();
+    mView->SetImpl(NULL);
 }
 
 void

@@ -19,9 +19,14 @@ class EmbedLiteView;
 class EmbedLiteAppListener
 {
 public:
-    virtual bool ExecuteChildThread() { return false; };
-    virtual void Initialized() {};
-    virtual void Destroyed() {};
+    // StartChildThread must be called in case of native thread, otherwise return false
+    virtual bool ExecuteChildThread() { return false; }
+    // Native thread must be stopped here
+    virtual bool StopChildThread() { return false; }
+    // App Initialized and ready to API call
+    virtual void Initialized() {}
+    // App Destroyed, and ready to delete and program exit
+    virtual void Destroyed() {}
 };
 
 class EmbedLiteApp
@@ -67,13 +72,15 @@ public:
     static EmbedLiteApp* GetInstance();
 
 private:
+    EmbedLiteApp();
+
     static void StartChild(EmbedLiteApp* aApp);
 
     friend class EmbedLiteViewThreadParent;
     friend class EmbedLiteCompositorParent;
     EmbedLiteView* GetViewByID(uint32_t id);
+    void ViewDestroyed(uint32_t id);
 
-    EmbedLiteApp();
     static EmbedLiteApp* sSingleton;
     EmbedLiteAppListener* mListener;
     EmbedLiteUILoop* mUILoop;
@@ -82,6 +89,7 @@ private:
     RefPtr<EmbedLiteAppThread> mAppThread;
     std::map<uint32_t, EmbedLiteView*> mViews;
     uint32_t mViewCreateID;
+    bool mDestroying;
 };
 
 } // namespace embedlite

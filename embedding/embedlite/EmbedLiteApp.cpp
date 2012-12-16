@@ -46,6 +46,7 @@ EmbedLiteApp::EmbedLiteApp()
   , mEmbedType(EMBED_INVALID)
   , mAppThread(NULL)
   , mViewCreateID(0)
+  , mDestroying(false)
 {
     LOGT();
     sSingleton = this;
@@ -95,9 +96,13 @@ EmbedLiteApp::Start(EmbedType aEmbedType)
     if (mSubThread) {
         mSubThread->Stop();
         mSubThread = NULL;
+    } else {
+        NS_ABORT_IF_FALSE(mListener->StopChildThread(),
+                          "StopChildThread must be implemented when ExecuteChildThread defined");
     }
     delete mUILoop;
     mUILoop = NULL;
+    mListener->Destroyed();
     return true;
 }
 
@@ -129,12 +134,27 @@ EmbedLiteApp::StopChildThread()
     return true;
 }
 
+void _FinalStop(EmbedLiteApp* app)
+{
+    app->Stop();
+}
+
 void
 EmbedLiteApp::Stop()
 {
     LOGT();
-    NS_ASSERTION(mUILoop, "Start was not called before stop");
-    mUILoop->DoQuit();
+    if (!mViews.empty()) {
+        std::map<uint32_t, EmbedLiteView*>::iterator it;
+        for (it = mViews.begin(); it != mViews.end(); it++) {
+            EmbedLiteView* view = it->second;
+            delete view;
+            it->second = nullptr;
+        }
+        mDestroying = true;
+    } else {
+        NS_ASSERTION(mUILoop, "Start was not called before stop");
+        mUILoop->DoQuit();
+    }
 }
 
 void
@@ -172,6 +192,18 @@ EmbedLiteView* EmbedLiteApp::GetViewByID(uint32_t id)
     return it->second;
 }
 
+void
+EmbedLiteApp::ViewDestroyed(uint32_t id)
+{
+    LOGT("id:%i", id);
+    std::map<uint32_t, EmbedLiteView*>::iterator it = mViews.find(id);
+    mViews.erase(it);
+    if (mDestroying && mViews.empty()) {
+        mUILoop->PostTask(FROM_HERE,
+                          NewRunnableFunction(&_FinalStop, this));
+    }
+}
+
 void EmbedLiteApp::DestroyView(EmbedLiteView* aView)
 {
     LOGT();
@@ -181,8 +213,8 @@ void EmbedLiteApp::DestroyView(EmbedLiteView* aView)
             break;
     }
     EmbedLiteView* view = it->second;
-    mViews.erase(it);
     delete view;
+    it->second = nullptr;
 }
 
 } // namespace embedlite

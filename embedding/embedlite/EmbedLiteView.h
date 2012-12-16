@@ -13,10 +13,12 @@ class EmbedLiteView;
 class EmbedLiteViewListener
 {
 public:
-    virtual void ViewInitialized() {};
+    // View intialized and ready for API calls
+    virtual void ViewInitialized() {}
+    // View finally destroyed and deleted
+    virtual void Destroyed() {}
     virtual void LoadFinished() {}
     virtual bool Invalidate() { return false; }
-    virtual void Destroyed() {}
 };
 
 class EmbedLiteApp;

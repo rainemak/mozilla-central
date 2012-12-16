@@ -38,6 +38,7 @@ EmbedLiteCompositorParent::EmbedLiteCompositorParent(nsIWidget* aWidget,
 EmbedLiteCompositorParent::~EmbedLiteCompositorParent()
 {
     LOGT();
+    EmbedLiteApp::GetInstance()->ViewDestroyed(mId);
 }
 
 static inline gfxASurface::gfxImageFormat
