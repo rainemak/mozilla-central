@@ -9,6 +9,7 @@
 namespace mozilla {
 namespace embedlite {
 
+class EmbedLiteViewImplIface;
 class EmbedLiteView;
 class EmbedLiteViewListener
 {
@@ -34,16 +35,17 @@ public:
 
     // Embed Interface
     virtual void LoadURL(const char* aUrl);
+    virtual void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
 
 private:
     friend class EmbedLiteViewThreadParent;
     friend class EmbedLiteCompositorParent;
-    void SetImpl(void*);
-    void* GetImpl();
+    void SetImpl(EmbedLiteViewImplIface*);
+    EmbedLiteViewImplIface* GetImpl();
 
     EmbedLiteApp* mApp;
     EmbedLiteViewListener* mListener;
-    void* mViewImpl;
+    EmbedLiteViewImplIface* mViewImpl;
 };
 
 } // namespace embedlite

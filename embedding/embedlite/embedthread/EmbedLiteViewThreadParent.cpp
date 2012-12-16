@@ -11,6 +11,7 @@
 #include "EmbedLiteView.h"
 
 #include "EmbedLiteCompositorParent.h"
+#include "mozilla/unused.h"
 
 namespace mozilla {
 namespace embedlite {
@@ -18,6 +19,7 @@ namespace embedlite {
 EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id)
   : mId(id)
   , mView(EmbedLiteApp::GetInstance()->GetViewByID(id))
+  , mCompositor(nullptr)
 {
     MOZ_COUNT_CTOR(EmbedLiteViewThreadParent);
     LOGT("id:%u", mId);
@@ -50,6 +52,22 @@ EmbedLiteViewThreadParent::SetCompositor(EmbedLiteCompositorParent* aCompositor)
 {
     LOGT();
     mCompositor = aCompositor;
+}
+
+void
+EmbedLiteViewThreadParent::LoadURL(const char* aUrl)
+{
+    LOGT();
+    unused << SendLoadURL(NS_ConvertUTF8toUTF16(nsCString(aUrl)));
+}
+
+void
+EmbedLiteViewThreadParent::RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth)
+{
+    LOGT();
+    if (mCompositor) {
+        mCompositor->RenderToImage(aData, imgW, imgH, stride, depth);
+    }
 }
 
 } // namespace embedlite

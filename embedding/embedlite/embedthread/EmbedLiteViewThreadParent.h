@@ -7,18 +7,23 @@
 #define MOZ_VIEW_EMBED_THREAD_PARENT_H
 
 #include "mozilla/embedlite/PEmbedLiteViewParent.h"
+#include "EmbedLiteViewImplIface.h"
 
 namespace mozilla {
 namespace embedlite {
 
 class EmbedLiteView;
 class EmbedLiteCompositorParent;
-class EmbedLiteViewThreadParent : public PEmbedLiteViewParent
+class EmbedLiteViewThreadParent : public PEmbedLiteViewParent,
+                                  public EmbedLiteViewImplIface
 {
     NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EmbedLiteViewThreadParent)
 public:
     EmbedLiteViewThreadParent(const uint32_t& id);
     virtual ~EmbedLiteViewThreadParent();
+
+    virtual void LoadURL(const char*);
+    virtual void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;

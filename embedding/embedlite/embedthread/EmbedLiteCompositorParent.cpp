@@ -161,9 +161,10 @@ bool EmbedLiteCompositorParent::DeallocPLayers(PLayersParent* aLayers)
 void EmbedLiteCompositorParent::ScheduleTask(CancelableTask* task, int time)
 {
     LOGT("t");
-//    if (!mView || !mView->LayersUpdated(time)) {
+    EmbedLiteViewListener* list = EmbedLiteApp::GetInstance()->GetViewByID(mId)->GetListener();
+    if (!list || !list->Invalidate()) {
         CompositorParent::ScheduleTask(task, time);
-//    }
+    }
 }
 
 void EmbedLiteCompositorParent::Composite()

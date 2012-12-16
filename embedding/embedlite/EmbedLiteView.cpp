@@ -38,13 +38,13 @@ EmbedLiteView::~EmbedLiteView()
 }
 
 void
-EmbedLiteView::SetImpl(void* aViewImpl)
+EmbedLiteView::SetImpl(EmbedLiteViewImplIface* aViewImpl)
 {
     LOGT();
     mViewImpl = aViewImpl;
 }
 
-void*
+EmbedLiteViewImplIface*
 EmbedLiteView::GetImpl()
 {
     LOGT();
@@ -55,7 +55,14 @@ void
 EmbedLiteView::LoadURL(const char* aUrl)
 {
     LOGT("url:%s", aUrl);
-    unused << static_cast<EmbedLiteViewThreadParent*>(mViewImpl)->SendLoadURL(NS_ConvertUTF8toUTF16(nsCString(aUrl)));
+    mViewImpl->LoadURL(aUrl);
+}
+
+void
+EmbedLiteView::RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth)
+{
+    LOGT("data:%p, sz[%i,%i], stride:%i, depth:%i", aData, imgW, imgH, stride, depth);
+    mViewImpl->RenderToImage(aData, imgW, imgH, stride, depth);
 }
 
 } // namespace embedlite
