@@ -40,12 +40,18 @@ void
 EmbedLiteViewThreadChild::ActorDestroy(ActorDestroyReason aWhy)
 {
     LOGT("reason:%i", aWhy);
-    mBChrome->RemoveEventHandler();
 }
 
 bool EmbedLiteViewThreadChild::RecvDestroy()
 {
     LOGT("destroy");
+    mBChrome->RemoveEventHandler();
+    mWidget = nullptr;
+    mWebBrowser = nullptr;
+    mChrome = nullptr;
+    mDOMWindow = nullptr;
+    mWebNavigation = nullptr;
+
     PEmbedLiteViewChild::Send__delete__(this);
     return true;
 }

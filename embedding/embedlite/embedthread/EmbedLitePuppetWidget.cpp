@@ -78,6 +78,27 @@ EmbedLitePuppetWidget::IsTopLevel()
            mWindowType == eWindowType_invisible;
 }
 
+void EmbedLitePuppetWidget::DestroyCompositor() 
+{
+    if (mCompositorChild) {
+        mCompositorChild->SendWillStop();
+
+        // The call just made to SendWillStop can result in IPC from the
+        // CompositorParent to the CompositorChild (e.g. caused by the destruction
+        // of shared memory). We need to ensure this gets processed by the
+        // CompositorChild before it gets destroyed. It suffices to ensure that
+        // events already in the MessageLoop get processed before the
+        // CompositorChild is destroyed, so we add a task to the MessageLoop to
+        // handle compositor desctruction.
+        MessageLoop::current()->PostTask(FROM_HERE,
+                                         NewRunnableMethod(mCompositorChild.get(), &CompositorChild::Destroy));
+        // The DestroyCompositor task we just added to the MessageLoop will handle
+        // releasing mCompositorParent and mCompositorChild.
+        mCompositorParent.forget();
+        mCompositorChild.forget();
+    }
+}
+
 EmbedLitePuppetWidget::EmbedLitePuppetWidget(EmbedLiteViewThreadChild* aEmbed, uint32_t& aId)
   : mEmbed(aEmbed)
   , mVisible(false)
@@ -93,6 +114,7 @@ EmbedLitePuppetWidget::~EmbedLitePuppetWidget()
     MOZ_COUNT_DTOR(EmbedLitePuppetWidget);
     LOGT();
     gTopLevelWindows.RemoveElement(this);
+    DestroyCompositor();
 }
 
 NS_IMETHODIMP
@@ -398,17 +420,15 @@ EmbedLitePuppetWidget::GetLayerManager(PLayersChild* aShadowManager,
 void EmbedLitePuppetWidget::CreateCompositor()
 {
     LOGNI();
-    bool renderToEGLSurface = false;
-#ifdef MOZ_ANDROID_OMTC
-    renderToEGLSurface = true;
-#endif
+    bool renderToEGLSurface = true;
     nsIntRect rect;
     GetBounds(rect);
-    mCompositorParent =
-        new EmbedLiteCompositorParent(this, renderToEGLSurface, rect.width, rect.height, mId);
+    EmbedLiteCompositorParent* parent = new EmbedLiteCompositorParent(this, renderToEGLSurface, rect.width, rect.height, mId);
+    mCompositorParent = parent;
     LayerManager* lm = CreateBasicLayerManager();
     MessageLoop *childMessageLoop = CompositorParent::CompositorLoop();
     mCompositorChild = new CompositorChild(lm);
+    parent->SetChildCompositor(mCompositorChild, MessageLoop::current());
     AsyncChannel *parentChannel = mCompositorParent->GetIPCChannel();
     AsyncChannel::Side childSide = mozilla::ipc::AsyncChannel::Child;
     mCompositorChild->Open(parentChannel, childMessageLoop, childSide);

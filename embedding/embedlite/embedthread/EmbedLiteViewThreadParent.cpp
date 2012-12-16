@@ -10,6 +10,8 @@
 #include "EmbedLiteApp.h"
 #include "EmbedLiteView.h"
 
+#include "EmbedLiteCompositorParent.h"
+
 namespace mozilla {
 namespace embedlite {
 
@@ -40,6 +42,13 @@ EmbedLiteViewThreadParent::RecvInitialized()
     LOGT();
     mView->GetListener()->ViewInitialized();
     return true;
+}
+
+void
+EmbedLiteViewThreadParent::SetCompositor(EmbedLiteCompositorParent* aCompositor)
+{
+    LOGT();
+    mCompositor = aCompositor;
 }
 
 } // namespace embedlite

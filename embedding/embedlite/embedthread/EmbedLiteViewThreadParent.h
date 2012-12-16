@@ -12,6 +12,7 @@ namespace mozilla {
 namespace embedlite {
 
 class EmbedLiteView;
+class EmbedLiteCompositorParent;
 class EmbedLiteViewThreadParent : public PEmbedLiteViewParent
 {
     NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EmbedLiteViewThreadParent)
@@ -24,8 +25,11 @@ protected:
     virtual bool RecvInitialized();
 
 private:
+    friend class EmbedLiteCompositorParent;
+    void SetCompositor(EmbedLiteCompositorParent* aCompositor);
     uint32_t mId;
     EmbedLiteView* mView;
+    RefPtr<EmbedLiteCompositorParent> mCompositor;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadParent);
 };

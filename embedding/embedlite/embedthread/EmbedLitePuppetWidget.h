@@ -118,6 +118,7 @@ public:
 
 private:
     nsresult Paint();
+    void DestroyCompositor();
 
     EmbedLitePuppetWidget* TopWindow();
     bool IsTopLevel();

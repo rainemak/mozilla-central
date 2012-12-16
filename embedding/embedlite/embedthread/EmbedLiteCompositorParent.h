@@ -9,6 +9,7 @@
 #define COMPOSITOR_PERFORMANCE_WARNING
 
 #include "mozilla/layers/CompositorParent.h"
+#include "mozilla/layers/CompositorChild.h"
 #include "Layers.h"
 #include "EmbedLiteViewThreadParent.h"
 
@@ -39,6 +40,8 @@ public:
                                      bool isFirstPaint) MOZ_OVERRIDE;
     virtual void ScheduleComposition();
 
+    virtual void SetChildCompositor(mozilla::layers::CompositorChild*, MessageLoop*);
+    mozilla::layers::CompositorChild* GetChildCompositor() { return mChildCompositor; }
 protected:
     virtual PLayersParent* AllocPLayers(const LayersBackend& aBackendHint,
                                         const uint64_t& aId,
@@ -54,6 +57,9 @@ protected:
                                   nsIntPoint& aScrollOffset, float& aScaleX, float& aScaleY);
 
     RefPtr<EmbedLiteViewThreadParent> mView;
+    RefPtr<mozilla::layers::CompositorChild> mChildCompositor;
+    MessageLoop* mChildMessageLoop;
+    uint32_t mId;
 };
 
 } // embedlite

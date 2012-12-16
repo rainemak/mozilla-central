@@ -70,6 +70,7 @@ private:
     static void StartChild(EmbedLiteApp* aApp);
 
     friend class EmbedLiteViewThreadParent;
+    friend class EmbedLiteCompositorParent;
     EmbedLiteView* GetViewByID(uint32_t id);
 
     EmbedLiteApp();

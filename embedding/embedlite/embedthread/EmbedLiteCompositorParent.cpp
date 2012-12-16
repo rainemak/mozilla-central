@@ -12,6 +12,8 @@
 #include "EmbedLog.h"
 #include "EmbedLiteAppThreadParent.h"
 #include "EmbedLiteViewThreadParent.h"
+#include "EmbedLiteApp.h"
+#include "EmbedLiteView.h"
 
 using namespace mozilla::layers;
 
@@ -24,14 +26,13 @@ EmbedLiteCompositorParent::EmbedLiteCompositorParent(nsIWidget* aWidget,
                                                      int aSurfaceHeight,
                                                      uint32_t id)
   : CompositorParent(aWidget, aRenderToEGLSurface, aSurfaceWidth, aSurfaceHeight)
+  , mId(id)
 {
     LOGT();
-//    mView = EmbedLiteAppThreadParent::GetAppThreadParent()->GetThreadView(id);
-//    if (mView) {
-//        mView->SetCompositor(this);
-//    } else {
-//        M_ERROR("View not available for this compositor>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>.");
-//    }
+    AddRef();
+    EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
+    EmbedLiteViewThreadParent* pview = static_cast<EmbedLiteViewThreadParent*>(view->GetImpl());
+    pview->SetCompositor(this);
 }
 
 EmbedLiteCompositorParent::~EmbedLiteCompositorParent()
@@ -81,9 +82,26 @@ bool EmbedLiteCompositorParent::RecvWillStop()
     return CompositorParent::RecvWillStop();
 }
 
+static void DeferredDestroyCompositor(EmbedLiteCompositorParent* aCompositorParent, uint32_t id)
+{
+    LOGT();
+    aCompositorParent->GetChildCompositor()->Release();
+    aCompositorParent->Release();
+}
+
+void
+EmbedLiteCompositorParent::SetChildCompositor(CompositorChild* aCompositorChild, MessageLoop* childLoop)
+{
+    LOGT();
+    mChildMessageLoop = childLoop;
+    mChildCompositor = aCompositorChild;
+}
+
 bool EmbedLiteCompositorParent::RecvStop()
 {
-    LOGT("t");
+    LOGT("t: childComp:%p, mChildMessageLoop:%p, curLoop:%p", mChildCompositor.get(), MessageLoop::current());
+    mChildMessageLoop->PostTask(FROM_HERE,
+               NewRunnableFunction(DeferredDestroyCompositor, this, mId));
     return CompositorParent::RecvStop();
 }
 

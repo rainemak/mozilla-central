@@ -43,6 +43,13 @@ EmbedLiteView::SetImpl(void* aViewImpl)
     mViewImpl = aViewImpl;
 }
 
+void*
+EmbedLiteView::GetImpl()
+{
+    LOGT();
+    return mViewImpl;
+}
+
 void
 EmbedLiteView::LoadURL(const char* aUrl)
 {

@@ -11,6 +11,7 @@
 #include "EmbedLog.h"
 
 #include "mozilla/unused.h"
+#include "EmbedLiteCompositorParent.h"
 
 using namespace base;
 using namespace mozilla::ipc;
@@ -45,6 +46,7 @@ bool
 EmbedLiteAppThreadParent::RecvInitialized()
 {
     LOGT();
+    mozilla::layers::CompositorParent::StartUpWithExistingThread(MessageLoop::current(), PlatformThread::CurrentId());
     mApp->GetListener()->Initialized();
     return true;
 }

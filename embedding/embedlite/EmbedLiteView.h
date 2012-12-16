@@ -35,7 +35,9 @@ public:
 
 private:
     friend class EmbedLiteViewThreadParent;
+    friend class EmbedLiteCompositorParent;
     void SetImpl(void*);
+    void* GetImpl();
 
     EmbedLiteApp* mApp;
     EmbedLiteViewListener* mListener;
