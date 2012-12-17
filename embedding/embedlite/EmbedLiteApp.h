@@ -12,6 +12,8 @@
 namespace mozilla {
 namespace embedlite {
 
+typedef void (*EMBEDTaskCallback)(void *userData);
+
 class EmbedLiteUILoop;
 class EmbedLiteSubThread;
 class EmbedLiteAppThread;
@@ -40,12 +42,15 @@ public:
         EMBED_PROCESS // Initialize XPCOM in separate process
     };
 
-    virtual EmbedType GetType() { return mEmbedType; }
-
     // Set Listener interface for EmbedLiteApp notifications
     virtual void SetListener(EmbedLiteAppListener* aListener);
 
     // Public Embedding API
+
+    virtual EmbedType GetType() { return mEmbedType; }
+
+    // Delayed post task helper for delayed functions call in main thread
+    virtual uint32_t PostTask(EMBEDTaskCallback callback, void* userData, int timeout = 0);
 
     // Start UI embedding loop merged with Gecko GFX, blocking call until Stop() called
     virtual bool Start(EmbedType aEmbedType);
@@ -90,6 +95,7 @@ private:
     std::map<uint32_t, EmbedLiteView*> mViews;
     uint32_t mViewCreateID;
     bool mDestroying;
+//    std::map<uint32_t, std::pair<CancelableTask*, void*> mTasks;
 };
 
 } // namespace embedlite

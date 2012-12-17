@@ -60,15 +60,15 @@ public:
                                  int32_t* aY)
         { *aX = kMaxDimension;  *aY = kMaxDimension; LOGNI(); return NS_OK; }
     // We're always at <0, 0>, and so ignore move requests.
-    NS_IMETHOD Move(int32_t aX, int32_t aY)
+    NS_IMETHOD Move(double aX, double aY)
         { LOGNI(); return NS_OK; }
-    NS_IMETHOD Resize(int32_t aWidth,
-                      int32_t aHeight,
+    NS_IMETHOD Resize(double aWidth,
+                      double aHeight,
                       bool    aRepaint);
-    NS_IMETHOD Resize(int32_t aX,
-                      int32_t aY,
-                      int32_t aWidth,
-                      int32_t aHeight,
+    NS_IMETHOD Resize(double aX,
+                      double aY,
+                      double aWidth,
+                      double aHeight,
                       bool    aRepaint)
         // (we're always at <0, 0>)
         { LOGNI(); return Resize(aWidth, aHeight, aRepaint); }

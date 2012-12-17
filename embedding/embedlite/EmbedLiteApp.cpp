@@ -67,6 +67,19 @@ EmbedLiteApp::SetListener(EmbedLiteAppListener* aListener)
     mListener = aListener;
 }
 
+uint32_t
+EmbedLiteApp::PostTask(EMBEDTaskCallback callback, void* userData, int timeout)
+{
+    if (timeout) {
+        mUILoop->PostDelayedTask(FROM_HERE,
+                                 NewRunnableFunction(callback, userData), timeout);
+    } else {
+        mUILoop->PostTask(FROM_HERE,
+                          NewRunnableFunction(callback, userData));
+    }
+    return 0;
+}
+
 void
 EmbedLiteApp::StartChild(EmbedLiteApp* aApp)
 {
