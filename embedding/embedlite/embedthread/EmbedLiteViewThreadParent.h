@@ -24,7 +24,9 @@ public:
 
     virtual void LoadURL(const char*);
     virtual void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
-
+    virtual void MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
+    virtual void MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
+    virtual void MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
     virtual bool RecvInitialized();

@@ -65,5 +65,23 @@ EmbedLiteView::RenderToImage(unsigned char *aData, int imgW, int imgH, int strid
     mViewImpl->RenderToImage(aData, imgW, imgH, stride, depth);
 }
 
+void
+EmbedLiteView::MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers)
+{
+    mViewImpl->MousePress(x, y, mstime, buttons, modifiers);
+}
+
+void
+EmbedLiteView::MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers)
+{
+    mViewImpl->MouseRelease(x, y, mstime, buttons, modifiers);
+}
+
+void
+EmbedLiteView::MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers)
+{
+    mViewImpl->MouseMove(x, y, mstime, buttons, modifiers);
+}
+
 } // namespace embedlite
 } // namespace mozilla
