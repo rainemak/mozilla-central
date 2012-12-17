@@ -6,11 +6,15 @@
 #ifndef MOZ_VIEW_EMBED_H
 #define MOZ_VIEW_EMBED_H
 
+#include "mozilla/RefPtr.h"
+
 namespace mozilla {
 namespace embedlite {
 
 class EmbedLiteViewImplIface;
 class EmbedLiteView;
+class EmbedKineticListener;
+class EmbedKineticModule;
 class EmbedLiteViewListener
 {
 public:
@@ -41,6 +45,13 @@ public:
     virtual void MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
     virtual void MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
 
+    // Scrolling mode, enable internal smart scroll/zoom component
+    void SetScrollingMode(bool aEnabled) { mScrollingMode = aEnabled; }
+    bool GetScrollingMode() { return mScrollingMode; }
+
+    // Scroll/Zoom API
+    bool ScrollBy(int aDX, int aDY, bool aDoOverflow = false);
+
 private:
     friend class EmbedLiteViewThreadParent;
     friend class EmbedLiteCompositorParent;
@@ -50,6 +61,9 @@ private:
     EmbedLiteApp* mApp;
     EmbedLiteViewListener* mListener;
     EmbedLiteViewImplIface* mViewImpl;
+    bool mScrollingMode;
+    RefPtr<EmbedKineticListener> mKineticListener;
+    RefPtr<EmbedKineticModule> mKinetic;
 };
 
 } // namespace embedlite

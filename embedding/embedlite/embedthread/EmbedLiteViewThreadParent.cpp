@@ -20,6 +20,8 @@ EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id)
   : mId(id)
   , mView(EmbedLiteApp::GetInstance()->GetViewByID(id))
   , mCompositor(nullptr)
+  , mScrollOffset(0, 0)
+  , mLastScale(1.0f)
 {
     MOZ_COUNT_CTOR(EmbedLiteViewThreadParent);
     LOGT("id:%u", mId);
@@ -68,6 +70,19 @@ EmbedLiteViewThreadParent::RenderToImage(unsigned char *aData, int imgW, int img
     if (mCompositor) {
         mCompositor->RenderToImage(aData, imgW, imgH, stride, depth);
     }
+}
+
+bool
+EmbedLiteViewThreadParent::ScrollBy(int aDX, int aDY, bool aDoOverflow)
+{
+    LOGT("d[%i,%i]", aDX, aDY);
+    mScrollOffset.MoveBy(-aDX, -aDY);
+    if (mCompositor) {
+        mCompositor->SetTransformation(mLastScale, nsIntPoint(mScrollOffset.x, mScrollOffset.y));
+        mCompositor->ScheduleRenderOnCompositorThread();
+    }
+
+    return true;
 }
 
 void

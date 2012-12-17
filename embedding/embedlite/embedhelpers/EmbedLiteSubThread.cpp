@@ -48,7 +48,6 @@ bool EmbedLiteSubThread::StartEmbedThread()
 {
     LOGT();
     return StartWithOptions(Thread::Options(MessageLoop::TYPE_MOZILLA_CHILD, 0));
-//    return StartWithOptions(Thread::Options(MessageLoop::TYPE_UI, 0));
 }
 
 } // namespace embedlite

@@ -185,13 +185,11 @@ EmbedLiteCompositorParent::SetFirstPaintViewport(const nsIntPoint& aOffset,
                                                  const gfx::Rect& aCssPageRect)
 {
     LOGT("t");
-    CompositorParent::SetFirstPaintViewport(aOffset, aZoom, aPageRect, aCssPageRect);
 }
 
 void EmbedLiteCompositorParent::SetPageRect(const gfx::Rect& aCssPageRect)
 {
     LOGT("t");
-    CompositorParent::SetPageRect(aCssPageRect);
 }
 
 void
@@ -200,8 +198,6 @@ EmbedLiteCompositorParent::SyncViewportInfo(const nsIntRect& aDisplayPort, float
                                             float& aScaleX, float& aScaleY)
 {
     LOGT("t");
-    CompositorParent::SyncViewportInfo(aDisplayPort, aDisplayResolution, aLayersUpdated,
-                                       aScrollOffset, aScaleX, aScaleY);
 }
 
 } // namespace embedlite

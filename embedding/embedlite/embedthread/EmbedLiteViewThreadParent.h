@@ -24,6 +24,7 @@ public:
 
     virtual void LoadURL(const char*);
     virtual void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
+    virtual bool ScrollBy(int aDX, int aDY, bool aDoOverflow = false);
     virtual void MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
     virtual void MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
     virtual void MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
@@ -37,6 +38,8 @@ private:
     uint32_t mId;
     EmbedLiteView* mView;
     RefPtr<EmbedLiteCompositorParent> mCompositor;
+    gfx::Point mScrollOffset;
+    float mLastScale;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadParent);
 };

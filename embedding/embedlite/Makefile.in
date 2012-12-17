@@ -48,6 +48,7 @@ CPPSRCS = \
     EmbedLiteViewThreadChild.cpp \
     EmbedLitePuppetWidget.cpp \
     EmbedLiteCompositorParent.cpp \
+    EmbedKineticModule.cpp \
     WebBrowserChrome.cpp \
     GeckoLoader.cpp \
     DirProvider.cpp \

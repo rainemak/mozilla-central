@@ -12,14 +12,35 @@
 #include "mozilla/unused.h"
 
 #include "EmbedLiteViewThreadParent.h"
+#include "EmbedKineticModule.h"
 
 namespace mozilla {
 namespace embedlite {
 
 class FakeListener : public EmbedLiteViewListener {};
+class MyKineticListener : public EmbedKineticListener
+{
+public:
+    MyKineticListener(EmbedLiteView* aView) : mView(aView) {}
+    virtual void ScrollViewBy(int dx, int dy)
+    {
+        LOGT("pt[%i,%i]", dx, dy);
+        mView->ScrollBy(dx, dy);
+    }
+    virtual void UpdateViewport()
+    {
+        LOGT();
+    }
+private:
+    EmbedLiteView* mView;
+};
+
 EmbedLiteView::EmbedLiteView(EmbedLiteApp* aApp)
   : mApp(aApp)
   , mListener(new FakeListener())
+  , mScrollingMode(false)
+  , mKineticListener(new MyKineticListener(this))
+  , mKinetic(new EmbedKineticModule(mKineticListener))
 {
     LOGT();
 }
@@ -34,6 +55,8 @@ EmbedLiteView::~EmbedLiteView()
         LOGNI();
     }
     mViewImpl = NULL;
+    mKinetic = nullptr;
+    mKineticListener = nullptr;
     mListener->Destroyed();
 }
 
@@ -65,22 +88,32 @@ EmbedLiteView::RenderToImage(unsigned char *aData, int imgW, int imgH, int strid
     mViewImpl->RenderToImage(aData, imgW, imgH, stride, depth);
 }
 
+bool
+EmbedLiteView::ScrollBy(int aDX, int aDY, bool aDoOverflow)
+{
+    LOGT();
+    return mViewImpl->ScrollBy(aDX, aDY);
+}
+
 void
 EmbedLiteView::MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers)
 {
     mViewImpl->MousePress(x, y, mstime, buttons, modifiers);
+    mKinetic->MousePress(x, y, mstime);
 }
 
 void
 EmbedLiteView::MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers)
 {
     mViewImpl->MouseRelease(x, y, mstime, buttons, modifiers);
+    mKinetic->MouseRelease(x, y, mstime);
 }
 
 void
 EmbedLiteView::MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers)
 {
     mViewImpl->MouseMove(x, y, mstime, buttons, modifiers);
+    mKinetic->MouseMove(x, y, mstime);
 }
 
 } // namespace embedlite
