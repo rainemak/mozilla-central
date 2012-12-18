@@ -46,7 +46,9 @@ public:
     static void RenderImage(void* aData)
     {
         MyListener* self = static_cast<MyListener*>(aData);
-        printf("Embedding render Image\n");
+        char* data = self->mView->GetImageAsURL(800, 600);
+        printf("Embedding render Image: %s\n", data);
+        delete data;
     }
 
 private:

@@ -46,11 +46,14 @@ public:
     virtual void MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
 
     // Scrolling mode, enable internal smart scroll/zoom component
-    void SetScrollingMode(bool aEnabled) { mScrollingMode = aEnabled; }
-    bool GetScrollingMode() { return mScrollingMode; }
+    virtual void SetScrollingMode(bool aEnabled) { mScrollingMode = aEnabled; }
+    virtual bool GetScrollingMode() { return mScrollingMode; }
 
     // Scroll/Zoom API
-    bool ScrollBy(int aDX, int aDY, bool aDoOverflow = false);
+    virtual bool ScrollBy(int aDX, int aDY, bool aDoOverflow = false);
+
+    // PNG Decoded data
+    virtual char* GetImageAsURL(int aWidth = -1, int aHeight = -1);
 
 private:
     friend class EmbedLiteViewThreadParent;
