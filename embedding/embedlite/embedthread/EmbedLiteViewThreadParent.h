@@ -49,7 +49,7 @@ protected:
     RecvOnLoadRedirect();
 
     virtual bool
-    RecvOnLoadProgress(const int32_t& aProgress);
+    RecvOnLoadProgress(const int32_t& aProgress, const int32_t& aCurTotal, const int32_t& aMaxTotal);
 
     virtual bool
     RecvOnSecurityChanged(

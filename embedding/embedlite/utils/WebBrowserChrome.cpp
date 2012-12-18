@@ -192,7 +192,7 @@ WebBrowserChrome::OnProgressChange(nsIWebProgress *progress, nsIRequest *request
     utils->GetCurrentInnerWindowID(&currentInnerWindowID);
 
     int sprogress = ((float)maxTotalProgress / 100.0f * (float)curTotalProgress);
-    mListener->OnLoadProgress(sprogress);
+    mListener->OnLoadProgress(sprogress, curTotalProgress, maxTotalProgress);
 
     return NS_OK;
 }

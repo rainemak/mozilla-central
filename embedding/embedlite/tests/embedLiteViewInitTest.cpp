@@ -72,7 +72,7 @@ public:
     {
         printf("OnLoadRedirect\n");
     }
-    virtual void OnLoadProgress(int32_t aProgress)
+    virtual void OnLoadProgress(int32_t aProgress, int32_t aCurTotal, int32_t aMaxTotal)
     {
         printf("OnLoadProgress: progress:%i\n", aProgress);
     }

@@ -183,9 +183,9 @@ NS_IMETHODIMP EmbedLiteViewThreadChild::OnLoadRedirect()
 }
 
 /* void onLoadProgress (in int32_t aProgress) */
-NS_IMETHODIMP EmbedLiteViewThreadChild::OnLoadProgress(int32_t aProgress)
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnLoadProgress(int32_t aProgress, int32_t aCurTotal, int32_t aMaxTotal)
 {
-    return SendOnLoadProgress(aProgress) ? NS_OK : NS_ERROR_FAILURE;
+    return SendOnLoadProgress(aProgress, aCurTotal, aMaxTotal) ? NS_OK : NS_ERROR_FAILURE;
 }
 
 /* void onSecurityChanged (in string aStatus, in uint32_t aState) */

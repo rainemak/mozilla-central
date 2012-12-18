@@ -22,7 +22,7 @@ parent:
     async OnLoadStarted(nsCString aLocation);
     async OnLoadFinished();
     async OnLoadRedirect();
-    async OnLoadProgress(int32_t aProgress);
+    async OnLoadProgress(int32_t aProgress, int32_t aCurTotal, int32_t aMaxTotal);
     async OnSecurityChanged(nsCString aStatus, uint32_t aState);
     async OnFirstPaint(int32_t aX, int32_t aY);
     async OnContentLoaded(nsCString aDocURI);

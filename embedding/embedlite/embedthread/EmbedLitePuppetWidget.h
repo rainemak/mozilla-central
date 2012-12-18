@@ -71,7 +71,7 @@ public:
                       double aHeight,
                       bool    aRepaint)
         // (we're always at <0, 0>)
-        { LOGNI(); return Resize(aWidth, aHeight, aRepaint); }
+        { return Resize(aWidth, aHeight, aRepaint); }
     // XXX/cjones: copying gtk behavior here; unclear what disabling a
     // widget is supposed to entail
     NS_IMETHOD Enable(bool aState)

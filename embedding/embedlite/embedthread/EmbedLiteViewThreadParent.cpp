@@ -100,10 +100,10 @@ EmbedLiteViewThreadParent::RecvOnLoadRedirect()
 }
 
 bool
-EmbedLiteViewThreadParent::RecvOnLoadProgress(const int32_t& aProgress)
+EmbedLiteViewThreadParent::RecvOnLoadProgress(const int32_t& aProgress, const int32_t& aCurTotal, const int32_t& aMaxTotal)
 {
     LOGNI("progress:%i", aProgress);
-    mView->GetListener()->OnLoadProgress(aProgress);
+    mView->GetListener()->OnLoadProgress(aProgress, aCurTotal, aMaxTotal);
     return false;
 }
 

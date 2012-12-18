@@ -124,7 +124,7 @@ EmbedLitePuppetWidget::Create(nsIWidget        *aParent,
                               nsDeviceContext *aContext,
                               nsWidgetInitData *aInitData)
 {
-    LOGNI();
+    LOGT();
     NS_ABORT_IF_FALSE(!aNativeParent, "got a non-Puppet native parent");
 
     BaseCreate(nullptr, aRect, aContext, aInitData);
@@ -160,7 +160,7 @@ EmbedLitePuppetWidget::CreateChild(const nsIntRect  &aRect,
                                    nsWidgetInitData *aInitData,
                                    bool              aForceUseIWidgetParent)
 {
-    LOGNI();
+    LOGT();
     bool isPopup = IsPopup(aInitData);
     nsCOMPtr<nsIWidget> widget = new EmbedLitePuppetWidget(mEmbed, mId);
     return ((widget &&
@@ -187,7 +187,7 @@ EmbedLitePuppetWidget::Destroy()
 NS_IMETHODIMP
 EmbedLitePuppetWidget::Show(bool aState)
 {
-    LOGNI();
+    LOGT();
     NS_ASSERTION(mEnabled,
                  "does it make sense to Show()/Hide() a disabled widget?");
 
@@ -215,7 +215,7 @@ EmbedLitePuppetWidget::Resize(double aWidth,
                               double aHeight,
                               bool    aRepaint)
 {
-    LOGNI();
+    LOGT();
     nsIntRect oldBounds = mBounds;
     mBounds.SizeTo(nsIntSize(NSToIntRound(aWidth), NSToIntRound(aHeight)));
 
@@ -268,7 +268,7 @@ EmbedLitePuppetWidget::GetNativeData(uint32_t aDataType)
     LOGT("DataType: %i", aDataType);
     switch (aDataType) {
     case NS_NATIVE_SHAREABLE_WINDOW: {
-        LOGNI("aDataType:%i\n", __LINE__, aDataType);
+        LOGW("aDataType:%i\n", __LINE__, aDataType);
         return (void*)nullptr;
     }
     case NS_NATIVE_WINDOW:
@@ -354,7 +354,7 @@ EmbedLitePuppetWidget::GetLayerManager(PLayersChild* aShadowManager,
                                        LayerManagerPersistence aPersistence,
                                        bool* aAllowRetaining)
 {
-    LOGNI();
+    LOGT();
     if (aAllowRetaining)
         *aAllowRetaining = true;
 
@@ -419,7 +419,7 @@ EmbedLitePuppetWidget::GetLayerManager(PLayersChild* aShadowManager,
 
 void EmbedLitePuppetWidget::CreateCompositor()
 {
-    LOGNI();
+    LOGT();
     bool renderToEGLSurface = true;
     nsIntRect rect;
     GetBounds(rect);

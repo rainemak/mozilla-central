@@ -31,7 +31,7 @@ public:
     virtual void OnLoadStarted(const char* aLocation) {}
     virtual void OnLoadFinished(void) {}
     virtual void OnLoadRedirect(void) {}
-    virtual void OnLoadProgress(int32_t aProgress) {}
+    virtual void OnLoadProgress(int32_t aProgress, int32_t aCurTotal, int32_t aMaxTotal) {}
     virtual void OnSecurityChanged(const char* aStatus, unsigned int aState) {}
     virtual void OnFirstPaint(int32_t aX, int32_t aY) {}
     virtual void OnContentLoaded(const PRUnichar* aDocURI) {}
