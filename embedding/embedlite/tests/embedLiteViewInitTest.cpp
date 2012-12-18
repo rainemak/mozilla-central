@@ -74,7 +74,7 @@ public:
     }
     virtual void OnLoadProgress(int32_t aProgress, int32_t aCurTotal, int32_t aMaxTotal)
     {
-        printf("OnLoadProgress: progress:%i\n", aProgress);
+        printf("OnLoadProgress: progress:%i curT:%i, maxT:%i\n", aProgress, aCurTotal, aMaxTotal);
     }
     virtual void OnSecurityChanged(const char* aStatus, unsigned int aState)
     {
