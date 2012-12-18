@@ -28,9 +28,80 @@ public:
     virtual void MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
     virtual void MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
     virtual void MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
+
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
     virtual bool RecvInitialized();
+
+    virtual bool
+    RecvOnTitleChanged(const nsString& aTitle);
+
+    virtual bool
+    RecvOnLocationChanged(const nsCString& aLocation, const bool& aCanGoBack, const bool& aCanGoForward);
+
+    virtual bool
+    RecvOnLoadStarted(const nsCString& aLocation);
+
+    virtual bool
+    RecvOnLoadFinished();
+
+    virtual bool
+    RecvOnLoadRedirect();
+
+    virtual bool
+    RecvOnLoadProgress(const int32_t& aProgress);
+
+    virtual bool
+    RecvOnSecurityChanged(
+            const nsCString& aStatus,
+            const uint32_t& aState);
+
+    virtual bool
+    RecvOnFirstPaint(
+            const int32_t& aX,
+            const int32_t& aY);
+
+    virtual bool
+    RecvOnContentLoaded(const nsString& aDocURI);
+
+    virtual bool
+    RecvOnLinkAdded(
+            const nsString& aHref,
+            const nsString& aCharset,
+            const nsString& aTitle,
+            const nsString& aRel,
+            const nsString& aSizes,
+            const nsString& aType);
+
+    virtual bool
+    RecvOnWindowOpenClose(const nsString& aType);
+
+    virtual bool
+    RecvOnPopupBlocked(
+            const nsCString& aSpec,
+            const nsCString& aCharset,
+            const nsString& aPopupFeatures,
+            const nsString& aPopupWinName);
+
+    virtual bool
+    RecvOnPageShowHide(
+            const nsString& aType,
+            const bool& aPersisted);
+
+    virtual bool
+    RecvOnScrolledAreaChanged(
+            const uint32_t& aWidth,
+            const uint32_t& aHeight);
+
+    virtual bool
+    RecvOnScrollChanged(
+            const int32_t& offSetX,
+            const int32_t& offSetY);
+
+    virtual bool
+    RecvOnObserve(
+            const nsCString& aTopic,
+            const nsString& aData);
 
 private:
     friend class EmbedLiteCompositorParent;

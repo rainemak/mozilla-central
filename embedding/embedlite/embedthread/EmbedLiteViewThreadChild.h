@@ -12,16 +12,20 @@
 #include "nsIWidget.h"
 #include "nsIWebNavigation.h"
 #include "WebBrowserChrome.h"
+#include "nsIEmbedBrowserChromeListener.h"
 
 namespace mozilla {
 namespace embedlite {
 
-class EmbedLiteViewThreadChild : public PEmbedLiteViewChild
+class EmbedLiteViewThreadChild : public PEmbedLiteViewChild,
+                                 public nsIEmbedBrowserChromeListener
 {
     NS_INLINE_DECL_REFCOUNTING(EmbedLiteViewThreadChild)
 public:
     EmbedLiteViewThreadChild(uint32_t);
     virtual ~EmbedLiteViewThreadChild();
+
+    NS_DECL_NSIEMBEDBROWSERCHROMELISTENER
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;

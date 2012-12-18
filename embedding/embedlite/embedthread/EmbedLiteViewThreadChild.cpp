@@ -92,7 +92,7 @@ EmbedLiteViewThreadChild::InitGeckoWindow()
     nsCOMPtr<nsIDOMWindow> domWindow;
 
     nsIWebBrowserChrome **aNewWindow = getter_AddRefs(mChrome);
-    mBChrome = new WebBrowserChrome();
+    mBChrome = new WebBrowserChrome(this);
     CallQueryInterface(static_cast<nsIWebBrowserChrome*>(mBChrome), aNewWindow);
     uint32_t aChromeFlags = 0; // View()->GetWindowFlags();
 
@@ -150,6 +150,120 @@ EmbedLiteViewThreadChild::RecvLoadURL(const nsString& url)
     }
 
     return true;
+}
+
+/* void onTitleChanged (in wstring aTitle) */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnTitleChanged(const PRUnichar* aTitle)
+{
+    return SendOnTitleChanged(nsDependentString(aTitle)) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onLocationChanged (in string aLocation) */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnLocationChanged(const char* aLocation, bool aCanGoBack, bool aCanGoForward)
+{
+    return SendOnLocationChanged(nsDependentCString(aLocation), aCanGoBack, aCanGoForward) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onLoadStarted (in string aLocation) */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnLoadStarted(const char* aLocation)
+{
+    return SendOnLoadStarted(nsDependentCString(aLocation)) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onLoadFinished () */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnLoadFinished()
+{
+    return SendOnLoadFinished() ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onLoadRedirect () */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnLoadRedirect()
+{
+    return SendOnLoadRedirect() ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onLoadProgress (in int32_t aProgress) */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnLoadProgress(int32_t aProgress)
+{
+    return SendOnLoadProgress(aProgress) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onSecurityChanged (in string aStatus, in uint32_t aState) */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnSecurityChanged(const char* aStatus, uint32_t aState)
+{
+    return SendOnSecurityChanged(nsDependentCString(aStatus), aState) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onFirstPaint (in int32_t aX, in int32_t aY) */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnFirstPaint(int32_t aX, int32_t aY)
+{
+    return SendOnFirstPaint(aX, aY) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onContentLoaded (in wstring aDocURI) */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnContentLoaded(const PRUnichar* aDocURI)
+{
+    return SendOnContentLoaded(nsDependentString(aDocURI)) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onLinkAdded (in wstring aHref, in wstring aCharset, in wstring aTitle, in wstring aRel, in wstring aSizes, in wstring aType) */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnLinkAdded(const PRUnichar* aHref,
+                                                    const PRUnichar* aCharset,
+                                                    const PRUnichar* aTitle,
+                                                    const PRUnichar* aRel,
+                                                    const PRUnichar* aSizes,
+                                                    const PRUnichar* aType)
+{
+    return SendOnLinkAdded(
+        nsDependentString(aHref),
+        nsDependentString(aCharset),
+        nsDependentString(aTitle),
+        nsDependentString(aRel),
+        nsDependentString(aSizes),
+        nsDependentString(aType)) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onWindowOpenClose (in wstring aType) */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnWindowOpenClose(const PRUnichar* aType)
+{
+    return SendOnWindowOpenClose(nsDependentString(aType)) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onPopupBlocked (in string aSpec, in string aCharset, in wstring aPopupFeatures, in wstring aPopupWinName) */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnPopupBlocked(const char* aSpec, const char* aCharset,
+                                                       const PRUnichar* aPopupFeatures,
+                                                       const PRUnichar* aPopupWinName)
+{
+    return SendOnPopupBlocked(
+        nsDependentCString(aSpec),
+        nsDependentCString(aCharset),
+        nsDependentString(aPopupFeatures),
+        nsDependentString(aPopupWinName)) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onPageShowHide (in wstring aType, in boolean aPersisted) */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnPageShowHide(const PRUnichar* aType, bool aPersisted)
+{
+    return SendOnPageShowHide(nsDependentString(aType), aPersisted) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onScrolledAreaChanged (in uint32_t aWidth, in uint32_t aHeight) */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnScrolledAreaChanged(uint32_t aWidth, uint32_t aHeight)
+{
+    return SendOnScrolledAreaChanged(aWidth, aHeight) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onScrollChanged (in int32_t offSetX, in int32_t offSetY) */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnScrollChanged(int32_t offSetX, int32_t offSetY)
+{
+    return SendOnScrollChanged(offSetX, offSetY) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+/* void onObserve (in string aTopic, in wstring aData) */
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnObserve(const char* aTopic, const PRUnichar* aData)
+{
+     return SendOnObserve(nsDependentCString(aTopic),
+                          nsDependentString(aData)) ? NS_OK : NS_ERROR_FAILURE;
 }
 
 } // namespace embedlite

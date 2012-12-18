@@ -7,6 +7,7 @@
 #define MOZ_VIEW_EMBED_H
 
 #include "mozilla/RefPtr.h"
+#include "nsStringGlue.h"
 
 namespace mozilla {
 namespace embedlite {
@@ -22,8 +23,25 @@ public:
     virtual void ViewInitialized() {}
     // View finally destroyed and deleted
     virtual void Destroyed() {}
-    virtual void LoadFinished() {}
+    // Invalidate notification
     virtual bool Invalidate() { return false; }
+
+    virtual void OnTitleChanged(const PRUnichar* aTitle) {}
+    virtual void OnLocationChanged(const char* aLocation, bool aCanGoBack, bool aCanGoForward) {}
+    virtual void OnLoadStarted(const char* aLocation) {}
+    virtual void OnLoadFinished(void) {}
+    virtual void OnLoadRedirect(void) {}
+    virtual void OnLoadProgress(int32_t aProgress) {}
+    virtual void OnSecurityChanged(const char* aStatus, unsigned int aState) {}
+    virtual void OnFirstPaint(int32_t aX, int32_t aY) {}
+    virtual void OnContentLoaded(const PRUnichar* aDocURI) {}
+    virtual void OnLinkAdded(const PRUnichar* aHref, const PRUnichar* aCharset, const PRUnichar* aTitle, const PRUnichar* aRel, const PRUnichar* aSizes, const PRUnichar* aType) {}
+    virtual void OnWindowOpenClose(const PRUnichar* aType) {}
+    virtual void OnPopupBlocked(const char* aSpec, const char* aCharset, const PRUnichar* aPopupFeatures, const PRUnichar* aPopupWinName) {}
+    virtual void OnPageShowHide(const PRUnichar* aType, bool aPersisted) {}
+    virtual void OnScrolledAreaChanged(unsigned int aWidth, unsigned int aHeight) {}
+    virtual void OnScrollChanged(int32_t offSetX, int32_t offSetY) {}
+    virtual void OnObserve(const char* aTopic, const PRUnichar* aData) {}
 };
 
 class EmbedLiteApp;

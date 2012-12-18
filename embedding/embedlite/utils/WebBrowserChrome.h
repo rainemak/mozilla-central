@@ -19,8 +19,11 @@
 #include "nsIObserverService.h"
 #include "nsWeakReference.h"
 
+#include "nsPoint.h"
+
 #define kNotFound -1
 
+class nsIEmbedBrowserChromeListener;
 class WebBrowserChrome : public nsIWebBrowserChrome,
                          public nsIWebProgressListener,
                          public nsIWebBrowserChromeFocus,
@@ -40,20 +43,34 @@ public:
     NS_DECL_NSIOBSERVER
     NS_DECL_NSIDOMEVENTLISTENER
 
-    WebBrowserChrome();
+    WebBrowserChrome(nsIEmbedBrowserChromeListener* aListener);
 
     virtual ~WebBrowserChrome();
 
     void SetEventHandler();
     void RemoveEventHandler();
+    void AddObserver(const char* topic);
 
-protected:
+private:
+    nsIntPoint GetScrollOffset(nsIDOMWindow* aWindow);
+    nsIntPoint GetScrollOffsetForElement(nsIDOMElement* aElement);
+    void SetScrollOffsetForElement(nsIDOMElement* aElement, int32_t aLeft, int32_t aTop);
+    void SendScroll();
+
     /* additional members */
     nsCOMPtr<nsIWebBrowser> mWebBrowser;
     uint32_t mChromeFlags;
     bool mIsModal;
     bool mIsVisible;
     bool mHandlerAdded;
+    int mTotalRequests;
+    int mFinishedRequests;
+    bool mLocationHasChanged;
+    nsCString mLastLocation;
+    bool mFirstPaint;
+    nsIntPoint mScrollOffset;
+    nsCOMPtr<nsIObserverService> mObserverService;
+    nsIEmbedBrowserChromeListener* mListener;
 };
 
 #endif /* Header guard */

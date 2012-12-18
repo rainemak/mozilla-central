@@ -3,6 +3,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#define LOG_COMPONENT "WebBrowserChrome"
+
 #include "WebBrowserChrome.h"
 #include "nsIDOMWindow.h"
 #include "nsIDocShellTreeItem.h"
@@ -12,6 +14,20 @@
 #include "nsPIDOMWindow.h"
 #include "nsNetUtil.h"
 #include "nsIDOMWindowUtils.h"
+#include "nsIWebNavigation.h"
+#include "nsISSLStatusProvider.h"
+#include "nsISecureBrowserUI.h"
+#include "nsISerializationHelper.h"
+#include "nsISSLStatus.h"
+#include "nsIDOMEvent.h"
+#include "nsIDOMHTMLLinkElement.h"
+#include "nsIDOMPopupBlockedEvent.h"
+#include "nsIDOMPageTransitionEvent.h"
+#include "nsIFocusManager.h"
+#include "nsIDOMScrollAreaEvent.h"
+#include "nsISerializable.h"
+#include "nsIEmbedBrowserChromeListener.h"
+
 #include <inttypes.h>
 #include "EmbedLog.h"
 
@@ -28,11 +44,17 @@
 #define MOZ_scroll "scroll"
 #define MOZ_MozScrolledAreaChanged "MozScrolledAreaChanged"
 
-WebBrowserChrome::WebBrowserChrome()
+WebBrowserChrome::WebBrowserChrome(nsIEmbedBrowserChromeListener* aListener)
  : mChromeFlags(0)
  , mIsModal(false)
  , mIsVisible(false)
  , mHandlerAdded(false)
+ , mTotalRequests(0)
+ , mFinishedRequests(0)
+ , mLocationHasChanged(false)
+ , mFirstPaint(false)
+ , mScrollOffset(0,0)
+ , mListener(aListener)
 {
     LOGT();
 }
@@ -73,7 +95,6 @@ NS_IMETHODIMP WebBrowserChrome::SetStatus(uint32_t /* statusType*/, const PRUnic
 
 NS_IMETHODIMP WebBrowserChrome::GetWebBrowser(nsIWebBrowser * *aWebBrowser)
 {
-    LOGNI();
     NS_ENSURE_ARG_POINTER(aWebBrowser);
     *aWebBrowser = mWebBrowser;
     NS_IF_ADDREF(*aWebBrowser);
@@ -82,7 +103,6 @@ NS_IMETHODIMP WebBrowserChrome::GetWebBrowser(nsIWebBrowser * *aWebBrowser)
 
 NS_IMETHODIMP WebBrowserChrome::SetWebBrowser(nsIWebBrowser * aWebBrowser)
 {
-    LOGNI();
     mWebBrowser = aWebBrowser;
     SetEventHandler();
     return NS_OK;
@@ -90,14 +110,12 @@ NS_IMETHODIMP WebBrowserChrome::SetWebBrowser(nsIWebBrowser * aWebBrowser)
 
 NS_IMETHODIMP WebBrowserChrome::GetChromeFlags(uint32_t *aChromeFlags)
 {
-    LOGNI();
     *aChromeFlags = mChromeFlags;
     return NS_OK;
 }
 
 NS_IMETHODIMP WebBrowserChrome::SetChromeFlags(uint32_t aChromeFlags)
 {
-    LOGNI();
     mChromeFlags = aChromeFlags;
     return NS_OK;
 }
@@ -105,24 +123,25 @@ NS_IMETHODIMP WebBrowserChrome::SetChromeFlags(uint32_t aChromeFlags)
 NS_IMETHODIMP WebBrowserChrome::DestroyBrowserWindow()
 {
     LOGNI();
+    if (mIsModal)
+        ExitModalEventLoop(NS_OK);
     return NS_ERROR_NOT_IMPLEMENTED;
 }
 
 NS_IMETHODIMP WebBrowserChrome::SizeBrowserTo(int32_t aCX, int32_t aCY)
 {
-    printf("WebBrowserChrome::%s::%d s[%i,%i]\n", __FUNCTION__, __LINE__, aCX, aCY);
+    LOGNI("sz[%i,%i]\n", aCX, aCY);
     return NS_OK;
 }
 
 NS_IMETHODIMP WebBrowserChrome::ShowAsModal()
 {
-    printf("WebBrowserChrome::%s::%d\n", __FUNCTION__, __LINE__);
+    LOGNI();
     return NS_OK;
 }
 
 NS_IMETHODIMP WebBrowserChrome::IsWindowModal(bool *_retval)
 {
-    LOGNI();
     NS_ENSURE_ARG_POINTER(_retval);
     *_retval = mIsModal;
     return NS_OK;
@@ -130,7 +149,7 @@ NS_IMETHODIMP WebBrowserChrome::IsWindowModal(bool *_retval)
 
 NS_IMETHODIMP WebBrowserChrome::ExitModalEventLoop(nsresult aStatus)
 {
-    printf("WebBrowserChrome::%s::%d status:%x\n", __FUNCTION__, __LINE__, aStatus);
+    LOGNI("status: %x", aStatus);
     return NS_OK;
 }
 
@@ -143,9 +162,7 @@ NS_IMETHODIMP WebBrowserChrome::ExitModalEventLoop(nsresult aStatus)
 NS_IMETHODIMP
 WebBrowserChrome::Observe(nsISupports *aSubject, const char *aTopic, const PRUnichar *someData)
 {
-    nsresult rv = NS_OK;
-    printf("subj:%p, top:%s\n", aSubject, aTopic);
-    return rv;
+    return mListener->OnObserve(aTopic, someData);
 }
 
 //*****************************************************************************
@@ -154,16 +171,35 @@ WebBrowserChrome::Observe(nsISupports *aSubject, const char *aTopic, const PRUni
 
 NS_IMETHODIMP
 WebBrowserChrome::OnProgressChange(nsIWebProgress *progress, nsIRequest *request,
-                                     int32_t curSelfProgress, int32_t maxSelfProgress,
-                                     int32_t curTotalProgress, int32_t maxTotalProgress)
+                                   int32_t curSelfProgress, int32_t maxSelfProgress,
+                                   int32_t curTotalProgress, int32_t maxTotalProgress)
 {
-    LOGNI();
+    // Filter optimization: Don't send garbage
+    if (curTotalProgress > maxTotalProgress || maxTotalProgress <= 0)
+        return NS_OK;
+
+    // Filter optimization: Are we sending "request completions" as "progress changes"
+    if (mTotalRequests > 1 && request)
+        return NS_OK;
+
+    nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebBrowser);
+    nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
+    if (!utils) {
+        NS_WARNING("window Utils are null");
+        return NS_OK;
+    }
+    uint64_t currentInnerWindowID = 0;
+    utils->GetCurrentInnerWindowID(&currentInnerWindowID);
+
+    int sprogress = ((float)maxTotalProgress / 100.0f * (float)curTotalProgress);
+    mListener->OnLoadProgress(sprogress);
+
     return NS_OK;
 }
 
 NS_IMETHODIMP
 WebBrowserChrome::OnStateChange(nsIWebProgress *progress, nsIRequest *request,
-                                       uint32_t progressStateFlags, nsresult status)
+                                uint32_t progressStateFlags, nsresult status)
 {
     nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(mWebBrowser);
     nsCOMPtr<nsIDOMWindow> progWin;
@@ -181,15 +217,35 @@ WebBrowserChrome::OnStateChange(nsIWebProgress *progress, nsIRequest *request,
     uint64_t currentInnerWindowID = 0;
     utils->GetCurrentInnerWindowID(&currentInnerWindowID);
 
+    if (progressStateFlags & nsIWebProgressListener::STATE_START) {
+        if (progressStateFlags & nsIWebProgressListener::STATE_IS_NETWORK) {
+            // Reset filter members
+            mTotalRequests = mFinishedRequests = 0;
+        }
+        if (progressStateFlags & nsIWebProgressListener::STATE_IS_REQUEST)
+            // Filter optimization: If we have more than one request, show progress
+            //based on requests completing, not on percent loaded of each request
+            ++mTotalRequests;
+    }
+    else if (progressStateFlags & nsIWebProgressListener::STATE_STOP) {
+        if (progressStateFlags & nsIWebProgressListener::STATE_IS_REQUEST) {
+            // Filter optimization: Request has completed, so send a "progress change"
+            // Note: aRequest is null
+            ++mFinishedRequests;
+            OnProgressChange(progress, nullptr, 0, 0, mFinishedRequests, mTotalRequests);
+        }
+    }
+
     if (progressStateFlags & nsIWebProgressListener::STATE_START && progressStateFlags & nsIWebProgressListener::STATE_IS_DOCUMENT) {
-        LOGT("currentInnerWindowID:%lu, START state:%u, status:%d", currentInnerWindowID, progressStateFlags, status);
+        mListener->OnLoadStarted(mLastLocation.get());
     }
     if (progressStateFlags & nsIWebProgressListener::STATE_STOP && progressStateFlags & nsIWebProgressListener::STATE_IS_DOCUMENT) {
-        LOGT("currentInnerWindowID:%lu, STOP state:%u, status:%d", currentInnerWindowID, progressStateFlags, status);
+        mListener->OnLoadFinished();
     }
     if (progressStateFlags & nsIWebProgressListener::STATE_REDIRECTING) {
-        LOGT("currentInnerWindowID:%lu, REDIRECT state:%u, status:%d", currentInnerWindowID, progressStateFlags, status);
+        mListener->OnLoadRedirect();
     }
+
     return NS_OK;
 }
 
@@ -199,11 +255,57 @@ WebBrowserChrome::OnLocationChange(nsIWebProgress* aWebProgress,
                                      nsIURI *location,
                                      uint32_t aFlags)
 {
-    LOGNI();
+    nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(mWebBrowser);
+    nsCOMPtr<nsIDOMWindow> progWin;
+    aWebProgress->GetDOMWindow(getter_AddRefs(progWin));
+    if (progWin != docWin) {
+        return NS_OK;
+    }
+
     nsCString spec;
-    if (location)
+    if (location) {
         location->GetSpec(spec);
-    LOGT("Location:%s", spec.get());
+    }
+    nsCString slocation(spec);
+    int32_t i = slocation.RFind("#");
+    if (i != kNotFound) {
+        slocation.SetLength(i);
+    }
+
+    nsCOMPtr<nsIDOMDocument> ctDoc;
+    progWin->GetDocument(getter_AddRefs(ctDoc));
+    nsString charset;
+    ctDoc->GetCharacterSet(charset);
+
+    nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebBrowser);
+    nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
+    if (!utils) {
+        NS_WARNING("window Utils are null");
+        return NS_OK;
+    }
+
+    uint64_t currentInnerWindowID = 0;
+    utils->GetCurrentInnerWindowID(&currentInnerWindowID);
+
+    nsString docURI;
+    ctDoc->GetDocumentURI(docURI);
+
+    bool canGoBack = false, canGoForward = false;
+    nsCOMPtr<nsIWebNavigation> navigation = do_GetInterface(mWebBrowser);
+    navigation->GetCanGoBack(&canGoBack);
+    navigation->GetCanGoForward(&canGoForward);
+
+    mListener->OnLocationChanged(spec.get(), canGoBack, canGoForward);
+
+    // Keep track of hash changes
+    mLocationHasChanged = slocation.Equals(mLastLocation);
+    mLastLocation = slocation;
+    mFirstPaint = false;
+
+    nsCOMPtr<nsPIDOMWindow> pidomWindow = do_QueryInterface(docWin);
+    nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
+    target->AddEventListener(NS_LITERAL_STRING(MOZ_AFTER_PAINT_LITERAL), this, PR_FALSE);
+
     return NS_OK;
 }
 
@@ -218,11 +320,40 @@ WebBrowserChrome::OnStatusChange(nsIWebProgress* aWebProgress,
 }
 
 NS_IMETHODIMP
-WebBrowserChrome::OnSecurityChange(nsIWebProgress *aWebProgress,
-                                     nsIRequest *aRequest,
-                                     uint32_t state)
+WebBrowserChrome::OnSecurityChange(nsIWebProgress* aWebProgress,
+                                   nsIRequest* aRequest,
+                                   uint32_t state)
 {
-    LOGNI();
+    nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(mWebBrowser);
+    nsCOMPtr<nsIDOMWindow> progWin;
+    aWebProgress->GetDOMWindow(getter_AddRefs(progWin));
+    if (progWin != docWin) {
+        return NS_OK;
+    }
+
+    nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebBrowser);
+    nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
+    if (!utils) {
+        NS_WARNING("window Utils are null");
+        return NS_OK;
+    }
+    uint64_t currentInnerWindowID = 0;
+    utils->GetCurrentInnerWindowID(&currentInnerWindowID);
+
+    nsCString serSSLStatus;
+    nsCOMPtr<nsIDocShell> docShell = do_GetInterface(mWebBrowser);
+    nsCOMPtr<nsISecureBrowserUI> secureUI;
+    docShell->GetSecurityUI(getter_AddRefs(secureUI));
+    nsCOMPtr<nsISSLStatusProvider> sslProvider = do_QueryInterface(secureUI);
+    nsCOMPtr<nsISSLStatus> sslStatus;
+    sslProvider->GetSSLStatus(getter_AddRefs(sslStatus));
+    if (sslStatus) {
+        nsCOMPtr<nsISerializationHelper> serialHelper = do_GetService("@mozilla.org/network/serialization-helper;1");
+        nsCOMPtr<nsISerializable> serializableStatus = do_QueryInterface(sslStatus);
+        serialHelper->SerializeToString(serializableStatus, serSSLStatus);
+    }
+    mListener->OnSecurityChanged(serSSLStatus.get(), state);
+
     return NS_OK;
 }
 
@@ -231,20 +362,238 @@ WebBrowserChrome::OnSecurityChange(nsIWebProgress *aWebProgress,
 //*****************************************************************************
 
 NS_IMETHODIMP
-WebBrowserChrome::HandleEvent(nsIDOMEvent *aEvent)
+WebBrowserChrome::HandleEvent(nsIDOMEvent* aEvent)
 {
-    LOGNI();
+    nsString type;
+    if (aEvent) {
+        aEvent->GetType(type);
+    }
+    LOGT("Event:'%s'", NS_ConvertUTF16toUTF8(type).get());
+    nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(mWebBrowser);
+    nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebBrowser);
+    nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
+    if (type.EqualsLiteral(MOZ_AFTER_PAINT_LITERAL)) {
+        nsCOMPtr<nsPIDOMWindow> pidomWindow = do_QueryInterface(docWin);
+        nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
+        target->RemoveEventListener(NS_LITERAL_STRING(MOZ_AFTER_PAINT_LITERAL), this,  PR_FALSE);
+        if (mFirstPaint) {
+            LOGNI("Send UpdateDisplayPort");
+            return NS_OK;
+        }
+        mFirstPaint = true;
+        nsIntPoint offset = GetScrollOffset(docWin);
+        mListener->OnFirstPaint(offset.x, offset.y);
+    } else if (type.EqualsLiteral(MOZ_DOMContentLoaded)) {
+        nsCOMPtr<nsIDOMDocument> ctDoc;
+        docWin->GetDocument(getter_AddRefs(ctDoc));
+        nsString docURI;
+        ctDoc->GetDocumentURI(docURI);
+        if (!docURI.EqualsLiteral("about:blank")) {
+            mListener->OnContentLoaded(docURI.get());
+        }
+        // Need send session history from here
+    } else if (type.EqualsLiteral(MOZ_DOMTitleChanged)) {
+        nsCOMPtr<nsIDOMDocument> ctDoc;
+        docWin->GetDocument(getter_AddRefs(ctDoc));
+        nsString title;
+        ctDoc->GetTitle(title);
+        mListener->OnTitleChanged(title.get());
+    } else if (type.EqualsLiteral(MOZ_DOMLinkAdded)) {
+        nsCOMPtr<nsIDOMEventTarget> origTarget;
+        aEvent->GetOriginalTarget(getter_AddRefs(origTarget));
+        nsCOMPtr<nsIDOMHTMLLinkElement> disabledIface = do_QueryInterface(origTarget);
+        nsString href;
+        bool disabled = true;
+        disabledIface->GetDisabled(&disabled);
+        if (!disabledIface || disabled) {
+            return NS_OK;
+        }
+        disabledIface->GetHref(href);
+        uint64_t currentInnerWindowID = 0;
+        utils->GetCurrentInnerWindowID(&currentInnerWindowID);
+        nsCOMPtr<nsIDOMDocument> ctDoc;
+        docWin->GetDocument(getter_AddRefs(ctDoc));
+        nsString charset, title, rel, type;
+        ctDoc->GetCharacterSet(charset);
+        ctDoc->GetTitle(title);
+        disabledIface->GetRel(rel);
+        disabledIface->GetType(type);
+        nsString sizes;
+        nsCOMPtr<nsIDOMElement> element = do_QueryInterface(origTarget);
+        bool hasSizesAttr = false;
+        if (NS_SUCCEEDED(element->HasAttribute(NS_LITERAL_STRING("sizes"), &hasSizesAttr)) && hasSizesAttr) {
+            element->GetAttribute(NS_LITERAL_STRING("sizes"), sizes);
+        }
+        mListener->OnLinkAdded(href.get(),
+                               charset.get(),
+                               title.get(),
+                               rel.get(),
+                               sizes.get(),
+                               type.get());
+    } else if (type.EqualsLiteral(MOZ_DOMWillOpenModalDialog) ||
+               type.EqualsLiteral(MOZ_DOMModalDialogClosed) ||
+               type.EqualsLiteral(MOZ_DOMWindowClose)) {
+        mListener->OnWindowOpenClose(type.get());
+    } else if (type.EqualsLiteral(MOZ_DOMPopupBlocked)) {
+        uint64_t outerWindowID = 0;
+        utils->GetOuterWindowID(&outerWindowID);
+        nsCOMPtr<nsIDOMPopupBlockedEvent> popupEvent = do_QueryInterface(aEvent);
+        nsCOMPtr<nsIURI> popupUri;
+        popupEvent->GetPopupWindowURI(getter_AddRefs(popupUri));
+        nsString popupWinFeatures, popupWindowName;
+        nsCString spec, origCharset;
+        popupUri->GetSpec(spec);
+        popupUri->GetOriginCharset(origCharset);
+        popupEvent->GetPopupWindowFeatures(popupWinFeatures);
+        popupEvent->GetPopupWindowName(popupWindowName);
+        mListener->OnPopupBlocked(spec.get(), origCharset.get(), popupWinFeatures.get(), popupWindowName.get());
+    } else if (type.EqualsLiteral(MOZ_pageshow) ||
+               type.EqualsLiteral(MOZ_pagehide)) {
+        if (type.EqualsLiteral(MOZ_pagehide)) {
+            mScrollOffset = nsIntPoint();
+        }
+        nsCOMPtr<nsIDOMEventTarget> target;
+        aEvent->GetTarget(getter_AddRefs(target));
+        nsCOMPtr<nsIDOMDocument> ctDoc = do_QueryInterface(target);
+        nsCOMPtr<nsIDOMWindow> targetWin;
+        ctDoc->GetDefaultView(getter_AddRefs(targetWin));
+        nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(mWebBrowser);
+        if (targetWin != docWin) {
+            return NS_OK;
+        }
+        nsCOMPtr<nsIDOMWindowUtils> tutils = do_GetInterface(targetWin);
+        uint64_t outerWindowID = 0, tinnerID = 0;
+        tutils->GetOuterWindowID(&outerWindowID);
+        tutils->GetCurrentInnerWindowID(&tinnerID);
+        int32_t innerWidth, innerHeight;
+        docWin->GetInnerWidth(&innerWidth);
+        docWin->GetInnerHeight(&innerHeight);
+        nsCOMPtr<nsIDOMPageTransitionEvent> transEvent = do_QueryInterface(aEvent);
+        bool persisted = false;
+        transEvent->GetPersisted(&persisted);
+
+        uint64_t contentWindowID = 0;
+        utils->GetCurrentInnerWindowID(&contentWindowID);
+        // Clear onload focus to prevent the VKB to be shown unexpectingly
+        // but only if the location has really changed and not only the
+        // fragment identifier
+        if (mLocationHasChanged && contentWindowID == tinnerID) {
+            LOGT("Need clear focus");
+            nsCOMPtr<nsIFocusManager> focusMgr = do_GetService("@mozilla.org/focus-manager;1");
+            focusMgr->ClearFocus(docWin);
+        }
+        mListener->OnPageShowHide(type.get(), persisted);
+    } else if (type.EqualsLiteral(MOZ_MozScrolledAreaChanged)) {
+        nsCOMPtr<nsIDOMEventTarget> origTarget;
+        aEvent->GetOriginalTarget(getter_AddRefs(origTarget));
+        nsCOMPtr<nsIDOMDocument> ctDoc = do_QueryInterface(origTarget);
+        nsCOMPtr<nsIDOMWindow> targetWin;
+        ctDoc->GetDefaultView(getter_AddRefs(targetWin));
+        nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(mWebBrowser);
+        if (targetWin != docWin) {
+            return NS_OK; // We are only interested in root scroll pane changes
+        }
+
+        // Adjust width and height from the incoming event properties so that we
+        // ignore changes to width and height contributed by growth in page
+        // quadrants other than x > 0 && y > 0.
+        nsIntPoint scrollOffset = GetScrollOffset(docWin);
+        nsCOMPtr<nsIDOMScrollAreaEvent> scrollEvent = do_QueryInterface(aEvent);
+        float evX, evY, evW, evH;
+        scrollEvent->GetX(&evX);
+        scrollEvent->GetY(&evY);
+        scrollEvent->GetWidth(&evW);
+        scrollEvent->GetHeight(&evH);
+        float x = evX + scrollOffset.x;
+        float y = evY + scrollOffset.y;
+        uint32_t width = evW + (x < 0 ? x : 0);
+        uint32_t height = evH + (y < 0 ? y : 0);
+        mListener->OnScrolledAreaChanged(width, height);
+
+        nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(window->GetChromeEventHandler());
+        target->AddEventListener(NS_LITERAL_STRING(MOZ_AFTER_PAINT_LITERAL), this,  PR_FALSE);
+
+    } else if (type.EqualsLiteral(MOZ_scroll)) {
+        nsCOMPtr<nsIDOMEventTarget> target;
+        aEvent->GetTarget(getter_AddRefs(target));
+        nsCOMPtr<nsIDOMDocument> eventDoc = do_QueryInterface(target);
+        nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(mWebBrowser);
+        nsCOMPtr<nsIDOMDocument> ctDoc;
+        docWin->GetDocument(getter_AddRefs(ctDoc));
+        if (eventDoc != ctDoc) {
+            return NS_OK;
+        }
+        SendScroll();
+    }
+
     return NS_OK;
 }
 
-// ----- Embedding Site Window
+// TOOLS
+nsIntPoint
+WebBrowserChrome::GetScrollOffset(nsIDOMWindow* aWindow)
+{
+    nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(aWindow);
+    nsIntPoint scrollOffset;
+    utils->GetScrollXY(PR_FALSE, &scrollOffset.x, &scrollOffset.y);
+    return scrollOffset;
+}
 
-NS_IMETHODIMP WebBrowserChrome::SetDimensions(uint32_t /*aFlags*/,
-                                              int32_t /*aX*/, int32_t /*aY*/,
+nsIntPoint
+WebBrowserChrome::GetScrollOffsetForElement(nsIDOMElement* aElement)
+{
+    nsCOMPtr<nsIDOMDocument> ownerDoc;
+    aElement->GetOwnerDocument(getter_AddRefs(ownerDoc));
+    nsCOMPtr<nsIDOMWindow> domWindow;
+    nsCOMPtr<nsIDOMNode> parentNode;
+    aElement->GetParentNode(getter_AddRefs(parentNode));
+    if (parentNode == ownerDoc) {
+        ownerDoc->GetDefaultView(getter_AddRefs(domWindow));
+        return GetScrollOffset(domWindow);
+    }
+
+    nsIntPoint scrollOffset;
+    aElement->GetScrollLeft(&scrollOffset.x);
+    aElement->GetScrollTop(&scrollOffset.y);
+    return scrollOffset;
+}
+
+void
+WebBrowserChrome::SetScrollOffsetForElement(nsIDOMElement* aElement, int32_t aLeft, int32_t aTop)
+{
+    nsCOMPtr<nsIDOMDocument> ownerDoc;
+    aElement->GetOwnerDocument(getter_AddRefs(ownerDoc));
+    nsCOMPtr<nsIDOMWindow> domWindow;
+    nsCOMPtr<nsIDOMNode> parentNode;
+    aElement->GetParentNode(getter_AddRefs(parentNode));
+    if (parentNode == ownerDoc) {
+        ownerDoc->GetDefaultView(getter_AddRefs(domWindow));
+        domWindow->ScrollTo(aLeft, aTop);
+    } else {
+        aElement->SetScrollLeft(aLeft);
+        aElement->SetScrollTop(aTop);
+    }
+}
+
+void
+WebBrowserChrome::SendScroll()
+{
+    nsCOMPtr<nsIDOMWindow> window = do_GetInterface(mWebBrowser);
+    nsIntPoint offset = GetScrollOffset(window);
+    if (mScrollOffset.x == offset.x && mScrollOffset.y == offset.y) {
+        return;
+    }
+    mListener->OnScrollChanged(offset.x, offset.y);
+}
+
+
+// ----- Embedding Site Window
+NS_IMETHODIMP WebBrowserChrome::SetDimensions(uint32_t aFlags,
+                                              int32_t aX, int32_t aY,
                                               int32_t aCx, int32_t aCy)
 {
     // TODO: currently only does size
-    printf("WebBrowserChrome::%s::%d sz[%i,%i]\n", __FUNCTION__, __LINE__, aCx, aCy);
+    LOGNI("flags:%u, pt[%i,%i] sz[%i,%i]\n", aFlags, aX, aY, aCx, aCy);
     return NS_OK;
 }
 
@@ -252,7 +601,23 @@ NS_IMETHODIMP WebBrowserChrome::GetDimensions(uint32_t aFlags,
                                               int32_t* aX, int32_t* aY,
                                               int32_t* aCx, int32_t* aCy)
 {
-    LOGNI();
+    LOGNI("GetView dimensitions");
+/*
+    QMozEmbedQGVWidget* view = pMozView->View();
+    if (aFlags & nsIEmbeddingSiteWindow::DIM_FLAGS_POSITION) {
+        QPoint pt(view->GetScreenPos());
+        *aX = pt.x();
+        *aY = pt.y();
+    }
+    if (aFlags & nsIEmbeddingSiteWindow::DIM_FLAGS_SIZE_INNER) {
+        *aCx = view->geometry().width();
+        *aCy = view->geometry().height();
+    } else if (aFlags & nsIEmbeddingSiteWindow::DIM_FLAGS_SIZE_OUTER) {
+        *aCx = view->geometry().width();
+        *aCy = view->geometry().height();
+    }
+*/
+
     return NS_OK;
 }
 
@@ -264,7 +629,6 @@ NS_IMETHODIMP WebBrowserChrome::SetFocus()
 
 NS_IMETHODIMP WebBrowserChrome::GetVisibility(bool *aVisibility)
 {
-    LOGNI();
     *aVisibility = mIsVisible;
 
     return NS_OK;
@@ -272,7 +636,6 @@ NS_IMETHODIMP WebBrowserChrome::GetVisibility(bool *aVisibility)
 
 NS_IMETHODIMP WebBrowserChrome::SetVisibility(bool aVisibility)
 {
-    LOGNI();
     mIsVisible = aVisibility;
     return NS_OK;
 }
@@ -285,21 +648,21 @@ NS_IMETHODIMP WebBrowserChrome::GetTitle(PRUnichar ** /*aTitle*/)
 
 NS_IMETHODIMP WebBrowserChrome::SetTitle(const PRUnichar *aTitle)
 {
-    LOGNI();
+    mListener->OnTitleChanged(aTitle);
     return NS_OK;
 }
 
 NS_IMETHODIMP WebBrowserChrome::GetSiteWindow(void * *aSiteWindow)
 {
     NS_ENSURE_ARG_POINTER(aSiteWindow);
-    printf("WebBrowserChrome::%s::%d\n", __FUNCTION__, __LINE__);
+    LOGNI();
     return NS_OK;
 }
 
 /* void blur (); */
 NS_IMETHODIMP WebBrowserChrome::Blur()
 {
-    printf("WebBrowserChrome::%s::%d\n", __FUNCTION__, __LINE__);
+    LOGNI();
     return NS_ERROR_NOT_IMPLEMENTED;
 }
 
@@ -307,13 +670,13 @@ NS_IMETHODIMP WebBrowserChrome::Blur()
 
 NS_IMETHODIMP WebBrowserChrome::FocusNextElement()
 {
-    printf("WebBrowserChrome::%s::%d\n", __FUNCTION__, __LINE__);
+    LOGNI();
     return NS_OK;
 }
 
 NS_IMETHODIMP WebBrowserChrome::FocusPrevElement()
 {
-    printf("WebBrowserChrome::%s::%d\n", __FUNCTION__, __LINE__);
+    LOGNI();
     return NS_OK;
 }
 
@@ -380,4 +743,9 @@ void WebBrowserChrome::RemoveEventHandler()
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_pagehide), this,  PR_FALSE);
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_MozScrolledAreaChanged), this,  PR_FALSE);
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_scroll), this,  PR_FALSE);
+}
+
+void WebBrowserChrome::AddObserver(const char* topic)
+{
+  mObserverService->AddObserver(this, topic, true);
 }

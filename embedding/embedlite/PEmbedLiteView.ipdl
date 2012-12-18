@@ -16,6 +16,23 @@ child:
 parent:
     async Initialized();
     async __delete__();
+
+    async OnTitleChanged(nsCString aTitle);
+    async OnLocationChanged(nsCString aLocation, bool aCanGoBack, bool aCanGoForward);
+    async OnLoadStarted(nsCString aLocation);
+    async OnLoadFinished();
+    async OnLoadRedirect();
+    async OnLoadProgress(int32_t aProgress);
+    async OnSecurityChanged(nsCString aStatus, uint32_t aState);
+    async OnFirstPaint(int32_t aX, int32_t aY);
+    async OnContentLoaded(nsCString aDocURI);
+    async OnLinkAdded(nsCString aHref, nsCString aCharset, nsCString aTitle, nsCString aRel, nsCString aSizes, nsCString aType);
+    async OnWindowOpenClose(nsCString aType);
+    async OnPopupBlocked(nsCString aSpec, nsCString aCharset, nsCString aPopupFeatures, nsCString aPopupWinName);
+    async OnPageShowHide(nsCString aType, bool aPersisted);
+    async OnScrolledAreaChanged(uint32_t aWidth, uint32_t aHeight);
+    async OnScrollChanged(int32_t offSetX, int32_t offSetY);
+    async OnObserve(nsCString aTopic, nsCString aData);
 };
 
 }}

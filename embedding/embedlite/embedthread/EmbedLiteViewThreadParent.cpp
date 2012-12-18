@@ -41,20 +41,176 @@ EmbedLiteViewThreadParent::ActorDestroy(ActorDestroyReason aWhy)
     LOGT("reason:%i", aWhy);
 }
 
-bool
-EmbedLiteViewThreadParent::RecvInitialized()
-{
-    LOGT();
-    mView->GetListener()->ViewInitialized();
-    return true;
-}
-
 void
 EmbedLiteViewThreadParent::SetCompositor(EmbedLiteCompositorParent* aCompositor)
 {
     LOGT();
     mCompositor = aCompositor;
 }
+
+// Child notification
+
+bool
+EmbedLiteViewThreadParent::RecvInitialized()
+{
+    mView->GetListener()->ViewInitialized();
+    return true;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnTitleChanged(const nsString& aTitle)
+{
+    LOGNI();
+    mView->GetListener()->OnTitleChanged(aTitle.get());
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnLocationChanged(const nsCString& aLocation,
+                                                 const bool& aCanGoBack,
+                                                 const bool& aCanGoForward)
+{
+    LOGNI();
+    mView->GetListener()->OnLocationChanged(aLocation.get(), aCanGoBack, aCanGoForward);
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnLoadStarted(const nsCString& aLocation)
+{
+    LOGNI();
+    mView->GetListener()->OnLoadStarted(aLocation.get());
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnLoadFinished()
+{
+    LOGNI();
+    mView->GetListener()->OnLoadFinished();
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnLoadRedirect()
+{
+    LOGNI();
+    mView->GetListener()->OnLoadRedirect();
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnLoadProgress(const int32_t& aProgress)
+{
+    LOGNI("progress:%i", aProgress);
+    mView->GetListener()->OnLoadProgress(aProgress);
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnSecurityChanged(const nsCString& aStatus,
+                                                 const uint32_t& aState)
+{
+    LOGNI();
+    mView->GetListener()->OnSecurityChanged(aStatus.get(), aState);
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnFirstPaint(const int32_t& aX,
+                                            const int32_t& aY)
+{
+    LOGNI();
+    mView->GetListener()->OnFirstPaint(aX, aY);
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnContentLoaded(const nsString& aDocURI)
+{
+    LOGNI();
+    mView->GetListener()->OnContentLoaded(aDocURI.get());
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnLinkAdded(const nsString& aHref,
+                                           const nsString& aCharset,
+                                           const nsString& aTitle,
+                                           const nsString& aRel,
+                                           const nsString& aSizes,
+                                           const nsString& aType)
+{
+    LOGNI();
+    mView->GetListener()->OnLinkAdded(aHref.get(),
+                                      aCharset.get(),
+                                      aTitle.get(),
+                                      aRel.get(),
+                                      aSizes.get(),
+                                      aType.get());
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnWindowOpenClose(const nsString& aType)
+{
+    LOGNI();
+    mView->GetListener()->OnWindowOpenClose(aType.get());
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnPopupBlocked(const nsCString& aSpec,
+                                              const nsCString& aCharset,
+                                              const nsString& aPopupFeatures,
+                                              const nsString& aPopupWinName)
+{
+    LOGNI();
+    mView->GetListener()->OnPopupBlocked(aSpec.get(),
+                                         aCharset.get(),
+                                         aPopupFeatures.get(),
+                                         aPopupWinName.get());
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnPageShowHide(const nsString& aType,
+                                              const bool& aPersisted)
+{
+    LOGNI();
+    mView->GetListener()->OnPageShowHide(aType.get(),
+                                         aPersisted);
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnScrolledAreaChanged(const uint32_t& aWidth,
+                                                     const uint32_t& aHeight)
+{
+    LOGNI("area[%u,%u]", aWidth, aHeight);
+    mView->GetListener()->OnScrolledAreaChanged(aWidth, aHeight);
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnScrollChanged(const int32_t& offSetX,
+                                               const int32_t& offSetY)
+{
+    LOGNI("off[%i,%i]", offSetX, offSetY);
+    mView->GetListener()->OnScrollChanged(offSetX, offSetY);
+    return false;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvOnObserve(const nsCString& aTopic,
+                                         const nsString& aData)
+{
+    LOGNI("data:%p, top:%s\n", NS_ConvertUTF16toUTF8(aData).get(), aTopic.get());
+    mView->GetListener()->OnObserve(aTopic.get(), aData.get());
+    return false;
+}
+
+// Incoming API calls
 
 void
 EmbedLiteViewThreadParent::LoadURL(const char* aUrl)

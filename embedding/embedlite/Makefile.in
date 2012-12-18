@@ -56,6 +56,10 @@ CPPSRCS = \
     EmbedLog.cpp \
     $(NULL)
 
+XPIDLSRCS = \
+    nsIEmbedBrowserChromeListener.idl \
+    $(NULL)
+
 LOCAL_INCLUDES += \
     -I$(srcdir)/utils \
     -I$(srcdir)/embedhelpers \
