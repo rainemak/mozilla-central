@@ -33,6 +33,11 @@ protected:
     virtual bool RecvLoadURL(const nsString&);
     virtual bool RecvSetViewSize(const gfxSize&);
 
+    virtual bool RecvUpdateFrame(const mozilla::layers::FrameMetrics& aFrameMetrics);
+    virtual bool RecvHandleDoubleTap(const nsIntPoint& aPoint);
+    virtual bool RecvHandleSingleTap(const nsIntPoint& aPoint);
+    virtual bool RecvHandleLongTap(const nsIntPoint& aPoint);
+
 private:
     void InitGeckoWindow();
 
@@ -44,6 +49,8 @@ private:
     nsCOMPtr<nsIWebNavigation> mWebNavigation;
     WebBrowserChrome* mBChrome;
     gfxSize mViewSize;
+
+    FrameMetrics mLastMetrics;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadChild);
 };

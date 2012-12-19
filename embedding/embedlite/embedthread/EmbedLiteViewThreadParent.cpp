@@ -12,9 +12,52 @@
 
 #include "EmbedLiteCompositorParent.h"
 #include "mozilla/unused.h"
+#include "mozilla/layers/AsyncPanZoomController.h"
+#include "mozilla/layers/GeckoContentController.h"
+
+using namespace mozilla::layers;
 
 namespace mozilla {
 namespace embedlite {
+
+class EmbedGeckoContentController : public GeckoContentController
+{
+public:
+    NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EmbedGeckoContentController)
+
+    virtual void RequestContentRepaint(const FrameMetrics& aFrameMetrics)
+    {
+        LOGC("EmbedGeckoContentController", "");
+        if (mParent) {
+            unused << mParent->SendUpdateFrame(aFrameMetrics);
+        }
+    }
+    virtual void HandleDoubleTap(const nsIntPoint& aPoint)
+    {
+        LOGC("EmbedGeckoContentController", "pt[%i,%i]", aPoint.x, aPoint.y);
+        if (mParent) {
+            unused << mParent->SendHandleDoubleTap(aPoint);
+        }
+    }
+    virtual void HandleSingleTap(const nsIntPoint& aPoint)
+    {
+        LOGC("EmbedGeckoContentController", "pt[%i,%i]", aPoint.x, aPoint.y);
+        if (mParent) {
+            unused << mParent->SendHandleSingleTap(aPoint);
+        }
+    }
+    virtual void HandleLongTap(const nsIntPoint& aPoint)
+    {
+        LOGC("EmbedGeckoContentController", "pt[%i,%i]", aPoint.x, aPoint.y);
+        if (mParent) {
+            unused << mParent->SendHandleLongTap(aPoint);
+        }
+    }
+
+    EmbedGeckoContentController() {}
+    virtual ~EmbedGeckoContentController() {}
+    EmbedLiteViewThreadParent* mParent;
+};
 
 EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id)
   : mId(id)
@@ -32,6 +75,7 @@ EmbedLiteViewThreadParent::~EmbedLiteViewThreadParent()
 {
     MOZ_COUNT_DTOR(EmbedLiteViewThreadParent);
     LOGT();
+    mGeckoController->mParent = NULL;
     mView->SetImpl(NULL);
 }
 
@@ -46,6 +90,18 @@ EmbedLiteViewThreadParent::SetCompositor(EmbedLiteCompositorParent* aCompositor)
 {
     LOGT();
     mCompositor = aCompositor;
+    mGeckoController = new EmbedGeckoContentController();
+    mGeckoController->mParent = this;
+    mController = new AsyncPanZoomController(mGeckoController, AsyncPanZoomController::DEFAULT_GESTURES);
+    mController->SetCompositorParent(mCompositor);
+    mController->UpdateZoomConstraints(true, 0.3f, 4.0f);
+}
+
+AsyncPanZoomController*
+EmbedLiteViewThreadParent::GetPanZoomController()
+{
+    LOGT("t");
+    return mController;
 }
 
 // Child notification
@@ -246,24 +302,60 @@ EmbedLiteViewThreadParent::SetViewSize(int width, int height)
 {
     LOGT("sz[%i,%i]", width, height);
     unused << SendSetViewSize(gfxSize(width, height));
+    if (mCompositor) {
+        mCompositor->GetEmbedPanZoomController()->UpdateCompositionBounds(nsIntRect(0, 0, width, height));
+    }
 }
 
 void
 EmbedLiteViewThreadParent::MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers)
 {
     LOGT("pt[%i,%i], t:%i, bt:%u, mod:%u", x, y, mstime, buttons, modifiers);
+    if (mCompositor) {
+        nsEventStatus status;
+        AsyncPanZoomController* controller = mCompositor->GetEmbedPanZoomController();
+        MultiTouchInput event(MultiTouchInput::MULTITOUCH_START, mstime);
+        event.mTouches.AppendElement(SingleTouchData(0,
+                                     nsIntPoint(x, y),
+                                     nsIntPoint(1, 1),
+                                     180.0f,
+                                     1.0f));
+        status = controller->ReceiveInputEvent(event);
+    }
 }
 
 void
 EmbedLiteViewThreadParent::MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers)
 {
     LOGT("pt[%i,%i], t:%i, bt:%u, mod:%u", x, y, mstime, buttons, modifiers);
+    if (mCompositor) {
+        nsEventStatus status;
+        AsyncPanZoomController* controller = mCompositor->GetEmbedPanZoomController();
+        MultiTouchInput event(MultiTouchInput::MULTITOUCH_END, mstime);
+        event.mTouches.AppendElement(SingleTouchData(0,
+                                     nsIntPoint(x, y),
+                                     nsIntPoint(1, 1),
+                                     180.0f,
+                                     1.0f));
+        status = controller->ReceiveInputEvent(event);
+    }
 }
 
 void
 EmbedLiteViewThreadParent::MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers)
 {
     LOGT("pt[%i,%i], t:%i, bt:%u, mod:%u", x, y, mstime, buttons, modifiers);
+    if (mCompositor) {
+        nsEventStatus status;
+        AsyncPanZoomController* controller = mCompositor->GetEmbedPanZoomController();
+        MultiTouchInput event(MultiTouchInput::MULTITOUCH_MOVE, mstime);
+        event.mTouches.AppendElement(SingleTouchData(0,
+                                     nsIntPoint(x, y),
+                                     nsIntPoint(1, 1),
+                                     180.0f,
+                                     1.0f));
+        status = controller->ReceiveInputEvent(event);
+    }
 }
 
 } // namespace embedlite

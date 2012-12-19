@@ -12,7 +12,6 @@
 #include "mozilla/unused.h"
 
 #include "EmbedLiteViewThreadParent.h"
-#include "EmbedKineticModule.h"
 
 // Image as URL includes
 #include "gfxImageSurface.h"
@@ -23,30 +22,12 @@ namespace mozilla {
 namespace embedlite {
 
 class FakeListener : public EmbedLiteViewListener {};
-class MyKineticListener : public EmbedKineticListener
-{
-public:
-    MyKineticListener(EmbedLiteView* aView) : mView(aView) {}
-    virtual void ScrollViewBy(int dx, int dy)
-    {
-        LOGT("pt[%i,%i]", dx, dy);
-        mView->ScrollBy(dx, dy);
-    }
-    virtual void UpdateViewport()
-    {
-        LOGT();
-    }
-private:
-    EmbedLiteView* mView;
-};
 
 EmbedLiteView::EmbedLiteView(EmbedLiteApp* aApp)
   : mApp(aApp)
   , mListener(new FakeListener())
   , mViewImpl(NULL)
   , mScrollingMode(false)
-  , mKineticListener(new MyKineticListener(this))
-  , mKinetic(new EmbedKineticModule(mKineticListener))
 {
     LOGT();
 }
@@ -61,8 +42,6 @@ EmbedLiteView::~EmbedLiteView()
         LOGNI();
     }
     mViewImpl = NULL;
-    mKinetic = nullptr;
-    mKineticListener = nullptr;
     mListener->Destroyed();
 }
 
@@ -192,7 +171,6 @@ EmbedLiteView::MousePress(int x, int y, int mstime, unsigned int buttons, unsign
 {
     NS_ENSURE_TRUE(mViewImpl, );
     mViewImpl->MousePress(x, y, mstime, buttons, modifiers);
-    mKinetic->MousePress(x, y, mstime);
 }
 
 void
@@ -200,7 +178,6 @@ EmbedLiteView::MouseRelease(int x, int y, int mstime, unsigned int buttons, unsi
 {
     NS_ENSURE_TRUE(mViewImpl, );
     mViewImpl->MouseRelease(x, y, mstime, buttons, modifiers);
-    mKinetic->MouseRelease(x, y, mstime);
 }
 
 void
@@ -208,7 +185,6 @@ EmbedLiteView::MouseMove(int x, int y, int mstime, unsigned int buttons, unsigne
 {
     NS_ENSURE_TRUE(mViewImpl, );
     mViewImpl->MouseMove(x, y, mstime, buttons, modifiers);
-    mKinetic->MouseMove(x, y, mstime);
 }
 
 } // namespace embedlite

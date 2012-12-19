@@ -14,6 +14,7 @@
 #include "EmbedLiteViewThreadParent.h"
 #include "EmbedLiteApp.h"
 #include "EmbedLiteView.h"
+#include "mozilla/layers/AsyncPanZoomController.h"
 
 using namespace mozilla::layers;
 
@@ -133,6 +134,13 @@ void EmbedLiteCompositorParent::ShadowLayersUpdated(ShadowLayersParent* aLayerTr
     CompositorParent::ShadowLayersUpdated(aLayerTree,
                                           aTargetConfig,
                                           isFirstPaint);
+
+    Layer* shadowRoot = aLayerTree->GetRoot();
+    if (ContainerLayer* root = shadowRoot->AsContainerLayer()) {
+        EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
+        EmbedLiteViewThreadParent* pview = static_cast<EmbedLiteViewThreadParent*>(view->GetImpl());
+        pview->GetPanZoomController()->NotifyLayersUpdated(root->GetFrameMetrics(), isFirstPaint);
+    }
 }
 
 void EmbedLiteCompositorParent::ScheduleComposition()
@@ -146,7 +154,7 @@ PLayersParent* EmbedLiteCompositorParent::AllocPLayers(const LayersBackend& aBac
                                                        LayersBackend* aBackend,
                                                        int32_t* aMaxTextureSize)
 {
-    LOGT("t: ALLOC PLAYERS >>>>>>>>>>>>>>>>>> ID:%llu", aId);
+    LOGT("t: ALLOC PLAYERS ID:%llu", aId);
     return CompositorParent::AllocPLayers(aBackendHint,
                                           aId, aBackend,
                                           aMaxTextureSize);
@@ -177,6 +185,15 @@ void EmbedLiteCompositorParent::ComposeToTarget(gfxContext* aTarget)
 {
     LOGT("t");
     CompositorParent::ComposeToTarget(aTarget);
+}
+
+AsyncPanZoomController*
+EmbedLiteCompositorParent::GetPanZoomController()
+{
+    LOGT("t");
+    EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
+    EmbedLiteViewThreadParent* pview = static_cast<EmbedLiteViewThreadParent*>(view->GetImpl());
+    return pview->GetPanZoomController();
 }
 
 void

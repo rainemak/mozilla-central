@@ -14,8 +14,6 @@ namespace embedlite {
 
 class EmbedLiteViewImplIface;
 class EmbedLiteView;
-class EmbedKineticListener;
-class EmbedKineticModule;
 class EmbedLiteViewListener
 {
 public:
@@ -85,8 +83,6 @@ private:
     EmbedLiteViewListener* mListener;
     EmbedLiteViewImplIface* mViewImpl;
     bool mScrollingMode;
-    RefPtr<EmbedKineticListener> mKineticListener;
-    RefPtr<EmbedKineticModule> mKinetic;
 };
 
 } // namespace embedlite

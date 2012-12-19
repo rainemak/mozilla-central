@@ -42,6 +42,7 @@ public:
 
     virtual void SetChildCompositor(mozilla::layers::CompositorChild*, MessageLoop*);
     mozilla::layers::CompositorChild* GetChildCompositor() { return mChildCompositor; }
+    virtual mozilla::layers::AsyncPanZoomController* GetEmbedPanZoomController() { return GetPanZoomController(); }
 protected:
     virtual PLayersParent* AllocPLayers(const LayersBackend& aBackendHint,
                                         const uint64_t& aId,
@@ -55,6 +56,7 @@ protected:
     virtual void SetPageRect(const gfx::Rect& aCssPageRect);
     virtual void SyncViewportInfo(const nsIntRect& aDisplayPort, float aDisplayResolution, bool aLayersUpdated,
                                   nsIntPoint& aScrollOffset, float& aScaleX, float& aScaleY);
+    virtual mozilla::layers::AsyncPanZoomController* GetPanZoomController();
 
     RefPtr<EmbedLiteViewThreadParent> mView;
     RefPtr<mozilla::layers::CompositorChild> mChildCompositor;

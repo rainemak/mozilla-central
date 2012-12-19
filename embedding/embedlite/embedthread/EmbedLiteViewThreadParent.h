@@ -10,10 +10,14 @@
 #include "EmbedLiteViewImplIface.h"
 
 namespace mozilla {
+namespace layers {
+class AsyncPanZoomController;
+}
 namespace embedlite {
 
 class EmbedLiteView;
 class EmbedLiteCompositorParent;
+class EmbedGeckoContentController;
 class EmbedLiteViewThreadParent : public PEmbedLiteViewParent,
                                   public EmbedLiteViewImplIface
 {
@@ -29,6 +33,8 @@ public:
     virtual void MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
     virtual void MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
     virtual void MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
+
+    mozilla::layers::AsyncPanZoomController* GetPanZoomController();
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
@@ -112,6 +118,9 @@ private:
     RefPtr<EmbedLiteCompositorParent> mCompositor;
     gfx::Point mScrollOffset;
     float mLastScale;
+
+    RefPtr<mozilla::layers::AsyncPanZoomController> mController;
+    RefPtr<EmbedGeckoContentController> mGeckoController;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadParent);
 };

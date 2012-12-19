@@ -48,7 +48,6 @@ CPPSRCS = \
     EmbedLiteViewThreadChild.cpp \
     EmbedLitePuppetWidget.cpp \
     EmbedLiteCompositorParent.cpp \
-    EmbedKineticModule.cpp \
     WebBrowserChrome.cpp \
     GeckoLoader.cpp \
     DirProvider.cpp \
@@ -65,6 +64,7 @@ LOCAL_INCLUDES += \
     -I$(srcdir)/embedhelpers \
     -I$(srcdir)/embedthread \
     -I$(topsrcdir)/widget/xpwidgets \
+    -I$(topsrcdir)/dom/base \
     $(NULL)
 
 DIRS += tests

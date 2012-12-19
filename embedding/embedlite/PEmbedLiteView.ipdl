@@ -5,6 +5,8 @@
 include protocol PEmbedLiteApp;
 
 using gfxSize;
+using nsIntPoint;
+using mozilla::layers::FrameMetrics;
 
 namespace mozilla {
 namespace embedlite {
@@ -14,6 +16,11 @@ rpc protocol PEmbedLiteView {
 child:
     async LoadURL(nsString url);
     async SetViewSize(gfxSize aSize);
+
+    UpdateFrame(FrameMetrics frame) compress;
+    HandleDoubleTap(nsIntPoint point);
+    HandleSingleTap(nsIntPoint point);
+    HandleLongTap(nsIntPoint point);
 
     async Destroy();
 parent:
