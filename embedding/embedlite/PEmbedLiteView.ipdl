@@ -4,6 +4,8 @@
 
 include protocol PEmbedLiteApp;
 
+using gfxSize;
+
 namespace mozilla {
 namespace embedlite {
 
@@ -11,6 +13,7 @@ rpc protocol PEmbedLiteView {
     manager PEmbedLiteApp;
 child:
     async LoadURL(nsString url);
+    async SetViewSize(gfxSize aSize);
 
     async Destroy();
 parent:

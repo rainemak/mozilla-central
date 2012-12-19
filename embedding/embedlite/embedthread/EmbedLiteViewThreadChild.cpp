@@ -22,6 +22,7 @@ namespace embedlite {
 
 EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(uint32_t aId)
   : mId(aId)
+  , mViewSize(0, 0)
 {
     LOGT();
     AddRef();
@@ -85,7 +86,7 @@ EmbedLiteViewThreadChild::InitGeckoWindow()
         return;
     }
 
-    rv = baseWindow->InitWindow(0, mWidget, 0, 0, 800, 600);
+    rv = baseWindow->InitWindow(0, mWidget, 0, 0, mViewSize.width, mViewSize.height);
     if (NS_FAILED(rv))
         return;
 
@@ -149,6 +150,21 @@ EmbedLiteViewThreadChild::RecvLoadURL(const nsString& url)
                                 0, 0, 0);
     }
 
+    return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
+{
+    mViewSize = aSize;
+    LOGT("sz[%g,%g]", mViewSize.width, mViewSize.height);
+
+    if (!mWebBrowser)
+        return true;
+
+    nsCOMPtr<nsIBaseWindow> baseWindow = do_QueryInterface(mWebBrowser);
+    baseWindow->SetPositionAndSize(0, 0, mViewSize.width, mViewSize.height, true);
+    baseWindow->SetVisibility(true);
     return true;
 }
 

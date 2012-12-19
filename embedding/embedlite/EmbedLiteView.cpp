@@ -43,6 +43,7 @@ private:
 EmbedLiteView::EmbedLiteView(EmbedLiteApp* aApp)
   : mApp(aApp)
   , mListener(new FakeListener())
+  , mViewImpl(NULL)
   , mScrollingMode(false)
   , mKineticListener(new MyKineticListener(this))
   , mKinetic(new EmbedKineticModule(mKineticListener))
@@ -83,6 +84,7 @@ void
 EmbedLiteView::LoadURL(const char* aUrl)
 {
     LOGT("url:%s", aUrl);
+    NS_ENSURE_TRUE(mViewImpl, );
     mViewImpl->LoadURL(aUrl);
 }
 
@@ -90,6 +92,7 @@ void
 EmbedLiteView::RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth)
 {
     LOGT("data:%p, sz[%i,%i], stride:%i, depth:%i", aData, imgW, imgH, stride, depth);
+    NS_ENSURE_TRUE(mViewImpl, );
     mViewImpl->RenderToImage(aData, imgW, imgH, stride, depth);
 }
 
@@ -97,6 +100,7 @@ char*
 EmbedLiteView::GetImageAsURL(int aWidth, int aHeight)
 {
     // copy from gfxASurface::WriteAsPNG_internal
+    NS_ENSURE_TRUE(mViewImpl, nullptr);
     nsRefPtr<gfxImageSurface> img =
         new gfxImageSurface(gfxIntSize(aWidth, aHeight), gfxASurface::ImageFormatRGB24);
     mViewImpl->RenderToImage(img->Data(), img->Width(), img->Height(), img->Stride(), 24);
@@ -167,16 +171,26 @@ EmbedLiteView::GetImageAsURL(int aWidth, int aHeight)
     return ToNewCString(string);
 }
 
+void
+EmbedLiteView::SetViewSize(int width, int height)
+{
+    LOGNI("sz[%i,%i]", width, height);
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->SetViewSize(width, height);
+}
+
 bool
 EmbedLiteView::ScrollBy(int aDX, int aDY, bool aDoOverflow)
 {
     LOGT();
+    NS_ENSURE_TRUE(mViewImpl, false);
     return mViewImpl->ScrollBy(aDX, aDY);
 }
 
 void
 EmbedLiteView::MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers)
 {
+    NS_ENSURE_TRUE(mViewImpl, );
     mViewImpl->MousePress(x, y, mstime, buttons, modifiers);
     mKinetic->MousePress(x, y, mstime);
 }
@@ -184,6 +198,7 @@ EmbedLiteView::MousePress(int x, int y, int mstime, unsigned int buttons, unsign
 void
 EmbedLiteView::MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers)
 {
+    NS_ENSURE_TRUE(mViewImpl, );
     mViewImpl->MouseRelease(x, y, mstime, buttons, modifiers);
     mKinetic->MouseRelease(x, y, mstime);
 }
@@ -191,6 +206,7 @@ EmbedLiteView::MouseRelease(int x, int y, int mstime, unsigned int buttons, unsi
 void
 EmbedLiteView::MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers)
 {
+    NS_ENSURE_TRUE(mViewImpl, );
     mViewImpl->MouseMove(x, y, mstime, buttons, modifiers);
     mKinetic->MouseMove(x, y, mstime);
 }

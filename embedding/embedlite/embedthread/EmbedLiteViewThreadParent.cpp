@@ -242,6 +242,13 @@ EmbedLiteViewThreadParent::ScrollBy(int aDX, int aDY, bool aDoOverflow)
 }
 
 void
+EmbedLiteViewThreadParent::SetViewSize(int width, int height)
+{
+    LOGT("sz[%i,%i]", width, height);
+    unused << SendSetViewSize(gfxSize(width, height));
+}
+
+void
 EmbedLiteViewThreadParent::MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers)
 {
     LOGT("pt[%i,%i], t:%i, bt:%u, mod:%u", x, y, mstime, buttons, modifiers);

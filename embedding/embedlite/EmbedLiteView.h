@@ -67,6 +67,8 @@ public:
     virtual void SetScrollingMode(bool aEnabled) { mScrollingMode = aEnabled; }
     virtual bool GetScrollingMode() { return mScrollingMode; }
 
+    virtual void SetViewSize(int width, int height);
+
     // Scroll/Zoom API
     virtual bool ScrollBy(int aDX, int aDY, bool aDoOverflow = false);
 

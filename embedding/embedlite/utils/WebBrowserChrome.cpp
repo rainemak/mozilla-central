@@ -162,7 +162,7 @@ NS_IMETHODIMP WebBrowserChrome::ExitModalEventLoop(nsresult aStatus)
 NS_IMETHODIMP
 WebBrowserChrome::Observe(nsISupports *aSubject, const char *aTopic, const PRUnichar *someData)
 {
-    return mListener->OnObserve(aTopic, someData);
+    return mListener ? mListener->OnObserve(aTopic, someData) : NS_ERROR_FAILURE;
 }
 
 //*****************************************************************************
@@ -174,6 +174,7 @@ WebBrowserChrome::OnProgressChange(nsIWebProgress *progress, nsIRequest *request
                                    int32_t curSelfProgress, int32_t maxSelfProgress,
                                    int32_t curTotalProgress, int32_t maxTotalProgress)
 {
+    NS_ENSURE_TRUE(mListener, NS_ERROR_FAILURE);
     // Filter optimization: Don't send garbage
     if (curTotalProgress > maxTotalProgress || maxTotalProgress <= 0)
         return NS_OK;
@@ -202,6 +203,7 @@ NS_IMETHODIMP
 WebBrowserChrome::OnStateChange(nsIWebProgress *progress, nsIRequest *request,
                                 uint32_t progressStateFlags, nsresult status)
 {
+    NS_ENSURE_TRUE(mListener, NS_ERROR_FAILURE);
     nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(mWebBrowser);
     nsCOMPtr<nsIDOMWindow> progWin;
     progress->GetDOMWindow(getter_AddRefs(progWin));
@@ -256,6 +258,7 @@ WebBrowserChrome::OnLocationChange(nsIWebProgress* aWebProgress,
                                      nsIURI *location,
                                      uint32_t aFlags)
 {
+    NS_ENSURE_TRUE(mListener, NS_ERROR_FAILURE);
     nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(mWebBrowser);
     nsCOMPtr<nsIDOMWindow> progWin;
     aWebProgress->GetDOMWindow(getter_AddRefs(progWin));
@@ -325,6 +328,7 @@ WebBrowserChrome::OnSecurityChange(nsIWebProgress* aWebProgress,
                                    nsIRequest* aRequest,
                                    uint32_t state)
 {
+    NS_ENSURE_TRUE(mListener, NS_ERROR_FAILURE);
     nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(mWebBrowser);
     nsCOMPtr<nsIDOMWindow> progWin;
     aWebProgress->GetDOMWindow(getter_AddRefs(progWin));
@@ -365,6 +369,8 @@ WebBrowserChrome::OnSecurityChange(nsIWebProgress* aWebProgress,
 NS_IMETHODIMP
 WebBrowserChrome::HandleEvent(nsIDOMEvent* aEvent)
 {
+    NS_ENSURE_TRUE(mListener, NS_ERROR_FAILURE);
+
     nsString type;
     if (aEvent) {
         aEvent->GetType(type);
@@ -579,6 +585,7 @@ WebBrowserChrome::SetScrollOffsetForElement(nsIDOMElement* aElement, int32_t aLe
 void
 WebBrowserChrome::SendScroll()
 {
+    NS_ENSURE_TRUE(mListener, );
     nsCOMPtr<nsIDOMWindow> window = do_GetInterface(mWebBrowser);
     nsIntPoint offset = GetScrollOffset(window);
     if (mScrollOffset.x == offset.x && mScrollOffset.y == offset.y) {
@@ -649,6 +656,7 @@ NS_IMETHODIMP WebBrowserChrome::GetTitle(PRUnichar ** /*aTitle*/)
 
 NS_IMETHODIMP WebBrowserChrome::SetTitle(const PRUnichar *aTitle)
 {
+    NS_ENSURE_TRUE(mListener, NS_ERROR_FAILURE);
     mListener->OnTitleChanged(aTitle);
     return NS_OK;
 }
@@ -728,6 +736,7 @@ void WebBrowserChrome::RemoveEventHandler()
         return;
     }
 
+    mListener = nullptr;
     mHandlerAdded = false;
     nsCOMPtr<nsPIDOMWindow> pidomWindow = do_GetInterface(mWebBrowser);
     NS_ENSURE_TRUE(pidomWindow, );

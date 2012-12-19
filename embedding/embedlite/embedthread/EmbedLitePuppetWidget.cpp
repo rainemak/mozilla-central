@@ -231,8 +231,10 @@ EmbedLitePuppetWidget::Resize(double aWidth,
         InvalidateRegion(this, dirty);
     }
 
-    if (!oldBounds.IsEqualEdges(mBounds) && mAttachedWidgetListener) {
-        mAttachedWidgetListener->WindowResized(this, mBounds.width, mBounds.height);
+    nsIWidgetListener *listener =
+        mAttachedWidgetListener ? mAttachedWidgetListener : mWidgetListener;
+    if (!oldBounds.IsEqualEdges(mBounds) && listener) {
+        listener->WindowResized(this, mBounds.width, mBounds.height);
     }
 
     return NS_OK;
@@ -295,7 +297,10 @@ EmbedLitePuppetWidget::DispatchEvent(nsGUIEvent* event, nsEventStatus& aStatus)
 
     aStatus = nsEventStatus_eIgnore;
 
-    NS_ABORT_IF_FALSE(mAttachedWidgetListener, "No listener!");
+    nsIWidgetListener *listener =
+        mAttachedWidgetListener ? mAttachedWidgetListener : mWidgetListener;
+
+    NS_ABORT_IF_FALSE(listener, "No listener!");
 
 #if 0
     if (event->message == NS_COMPOSITION_START) {
@@ -322,7 +327,7 @@ EmbedLitePuppetWidget::DispatchEvent(nsGUIEvent* event, nsEventStatus& aStatus)
     }
 #endif
 
-    aStatus = mAttachedWidgetListener->HandleEvent(event, mUseAttachedEvents);
+    aStatus = listener->HandleEvent(event, mUseAttachedEvents);
 
 #if 0
     if (event->message == NS_COMPOSITION_END) {
@@ -465,7 +470,10 @@ EmbedLitePuppetWidget::Paint()
 {
     NS_ABORT_IF_FALSE(!mDirtyRegion.IsEmpty(), "paint event logic messed up");
 
-    if (!mAttachedWidgetListener)
+    nsIWidgetListener *listener =
+        mAttachedWidgetListener ? mAttachedWidgetListener : mWidgetListener;
+
+    if (!listener)
         return NS_OK;
 
     nsIntRegion region = mDirtyRegion;
@@ -491,10 +499,10 @@ EmbedLitePuppetWidget::Paint()
         ctx->Clip();
         AutoLayerManagerSetup setupLayerManager(this, ctx,
                                                 mozilla::layers::BUFFER_NONE);
-        mAttachedWidgetListener->PaintWindow(this, region, nsIWidgetListener::WILL_SEND_DID_PAINT);
+        listener->PaintWindow(this, region, nsIWidgetListener::WILL_SEND_DID_PAINT);
     }
 
-    mAttachedWidgetListener->DidPaintWindow();
+    listener->DidPaintWindow();
 
     return NS_OK;
 }

@@ -31,6 +31,7 @@ protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
     virtual bool RecvDestroy();
     virtual bool RecvLoadURL(const nsString&);
+    virtual bool RecvSetViewSize(const gfxSize&);
 
 private:
     void InitGeckoWindow();
@@ -42,6 +43,7 @@ private:
     nsCOMPtr<nsIDOMWindow> mDOMWindow;
     nsCOMPtr<nsIWebNavigation> mWebNavigation;
     WebBrowserChrome* mBChrome;
+    gfxSize mViewSize;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadChild);
 };

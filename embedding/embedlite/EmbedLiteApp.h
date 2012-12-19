@@ -70,6 +70,8 @@ public:
     virtual void SetCharPref(const char* aName, const char* aValue);
     virtual void SetIntPref(const char* aName, int aValue);
 
+    virtual void LoadGlobalStyleSheet(const char* aUri, bool aEnable);
+
     // Internal
     EmbedLiteAppListener* GetListener() { return mListener; }
 

@@ -188,6 +188,13 @@ EmbedLiteApp::SetIntPref(const char* aName, int aValue)
     unused << STHREADAPP()->SendSetIntPref(nsCString(aName), aValue);
 }
 
+void
+EmbedLiteApp::LoadGlobalStyleSheet(const char* aUri, bool aEnable)
+{
+    LOGT();
+    unused << STHREADAPP()->SendLoadGlobalStyleSheet(nsDependentCString(aUri), aEnable);
+}
+
 EmbedLiteView*
 EmbedLiteApp::CreateView()
 {

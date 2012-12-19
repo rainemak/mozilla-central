@@ -12,6 +12,9 @@
 #include "nsIPrefService.h"
 #include "nsIWindowWatcher.h"
 #include "WindowCreator.h"
+#include "nsIURI.h"
+#include "nsIStyleSheetService.h"
+#include "nsNetUtil.h"
 
 #include "EmbedLiteAppThreadParent.h"
 #include "EmbedLiteViewThreadChild.h"
@@ -143,6 +146,24 @@ bool EmbedLiteAppThreadChild::RecvSetIntPref(const nsCString& aName, const int& 
     }
 
     pref->SetIntPref(aName.get(), aValue);
+    return true;
+}
+
+bool
+EmbedLiteAppThreadChild::RecvLoadGlobalStyleSheet(const nsCString& uri, const bool& aEnable)
+{
+    LOGT("uri:%s, enable:%i", uri.get(), aEnable);
+    nsCOMPtr<nsIStyleSheetService> styleSheetService =
+        do_GetService("@mozilla.org/content/style-sheet-service;1");
+    NS_ENSURE_TRUE(styleSheetService, false);
+    nsCOMPtr<nsIURI> nsuri;
+    NS_NewURI(getter_AddRefs(nsuri), uri);
+    NS_ENSURE_TRUE(nsuri, false);
+    if (aEnable) {
+        styleSheetService->LoadAndRegisterSheet(nsuri, nsIStyleSheetService::AGENT_SHEET);
+    } else {
+        styleSheetService->UnregisterSheet(nsuri, nsIStyleSheetService::AGENT_SHEET);
+    }
     return true;
 }
 
