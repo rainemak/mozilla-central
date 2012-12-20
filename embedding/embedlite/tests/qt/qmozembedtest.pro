@@ -7,21 +7,34 @@ CONFIG -= app_bundle
 TARGET = $$PROJECT_NAME
 
 PREFIX = /usr
-OBJ_PATH=/home/romaxa/build/mozilla-central/obj-xr-qt
+isEmpty(OBJ_PATH) {
+  message(OBJ_PATH not defined)
+  CONFIG += link_pkgconfig
+  PKGCONFIG += libxul-embedding mozilla-nspr
+  GRE_HOME=$$system(pkg-config --variable=gredir libxul-embedding)
+  SDK_HOME=$$system(pkg-config --variable=sdkdir libxul-embedding)
+  SDK_LIBDIR=$$SDK_HOME/lib
+  SDK_INC_PATH=$$SDK_HOME/include
+} else {
+  message(OBJ_PATH defined $$OBJ_PATH)
+  GRE_HOME=$$OBJ_PATH/dist/bin
+  SDK_LIBDIR=$$OBJ_PATH/dist/lib
+  SDK_INC_PATH=$$OBJ_PATH/dist/include
+}
 
 OBJECTS_DIR += release
 DESTDIR = ./release
 MOC_DIR += ./release/tmp/moc/release_static
 RCC_DIR += ./release/tmp/rcc/release_static
 
-INCLUDEPATH += $$OBJ_PATH/dist/include
-INCLUDEPATH += $$OBJ_PATH/dist/include/nspr
+INCLUDEPATH += $$SDK_INC_PATH
+INCLUDEPATH += $$SDK_INC_PATH/nspr
 
 QMAKE_CXXFLAGS += -include mozilla-config.h
 unix:QMAKE_CXXFLAGS += -fno-short-wchar -std=c++0x -fPIC
 DEFINES += XPCOM_GLUE=1 XPCOM_GLUE_USE_NSPR=1 MOZ_GLUE_IN_PROGRAM=1
 
-LIBS += -L$$OBJ_PATH/dist/lib -lxpcomglue -Wl,--whole-archive -lmozglue
+LIBS += -L$$SDK_LIBDIR -lxpcomglue -Wl,--whole-archive -lmozglue
 LIBS += -Wl,--no-whole-archive -rdynamic -ldl
 
 target.path = $$PREFIX/bin

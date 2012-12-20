@@ -19,6 +19,11 @@ DEFINES += -DXPCOM_GLUE
 PROGRAM = qtMozEmbedTest$(BIN_SUFFIX)
 
 MOCSRCS = \
+    moc_embedcontext.cpp \
+    moc_graphicsview.cpp \
+    moc_mainview.cpp \
+    moc_navbutton.cpp \
+    moc_viewtab.cpp \
     $(NULL)
 
 RCCSRCS = \
