@@ -6,6 +6,7 @@
 #define LOG_COMPONENT "EmbedLiteViewThreadChild"
 
 #include "EmbedLiteViewThreadChild.h"
+#include "EmbedLiteViewScrolling.h"
 #include "EmbedLog.h"
 #include "mozilla/unused.h"
 
@@ -17,11 +18,9 @@
 #include "nsNetUtil.h"
 #include "nsIDocShell.h"
 
-#include "mozilla/layers/AsyncPanZoomController.h"
-#include "nsPrintfCString.h"
 #include "nsIDOMWindowUtils.h"
-#include "nsGlobalWindow.h"
-#include "nsIScrollableFrame.h"
+#include "nsPIDOMWindow.h"
+#include "mozilla/layers/AsyncPanZoomController.h"
 
 using namespace mozilla::layers;
 
@@ -31,6 +30,7 @@ namespace embedlite {
 EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(uint32_t aId)
   : mId(aId)
   , mViewSize(0, 0)
+  , mScrolling(new EmbedLiteViewScrolling(this))
 {
     LOGT();
     AddRef();
@@ -140,6 +140,8 @@ EmbedLiteViewThreadChild::InitGeckoWindow()
         NS_ERROR("SetVisibility failed.\n");
     }
 
+    mHelper = new TabChildHelper(this);
+
     unused << SendInitialized();
 }
 
@@ -176,86 +178,13 @@ EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
     return true;
 }
 
-static void
-ScrollWindowTo(nsIDOMWindow* aWindow, const mozilla::gfx::Point& aPoint)
-{
-    nsGlobalWindow* window = static_cast<nsGlobalWindow*>(aWindow);
-    nsIScrollableFrame* sf = window->GetScrollFrame();
-
-    if (sf) {
-        sf->ScrollToCSSPixelsApproximate(aPoint);
-    }
-}
-
 bool
 EmbedLiteViewThreadChild::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
 {
     if (!mWebBrowser)
         return true;
 
-    gfx::Rect cssCompositedRect =
-      AsyncPanZoomController::CalculateCompositedRectInCssPixels(aFrameMetrics);
-    // The BrowserElementScrolling helper must know about these updated metrics
-    // for other functions it performs, such as double tap handling.
-    nsCString data;
-    data += nsPrintfCString("{ \"x\" : %d", NS_lround(aFrameMetrics.mScrollOffset.x));
-    data += nsPrintfCString(", \"y\" : %d", NS_lround(aFrameMetrics.mScrollOffset.y));
-    data += nsPrintfCString(", \"viewport\" : ");
-        data += nsPrintfCString("{ \"width\" : %f", aFrameMetrics.mViewport.width);
-        data += nsPrintfCString(", \"height\" : %f", aFrameMetrics.mViewport.height);
-        data += nsPrintfCString(" }");
-    data += nsPrintfCString(", \"displayPort\" : ");
-        data += nsPrintfCString("{ \"x\" : %f", aFrameMetrics.mDisplayPort.x);
-        data += nsPrintfCString(", \"y\" : %f", aFrameMetrics.mDisplayPort.y);
-        data += nsPrintfCString(", \"width\" : %f", aFrameMetrics.mDisplayPort.width);
-        data += nsPrintfCString(", \"height\" : %f", aFrameMetrics.mDisplayPort.height);
-        data += nsPrintfCString(" }");
-    data += nsPrintfCString(", \"compositionBounds\" : ");
-        data += nsPrintfCString("{ \"x\" : %d", aFrameMetrics.mCompositionBounds.x);
-        data += nsPrintfCString(", \"y\" : %d", aFrameMetrics.mCompositionBounds.y);
-        data += nsPrintfCString(", \"width\" : %d", aFrameMetrics.mCompositionBounds.width);
-        data += nsPrintfCString(", \"height\" : %d", aFrameMetrics.mCompositionBounds.height);
-        data += nsPrintfCString(" }");
-    data += nsPrintfCString(", \"cssPageRect\" : ");
-        data += nsPrintfCString("{ \"x\" : %f", aFrameMetrics.mScrollableRect.x);
-        data += nsPrintfCString(", \"y\" : %f", aFrameMetrics.mScrollableRect.y);
-        data += nsPrintfCString(", \"width\" : %f", aFrameMetrics.mScrollableRect.width);
-        data += nsPrintfCString(", \"height\" : %f", aFrameMetrics.mScrollableRect.height);
-        data += nsPrintfCString(" }");
-    data += nsPrintfCString(", \"cssCompositedRect\" : ");
-            data += nsPrintfCString("{ \"width\" : %f", cssCompositedRect.width);
-            data += nsPrintfCString(", \"height\" : %f", cssCompositedRect.height);
-            data += nsPrintfCString(" }");
-    data += nsPrintfCString(" }");
-
-    // DispatchMessageManagerMessage(NS_LITERAL_STRING("Viewport:Change"), data);
-
-    nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebNavigation);
-    nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
-
-    utils->SetScrollPositionClampingScrollPortSize(
-      cssCompositedRect.width, cssCompositedRect.height);
-    ScrollWindowTo(window, aFrameMetrics.mScrollOffset);
-    gfxSize resolution = AsyncPanZoomController::CalculateResolution(
-      aFrameMetrics);
-    utils->SetResolution(resolution.width, resolution.height);
-
-    nsCOMPtr<nsIDOMDocument> domDoc;
-    nsCOMPtr<nsIDOMElement> docElement;
-    mWebNavigation->GetDocument(getter_AddRefs(domDoc));
-    if (domDoc) {
-      domDoc->GetDocumentElement(getter_AddRefs(docElement));
-      if (docElement) {
-        utils->SetDisplayPortForElement(
-          aFrameMetrics.mDisplayPort.x, aFrameMetrics.mDisplayPort.y,
-          aFrameMetrics.mDisplayPort.width, aFrameMetrics.mDisplayPort.height,
-          docElement);
-      }
-    }
-
-    mLastMetrics = aFrameMetrics;
-
-    return true;
+    return mHelper->RecvUpdateFrame(aFrameMetrics);
 }
 
 bool
@@ -264,12 +193,7 @@ EmbedLiteViewThreadChild::RecvHandleDoubleTap(const nsIntPoint& aPoint)
     if (!mWebBrowser)
         return true;
 
-    nsCString data;
-    data += nsPrintfCString("{ \"x\" : %d", aPoint.x);
-    data += nsPrintfCString(", \"y\" : %d", aPoint.y);
-    data += nsPrintfCString(" }");
-
-    // DispatchMessageManagerMessage(NS_LITERAL_STRING("Gesture:DoubleTap"), data);
+    mScrolling->GestureDoubleTap(aPoint);
 
     return true;
 }
@@ -277,31 +201,45 @@ EmbedLiteViewThreadChild::RecvHandleDoubleTap(const nsIntPoint& aPoint)
 bool
 EmbedLiteViewThreadChild::RecvHandleSingleTap(const nsIntPoint& aPoint)
 {
-    if (!mWebBrowser)
-        return true;
+    RecvMouseEvent(NS_LITERAL_STRING("mousemove"), aPoint.x, aPoint.y, 0, 1, 0, false);
+    RecvMouseEvent(NS_LITERAL_STRING("mousedown"), aPoint.x, aPoint.y, 0, 1, 0, false);
+    RecvMouseEvent(NS_LITERAL_STRING("mouseup"), aPoint.x, aPoint.y, 0, 1, 0, false);
 
-  // RecvMouseEvent(NS_LITERAL_STRING("mousemove"), aPoint.x, aPoint.y, 0, 1, 0, false);
-  // RecvMouseEvent(NS_LITERAL_STRING("mousedown"), aPoint.x, aPoint.y, 0, 1, 0, false);
-  // RecvMouseEvent(NS_LITERAL_STRING("mouseup"), aPoint.x, aPoint.y, 0, 1, 0, false);
-
-  return true;
+    return true;
 }
 
 bool
 EmbedLiteViewThreadChild::RecvHandleLongTap(const nsIntPoint& aPoint)
 {
+    RecvMouseEvent(NS_LITERAL_STRING("contextmenu"), aPoint.x, aPoint.y,
+                  2 /* Right button */,
+                  1 /* Click count */,
+                  0 /* Modifiers */,
+                  false /* Ignore root scroll frame */);
+
+    return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvMouseEvent(const nsString& aType,
+                         const float&    aX,
+                         const float&    aY,
+                         const int32_t&  aButton,
+                         const int32_t&  aClickCount,
+                         const int32_t&  aModifiers,
+                         const bool&     aIgnoreRootScrollFrame)
+{
     if (!mWebBrowser)
         return true;
 
-//    RecvMouseEvent(NS_LITERAL_STRING("contextmenu"), aPoint.x, aPoint.y,
-//                  2 /* Right button */,
-//                  1 /* Click count */,
-//                  0 /* Modifiers */,
-//                  false /* Ignore root scroll frame */);
+    nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebNavigation);
+    nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
 
-  return true;
+    NS_ENSURE_TRUE(utils, true);
+    utils->SendMouseEvent(aType, aX, aY, aButton, aClickCount, aModifiers,
+                          aIgnoreRootScrollFrame, 0, 0);
+    return true;
 }
-
 
 /* void onTitleChanged (in wstring aTitle) */
 NS_IMETHODIMP EmbedLiteViewThreadChild::OnTitleChanged(const PRUnichar* aTitle)

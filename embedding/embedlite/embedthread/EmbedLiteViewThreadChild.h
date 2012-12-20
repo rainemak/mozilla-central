@@ -13,10 +13,12 @@
 #include "nsIWebNavigation.h"
 #include "WebBrowserChrome.h"
 #include "nsIEmbedBrowserChromeListener.h"
+#include "TabChildHelper.h"
 
 namespace mozilla {
 namespace embedlite {
 
+class EmbedLiteViewScrolling;
 class EmbedLiteViewThreadChild : public PEmbedLiteViewChild,
                                  public nsIEmbedBrowserChromeListener
 {
@@ -37,6 +39,13 @@ protected:
     virtual bool RecvHandleDoubleTap(const nsIntPoint& aPoint);
     virtual bool RecvHandleSingleTap(const nsIntPoint& aPoint);
     virtual bool RecvHandleLongTap(const nsIntPoint& aPoint);
+    virtual bool RecvMouseEvent(const nsString& aType,
+                         const float&    aX,
+                         const float&    aY,
+                         const int32_t&  aButton,
+                         const int32_t&  aClickCount,
+                         const int32_t&  aModifiers,
+                         const bool&     aIgnoreRootScrollFrame);
 
 private:
     void InitGeckoWindow();
@@ -50,7 +59,9 @@ private:
     WebBrowserChrome* mBChrome;
     gfxSize mViewSize;
 
-    FrameMetrics mLastMetrics;
+    RefPtr<EmbedLiteViewScrolling> mScrolling;
+    friend class TabChildHelper;
+    nsCOMPtr<TabChildHelper> mHelper;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadChild);
 };

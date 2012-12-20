@@ -109,6 +109,9 @@ protected:
     RecvOnObserve(
             const nsCString& aTopic,
             const nsString& aData);
+    virtual bool
+    RecvUpdateZoomConstraints(const bool&, const float&, const float&);
+    virtual bool RecvZoomToRect(const gfxRect& aRect);
 
 private:
     friend class EmbedLiteCompositorParent;

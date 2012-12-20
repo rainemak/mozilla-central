@@ -266,6 +266,20 @@ EmbedLiteViewThreadParent::RecvOnObserve(const nsCString& aTopic,
     return false;
 }
 
+bool
+EmbedLiteViewThreadParent::RecvUpdateZoomConstraints(const bool& val, const float& min, const float& max)
+{
+    mController->UpdateZoomConstraints(val, min, max);
+    return true;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvZoomToRect(const gfxRect& aRect)
+{
+    mController->ZoomToRect(aRect);
+    return true;
+}
+
 // Incoming API calls
 
 void

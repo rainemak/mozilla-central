@@ -5,6 +5,7 @@
 include protocol PEmbedLiteApp;
 
 using gfxSize;
+using gfxRect;
 using nsIntPoint;
 using mozilla::layers::FrameMetrics;
 
@@ -43,6 +44,8 @@ parent:
     async OnScrolledAreaChanged(uint32_t aWidth, uint32_t aHeight);
     async OnScrollChanged(int32_t offSetX, int32_t offSetY);
     async OnObserve(nsCString aTopic, nsString aData);
+    UpdateZoomConstraints(bool aAllowZoom, float aMinZoom, float aMaxZoom);
+    ZoomToRect(gfxRect aRect);
 };
 
 }}
