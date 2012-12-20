@@ -19,6 +19,7 @@
 #include "mozilla/dom/Element.h"
 #include "nsGlobalWindow.h"
 #include "nsIDocShell.h"
+#include "nsViewportInfo.h"
 
 static const nsIntSize kDefaultViewportSize(980, 480);
 
@@ -132,6 +133,7 @@ TabChildHelper::HandlePossibleViewportChange()
     nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mView->mWebNavigation);
     nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
 
+#if 0
     ViewportInfo viewportInfo =
         nsContentUtils::GetViewportInfo(document, mInnerSize.width, mInnerSize.height);
     mView->SendUpdateZoomConstraints(viewportInfo.allowZoom,
@@ -271,6 +273,9 @@ TabChildHelper::HandlePossibleViewportChange()
     // Force a repaint with these metrics. This, among other things, sets the
     // displayport, so we start with async painting.
     RecvUpdateFrame(metrics);
+#else
+#warning "Fix nsViewPort include"
+#endif
 }
 
 static void
