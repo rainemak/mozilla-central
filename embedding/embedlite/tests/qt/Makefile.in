@@ -1,0 +1,54 @@
+# 
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+DEPTH           = @DEPTH@
+topsrcdir       = @top_srcdir@
+srcdir          = @srcdir@
+VPATH           = @srcdir@
+relativesrcdir  = @relativesrcdir@
+
+include $(DEPTH)/config/autoconf.mk
+
+MODULE = qtMozEmbedTest
+
+STL_FLAGS=
+DEFINES += -DXPCOM_GLUE
+
+PROGRAM = qtMozEmbedTest$(BIN_SUFFIX)
+
+MOCSRCS = \
+    $(NULL)
+
+RCCSRCS = \
+    $(NULL)
+
+HEADERS += \
+    $(NULL)
+
+CPPSRCS += \
+    $(MOCSRCS) \
+    $(RCCSRCS) \
+    embedcontext.cpp \
+    graphicsview.cpp \
+    main.cpp \
+    mainview.cpp \
+    navbutton.cpp \
+    textitem.cpp \
+    viewtab.cpp \
+    $(NULL)
+
+LOCAL_INCLUDES	= -I$(srcdir) \
+    -I$(LIBXUL_DIST)/include/mozilla/embedlite \
+    $(TK_CFLAGS) \
+    $(NULL)
+
+LIBS += \
+    $(XPCOM_STANDALONE_GLUE_LDOPTS) \
+    $(TK_LIBS) \
+    $(NULL)
+
+NSDISTMODE = copy
+
+include $(topsrcdir)/config/rules.mk
