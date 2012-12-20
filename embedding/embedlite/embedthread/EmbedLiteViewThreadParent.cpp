@@ -92,7 +92,7 @@ EmbedLiteViewThreadParent::SetCompositor(EmbedLiteCompositorParent* aCompositor)
     mCompositor = aCompositor;
     mGeckoController = new EmbedGeckoContentController();
     mGeckoController->mParent = this;
-    mController = new AsyncPanZoomController(mGeckoController, AsyncPanZoomController::DEFAULT_GESTURES);
+    mController = new AsyncPanZoomController(mGeckoController, AsyncPanZoomController::USE_GESTURE_DETECTOR);
     mController->SetCompositorParent(mCompositor);
     mController->UpdateZoomConstraints(true, 0.3f, 4.0f);
 }

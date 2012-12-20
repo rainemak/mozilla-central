@@ -64,6 +64,11 @@ void EmbedLiteCompositorParent::RenderToImage(unsigned char *aData,
     LOGT("data:%p, sz[%i,%i], stride:%i, depth:%i", aData, imgW, imgH, stride, depth);
     LayerManager* mgr = GetLayerManager();
     NS_ENSURE_TRUE(mgr, );
+
+    Layer* layer = mgr->GetPrimaryScrollableLayer();
+    NS_ENSURE_TRUE(layer, );
+    NS_ENSURE_TRUE(layer->AsContainerLayer(), );
+
     nsRefPtr<gfxImageSurface> source =
         new gfxImageSurface(aData, gfxIntSize(imgW, imgH), stride, _depth_to_gfxformat(depth));
     {
