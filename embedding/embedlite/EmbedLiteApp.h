@@ -7,6 +7,7 @@
 #define EMBED_LITE_APP_H
 
 #include "mozilla/RefPtr.h"
+#include <stdint.h>
 #include <map>
 
 namespace mozilla {
