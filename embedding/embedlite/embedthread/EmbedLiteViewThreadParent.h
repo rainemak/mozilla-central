@@ -34,7 +34,7 @@ public:
     virtual void MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
     virtual void MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
 
-    mozilla::layers::AsyncPanZoomController* GetPanZoomController();
+    mozilla::layers::AsyncPanZoomController* GetDefaultPanZoomController();
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;

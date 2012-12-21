@@ -144,7 +144,7 @@ void EmbedLiteCompositorParent::ShadowLayersUpdated(ShadowLayersParent* aLayerTr
     if (ContainerLayer* root = shadowRoot->AsContainerLayer()) {
         EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
         EmbedLiteViewThreadParent* pview = static_cast<EmbedLiteViewThreadParent*>(view->GetImpl());
-        pview->GetPanZoomController()->NotifyLayersUpdated(root->GetFrameMetrics(), isFirstPaint);
+        pview->GetDefaultPanZoomController()->NotifyLayersUpdated(root->GetFrameMetrics(), isFirstPaint);
     }
 }
 
@@ -193,12 +193,12 @@ void EmbedLiteCompositorParent::ComposeToTarget(gfxContext* aTarget)
 }
 
 AsyncPanZoomController*
-EmbedLiteCompositorParent::GetPanZoomController()
+EmbedLiteCompositorParent::GetDefaultPanZoomController()
 {
     LOGT("t");
     EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
     EmbedLiteViewThreadParent* pview = static_cast<EmbedLiteViewThreadParent*>(view->GetImpl());
-    return pview->GetPanZoomController();
+    return pview->GetDefaultPanZoomController();
 }
 
 void

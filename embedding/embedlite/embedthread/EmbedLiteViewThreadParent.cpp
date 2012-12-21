@@ -98,7 +98,7 @@ EmbedLiteViewThreadParent::SetCompositor(EmbedLiteCompositorParent* aCompositor)
 }
 
 AsyncPanZoomController*
-EmbedLiteViewThreadParent::GetPanZoomController()
+EmbedLiteViewThreadParent::GetDefaultPanZoomController()
 {
     LOGT("t");
     return mController;
