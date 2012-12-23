@@ -8,12 +8,15 @@
 
 #include "mozilla/RefPtr.h"
 #include "nsStringGlue.h"
+#include "gfxMatrix.h"
 
 namespace mozilla {
 namespace embedlite {
 
 class EmbedLiteViewImplIface;
 class EmbedLiteView;
+class EmbedKineticListener;
+class EmbedKineticModule;
 class EmbedLiteViewListener
 {
 public:
@@ -56,6 +59,7 @@ public:
     // Embed Interface
     virtual void LoadURL(const char* aUrl);
     virtual void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
+    virtual void RenderGL();
 
     virtual void MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
     virtual void MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
@@ -65,7 +69,11 @@ public:
     virtual void SetScrollingMode(bool aEnabled) { mScrollingMode = aEnabled; }
     virtual bool GetScrollingMode() { return mScrollingMode; }
 
+    // Setup renderable view size
     virtual void SetViewSize(int width, int height);
+    // Setup renderable GL/EGL window surface size
+    virtual void SetGLViewPortSize(int width, int height);
+    virtual void SetTransform(gfxMatrix matrix);
 
     // Scroll/Zoom API
     virtual bool ScrollBy(int aDX, int aDY, bool aDoOverflow = false);
@@ -83,6 +91,8 @@ private:
     EmbedLiteViewListener* mListener;
     EmbedLiteViewImplIface* mViewImpl;
     bool mScrollingMode;
+    RefPtr<EmbedKineticListener> mKineticListener;
+    RefPtr<EmbedKineticModule> mKinetic;
 };
 
 } // namespace embedlite

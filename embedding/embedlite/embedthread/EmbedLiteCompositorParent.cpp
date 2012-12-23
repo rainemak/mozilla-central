@@ -15,6 +15,7 @@
 #include "EmbedLiteApp.h"
 #include "EmbedLiteView.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
+#include "gfxUtils.h"
 
 using namespace mozilla::layers;
 
@@ -80,7 +81,32 @@ void EmbedLiteCompositorParent::RenderToImage(unsigned char *aData,
 
 void EmbedLiteCompositorParent::RenderGL()
 {
-    LOGT("Need GL Context init check");
+    LayerManager* mgr = GetLayerManager();
+    NS_ENSURE_TRUE(mgr, );
+
+    if (mgr->GetBackendType() == mozilla::layers::LAYERS_OPENGL) {
+        static_cast<LayerManagerOGL*>(mgr)->
+            SetWorldTransform(mWorldTransform);
+    }
+    if (!mActiveClipping.IsEmpty() && mgr->GetRoot()) {
+        mgr->GetRoot()->SetClipRect(&mActiveClipping);
+    }
+    CompositorParent::Composite();
+}
+
+void EmbedLiteCompositorParent::SetSurfaceSize(int width, int height)
+{
+    CompositorParent::SetEGLSurfaceSize(width, height);
+}
+
+void EmbedLiteCompositorParent::SetWorldTransform(gfxMatrix aMatrix)
+{
+    mWorldTransform = aMatrix;
+}
+
+void EmbedLiteCompositorParent::SetClipping(gfxRect aClipRect)
+{
+    gfxUtils::GfxRectToIntRect(aClipRect, &mActiveClipping);
 }
 
 bool EmbedLiteCompositorParent::RecvWillStop()
@@ -144,7 +170,9 @@ void EmbedLiteCompositorParent::ShadowLayersUpdated(ShadowLayersParent* aLayerTr
     if (ContainerLayer* root = shadowRoot->AsContainerLayer()) {
         EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
         EmbedLiteViewThreadParent* pview = static_cast<EmbedLiteViewThreadParent*>(view->GetImpl());
-        pview->GetDefaultPanZoomController()->NotifyLayersUpdated(root->GetFrameMetrics(), isFirstPaint);
+        if (pview && pview->GetDefaultPanZoomController()) {
+            pview->GetDefaultPanZoomController()->NotifyLayersUpdated(root->GetFrameMetrics(), isFirstPaint);
+        }
     }
 }
 

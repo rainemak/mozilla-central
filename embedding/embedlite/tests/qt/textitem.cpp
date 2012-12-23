@@ -6,6 +6,7 @@
 
 #include "textitem.h"
 #include <QTextDocument>
+#include <stdio.h>
 
 TextItem::TextItem(const QString &text, QGraphicsItem* parent)
     : QGraphicsTextItem(text, parent)

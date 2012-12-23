@@ -34,6 +34,10 @@ int main(int argc, char *argv[])
     window.SetMozContext(&mozcontext);
 
     MyGraphicsView view(&scene, &window);
+    if (!getenv("SWRENDER")) {
+        mozcontext.GetApp()->SetIsAccelerated(true);
+        view.SetGLWidget();
+    }
     scene.addItem(&window);
     window.CreateLayout();
 

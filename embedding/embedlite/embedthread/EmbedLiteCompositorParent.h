@@ -26,8 +26,11 @@ public:
                               uint32_t id);
     virtual ~EmbedLiteCompositorParent();
 
-    virtual void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
-    virtual void RenderGL();
+    void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
+    void RenderGL();
+    void SetSurfaceSize(int width, int height);
+    void SetWorldTransform(gfxMatrix);
+    void SetClipping(gfxRect aClipRect);
 
     virtual bool RecvWillStop() MOZ_OVERRIDE;
     virtual bool RecvStop() MOZ_OVERRIDE;
@@ -62,6 +65,8 @@ protected:
     RefPtr<mozilla::layers::CompositorChild> mChildCompositor;
     MessageLoop* mChildMessageLoop;
     uint32_t mId;
+    gfxMatrix mWorldTransform;
+    nsIntRect mActiveClipping;
 };
 
 } // embedlite

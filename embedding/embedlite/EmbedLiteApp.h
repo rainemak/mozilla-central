@@ -66,6 +66,9 @@ public:
     virtual EmbedLiteView* CreateView();
     virtual void DestroyView(EmbedLiteView* aView);
 
+    virtual void SetIsAccelerated(bool aIsAccelerated);
+    virtual bool IsAccelerated() { return mIsAccelerated; }
+
     // Setup preferences
     virtual void SetBoolPref(const char* aName, bool aValue);
     virtual void SetCharPref(const char* aName, const char* aValue);
@@ -98,6 +101,7 @@ private:
     std::map<uint32_t, EmbedLiteView*> mViews;
     uint32_t mViewCreateID;
     bool mDestroying;
+    bool mIsAccelerated;
 //    std::map<uint32_t, std::pair<CancelableTask*, void*> mTasks;
 };
 

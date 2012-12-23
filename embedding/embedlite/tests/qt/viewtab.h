@@ -68,6 +68,7 @@ private:
     void ViewInitialized();
     void Destroyed();
     bool Invalidate();
+    void SetupGLViewPort();
     NavButton* mButton;
     bool mIsActive;
     mozilla::embedlite::EmbedLiteView* mView;

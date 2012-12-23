@@ -115,6 +115,7 @@ public:
 
     virtual void CreateCompositor();
     virtual nsIntRect GetNaturalBounds();
+    virtual bool HasGLContext();
 
 private:
     nsresult Paint();

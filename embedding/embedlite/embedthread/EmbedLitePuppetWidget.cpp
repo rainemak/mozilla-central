@@ -522,5 +522,11 @@ EmbedLitePuppetWidget::GetNaturalBounds()
     return nsIntRect();
 }
 
+bool
+EmbedLitePuppetWidget::HasGLContext()
+{
+    return true;
+}
+
 }  // namespace widget
 }  // namespace mozilla

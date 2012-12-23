@@ -46,6 +46,8 @@ bool
 EmbedLiteAppThreadParent::RecvInitialized()
 {
     LOGT();
+    SetBoolPref("layers.acceleration.disabled", !mApp->IsAccelerated());
+    SetBoolPref("layers.acceleration.force-enabled", mApp->IsAccelerated());
     mozilla::layers::CompositorParent::StartUpWithExistingThread(MessageLoop::current(), PlatformThread::CurrentId());
     mApp->GetListener()->Initialized();
     return true;

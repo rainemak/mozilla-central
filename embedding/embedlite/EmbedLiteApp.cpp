@@ -47,6 +47,7 @@ EmbedLiteApp::EmbedLiteApp()
   , mAppThread(NULL)
   , mViewCreateID(0)
   , mDestroying(false)
+  , mIsAccelerated(false)
 {
     LOGT();
     sSingleton = this;
@@ -235,6 +236,12 @@ void EmbedLiteApp::DestroyView(EmbedLiteView* aView)
     EmbedLiteView* view = it->second;
     delete view;
     it->second = nullptr;
+}
+
+void
+EmbedLiteApp::SetIsAccelerated(bool aIsAccelerated)
+{
+    mIsAccelerated = aIsAccelerated;
 }
 
 } // namespace embedlite

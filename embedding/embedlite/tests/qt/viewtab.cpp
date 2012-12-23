@@ -10,6 +10,9 @@
 #include <QPainter>
 #include <QGraphicsSceneWheelEvent>
 #include <QStyleOptionGraphicsItem>
+#include <QGraphicsScene>
+#include <QGraphicsView>
+#include "gfxMatrix.h"
 
 ViewTab::ViewTab(EmbedContext* aContext, QSize aSize, int flags, QGraphicsWidget* aParent)
     : QGraphicsWidget(aParent)
@@ -32,9 +35,7 @@ ViewTab::ViewTab(EmbedContext* aContext, QSize aSize, int flags, QGraphicsWidget
     connect(this, SIGNAL(Observe(const QString,QString)), this, SLOT(on_Observe(const QString,QString)));
     connect(aContext, SIGNAL(geckoContextInitialized()), this, SLOT(onContextInitialized()));
     if (aContext->IsInitialized()) {
-        mView = mContext->GetApp()->CreateView();
-        mView->SetListener(this);
-        mView->SetScrollingMode(true);
+        onContextInitialized();
     }
 //  AddObserver("ime-enabled-state-changed");
 }
@@ -61,11 +62,21 @@ void ViewTab::onContextInitialized()
     mView->SetScrollingMode(true);
 }
 
+void ViewTab::SetupGLViewPort()
+{
+    if (scene() && scene()->views().size() == 1) {
+        QSize sz(scene()->views()[0]->viewport()->width(), scene()->views()[0]->viewport()->height());
+        printf(">>>>>>Func:%s::%d rect[%i,%i]\n", __PRETTY_FUNCTION__, __LINE__, sz.width(), sz.height());        
+        mView->SetGLViewPortSize(sz.width(), sz.height());
+    }
+}
+
 void ViewTab::ViewInitialized()
 {
     mInitialized = true;
-    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
+    printf(">>>>>>Func:%s::%d url:%s\n", __PRETTY_FUNCTION__, __LINE__, pendingUrl.toUtf8().data());
     mView->SetViewSize(mSize.width(), mSize.height());
+    SetupGLViewPort();
     if (!pendingUrl.isEmpty()) {
         LoadURL(pendingUrl);
     }
@@ -127,13 +138,22 @@ void ViewTab::on_locationChanged(QString aurl)
 void ViewTab::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, QWidget* widget)
 {
     QRect r = opt ? opt->exposedRect.toRect() : boundingRect().toRect();
-    painter->fillRect(r, Qt::red);
+    bool pt = false;
+    painter->fillRect(r, pt ? Qt::red : Qt::blue);
+    pt = !pt;
     if (mInitialized) {
-        if (image.isNull() || image.width() != r.width() || image.height() != r.height()) {
-            image = QImage(r.size(), QImage::Format_ARGB32);
+        QMatrix affine = painter->transform().toAffine();
+        gfxMatrix matr(affine.m11(), affine.m12(), affine.m21(), affine.m22(), affine.dx(), affine.dy());
+        mView->SetTransform(matr);
+        if (mContext->GetApp()->IsAccelerated()) {
+            mView->RenderGL();
+        } else {
+            if (image.isNull() || image.width() != r.width() || image.height() != r.height()) {
+                image = QImage(r.size(), QImage::Format_RGB16);
+            }
+            mView->RenderToImage(image.bits(), image.width(), image.height(), image.bytesPerLine(), image.depth());
+            painter->drawImage(QPoint(0, 0), image);
         }
-        mView->RenderToImage(image.bits(), image.width(), image.height(), image.bytesPerLine(), image.depth());
-        painter->drawImage(QPoint(0, 0), image);
     }
 }
 
@@ -190,6 +210,7 @@ void ViewTab::resizeEvent(QGraphicsSceneResizeEvent* ev)
     mSize = ev->newSize().toSize();
     if (mInitialized) {
         mView->SetViewSize(mSize.width(), mSize.height());
+        SetupGLViewPort();
     }
 }
 
