@@ -169,7 +169,7 @@ void EmbedContext::Initialized()
     // TODO Fix pending prefs init in embedApp
     mInitialized = true;
     setDefaultPrefs();
-    GetApp()->LoadGlobalStyleSheet("file:///usr/share/qmozembed/scroll_styles.css", true);
+    GetApp()->LoadGlobalStyleSheet("chrome://global/content/embedScrollStyles.css", true);
     emit geckoContextInitialized();
 }
 

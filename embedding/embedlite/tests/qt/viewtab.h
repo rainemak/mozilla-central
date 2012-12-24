@@ -32,6 +32,7 @@ public:
 protected:
     virtual void wheelEvent(QGraphicsSceneWheelEvent*);
     virtual void paint(QPainter*, const QStyleOptionGraphicsItem*, QWidget* widget = 0);
+    virtual bool event(QEvent*);
 
     virtual void resizeEvent(QGraphicsSceneResizeEvent*);
     virtual void mouseMoveEvent(QGraphicsSceneMouseEvent*);
@@ -65,6 +66,8 @@ public slots:
     void on_Observe(const QString topic, QString data);
 
 private:
+    void touchEvent(QTouchEvent* event);
+    void gestureEvent(QGestureEvent* event);
     void ViewInitialized();
     void Destroyed();
     bool Invalidate();

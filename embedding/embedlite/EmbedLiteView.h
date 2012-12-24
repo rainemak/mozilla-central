@@ -65,6 +65,10 @@ public:
     virtual void MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
     virtual void MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
 
+    virtual void PinchStart(int x, int y);
+    virtual void PinchUpdate(int x, int y, float scale);
+    virtual void PinchEnd(int x, int y, float scale);
+
     // Scrolling mode, enable internal smart scroll/zoom component
     virtual void SetScrollingMode(bool aEnabled) { mScrollingMode = aEnabled; }
     virtual bool GetScrollingMode() { return mScrollingMode; }

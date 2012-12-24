@@ -241,7 +241,9 @@ void EmbedLiteApp::DestroyView(EmbedLiteView* aView)
 void
 EmbedLiteApp::SetIsAccelerated(bool aIsAccelerated)
 {
+#ifdef GL_PROVIDER_EGL
     mIsAccelerated = aIsAccelerated;
+#endif
 }
 
 } // namespace embedlite

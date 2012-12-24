@@ -12,6 +12,7 @@
 #include <QStyleOptionGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsView>
+#include <QPinchGesture>
 #include "gfxMatrix.h"
 
 ViewTab::ViewTab(EmbedContext* aContext, QSize aSize, int flags, QGraphicsWidget* aParent)
@@ -23,6 +24,18 @@ ViewTab::ViewTab(EmbedContext* aContext, QSize aSize, int flags, QGraphicsWidget
     , mInitialized(false)
 {
     printf(">>>>>>Func:%s::%d, sz[%i,%i]\n", __PRETTY_FUNCTION__, __LINE__, aSize.width(), aSize.height());
+    setAcceptHoverEvents(true);
+    setAcceptTouchEvents(true);
+    setFlag(QGraphicsItem::ItemAcceptsInputMethod, true);
+
+    grabGesture(Qt::PanGesture);
+    grabGesture(Qt::PinchGesture);
+    grabGesture(Qt::TapAndHoldGesture);
+
+    setAcceptedMouseButtons(Qt::LeftButton | Qt::RightButton | Qt::MiddleButton);
+    setFlag(QGraphicsItem::ItemIsFocusScope, true);
+    setFlag(QGraphicsItem::ItemIsFocusable, true);
+
     setPreferredSize(aSize.width(), aSize.height());
     mSize = aSize;
     mButton->SetOrientationAngle(270);
@@ -133,6 +146,64 @@ void ViewTab::on_locationChanged(QString aurl)
     printf(">>>>>>Func:%s::%d, url:%s\n", __PRETTY_FUNCTION__, __LINE__, aurl.toUtf8().data());
     location = aurl;
     emit tabLocationChanged(this);
+}
+
+bool ViewTab::event(QEvent* event)
+{
+    QEvent::Type eventType = event->type();
+    switch (eventType) {
+    case QEvent::TouchBegin:
+    case QEvent::TouchEnd:
+    case QEvent::TouchUpdate:
+        touchEvent(static_cast<QTouchEvent*>(event));
+        return true;
+    case QEvent::Show:
+//        page()->d->page->drawingArea()->setPageIsVisible(true);
+        printf(">>>>>>Func:%s::%d Event Show\n", __PRETTY_FUNCTION__, __LINE__);
+        break;
+    case QEvent::Hide:
+        printf(">>>>>>Func:%s::%d Event Hide\n", __PRETTY_FUNCTION__, __LINE__);
+//        page()->d->page->drawingArea()->setPageIsVisible(false);
+        break;
+    case QEvent::Gesture:
+        gestureEvent(static_cast<QGestureEvent*>(event));
+        break;
+    default:
+        break;
+    }
+
+    // Here so that it can be reimplemented without breaking ABI.
+    return QGraphicsWidget::event(event);
+}
+
+void ViewTab::gestureEvent(QGestureEvent* event)
+{
+    // TODO: we could remove all gesture handling here
+    // if no parent register to any gestures.
+    QGesture* gesture = event->gesture(Qt::PinchGesture);
+    if (gesture) {
+        QPinchGesture* pinch = static_cast<QPinchGesture*>(gesture);
+        QPoint center = mapFromScene(pinch->centerPoint()).toPoint();
+        if (pinch->state() == Qt::GestureStarted) {
+            mView->PinchStart(center.x(), center.y());
+        }
+        if (pinch->state() == Qt::GestureUpdated) {
+            mView->PinchUpdate(center.x(), center.y(), pinch->scaleFactor());
+        }
+        if (pinch->state() == Qt::GestureFinished) {
+            mView->PinchEnd(center.x(), center.y(), pinch->scaleFactor());
+        }
+    }
+    // We eat all gesture events, we deal with them ourself.
+    QList<QGesture*> gestures = event->gestures();
+    for (int i = 0; i < gestures.size(); ++i) {
+        event->accept(gestures.at(i));
+    }
+}
+
+void ViewTab::touchEvent(QTouchEvent* event)
+{
+    printf(">>>>>>Func:%s::%d Touch Event: type:%i, touchLen:%i\n", __PRETTY_FUNCTION__, __LINE__, event->type(), event->touchPoints().length());
 }
 
 void ViewTab::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, QWidget* widget)

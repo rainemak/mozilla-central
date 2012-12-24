@@ -232,5 +232,26 @@ EmbedLiteView::MouseMove(int x, int y, int mstime, unsigned int buttons, unsigne
 //    mKinetic->MouseMove(x, y, mstime);
 }
 
+void
+EmbedLiteView::PinchStart(int x, int y)
+{
+    NS_ENSURE_TRUE(mViewImpl, );
+    LOGT();
+}
+
+void
+EmbedLiteView::PinchUpdate(int x, int y, float scale)
+{
+    NS_ENSURE_TRUE(mViewImpl, );
+    LOGT();
+}
+
+void
+EmbedLiteView::PinchEnd(int x, int y, float scale)
+{
+    NS_ENSURE_TRUE(mViewImpl, );
+    LOGT();
+}
+
 } // namespace embedlite
 } // namespace mozilla
