@@ -123,7 +123,7 @@ public:
 #if defined(MOZ_PLATFORM_MAEMO) || defined(MOZ_WIDGET_GONK)
 static bool gUseBackingSurface = true;
 #else
-static bool gUseBackingSurface = false;
+static bool gUseBackingSurface = getenv("USE_BACKING_SURFACE") != 0;
 #endif
 
 #ifdef MOZ_WIDGET_GONK
