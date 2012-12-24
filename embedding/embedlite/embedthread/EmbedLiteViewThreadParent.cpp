@@ -354,7 +354,6 @@ EmbedLiteViewThreadParent::MousePress(int x, int y, int mstime, unsigned int but
     if (mCompositor) {
         if (AsyncPanZoomController* controller = mCompositor->GetEmbedPanZoomController()) {
             nsEventStatus status;
-            AsyncPanZoomController* controller = mCompositor->GetEmbedPanZoomController();
             MultiTouchInput event(MultiTouchInput::MULTITOUCH_START, mstime);
             event.mTouches.AppendElement(SingleTouchData(0,
                                          nsIntPoint(x, y),
@@ -373,7 +372,6 @@ EmbedLiteViewThreadParent::MouseRelease(int x, int y, int mstime, unsigned int b
     if (mCompositor) {
         if (AsyncPanZoomController* controller = mCompositor->GetEmbedPanZoomController()) {
             nsEventStatus status;
-            AsyncPanZoomController* controller = mCompositor->GetEmbedPanZoomController();
             MultiTouchInput event(MultiTouchInput::MULTITOUCH_END, mstime);
             event.mTouches.AppendElement(SingleTouchData(0,
                                          nsIntPoint(x, y),
@@ -392,7 +390,6 @@ EmbedLiteViewThreadParent::MouseMove(int x, int y, int mstime, unsigned int butt
     if (mCompositor) {
         if (AsyncPanZoomController* controller = mCompositor->GetEmbedPanZoomController()) {
             nsEventStatus status;
-            AsyncPanZoomController* controller = mCompositor->GetEmbedPanZoomController();
             MultiTouchInput event(MultiTouchInput::MULTITOUCH_MOVE, mstime);
             event.mTouches.AppendElement(SingleTouchData(0,
                                          nsIntPoint(x, y),
