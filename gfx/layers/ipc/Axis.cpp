@@ -94,6 +94,11 @@ Axis::Axis(AsyncPanZoomController* aAsyncPanZoomController)
 }
 
 void Axis::UpdateWithTouchAtDevicePoint(int32_t aPos, const TimeDuration& aTimeDelta) {
+  if (mPos == aPos) {
+    // Does not make sense to calculate velocity when distance is 0
+    return;
+  }
+
   float newVelocity = (mPos - aPos) / aTimeDelta.ToMilliseconds();
 
   bool curVelocityIsLow = fabsf(newVelocity) < 0.01f;
@@ -108,14 +113,13 @@ void Axis::UpdateWithTouchAtDevicePoint(int32_t aPos, const TimeDuration& aTimeD
 
   // If a direction change has happened, or the current velocity due to this new
   // touch is relatively low, then just apply it. If not, throttle it.
-  if (curVelocityIsLow || (directionChange && fabs(newVelocity) - EPSILON <= 0.0f)) {
+  if (!mVelocity || curVelocityIsLow || (directionChange && fabs(newVelocity) - EPSILON <= 0.0f)) {
     mVelocity = newVelocity;
   } else {
     float maxChange = fabsf(mVelocity * aTimeDelta.ToMilliseconds() * gMaxEventAcceleration);
     mVelocity = std::min(mVelocity + maxChange, std::max(mVelocity - maxChange, newVelocity));
   }
 
-  mVelocity = newVelocity;
   mPos = aPos;
 }
 
