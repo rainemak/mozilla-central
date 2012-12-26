@@ -289,7 +289,9 @@ gfxPlatform::Init()
 
     if (useOffMainThreadCompositing && (XRE_GetProcessType() ==
                                         GeckoProcessType_Default)) {
-        CompositorParent::StartUp();
+        if (!CompositorParent::CompositorLoop()) {
+            CompositorParent::StartUp();
+        }
         if (Preferences::GetBool("layers.async-video.enabled",false)) {
             ImageBridgeChild::StartUp();
         }
