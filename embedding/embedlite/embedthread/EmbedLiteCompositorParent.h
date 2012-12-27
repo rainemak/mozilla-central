@@ -60,6 +60,7 @@ protected:
     virtual void SyncViewportInfo(const nsIntRect& aDisplayPort, float aDisplayResolution, bool aLayersUpdated,
                                   nsIntPoint& aScrollOffset, float& aScaleX, float& aScaleY);
     virtual mozilla::layers::AsyncPanZoomController* GetDefaultPanZoomController();
+    bool IsGLBackend();
 
     RefPtr<EmbedLiteViewThreadParent> mView;
     RefPtr<mozilla::layers::CompositorChild> mChildCompositor;

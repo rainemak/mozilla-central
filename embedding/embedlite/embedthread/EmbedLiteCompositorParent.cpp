@@ -79,11 +79,20 @@ void EmbedLiteCompositorParent::RenderToImage(unsigned char *aData,
     }
 }
 
-void EmbedLiteCompositorParent::RenderGL()
+bool
+EmbedLiteCompositorParent::IsGLBackend()
 {
     LayerManager* mgr = GetLayerManager();
-    NS_ENSURE_TRUE(mgr, );
+    NS_ENSURE_TRUE(mgr, false);
 
+    return mgr->GetBackendType() == mozilla::layers::LAYERS_OPENGL;
+}
+
+void EmbedLiteCompositorParent::RenderGL()
+{
+    NS_ENSURE_TRUE(IsGLBackend(),);
+
+    LayerManager* mgr = GetLayerManager();
     if (mgr->GetBackendType() == mozilla::layers::LAYERS_OPENGL) {
         static_cast<LayerManagerOGL*>(mgr)->
             SetWorldTransform(mWorldTransform);
@@ -96,6 +105,7 @@ void EmbedLiteCompositorParent::RenderGL()
 
 void EmbedLiteCompositorParent::SetSurfaceSize(int width, int height)
 {
+    NS_ENSURE_TRUE(IsGLBackend(),);
     CompositorParent::SetEGLSurfaceSize(width, height);
 }
 
