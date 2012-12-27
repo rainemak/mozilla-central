@@ -12,6 +12,7 @@
 #include "mozilla/RefPtr.h"
 
 namespace mozilla {
+class InputData;
 namespace embedlite {
 
 class EmbedLiteViewImplIface
@@ -23,12 +24,17 @@ public:
     virtual void SetIsActive(bool) {}
     virtual void SetViewSize(int width, int height) {}
     virtual void SetGLViewPortSize(int width, int height) {}
-    virtual void SetTransform(gfxMatrix matrix) {}
+    virtual void SetGLViewTransform(gfxMatrix matrix) {}
+    virtual void SetTransformation(float aScale, nsIntPoint aScrollOffset) {}
+    virtual void ScheduleRender() {}
     virtual void SetClipping(nsIntRect aClipRect) {}
     virtual bool ScrollBy(int aDX, int aDY, bool aDoOverflow = false) { return false; }
+    virtual void ReceiveInputEvent(const InputData& aEvent) {}
     virtual void MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers) {}
     virtual void MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers) {}
     virtual void MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers) {}
+    virtual void UpdateScrollController() {}
+    virtual void ViewAPIDestroyed() {}
 };
 
 } // namespace embedlite

@@ -38,18 +38,6 @@ protected:
     virtual void mouseMoveEvent(QGraphicsSceneMouseEvent*);
     virtual void mousePressEvent(QGraphicsSceneMouseEvent*);
     virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent*);
-    virtual void contextMenuEvent(QGraphicsSceneContextMenuEvent*);
-    virtual void hoverMoveEvent(QGraphicsSceneHoverEvent*);
-    virtual void keyPressEvent(QKeyEvent*);
-    virtual void keyReleaseEvent(QKeyEvent*);
-    virtual void hoverEnterEvent(QGraphicsSceneHoverEvent*);
-    virtual void hoverLeaveEvent(QGraphicsSceneHoverEvent*);
-    virtual void dragEnterEvent(QGraphicsSceneDragDropEvent*);
-    virtual void dragLeaveEvent(QGraphicsSceneDragDropEvent*);
-    virtual void dragMoveEvent(QGraphicsSceneDragDropEvent*);
-    virtual void dropEvent(QGraphicsSceneDragDropEvent*);
-    virtual void focusInEvent(QFocusEvent*);
-    virtual void focusOutEvent(QFocusEvent*);
 
 signals:
     void tabButtonClicked(ViewTab*);
@@ -58,16 +46,9 @@ signals:
 public slots:
     void onContextInitialized();
     void onButtonClicked();
-    void on_titleChanged(QString);
-    void on_locationChanged(QString);
-    void on_pageShowHide(QString, bool);
-    void on_loadFinished(bool);
-    void on_firstPaint(int,int);
-    void on_Observe(const QString topic, QString data);
 
 private:
     void touchEvent(QTouchEvent* event);
-    void gestureEvent(QGestureEvent* event);
     void ViewInitialized();
     void Destroyed();
     bool Invalidate();
@@ -79,8 +60,9 @@ private:
     bool mInitialized;
     QString pendingUrl;
     QTime mPanningTime;
+    QTime mTouchTime;
     QSize mSize;
-    QImage image;
+    QImage mTempBufferImage;
 };
 
 #endif // VIEWTAB_H

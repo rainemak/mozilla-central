@@ -212,7 +212,12 @@ bool EmbedLiteCompositorParent::DeallocPLayers(PLayersParent* aLayers)
 void EmbedLiteCompositorParent::ScheduleTask(CancelableTask* task, int time)
 {
     LOGT("t");
-    EmbedLiteViewListener* list = EmbedLiteApp::GetInstance()->GetViewByID(mId)->GetListener();
+    EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
+    if (!view) {
+        LOGE("view not available.. forgot SuspendComposition call?");
+        return;
+    }
+    EmbedLiteViewListener* list = view->GetListener();
     if (!list || !list->Invalidate()) {
         CompositorParent::ScheduleTask(task, time);
     }
@@ -245,11 +250,20 @@ EmbedLiteCompositorParent::SetFirstPaintViewport(const nsIntPoint& aOffset,
                                                  const gfx::Rect& aCssPageRect)
 {
     LOGT("t");
+    EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
+    NS_ENSURE_TRUE(view, );
+    view->GetListener()->SetFirstPaintViewport(aOffset, aZoom, aPageRect,
+                                               gfxRect(aCssPageRect.x, aCssPageRect.y,
+                                                       aCssPageRect.width, aCssPageRect.height));
 }
 
 void EmbedLiteCompositorParent::SetPageRect(const gfx::Rect& aCssPageRect)
 {
     LOGT("t");
+    EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
+    NS_ENSURE_TRUE(view, );
+    view->GetListener()->SetPageRect(gfxRect(aCssPageRect.x, aCssPageRect.y,
+                                             aCssPageRect.width, aCssPageRect.height));
 }
 
 void
@@ -258,6 +272,11 @@ EmbedLiteCompositorParent::SyncViewportInfo(const nsIntRect& aDisplayPort, float
                                             float& aScaleX, float& aScaleY)
 {
     LOGT("t");
+    EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
+    NS_ENSURE_TRUE(view, );
+    view->GetListener()->SyncViewportInfo(aDisplayPort, aDisplayResolution,
+                                          aLayersUpdated, aScrollOffset,
+                                          aScaleX, aScaleY);
 }
 
 } // namespace embedlite

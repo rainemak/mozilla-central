@@ -260,9 +260,3 @@ MainView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidg
         firstPaint = false;
     }
 }
-
-void MainView::on_Observe(void* object, const QString topic, QString data)
-{
-    printf(">>>>>>Func:%s::%d top:%s, data:%s\n", __PRETTY_FUNCTION__, __LINE__, topic.toUtf8().data(), data.toUtf8().data());
-}
-

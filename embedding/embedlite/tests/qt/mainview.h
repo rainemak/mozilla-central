@@ -34,7 +34,6 @@ public slots:
     void onButtonQuitClicked();
     void onContextFinalized();
     QGraphicsWidget* onRequestNewWindow(QGraphicsWidget* aParent, int flags);
-    void on_Observe(void* object,const QString topic, QString data);
 
 protected:
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0);

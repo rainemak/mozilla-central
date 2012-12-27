@@ -43,7 +43,6 @@ int main(int argc, char *argv[])
 
     // QGV setup
     scene.setBackgroundBrush(Qt::white);
-//    view.setGeometry(QRect(0, 0, 800, 600));
     // Hack
     printf("Show Main View\n");
 #ifdef __arm__

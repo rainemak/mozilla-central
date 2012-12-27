@@ -14,7 +14,6 @@ using namespace mozilla::embedlite;
 void
 GeckoThread::Quit()
 {
-    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
     if (mEventLoop)
         mEventLoop->quit();
     quit();
@@ -24,7 +23,6 @@ GeckoThread::Quit()
 void
 GeckoThread::run()
 {
-    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
     mContext->mApp->StartChildThread();
     mEventLoop = new QEventLoop();
     mEventLoop->exec();

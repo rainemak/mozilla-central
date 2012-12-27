@@ -12,7 +12,6 @@
 #include "mozilla/unused.h"
 
 #include "EmbedLiteViewThreadParent.h"
-#include "EmbedKineticModule.h"
 
 // Image as URL includes
 #include "gfxImageSurface.h"
@@ -23,30 +22,13 @@ namespace mozilla {
 namespace embedlite {
 
 class FakeListener : public EmbedLiteViewListener {};
-class MyKineticListener : public EmbedKineticListener
-{
-public:
-    MyKineticListener(EmbedLiteView* aView) : mView(aView) {}
-    virtual void ScrollViewBy(int dx, int dy)
-    {
-        LOGT("pt[%i,%i]", dx, dy);
-        mView->ScrollBy(dx, dy);
-    }
-    virtual void UpdateViewport()
-    {
-        LOGT();
-    }
-private:
-    EmbedLiteView* mView;
-};
 
 EmbedLiteView::EmbedLiteView(EmbedLiteApp* aApp)
   : mApp(aApp)
   , mListener(new FakeListener())
   , mViewImpl(NULL)
   , mScrollingMode(false)
-  , mKineticListener(new MyKineticListener(this))
-  , mKinetic(new EmbedKineticModule(mKineticListener))
+  , mPanControlType(PanZoomControlType::GECKO_TOUCH)
 {
     LOGT();
 }
@@ -60,10 +42,20 @@ EmbedLiteView::~EmbedLiteView()
     } else {
         LOGNI();
     }
+    if (mViewImpl) {
+        mViewImpl->ViewAPIDestroyed();
+    }
     mViewImpl = NULL;
-    mKinetic = nullptr;
-    mKineticListener = nullptr;
     mListener->Destroyed();
+}
+
+void
+EmbedLiteView::SetPanZoomControlType(PanZoomControlType aType)
+{
+    mPanControlType = aType;
+    if (mViewImpl) {
+        mViewImpl->UpdateScrollController();
+    }
 }
 
 void
@@ -194,10 +186,24 @@ EmbedLiteView::SetGLViewPortSize(int width, int height)
 }
 
 void
-EmbedLiteView::SetTransform(gfxMatrix matrix)
+EmbedLiteView::SetGLViewTransform(gfxMatrix matrix)
 {
     NS_ENSURE_TRUE(mViewImpl, );
-    mViewImpl->SetTransform(matrix);
+    mViewImpl->SetGLViewTransform(matrix);
+}
+
+void
+EmbedLiteView::SetTransformation(float aScale, nsIntPoint aScrollOffset)
+{
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->SetTransformation(aScale, aScrollOffset);
+}
+
+void
+EmbedLiteView::ScheduleRender()
+{
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->ScheduleRender();
 }
 
 bool
@@ -209,11 +215,16 @@ EmbedLiteView::ScrollBy(int aDX, int aDY, bool aDoOverflow)
 }
 
 void
+EmbedLiteView::ReceiveInputEvent(const InputData& aEvent)
+{
+    mViewImpl->ReceiveInputEvent(aEvent);
+}
+
+void
 EmbedLiteView::MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers)
 {
     NS_ENSURE_TRUE(mViewImpl, );
     mViewImpl->MousePress(x, y, mstime, buttons, modifiers);
-//    mKinetic->MousePress(x, y, mstime);
 }
 
 void
@@ -221,7 +232,6 @@ EmbedLiteView::MouseRelease(int x, int y, int mstime, unsigned int buttons, unsi
 {
     NS_ENSURE_TRUE(mViewImpl, );
     mViewImpl->MouseRelease(x, y, mstime, buttons, modifiers);
-//    mKinetic->MouseRelease(x, y, mstime);
 }
 
 void
@@ -229,7 +239,6 @@ EmbedLiteView::MouseMove(int x, int y, int mstime, unsigned int buttons, unsigne
 {
     NS_ENSURE_TRUE(mViewImpl, );
     mViewImpl->MouseMove(x, y, mstime, buttons, modifiers);
-//    mKinetic->MouseMove(x, y, mstime);
 }
 
 void

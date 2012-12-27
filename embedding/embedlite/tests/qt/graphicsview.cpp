@@ -31,7 +31,6 @@ void MyGraphicsView::SetGLWidget()
 
 void MyGraphicsView::resizeEvent(QResizeEvent *event)
 {
-    printf(">>>>>>Func:%s::%d evSz[%i,%i]\n", __PRETTY_FUNCTION__, __LINE__, event->size().width(), event->size().height());
     mTopLevel->setGeometry(0, 0, event->size().width(), event->size().height());
     setSceneRect(0, 0, event->size().width(), event->size().height());
 }
