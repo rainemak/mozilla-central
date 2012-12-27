@@ -27,6 +27,9 @@ public:
     virtual bool
     RecvInitialized();
 
+    virtual bool
+    RecvReadyToShutdown();
+
     /**
      * Returns the compositor thread's message loop.
      *

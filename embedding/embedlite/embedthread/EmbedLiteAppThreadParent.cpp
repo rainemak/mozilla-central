@@ -53,8 +53,17 @@ EmbedLiteAppThreadParent::RecvInitialized()
     } else {
         unsetenv("USE_TILED_THEBES");
     }
+    setenv("MOZ_USE_OMTC", "1", 1);
     mozilla::layers::CompositorParent::StartUpWithExistingThread(MessageLoop::current(), PlatformThread::CurrentId());
     mApp->GetListener()->Initialized();
+    return true;
+}
+
+bool
+EmbedLiteAppThreadParent::RecvReadyToShutdown()
+{
+    LOGT();
+    mApp->ChildReadyToDestroy();
     return true;
 }
 

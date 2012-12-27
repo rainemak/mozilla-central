@@ -11,10 +11,12 @@ rpc protocol PEmbedLiteApp {
     manages PEmbedLiteView;
 parent:
     async Initialized();
+    async ReadyToShutdown();
 
     sync PEmbedLiteView(uint32_t id);
 
 child:
+    async PreDestroy();
     async CreateView(uint32_t id);
     async SetBoolPref(nsCString name, bool value);
     async SetCharPref(nsCString name, nsCString value);

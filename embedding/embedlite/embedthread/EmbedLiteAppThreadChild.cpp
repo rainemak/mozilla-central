@@ -19,9 +19,11 @@
 #include "EmbedLiteAppThreadParent.h"
 #include "EmbedLiteViewThreadChild.h"
 #include "mozilla/unused.h"
+#include "mozilla/layers/ImageBridgeChild.h"
 
 using namespace base;
 using namespace mozilla::ipc;
+using namespace mozilla::layers;
 
 namespace mozilla {
 namespace embedlite {
@@ -103,6 +105,15 @@ EmbedLiteAppThreadChild::DeallocPEmbedLiteView(PEmbedLiteViewChild* actor)
 {
     LOGT();
     delete actor;
+    return true;
+}
+
+bool
+EmbedLiteAppThreadChild::RecvPreDestroy()
+{
+    LOGT();
+    ImageBridgeChild::ShutDown();
+    SendReadyToShutdown();
     return true;
 }
 

@@ -68,17 +68,23 @@ EmbedLiteApp::SetListener(EmbedLiteAppListener* aListener)
     mListener = aListener;
 }
 
-uint32_t
+void*
 EmbedLiteApp::PostTask(EMBEDTaskCallback callback, void* userData, int timeout)
 {
+    CancelableTask* newTask = NewRunnableFunction(callback, userData);
     if (timeout) {
-        mUILoop->PostDelayedTask(FROM_HERE,
-                                 NewRunnableFunction(callback, userData), timeout);
+        mUILoop->PostDelayedTask(FROM_HERE, newTask, timeout);
     } else {
-        mUILoop->PostTask(FROM_HERE,
-                          NewRunnableFunction(callback, userData));
+        mUILoop->PostTask(FROM_HERE, newTask);
     }
-    return 0;
+
+    return (void*)newTask;
+}
+
+void
+EmbedLiteApp::CancelTask(void* aTask)
+{
+    static_cast<CancelableTask*>(aTask)->Cancel();
 }
 
 void
@@ -214,6 +220,15 @@ EmbedLiteView* EmbedLiteApp::GetViewByID(uint32_t id)
 }
 
 void
+EmbedLiteApp::ChildReadyToDestroy()
+{
+    if (mDestroying) {
+        mUILoop->PostTask(FROM_HERE,
+                          NewRunnableFunction(&_FinalStop, this));
+    }
+}
+
+void
 EmbedLiteApp::ViewDestroyed(uint32_t id)
 {
     LOGT("id:%i", id);
@@ -221,7 +236,7 @@ EmbedLiteApp::ViewDestroyed(uint32_t id)
     mViews.erase(it);
     if (mDestroying && mViews.empty()) {
         mUILoop->PostTask(FROM_HERE,
-                          NewRunnableFunction(&_FinalStop, this));
+                          NewRunnableMethod(STHREADAPP(), &EmbedLiteAppThreadParent::SendPreDestroy));
     }
 }
 

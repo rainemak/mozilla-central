@@ -34,6 +34,7 @@ protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
 
     virtual bool RecvCreateView(const uint32_t&);
+    virtual bool RecvPreDestroy();
     virtual PEmbedLiteViewChild* AllocPEmbedLiteView(const uint32_t&);
     virtual bool DeallocPEmbedLiteView(PEmbedLiteViewChild*);
 

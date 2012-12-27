@@ -51,7 +51,8 @@ public:
     virtual EmbedType GetType() { return mEmbedType; }
 
     // Delayed post task helper for delayed functions call in main thread
-    virtual uint32_t PostTask(EMBEDTaskCallback callback, void* userData, int timeout = 0);
+    virtual void* PostTask(EMBEDTaskCallback callback, void* userData, int timeout = 0);
+    virtual void CancelTask(void* aTask);
 
     // Start UI embedding loop merged with Gecko GFX, blocking call until Stop() called
     virtual bool Start(EmbedType aEmbedType);
@@ -87,10 +88,12 @@ private:
 
     static void StartChild(EmbedLiteApp* aApp);
 
+    friend class EmbedLiteAppThreadParent;
     friend class EmbedLiteViewThreadParent;
     friend class EmbedLiteCompositorParent;
     EmbedLiteView* GetViewByID(uint32_t id);
     void ViewDestroyed(uint32_t id);
+    void ChildReadyToDestroy();
 
     static EmbedLiteApp* sSingleton;
     EmbedLiteAppListener* mListener;
@@ -102,7 +105,6 @@ private:
     uint32_t mViewCreateID;
     bool mDestroying;
     bool mIsAccelerated;
-//    std::map<uint32_t, std::pair<CancelableTask*, void*> mTasks;
 };
 
 } // namespace embedlite
