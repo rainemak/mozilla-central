@@ -20,7 +20,6 @@
 
 #include "nsIDOMWindowUtils.h"
 #include "nsPIDOMWindow.h"
-#include "nsIMessageManager.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
 
 using namespace mozilla::layers;
@@ -50,11 +49,13 @@ void
 EmbedLiteViewThreadChild::ActorDestroy(ActorDestroyReason aWhy)
 {
     LOGT("reason:%i", aWhy);
+    mHelper->Disconnect();
 }
 
 bool EmbedLiteViewThreadChild::RecvDestroy()
 {
     LOGT("destroy");
+    mHelper->Unload();
     mBChrome->RemoveEventHandler();
     mWidget = nullptr;
     mWebBrowser = nullptr;
@@ -167,14 +168,18 @@ EmbedLiteViewThreadChild::RecvLoadURL(const nsString& url)
 bool
 EmbedLiteViewThreadChild::RecvLoadFrameScript(const nsString& uri)
 {
-    nsCOMPtr<nsIMessageListenerManager> mm = do_GetService("@mozilla.org/globalmessagemanager;1");
-    if (mm) {
-        nsCOMPtr<nsIFrameScriptLoader> scl = do_QueryInterface(mm);
-        if (scl) {
-            scl->LoadFrameScript(uri, false);
-        }
+    if (mHelper) {
+        return mHelper->DoLoadFrameScript(uri);
     }
+    return false;
+}
 
+bool
+EmbedLiteViewThreadChild::RecvAsyncMessage(const nsString& aMessage,
+                                           const nsString& aData)
+{
+    LOGT("msg:%s, data:%s", NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());
+    mHelper->RecvAsyncMessage(aMessage, aData);
     return true;
 }
 
@@ -374,6 +379,12 @@ NS_IMETHODIMP EmbedLiteViewThreadChild::OnObserve(const char* aTopic, const PRUn
 {
      return SendOnObserve(nsDependentCString(aTopic),
                           nsDependentString(aData)) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnMetaAdded()
+{
+    mHelper->HandlePossibleViewportChange();
+    return NS_OK;
 }
 
 } // namespace embedlite

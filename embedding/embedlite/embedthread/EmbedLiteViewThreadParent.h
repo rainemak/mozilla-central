@@ -28,6 +28,7 @@ public:
 
     virtual void LoadURL(const char*);
     virtual void LoadFrameScript(const char* aURI);
+    virtual void DoSendAsyncMessage(const char* aMessageName, const char* aMessage);
     virtual void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
     virtual void RenderGL();
     virtual void SetViewSize(int width, int height);
@@ -119,6 +120,11 @@ protected:
     RecvOnObserve(
             const nsCString& aTopic,
             const nsString& aData);
+    virtual bool RecvAsyncMessage(const nsString& aMessage,
+                                  const nsString& aData);
+    virtual bool RecvSyncMessage(const nsString& aMessage,
+                                 const nsString& aJSON,
+                                 InfallibleTArray<nsString>* aJSONRetVal);
     virtual bool
     RecvUpdateZoomConstraints(const bool&, const float&, const float&);
     virtual bool RecvZoomToRect(const gfxRect& aRect);

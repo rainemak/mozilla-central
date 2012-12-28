@@ -24,6 +24,8 @@ public:
     virtual void ViewInitialized() {}
     // View finally destroyed and deleted
     virtual void Destroyed() {}
+    virtual void RecvAsyncMessage(const char* aMessage, const char* aData) {}
+    virtual char* RecvSyncMessage(const char* aMessage, const char* aData) { return NULL; }
 
     virtual void OnTitleChanged(const PRUnichar* aTitle) {}
     virtual void OnLocationChanged(const char* aLocation, bool aCanGoBack, bool aCanGoForward) {}
@@ -66,7 +68,7 @@ public:
 
     // Embed Interface
     virtual void LoadURL(const char* aUrl);
-    virtual void LoadFrameScript(const char* aURI);
+
 
     // Input Interface
     enum PanZoomControlType { EXTERNAL, GECKO_SIMPLE, GECKO_TOUCH };
@@ -109,6 +111,10 @@ public:
     virtual void SetTransformation(float aScale, nsIntPoint aScrollOffset);
     virtual void SetDisplayPort(gfxRect& aRect);
     virtual void ScheduleRender();
+
+    // Scripting Interface
+    virtual void LoadFrameScript(const char* aURI);
+    virtual void SendAsyncMessage(const char* aMessageName, const char* aMessage);
 
 private:
     friend class EmbedLiteViewThreadParent;

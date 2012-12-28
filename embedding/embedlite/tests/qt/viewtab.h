@@ -52,6 +52,9 @@ private:
     void ViewInitialized();
     void Destroyed();
     bool Invalidate();
+    void RecvAsyncMessage(const char* aMessage, const char* aData);
+    char* RecvSyncMessage(const char* aMessage, const char* aData);
+
     void SetupGLViewPort();
     NavButton* mButton;
     bool mIsActive;

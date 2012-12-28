@@ -22,6 +22,8 @@
 #include "nsGlobalWindow.h"
 #include "nsIDocShell.h"
 #include "nsViewportInfo.h"
+#include "nsPIWindowRoot.h"
+#include "StructuredCloneUtils.h"
 
 static const nsIntSize kDefaultViewportSize(980, 480);
 
@@ -31,10 +33,12 @@ static const char BEFORE_FIRST_PAINT[] = "before-first-paint";
 
 using namespace mozilla::embedlite;
 using namespace mozilla::layers;
+using namespace mozilla::dom;
 
 TabChildHelper::TabChildHelper(EmbedLiteViewThreadChild* aView)
   : mView(aView)
   , mContentDocumentIsDisplayed(false)
+  , mTabChildGlobal(nullptr)
 {
     LOGT();
     nsCOMPtr<nsIObserverService> observerService =
@@ -51,21 +55,120 @@ TabChildHelper::TabChildHelper(EmbedLiteViewThreadChild* aView)
                                      BEFORE_FIRST_PAINT,
                                      false);
     }
+
+
 }
 
 TabChildHelper::~TabChildHelper()
 {
     LOGT();
+    if (mCx) {
+        DestroyCx();
+    }
+
+    if (mTabChildGlobal) {
+        nsEventListenerManager* elm = mTabChildGlobal->GetListenerManager(false);
+        if (elm) {
+            elm->Disconnect();
+        }
+        mTabChildGlobal->mTabChild = nullptr;
+    }
+}
+
+void
+TabChildHelper::Disconnect()
+{
+    LOGT();
+    if (mTabChildGlobal) {
+        // The messageManager relays messages via the TabChild which
+        // no longer exists.
+        static_cast<nsFrameMessageManager*>
+            (mTabChildGlobal->mMessageManager.get())->Disconnect();
+        mTabChildGlobal->mMessageManager = nullptr;
+    }
+}
+
+class UnloadScriptEvent : public nsRunnable
+{
+public:
+  UnloadScriptEvent(TabChildHelper* aTabChild, EmbedTabChildGlobal* aTabChildGlobal)
+    : mTabChild(aTabChild), mTabChildGlobal(aTabChildGlobal)
+  { }
+
+  NS_IMETHOD Run()
+  {
+    LOGT();
+    nsCOMPtr<nsIDOMEvent> event;
+    NS_NewDOMEvent(getter_AddRefs(event), nullptr, nullptr);
+    if (event) {
+      event->InitEvent(NS_LITERAL_STRING("unload"), false, false);
+      event->SetTrusted(true);
+
+      bool dummy;
+      mTabChildGlobal->DispatchEvent(event, &dummy);
+    }
+
+    return NS_OK;
+  }
+
+  nsRefPtr<TabChildHelper> mTabChild;
+  EmbedTabChildGlobal* mTabChildGlobal;
+};
+
+void
+TabChildHelper::Unload()
+{
+  LOGT();
+  if (mTabChildGlobal) {
+    // Let the frame scripts know the child is being closed
+    nsContentUtils::AddScriptRunner(
+      new UnloadScriptEvent(this, mTabChildGlobal)
+    );
+  }
+  nsCOMPtr<nsIObserverService> observerService =
+    do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
+
+  observerService->RemoveObserver(this, CANCEL_DEFAULT_PAN_ZOOM);
+  observerService->RemoveObserver(this, BROWSER_ZOOM_TO_RECT);
+  observerService->RemoveObserver(this, BEFORE_FIRST_PAINT);
 }
 
 NS_IMPL_ISUPPORTS1(TabChildHelper, nsIObserver)
+
+bool
+TabChildHelper::InitTabChildGlobal()
+{
+    if (!mCx && !mTabChildGlobal) {
+        nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mView->mWebNavigation);
+        NS_ENSURE_TRUE(window, false);
+        nsCOMPtr<nsIDOMEventTarget> chromeHandler =
+            do_QueryInterface(window->GetChromeEventHandler());
+        NS_ENSURE_TRUE(chromeHandler, false);
+
+        nsRefPtr<EmbedTabChildGlobal> scope = new EmbedTabChildGlobal(this);
+        NS_ENSURE_TRUE(scope, false);
+
+        mTabChildGlobal = scope;
+
+        nsISupports* scopeSupports = NS_ISUPPORTS_CAST(nsIDOMEventTarget*, scope);
+
+        NS_ENSURE_TRUE(InitTabChildGlobalInternal(scopeSupports), false);
+
+        scope->Init();
+
+        nsCOMPtr<nsPIWindowRoot> root = do_QueryInterface(chromeHandler);
+        NS_ENSURE_TRUE(root,  false);
+        root->SetParentTarget(scope);
+    }
+
+    return true;
+}
 
 NS_IMETHODIMP
 TabChildHelper::Observe(nsISupports *aSubject,
                         const char *aTopic,
                         const PRUnichar *aData)
 {
-
     if (!strcmp(aTopic, CANCEL_DEFAULT_PAN_ZOOM)) {
         LOGNI("top:%s >>>>>>>>>>>>>.", aTopic);
     } else if (!strcmp(aTopic, BROWSER_ZOOM_TO_RECT)) {
@@ -326,4 +429,225 @@ TabChildHelper::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
     mLastMetrics = aFrameMetrics;
 
     return true;
+}
+
+nsIWebNavigation*
+TabChildHelper::WebNavigation()
+{
+    return mView->mWebNavigation;
+}
+
+bool
+TabChildHelper::DoLoadFrameScript(const nsAString& aURL)
+{
+    if (!mCx && !InitTabChildGlobal())
+        // This can happen if we're half-destroyed.  It's not a fatal
+        // error.
+        return false;
+
+    LoadFrameScriptInternal(aURL);
+    return true;
+}
+
+static JSBool
+JSONCreator(const jschar* aBuf, uint32_t aLen, void* aData)
+{
+    nsAString* result = static_cast<nsAString*>(aData);
+    result->Append(static_cast<const PRUnichar*>(aBuf),
+                   static_cast<uint32_t>(aLen));
+    return true;
+}
+
+bool
+TabChildHelper::DoSendSyncMessage(const nsAString& aMessage,
+                                  const mozilla::dom::StructuredCloneData& aData,
+                                  InfallibleTArray<nsString>* aJSONRetVal)
+{
+    JSAutoRequest ar(mCx);
+
+    // FIXME: Need callback interface for simple JSON to avoid useless conversion here
+    jsval jv = JSVAL_NULL;
+    if (aData.mDataLength &&
+        !ReadStructuredClone(mCx, aData, &jv)) {
+      JS_ClearPendingException(mCx);
+      return false;
+    }
+
+    nsAutoString json;
+    NS_ENSURE_TRUE(JS_Stringify(mCx, &jv, nullptr, JSVAL_NULL, JSONCreator, &json), false);
+    NS_ENSURE_TRUE(!json.IsEmpty(), false);
+
+    return mView->SendSyncMessage(nsString(aMessage), json, aJSONRetVal);
+}
+
+bool
+TabChildHelper::DoSendAsyncMessage(const nsAString& aMessage,
+                                   const mozilla::dom::StructuredCloneData& aData)
+{
+    JSAutoRequest ar(mCx);
+
+    // FIXME: Need callback interface for simple JSON to avoid useless conversion here
+    jsval jv = JSVAL_NULL;
+    if (aData.mDataLength &&
+        !ReadStructuredClone(mCx, aData, &jv)) {
+      JS_ClearPendingException(mCx);
+      return false;
+    }
+
+    nsAutoString json;
+    NS_ENSURE_TRUE(JS_Stringify(mCx, &jv, nullptr, JSVAL_NULL, JSONCreator, &json), false);
+    NS_ENSURE_TRUE(!json.IsEmpty(), false);
+
+    mView->SendAsyncMessage(nsString(aMessage), json);
+
+    return true;
+}
+
+bool
+TabChildHelper::CheckPermission(const nsAString& aPermission)
+{
+    LOGNI("perm: %s", NS_ConvertUTF16toUTF8(aPermission).get());
+    return false;
+}
+
+bool
+TabChildHelper::RecvAsyncMessage(const nsString& aMessageName,
+                                 const nsString& aJSONData)
+{
+    JSAutoRequest ar(mCx);
+    jsval json = JSVAL_NULL;
+    StructuredCloneData cloneData;
+    JSAutoStructuredCloneBuffer buffer;
+    if (JS_ParseJSON(mCx,
+                      static_cast<const jschar*>(aJSONData.get()),
+                      aJSONData.Length(),
+                      &json)) {
+        WriteStructuredClone(mCx, json, buffer, cloneData.mClosure);
+        cloneData.mData = buffer.data();
+        cloneData.mDataLength = buffer.nbytes();
+    }
+
+    nsFrameScriptCx cx(static_cast<nsIWebBrowserChrome*>(mView->mChrome), this);
+
+    nsRefPtr<nsFrameMessageManager> mm =
+      static_cast<nsFrameMessageManager*>(mTabChildGlobal->mMessageManager.get());
+    mm->ReceiveMessage(static_cast<nsIDOMEventTarget*>(mTabChildGlobal),
+                       aMessageName, false, &cloneData, nullptr, nullptr);
+    return true;
+}
+
+EmbedTabChildGlobal::EmbedTabChildGlobal(TabChildHelper* aTabChild)
+  : mTabChild(aTabChild)
+{
+}
+
+void
+EmbedTabChildGlobal::Init()
+{
+  NS_ASSERTION(!mMessageManager, "Re-initializing?!?");
+  mMessageManager = new nsFrameMessageManager(mTabChild,
+                                              nullptr,
+                                              mTabChild->GetJSContext(),
+                                              mozilla::dom::ipc::MM_CHILD);
+}
+
+NS_IMPL_CYCLE_COLLECTION_CLASS(EmbedTabChildGlobal)
+
+NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN_INHERITED(EmbedTabChildGlobal,
+                                                nsDOMEventTargetHelper)
+  NS_IMPL_CYCLE_COLLECTION_UNLINK(mMessageManager)
+NS_IMPL_CYCLE_COLLECTION_UNLINK_END
+
+NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INHERITED(EmbedTabChildGlobal,
+                                                  nsDOMEventTargetHelper)
+  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mMessageManager)
+NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
+
+NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION_INHERITED(EmbedTabChildGlobal)
+  NS_INTERFACE_MAP_ENTRY(nsIMessageListenerManager)
+  NS_INTERFACE_MAP_ENTRY(nsIMessageSender)
+  NS_INTERFACE_MAP_ENTRY(nsISyncMessageSender)
+  NS_INTERFACE_MAP_ENTRY(nsIContentFrameMessageManager)
+  NS_INTERFACE_MAP_ENTRY(nsIScriptContextPrincipal)
+  NS_INTERFACE_MAP_ENTRY(nsIScriptObjectPrincipal)
+  NS_INTERFACE_MAP_ENTRY(nsITabChild)
+  NS_DOM_INTERFACE_MAP_ENTRY_CLASSINFO(ContentFrameMessageManager)
+NS_INTERFACE_MAP_END_INHERITING(nsDOMEventTargetHelper)
+
+NS_IMPL_ADDREF_INHERITED(EmbedTabChildGlobal, nsDOMEventTargetHelper)
+NS_IMPL_RELEASE_INHERITED(EmbedTabChildGlobal, nsDOMEventTargetHelper)
+
+/* [notxpcom] boolean markForCC (); */
+// This method isn't automatically forwarded safely because it's notxpcom, so
+// the IDL binding doesn't know what value to return.
+NS_IMETHODIMP_(bool)
+EmbedTabChildGlobal::MarkForCC()
+{
+    return mMessageManager ? mMessageManager->MarkForCC() : false;
+}
+
+NS_IMETHODIMP
+EmbedTabChildGlobal::GetContent(nsIDOMWindow** aContent)
+{
+    *aContent = nullptr;
+    if (!mTabChild)
+        return NS_ERROR_NULL_POINTER;
+    nsCOMPtr<nsIDOMWindow> window = do_GetInterface(mTabChild->WebNavigation());
+    window.swap(*aContent);
+    return NS_OK;
+}
+
+NS_IMETHODIMP
+EmbedTabChildGlobal::PrivateNoteIntentionalCrash()
+{
+//    mozilla::NoteIntentionalCrash("tab");
+    return NS_OK;
+}
+
+NS_IMETHODIMP
+EmbedTabChildGlobal::GetDocShell(nsIDocShell** aDocShell)
+{
+    *aDocShell = nullptr;
+    if (!mTabChild)
+        return NS_ERROR_NULL_POINTER;
+    nsCOMPtr<nsIDocShell> docShell = do_GetInterface(mTabChild->WebNavigation());
+    docShell.swap(*aDocShell);
+    return NS_OK;
+}
+
+NS_IMETHODIMP
+EmbedTabChildGlobal::Btoa(const nsAString& aBinaryData,
+                          nsAString& aAsciiBase64String)
+{
+  return nsContentUtils::Btoa(aBinaryData, aAsciiBase64String);
+}
+
+NS_IMETHODIMP
+EmbedTabChildGlobal::Atob(const nsAString& aAsciiString,
+                          nsAString& aBinaryData)
+{
+  return nsContentUtils::Atob(aAsciiString, aBinaryData);
+}
+
+JSContext*
+EmbedTabChildGlobal::GetJSContextForEventHandlers()
+{
+    if (!mTabChild)
+        return nullptr;
+    return mTabChild->GetJSContext();
+}
+
+nsIPrincipal*
+EmbedTabChildGlobal::GetPrincipal()
+{
+    if (!mTabChild)
+        return nullptr;
+    return mTabChild->GetPrincipal();
+}
+
+NS_IMETHODIMP
+EmbedTabChildGlobal::GetMessageManager(nsIContentFrameMessageManager** aResult)
+{
+    NS_ADDREF(*aResult = this);
+    return NS_OK;
 }

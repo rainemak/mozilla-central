@@ -48,6 +48,12 @@ parent:
     async OnObserve(nsCString aTopic, nsString aData);
     UpdateZoomConstraints(bool aAllowZoom, float aMinZoom, float aMaxZoom);
     ZoomToRect(gfxRect aRect);
+
+    sync SyncMessage(nsString aMessage, nsString aJSON)
+      returns (nsString[] retval);
+
+both:
+    AsyncMessage(nsString aMessage, nsString aData);
 };
 
 }}

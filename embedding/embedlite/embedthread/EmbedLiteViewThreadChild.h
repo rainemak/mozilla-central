@@ -34,6 +34,8 @@ protected:
     virtual bool RecvDestroy();
     virtual bool RecvLoadURL(const nsString&);
     virtual bool RecvLoadFrameScript(const nsString&);
+    virtual bool RecvAsyncMessage(const nsString& aMessage,
+                                  const nsString& aData);
     virtual bool RecvSetViewSize(const gfxSize&);
     virtual bool RecvSetDisplayPort(const gfxRect&);
 

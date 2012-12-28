@@ -136,7 +136,7 @@ EmbedLiteViewThreadParent::RecvOnTitleChanged(const nsString& aTitle)
 {
     LOGNI();
     mView->GetListener()->OnTitleChanged(aTitle.get());
-    return false;
+    return true;
 }
 
 bool
@@ -146,7 +146,7 @@ EmbedLiteViewThreadParent::RecvOnLocationChanged(const nsCString& aLocation,
 {
     LOGNI();
     mView->GetListener()->OnLocationChanged(aLocation.get(), aCanGoBack, aCanGoForward);
-    return false;
+    return true;
 }
 
 bool
@@ -154,7 +154,7 @@ EmbedLiteViewThreadParent::RecvOnLoadStarted(const nsCString& aLocation)
 {
     LOGNI();
     mView->GetListener()->OnLoadStarted(aLocation.get());
-    return false;
+    return true;
 }
 
 bool
@@ -162,7 +162,7 @@ EmbedLiteViewThreadParent::RecvOnLoadFinished()
 {
     LOGNI();
     mView->GetListener()->OnLoadFinished();
-    return false;
+    return true;
 }
 
 bool
@@ -170,7 +170,7 @@ EmbedLiteViewThreadParent::RecvOnLoadRedirect()
 {
     LOGNI();
     mView->GetListener()->OnLoadRedirect();
-    return false;
+    return true;
 }
 
 bool
@@ -178,7 +178,7 @@ EmbedLiteViewThreadParent::RecvOnLoadProgress(const int32_t& aProgress, const in
 {
     LOGNI("progress:%i", aProgress);
     mView->GetListener()->OnLoadProgress(aProgress, aCurTotal, aMaxTotal);
-    return false;
+    return true;
 }
 
 bool
@@ -187,7 +187,7 @@ EmbedLiteViewThreadParent::RecvOnSecurityChanged(const nsCString& aStatus,
 {
     LOGNI();
     mView->GetListener()->OnSecurityChanged(aStatus.get(), aState);
-    return false;
+    return true;
 }
 
 bool
@@ -196,7 +196,7 @@ EmbedLiteViewThreadParent::RecvOnFirstPaint(const int32_t& aX,
 {
     LOGNI();
     mView->GetListener()->OnFirstPaint(aX, aY);
-    return false;
+    return true;
 }
 
 bool
@@ -204,7 +204,7 @@ EmbedLiteViewThreadParent::RecvOnContentLoaded(const nsString& aDocURI)
 {
     LOGNI();
     mView->GetListener()->OnContentLoaded(aDocURI.get());
-    return false;
+    return true;
 }
 
 bool
@@ -222,7 +222,7 @@ EmbedLiteViewThreadParent::RecvOnLinkAdded(const nsString& aHref,
                                       aRel.get(),
                                       aSizes.get(),
                                       aType.get());
-    return false;
+    return true;
 }
 
 bool
@@ -230,7 +230,7 @@ EmbedLiteViewThreadParent::RecvOnWindowOpenClose(const nsString& aType)
 {
     LOGNI();
     mView->GetListener()->OnWindowOpenClose(aType.get());
-    return false;
+    return true;
 }
 
 bool
@@ -244,7 +244,7 @@ EmbedLiteViewThreadParent::RecvOnPopupBlocked(const nsCString& aSpec,
                                          aCharset.get(),
                                          aPopupFeatures.get(),
                                          aPopupWinName.get());
-    return false;
+    return true;
 }
 
 bool
@@ -254,7 +254,7 @@ EmbedLiteViewThreadParent::RecvOnPageShowHide(const nsString& aType,
     LOGNI();
     mView->GetListener()->OnPageShowHide(aType.get(),
                                          aPersisted);
-    return false;
+    return true;
 }
 
 bool
@@ -263,7 +263,7 @@ EmbedLiteViewThreadParent::RecvOnScrolledAreaChanged(const uint32_t& aWidth,
 {
     LOGNI("area[%u,%u]", aWidth, aHeight);
     mView->GetListener()->OnScrolledAreaChanged(aWidth, aHeight);
-    return false;
+    return true;
 }
 
 bool
@@ -272,7 +272,7 @@ EmbedLiteViewThreadParent::RecvOnScrollChanged(const int32_t& offSetX,
 {
     LOGNI("off[%i,%i]", offSetX, offSetY);
     mView->GetListener()->OnScrollChanged(offSetX, offSetY);
-    return false;
+    return true;
 }
 
 bool
@@ -281,7 +281,7 @@ EmbedLiteViewThreadParent::RecvOnObserve(const nsCString& aTopic,
 {
     LOGNI("data:%p, top:%s\n", NS_ConvertUTF16toUTF8(aData).get(), aTopic.get());
     mView->GetListener()->OnObserve(aTopic.get(), aData.get());
-    return false;
+    return true;
 }
 
 bool
@@ -316,6 +316,36 @@ EmbedLiteViewThreadParent::LoadFrameScript(const char* aURI)
 {
     LOGT("uri:%s", aURI);
     unused << SendLoadFrameScript(NS_ConvertUTF8toUTF16(nsDependentCString(aURI)));
+}
+
+void
+EmbedLiteViewThreadParent::DoSendAsyncMessage(const char* aMessageName, const char* aMessage)
+{
+    LOGT("msgName:%s, msg:%s", aMessageName, aMessage);
+    unused << SendAsyncMessage(NS_ConvertUTF8toUTF16(nsDependentCString(aMessageName)),
+                               NS_ConvertUTF8toUTF16(nsDependentCString(aMessage)));
+}
+
+bool
+EmbedLiteViewThreadParent::RecvAsyncMessage(const nsString& aMessage,
+                                            const nsString& aData)
+{
+    LOGT("msg:%s, data:%s", NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());
+    mView->GetListener()->RecvAsyncMessage(NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());
+    return true;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvSyncMessage(const nsString& aMessage,
+                                           const nsString& aJSON,
+                                           InfallibleTArray<nsString>* aJSONRetVal)
+{
+    LOGT("msg:%s, data:%s", NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aJSON).get());
+    const char* retval = mView->GetListener()->RecvSyncMessage(NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aJSON).get());
+    if (retval) {
+        aJSONRetVal->AppendElement(NS_ConvertUTF8toUTF16(nsDependentCString(retval)));
+    }
+    return true;
 }
 
 void

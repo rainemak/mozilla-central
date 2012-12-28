@@ -170,6 +170,10 @@ EmbedLiteApp::Stop()
             it->second = nullptr;
         }
         mDestroying = true;
+    } else if (!mDestroying) {
+        mDestroying = true;
+        mUILoop->PostTask(FROM_HERE,
+                          NewRunnableMethod(STHREADAPP(), &EmbedLiteAppThreadParent::SendPreDestroy));
     } else {
         NS_ASSERTION(mUILoop, "Start was not called before stop");
         mUILoop->DoQuit();
@@ -221,6 +225,7 @@ EmbedLiteView* EmbedLiteApp::GetViewByID(uint32_t id)
 void
 EmbedLiteApp::ChildReadyToDestroy()
 {
+    LOGT();
     if (mDestroying) {
         mUILoop->PostTask(FROM_HERE,
                           NewRunnableFunction(&_FinalStop, this));

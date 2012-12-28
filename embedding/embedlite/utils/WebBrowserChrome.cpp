@@ -43,6 +43,7 @@
 #define MOZ_pagehide "pagehide"
 #define MOZ_scroll "scroll"
 #define MOZ_MozScrolledAreaChanged "MozScrolledAreaChanged"
+#define MOZ_DOMMetaAdded "DOMMetaAdded"
 
 WebBrowserChrome::WebBrowserChrome(nsIEmbedBrowserChromeListener* aListener)
  : mChromeFlags(0)
@@ -375,7 +376,13 @@ WebBrowserChrome::HandleEvent(nsIDOMEvent* aEvent)
     if (aEvent) {
         aEvent->GetType(type);
     }
+
     LOGT("Event:'%s'", NS_ConvertUTF16toUTF8(type).get());
+    if (type.EqualsLiteral(MOZ_DOMMetaAdded)) {
+        mListener->OnMetaAdded();
+        return NS_OK;
+    }
+
     nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(mWebBrowser);
     nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebBrowser);
     nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
@@ -727,6 +734,7 @@ void WebBrowserChrome::SetEventHandler()
     target->AddEventListener(NS_LITERAL_STRING(MOZ_pagehide), this,  PR_FALSE);
     target->AddEventListener(NS_LITERAL_STRING(MOZ_MozScrolledAreaChanged), this,  PR_FALSE);
     target->AddEventListener(NS_LITERAL_STRING(MOZ_scroll), this,  PR_FALSE);
+    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMMetaAdded), this,  PR_FALSE);
 }
 
 void WebBrowserChrome::RemoveEventHandler()
@@ -753,6 +761,7 @@ void WebBrowserChrome::RemoveEventHandler()
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_pagehide), this,  PR_FALSE);
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_MozScrolledAreaChanged), this,  PR_FALSE);
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_scroll), this,  PR_FALSE);
+    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMMetaAdded), this,  PR_FALSE);
 }
 
 void WebBrowserChrome::AddObserver(const char* topic)

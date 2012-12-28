@@ -88,6 +88,13 @@ EmbedLiteView::LoadFrameScript(const char* aURI)
 }
 
 void
+EmbedLiteView::SendAsyncMessage(const char* aMessageName, const char* aMessage)
+{
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->DoSendAsyncMessage(aMessageName, aMessage);
+}
+
+void
 EmbedLiteView::RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth)
 {
     LOGT("data:%p, sz[%i,%i], stride:%i, depth:%i", aData, imgW, imgH, stride, depth);

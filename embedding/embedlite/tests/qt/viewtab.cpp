@@ -84,7 +84,21 @@ void ViewTab::ViewInitialized()
     if (!pendingUrl.isEmpty()) {
         LoadURL(pendingUrl);
     }
-    mView->LoadFrameScript("chrome://global/embedlite/embedTestScript.js");
+    mView->LoadFrameScript("chrome://global/content/embedTestScript.js");
+    mView->SendAsyncMessage("EmbedMsg::HelloChildScript", "{}");
+}
+
+void
+ViewTab::RecvAsyncMessage(const char* aMessage, const char* aData)
+{
+    printf(">>>>>>Func:%s::%d msg:%s, data:%s\n", __PRETTY_FUNCTION__, __LINE__, aMessage, aData);
+}
+
+char*
+ViewTab::RecvSyncMessage(const char* aMessage, const char* aData)
+{
+    printf(">>>>>>Func:%s::%d msg:%s, data:%s\n", __PRETTY_FUNCTION__, __LINE__, aMessage, aData);
+    return "{\"id\": \"test\", \"val\": \"5\"}";
 }
 
 void ViewTab::Destroyed()
