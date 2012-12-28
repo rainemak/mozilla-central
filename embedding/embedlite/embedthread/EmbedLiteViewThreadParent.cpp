@@ -112,7 +112,6 @@ EmbedLiteViewThreadParent::UpdateScrollController()
         }
         mController = new AsyncPanZoomController(mGeckoController, type);
         mController->SetCompositorParent(mCompositor);
-        mController->UpdateZoomConstraints(true, 0.3f, 4.0f);
     }
 }
 

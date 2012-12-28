@@ -158,7 +158,7 @@ bool ViewTab::event(QEvent* event)
     case QEvent::TouchBegin:
     case QEvent::TouchEnd:
     case QEvent::TouchUpdate:
-//        touchEvent(static_cast<QTouchEvent*>(event));
+        touchEvent(static_cast<QTouchEvent*>(event));
         return true;
     case QEvent::Show:
         printf(">>>>>>Func:%s::%d Event Show\n", __PRETTY_FUNCTION__, __LINE__);
@@ -233,15 +233,13 @@ void ViewTab::SetIsActive(bool aIsActive, bool aForce)
 void ViewTab::mouseMoveEvent(QGraphicsSceneMouseEvent* e)
 {
     if (mInitialized) {
-        nsIntPoint lastPos(e->lastPos().x(), e->lastPos().y());
-        nsIntPoint newPos(e->pos().x(), e->pos().y());
-        MultiTouchInput event(MultiTouchInput::MULTITOUCH_MOVE, mPanningTime.elapsed());
-        event.mTouches.AppendElement(SingleTouchData(0,
-                                     newPos,
-                                     nsIntPoint(1, 1),
-                                     180.0f,
-                                     1.0f));
-        mView->ReceiveInputEvent(event);
+//        MultiTouchInput event(MultiTouchInput::MULTITOUCH_MOVE, mPanningTime.elapsed());
+//        event.mTouches.AppendElement(SingleTouchData(0,
+//                                     nsIntPoint(e->pos().x(), e->pos().y()),
+//                                     nsIntPoint(1, 1),
+//                                     180.0f,
+//                                     1.0f));
+//        mView->ReceiveInputEvent(event);
     }
 }
 
@@ -249,26 +247,25 @@ void ViewTab::mousePressEvent(QGraphicsSceneMouseEvent* e)
 {
     mPanningTime.restart();
     if (mInitialized) {
-        MultiTouchInput event(MultiTouchInput::MULTITOUCH_START, mPanningTime.elapsed());
-        event.mTouches.AppendElement(SingleTouchData(0,
-                                     nsIntPoint(e->pos().x(), e->pos().y()),
-                                     nsIntPoint(1, 1),
-                                     180.0f,
-                                     1.0f));
-        mView->ReceiveInputEvent(event);
+//        MultiTouchInput event(MultiTouchInput::MULTITOUCH_START, mPanningTime.elapsed());
+//        event.mTouches.AppendElement(SingleTouchData(0,
+//                                     nsIntPoint(e->pos().x(), e->pos().y()),
+//                                     nsIntPoint(1, 1),
+//                                     180.0f,
+//                                     1.0f));
+//        mView->ReceiveInputEvent(event);
     }
 }
 
 void ViewTab::mouseReleaseEvent(QGraphicsSceneMouseEvent* e)
 {
     if (mInitialized) {
-        MultiTouchInput event(MultiTouchInput::MULTITOUCH_END, mPanningTime.elapsed());
-        event.mTouches.AppendElement(SingleTouchData(0,
-                                     nsIntPoint(e->pos().x(), e->pos().y()),
-                                     nsIntPoint(1, 1),
-                                     180.0f,
-                                     1.0f));
-        mView->ReceiveInputEvent(event);
-
+//        MultiTouchInput event(MultiTouchInput::MULTITOUCH_END, mPanningTime.elapsed());
+//        event.mTouches.AppendElement(SingleTouchData(0,
+//                                     nsIntPoint(e->pos().x(), e->pos().y()),
+//                                     nsIntPoint(1, 1),
+//                                     180.0f,
+//                                     1.0f));
+//        mView->ReceiveInputEvent(event);
     }
 }
