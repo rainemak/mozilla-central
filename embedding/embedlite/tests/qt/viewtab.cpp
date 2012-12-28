@@ -25,6 +25,7 @@ ViewTab::ViewTab(EmbedContext* aContext, QSize aSize, int flags, QGraphicsWidget
     , mView(NULL)
     , mContext(aContext)
     , mInitialized(false)
+    , mPendingTouchEvent(false)
 {
     setAcceptHoverEvents(true);
     setAcceptTouchEvents(true);
@@ -189,6 +190,10 @@ bool ViewTab::event(QEvent* event)
 
 void ViewTab::touchEvent(QTouchEvent* event)
 {
+    mPendingTouchEvent = event->type() == QEvent::TouchEnd ? false : true;
+    // Always accept the QTouchEvent so that we'll receive also TouchUpdate and TouchEnd events
+    event->setAccepted(true);
+
     MultiTouchInput meventStart(MultiTouchInput::MULTITOUCH_START, mTouchTime.elapsed());
     MultiTouchInput meventMove(MultiTouchInput::MULTITOUCH_MOVE, mTouchTime.elapsed());
     MultiTouchInput meventEnd(MultiTouchInput::MULTITOUCH_END, mTouchTime.elapsed());
@@ -231,7 +236,6 @@ void ViewTab::touchEvent(QTouchEvent* event)
         mView->ReceiveInputEvent(meventMove);
     if (meventEnd.mTouches.Length())
         mView->ReceiveInputEvent(meventEnd);
-    event->accept();
 }
 
 void ViewTab::wheelEvent(QGraphicsSceneWheelEvent* aEvent)
@@ -259,19 +263,55 @@ void ViewTab::SetIsActive(bool aIsActive, bool aForce)
 
 void ViewTab::mouseMoveEvent(QGraphicsSceneMouseEvent* e)
 {
-    if (mInitialized) {
+    if (mInitialized && !mPendingTouchEvent) {
+        const bool accepted = e->isAccepted();
+        MultiTouchInput event(MultiTouchInput::MULTITOUCH_MOVE, mPanningTime.elapsed());
+        event.mTouches.AppendElement(SingleTouchData(0,
+                                     nsIntPoint(e->pos().x(), e->pos().y()),
+                                     nsIntPoint(1, 1),
+                                     180.0f,
+                                     1.0f));
+        mView->ReceiveInputEvent(event);
+        e->setAccepted(accepted);
     }
+
+    if (!e->isAccepted())
+        QGraphicsItem::mouseMoveEvent(e);
 }
 
 void ViewTab::mousePressEvent(QGraphicsSceneMouseEvent* e)
 {
     mPanningTime.restart();
-    if (mInitialized) {
+    if (mInitialized && !mPendingTouchEvent) {
+        const bool accepted = e->isAccepted();
+        MultiTouchInput event(MultiTouchInput::MULTITOUCH_START, mPanningTime.elapsed());
+        event.mTouches.AppendElement(SingleTouchData(0,
+                                     nsIntPoint(e->pos().x(), e->pos().y()),
+                                     nsIntPoint(1, 1),
+                                     180.0f,
+                                     1.0f));
+        mView->ReceiveInputEvent(event);
+        e->setAccepted(accepted);
     }
+
+    if (!e->isAccepted())
+        QGraphicsItem::mouseMoveEvent(e);
 }
 
 void ViewTab::mouseReleaseEvent(QGraphicsSceneMouseEvent* e)
 {
-    if (mInitialized) {
+    if (mInitialized && !mPendingTouchEvent) {
+        const bool accepted = e->isAccepted();
+        MultiTouchInput event(MultiTouchInput::MULTITOUCH_END, mPanningTime.elapsed());
+        event.mTouches.AppendElement(SingleTouchData(0,
+                                     nsIntPoint(e->pos().x(), e->pos().y()),
+                                     nsIntPoint(1, 1),
+                                     180.0f,
+                                     1.0f));
+        mView->ReceiveInputEvent(event);
+        e->setAccepted(accepted);
     }
+
+    if (!e->isAccepted())
+        QGraphicsItem::mouseMoveEvent(e);
 }

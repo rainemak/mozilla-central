@@ -17,7 +17,7 @@ namespace embedlite {
 
 class EmbedLiteView;
 class EmbedLiteCompositorParent;
-class EmbedGeckoContentController;
+class EmbedContentController;
 class EmbedLiteViewThreadParent : public PEmbedLiteViewParent,
                                   public EmbedLiteViewImplIface
 {
@@ -139,7 +139,7 @@ private:
     float mLastScale;
 
     RefPtr<mozilla::layers::AsyncPanZoomController> mController;
-    RefPtr<EmbedGeckoContentController> mGeckoController;
+    RefPtr<EmbedContentController> mGeckoController;
 
     gfxSize mViewSize;
 

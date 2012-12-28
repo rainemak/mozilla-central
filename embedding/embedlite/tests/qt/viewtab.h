@@ -66,6 +66,7 @@ private:
     QTime mTouchTime;
     QSize mSize;
     QImage mTempBufferImage;
+    bool mPendingTouchEvent;
 };
 
 #endif // VIEWTAB_H

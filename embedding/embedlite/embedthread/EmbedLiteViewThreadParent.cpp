@@ -20,43 +20,84 @@ using namespace mozilla::layers;
 namespace mozilla {
 namespace embedlite {
 
-class EmbedGeckoContentController : public GeckoContentController
-{
+class EmbedContentController : public GeckoContentController {
 public:
-    NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EmbedGeckoContentController)
+    EmbedContentController(EmbedLiteViewThreadParent* aRenderFrame)
+      : mUILoop(MessageLoop::current())
+      , mRenderFrame(aRenderFrame)
+    { }
 
-    virtual void RequestContentRepaint(const FrameMetrics& aFrameMetrics)
+    virtual void RequestContentRepaint(const FrameMetrics& aFrameMetrics) MOZ_OVERRIDE
     {
-        LOGC("EmbedGeckoContentController", "");
-        if (mParent) {
-            unused << mParent->SendUpdateFrame(aFrameMetrics);
-        }
-    }
-    virtual void HandleDoubleTap(const nsIntPoint& aPoint)
-    {
-        LOGC("EmbedGeckoContentController", "pt[%i,%i]", aPoint.x, aPoint.y);
-        if (mParent) {
-            unused << mParent->SendHandleDoubleTap(aPoint);
-        }
-    }
-    virtual void HandleSingleTap(const nsIntPoint& aPoint)
-    {
-        LOGC("EmbedGeckoContentController", "pt[%i,%i]", aPoint.x, aPoint.y);
-        if (mParent) {
-            unused << mParent->SendHandleSingleTap(aPoint);
-        }
-    }
-    virtual void HandleLongTap(const nsIntPoint& aPoint)
-    {
-        LOGC("EmbedGeckoContentController", "pt[%i,%i]", aPoint.x, aPoint.y);
-        if (mParent) {
-            unused << mParent->SendHandleLongTap(aPoint);
-        }
+        // We always need to post requests into the "UI thread" otherwise the
+        // requests may get processed out of order.
+        LOGT();
+        mUILoop->PostTask(
+            FROM_HERE,
+            NewRunnableMethod(this, &EmbedContentController::DoRequestContentRepaint,
+                              aFrameMetrics));
     }
 
-    EmbedGeckoContentController() {}
-    virtual ~EmbedGeckoContentController() {}
-    EmbedLiteViewThreadParent* mParent;
+    virtual void HandleDoubleTap(const nsIntPoint& aPoint) MOZ_OVERRIDE
+    {
+        if (MessageLoop::current() != mUILoop) {
+            // We have to send this message from the "UI thread" (main
+            // thread).
+            mUILoop->PostTask(
+                FROM_HERE,
+                NewRunnableMethod(this, &EmbedContentController::HandleDoubleTap,
+                                  aPoint));
+            return;
+        }
+        if (mRenderFrame) {
+            unused << mRenderFrame->SendHandleDoubleTap(aPoint);
+        }
+    }
+
+    virtual void HandleSingleTap(const nsIntPoint& aPoint) MOZ_OVERRIDE
+    {
+        if (MessageLoop::current() != mUILoop) {
+            // We have to send this message from the "UI thread" (main
+            // thread).
+            mUILoop->PostTask(
+                FROM_HERE,
+                NewRunnableMethod(this, &EmbedContentController::HandleSingleTap,
+                                  aPoint));
+            return;
+        }
+        if (mRenderFrame) {
+            unused << mRenderFrame->SendHandleSingleTap(aPoint);
+        }
+    }
+
+    virtual void HandleLongTap(const nsIntPoint& aPoint) MOZ_OVERRIDE
+    {
+        if (MessageLoop::current() != mUILoop) {
+            // We have to send this message from the "UI thread" (main
+            // thread).
+            mUILoop->PostTask(
+                FROM_HERE,
+                NewRunnableMethod(this, &EmbedContentController::HandleLongTap,
+                                  aPoint));
+            return;
+        }
+        if (mRenderFrame) {
+            unused << mRenderFrame->SendHandleLongTap(aPoint);
+        }
+    }
+
+    void ClearRenderFrame() { mRenderFrame = nullptr; }
+
+private:
+    void DoRequestContentRepaint(const FrameMetrics& aFrameMetrics)
+    {
+        if (mRenderFrame) {
+            unused << mRenderFrame->SendUpdateFrame(aFrameMetrics);
+        }
+    }
+
+    MessageLoop* mUILoop;
+    EmbedLiteViewThreadParent* mRenderFrame;
 };
 
 EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id)
@@ -68,7 +109,9 @@ EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id)
 {
     MOZ_COUNT_CTOR(EmbedLiteViewThreadParent);
     LOGT("id:%u", mId);
+    NS_ASSERTION(mView, "View not found");
     mView->SetImpl(this);
+    mGeckoController = new EmbedContentController(this);
 }
 
 EmbedLiteViewThreadParent::~EmbedLiteViewThreadParent()
@@ -76,7 +119,7 @@ EmbedLiteViewThreadParent::~EmbedLiteViewThreadParent()
     MOZ_COUNT_DTOR(EmbedLiteViewThreadParent);
     LOGT();
     if (mGeckoController) {
-        mGeckoController->mParent = NULL;
+        mGeckoController->ClearRenderFrame();
     }
     if (mView) {
         mView->SetImpl(NULL);
@@ -87,6 +130,9 @@ void
 EmbedLiteViewThreadParent::ActorDestroy(ActorDestroyReason aWhy)
 {
     LOGT("reason:%i", aWhy);
+    if (mGeckoController) {
+        mGeckoController->ClearRenderFrame();
+    }
 }
 
 void
@@ -94,8 +140,6 @@ EmbedLiteViewThreadParent::SetCompositor(EmbedLiteCompositorParent* aCompositor)
 {
     LOGT();
     mCompositor = aCompositor;
-    mGeckoController = new EmbedGeckoContentController();
-    mGeckoController->mParent = this;
     UpdateScrollController();
 }
 
@@ -103,6 +147,7 @@ void
 EmbedLiteViewThreadParent::UpdateScrollController()
 {
     mController = nullptr;
+    NS_ENSURE_TRUE(mView, );
     if (mView->GetPanZoomControlType() != EmbedLiteView::PanZoomControlType::EXTERNAL) {
         AsyncPanZoomController::GestureBehavior type;
         if (mView->GetPanZoomControlType() == EmbedLiteView::PanZoomControlType::GECKO_SIMPLE) {
@@ -127,6 +172,7 @@ EmbedLiteViewThreadParent::GetDefaultPanZoomController()
 bool
 EmbedLiteViewThreadParent::RecvInitialized()
 {
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->ViewInitialized();
     return true;
 }
@@ -135,6 +181,7 @@ bool
 EmbedLiteViewThreadParent::RecvOnTitleChanged(const nsString& aTitle)
 {
     LOGNI();
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnTitleChanged(aTitle.get());
     return true;
 }
@@ -145,6 +192,7 @@ EmbedLiteViewThreadParent::RecvOnLocationChanged(const nsCString& aLocation,
                                                  const bool& aCanGoForward)
 {
     LOGNI();
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnLocationChanged(aLocation.get(), aCanGoBack, aCanGoForward);
     return true;
 }
@@ -153,6 +201,7 @@ bool
 EmbedLiteViewThreadParent::RecvOnLoadStarted(const nsCString& aLocation)
 {
     LOGNI();
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnLoadStarted(aLocation.get());
     return true;
 }
@@ -161,6 +210,7 @@ bool
 EmbedLiteViewThreadParent::RecvOnLoadFinished()
 {
     LOGNI();
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnLoadFinished();
     return true;
 }
@@ -169,6 +219,7 @@ bool
 EmbedLiteViewThreadParent::RecvOnLoadRedirect()
 {
     LOGNI();
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnLoadRedirect();
     return true;
 }
@@ -177,6 +228,7 @@ bool
 EmbedLiteViewThreadParent::RecvOnLoadProgress(const int32_t& aProgress, const int32_t& aCurTotal, const int32_t& aMaxTotal)
 {
     LOGNI("progress:%i", aProgress);
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnLoadProgress(aProgress, aCurTotal, aMaxTotal);
     return true;
 }
@@ -186,6 +238,7 @@ EmbedLiteViewThreadParent::RecvOnSecurityChanged(const nsCString& aStatus,
                                                  const uint32_t& aState)
 {
     LOGNI();
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnSecurityChanged(aStatus.get(), aState);
     return true;
 }
@@ -195,6 +248,7 @@ EmbedLiteViewThreadParent::RecvOnFirstPaint(const int32_t& aX,
                                             const int32_t& aY)
 {
     LOGNI();
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnFirstPaint(aX, aY);
     return true;
 }
@@ -203,6 +257,7 @@ bool
 EmbedLiteViewThreadParent::RecvOnContentLoaded(const nsString& aDocURI)
 {
     LOGNI();
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnContentLoaded(aDocURI.get());
     return true;
 }
@@ -216,6 +271,7 @@ EmbedLiteViewThreadParent::RecvOnLinkAdded(const nsString& aHref,
                                            const nsString& aType)
 {
     LOGNI();
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnLinkAdded(aHref.get(),
                                       aCharset.get(),
                                       aTitle.get(),
@@ -229,6 +285,7 @@ bool
 EmbedLiteViewThreadParent::RecvOnWindowOpenClose(const nsString& aType)
 {
     LOGNI();
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnWindowOpenClose(aType.get());
     return true;
 }
@@ -240,6 +297,7 @@ EmbedLiteViewThreadParent::RecvOnPopupBlocked(const nsCString& aSpec,
                                               const nsString& aPopupWinName)
 {
     LOGNI();
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnPopupBlocked(aSpec.get(),
                                          aCharset.get(),
                                          aPopupFeatures.get(),
@@ -252,6 +310,7 @@ EmbedLiteViewThreadParent::RecvOnPageShowHide(const nsString& aType,
                                               const bool& aPersisted)
 {
     LOGNI();
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnPageShowHide(aType.get(),
                                          aPersisted);
     return true;
@@ -262,6 +321,7 @@ EmbedLiteViewThreadParent::RecvOnScrolledAreaChanged(const uint32_t& aWidth,
                                                      const uint32_t& aHeight)
 {
     LOGNI("area[%u,%u]", aWidth, aHeight);
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnScrolledAreaChanged(aWidth, aHeight);
     return true;
 }
@@ -271,6 +331,7 @@ EmbedLiteViewThreadParent::RecvOnScrollChanged(const int32_t& offSetX,
                                                const int32_t& offSetY)
 {
     LOGNI("off[%i,%i]", offSetX, offSetY);
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnScrollChanged(offSetX, offSetY);
     return true;
 }
@@ -280,6 +341,7 @@ EmbedLiteViewThreadParent::RecvOnObserve(const nsCString& aTopic,
                                          const nsString& aData)
 {
     LOGNI("data:%p, top:%s\n", NS_ConvertUTF16toUTF8(aData).get(), aTopic.get());
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->OnObserve(aTopic.get(), aData.get());
     return true;
 }
@@ -331,6 +393,7 @@ EmbedLiteViewThreadParent::RecvAsyncMessage(const nsString& aMessage,
                                             const nsString& aData)
 {
     LOGT("msg:%s, data:%s", NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());
+    NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->RecvAsyncMessage(NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());
     return true;
 }
@@ -341,7 +404,11 @@ EmbedLiteViewThreadParent::RecvSyncMessage(const nsString& aMessage,
                                            InfallibleTArray<nsString>* aJSONRetVal)
 {
     LOGT("msg:%s, data:%s", NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aJSON).get());
-    const char* retval = mView->GetListener()->RecvSyncMessage(NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aJSON).get());
+    NS_ENSURE_TRUE(mView, false);
+    const char* retval =
+        mView->GetListener()->
+            RecvSyncMessage(NS_ConvertUTF16toUTF8(aMessage).get(),
+                            NS_ConvertUTF16toUTF8(aJSON).get());
     if (retval) {
         aJSONRetVal->AppendElement(NS_ConvertUTF8toUTF16(nsDependentCString(retval)));
     }

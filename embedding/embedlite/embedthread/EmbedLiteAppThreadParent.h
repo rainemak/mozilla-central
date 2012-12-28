@@ -30,13 +30,6 @@ public:
     virtual bool
     RecvReadyToShutdown();
 
-    /**
-     * Returns the compositor thread's message loop.
-     *
-     * This message loop is used by CompositorParent and ImageBridgeParent.
-     */
-    MessageLoop* EmbedLiteAppLoop();
-
     static EmbedLiteAppThreadParent* GetInstance();
 
 protected:
