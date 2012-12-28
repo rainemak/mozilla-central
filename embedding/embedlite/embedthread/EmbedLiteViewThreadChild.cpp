@@ -20,6 +20,7 @@
 
 #include "nsIDOMWindowUtils.h"
 #include "nsPIDOMWindow.h"
+#include "nsIMessageManager.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
 
 using namespace mozilla::layers;
@@ -164,6 +165,20 @@ EmbedLiteViewThreadChild::RecvLoadURL(const nsString& url)
 }
 
 bool
+EmbedLiteViewThreadChild::RecvLoadFrameScript(const nsString& uri)
+{
+    nsCOMPtr<nsIMessageListenerManager> mm = do_GetService("@mozilla.org/globalmessagemanager;1");
+    if (mm) {
+        nsCOMPtr<nsIFrameScriptLoader> scl = do_QueryInterface(mm);
+        if (scl) {
+            scl->LoadFrameScript(uri, false);
+        }
+    }
+
+    return true;
+}
+
+bool
 EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
 {
     mViewSize = aSize;
@@ -175,6 +190,12 @@ EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
     nsCOMPtr<nsIBaseWindow> baseWindow = do_QueryInterface(mWebBrowser);
     baseWindow->SetPositionAndSize(0, 0, mViewSize.width, mViewSize.height, true);
     baseWindow->SetVisibility(true);
+    return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvSetDisplayPort(const gfxRect& aRect)
+{
     return true;
 }
 

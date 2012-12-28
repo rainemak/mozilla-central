@@ -19,6 +19,7 @@ class EmbedLiteViewImplIface
 {
 public:
     virtual void LoadURL(const char*) {}
+    virtual void LoadFrameScript(const char* aURI) { }
     virtual void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth) {}
     virtual void RenderGL() {}
     virtual void SetIsActive(bool) {}
@@ -27,6 +28,7 @@ public:
     virtual void SetGLViewTransform(gfxMatrix matrix) {}
     virtual void SetTransformation(float aScale, nsIntPoint aScrollOffset) {}
     virtual void ScheduleRender() {}
+    virtual void SetDisplayPort(gfxRect& aRect) {}
     virtual void SetClipping(nsIntRect aClipRect) {}
     virtual bool ScrollBy(int aDX, int aDY, bool aDoOverflow = false) { return false; }
     virtual void ReceiveInputEvent(const InputData& aEvent) {}

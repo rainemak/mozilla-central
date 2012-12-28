@@ -84,6 +84,7 @@ void ViewTab::ViewInitialized()
     if (!pendingUrl.isEmpty()) {
         LoadURL(pendingUrl);
     }
+    mView->LoadFrameScript("chrome://global/embedlite/embedTestScript.js");
 }
 
 void ViewTab::Destroyed()
@@ -130,9 +131,6 @@ void ViewTab::resizeEvent(QGraphicsSceneResizeEvent* ev)
 void ViewTab::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, QWidget* widget)
 {
     QRect r = opt ? opt->exposedRect.toRect() : boundingRect().toRect();
-    bool pt = false;
-    painter->fillRect(r, pt ? Qt::red : Qt::blue);
-    pt = !pt;
     if (mInitialized) {
         QMatrix affine = painter->transform().toAffine();
         gfxMatrix matr(affine.m11(), affine.m12(), affine.m21(), affine.m22(), affine.dx(), affine.dy());
@@ -143,6 +141,7 @@ void ViewTab::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, QWid
             if (mTempBufferImage.isNull() || mTempBufferImage.width() != r.width() || mTempBufferImage.height() != r.height()) {
                 mTempBufferImage = QImage(r.size(), QImage::Format_RGB16);
             }
+            mTempBufferImage.fill(Qt::white);
             mView->RenderToImage(mTempBufferImage.bits(), mTempBufferImage.width(),
                                  mTempBufferImage.height(), mTempBufferImage.bytesPerLine(),
                                  mTempBufferImage.depth());

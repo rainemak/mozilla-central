@@ -6,11 +6,12 @@
 #ifndef MOZ_EMBED_LOG_H
 #define MOZ_EMBED_LOG_H
 
+#define FORCE_PR_LOG
+#define PR_LOGGING 1
+
 #include "prlog.h"
 
 #include <stdio.h>
-
-#define PR_LOGGING 1
 
 #ifdef PR_LOGGING
 extern PRLogModuleInfo* GetEmbedCommonLog(const char* aModule);

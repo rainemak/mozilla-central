@@ -66,6 +66,7 @@ public:
 
     // Embed Interface
     virtual void LoadURL(const char* aUrl);
+    virtual void LoadFrameScript(const char* aURI);
 
     // Input Interface
     enum PanZoomControlType { EXTERNAL, GECKO_SIMPLE, GECKO_TOUCH };
@@ -106,6 +107,7 @@ public:
 
     // Set Custom transform for compositor layers tree, Fast Scroll/Zoom
     virtual void SetTransformation(float aScale, nsIntPoint aScrollOffset);
+    virtual void SetDisplayPort(gfxRect& aRect);
     virtual void ScheduleRender();
 
 private:

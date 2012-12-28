@@ -75,9 +75,7 @@ void EmbedContext::onLastWindowClosed()
 void EmbedContext::contextInitialized()
 {
     printf("EmbedContext moz embed initialized\n");
-    mInitialized = true;
-    GetApp()->LoadGlobalStyleSheet("file:///usr/share/qmozembed/scroll_styles.css", true);
-    emit geckoContextInitialized();
+    Initialized();
 }
 
 void
@@ -167,7 +165,7 @@ void EmbedContext::Initialized()
     // TODO Fix pending prefs init in embedApp
     mInitialized = true;
     setDefaultPrefs();
-    GetApp()->LoadGlobalStyleSheet("chrome://global/content/embedScrollStyles.css", true);
+    GetApp()->LoadGlobalStyleSheet("chrome://global/embedlite/embedScrollStyles.css", true);
     emit geckoContextInitialized();
 }
 

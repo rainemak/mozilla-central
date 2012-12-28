@@ -307,8 +307,15 @@ EmbedLiteViewThreadParent::RecvZoomToRect(const gfxRect& aRect)
 void
 EmbedLiteViewThreadParent::LoadURL(const char* aUrl)
 {
-    LOGT();
-    unused << SendLoadURL(NS_ConvertUTF8toUTF16(nsCString(aUrl)));
+    LOGT("url:%s", aUrl);
+    unused << SendLoadURL(NS_ConvertUTF8toUTF16(nsDependentCString(aUrl)));
+}
+
+void
+EmbedLiteViewThreadParent::LoadFrameScript(const char* aURI)
+{
+    LOGT("uri:%s", aURI);
+    unused << SendLoadFrameScript(NS_ConvertUTF8toUTF16(nsDependentCString(aURI)));
 }
 
 void
@@ -384,6 +391,12 @@ EmbedLiteViewThreadParent::ScheduleRender()
     if (mCompositor) {
         mCompositor->ScheduleRenderOnCompositorThread();
     }
+}
+
+void
+EmbedLiteViewThreadParent::SetDisplayPort(gfxRect& aRect)
+{
+//    unused << SendSetDisplayPort(aRect);
 }
 
 void

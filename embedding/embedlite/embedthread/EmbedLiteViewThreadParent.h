@@ -27,6 +27,7 @@ public:
     virtual ~EmbedLiteViewThreadParent();
 
     virtual void LoadURL(const char*);
+    virtual void LoadFrameScript(const char* aURI);
     virtual void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
     virtual void RenderGL();
     virtual void SetViewSize(int width, int height);
@@ -34,6 +35,7 @@ public:
     virtual void SetGLViewTransform(gfxMatrix matrix);
     virtual void SetTransformation(float aScale, nsIntPoint aScrollOffset);
     virtual void ScheduleRender();
+    virtual void SetDisplayPort(gfxRect& aRect);
     virtual void UpdateScrollController();
     virtual bool ScrollBy(int aDX, int aDY, bool aDoOverflow = false);
     virtual void MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);

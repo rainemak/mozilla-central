@@ -33,7 +33,9 @@ protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
     virtual bool RecvDestroy();
     virtual bool RecvLoadURL(const nsString&);
+    virtual bool RecvLoadFrameScript(const nsString&);
     virtual bool RecvSetViewSize(const gfxSize&);
+    virtual bool RecvSetDisplayPort(const gfxRect&);
 
     virtual bool RecvUpdateFrame(const mozilla::layers::FrameMetrics& aFrameMetrics);
     virtual bool RecvHandleDoubleTap(const nsIntPoint& aPoint);

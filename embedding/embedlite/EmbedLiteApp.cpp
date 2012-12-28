@@ -30,7 +30,6 @@ EmbedLiteApp* EmbedLiteApp::sSingleton = nullptr;
 EmbedLiteApp*
 EmbedLiteApp::GetInstance()
 {
-    LOGT();
     if (!sSingleton) {
         sSingleton = new EmbedLiteApp();
         NS_ASSERTION(sSingleton, "not initialized");

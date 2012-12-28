@@ -68,7 +68,6 @@ EmbedLiteView::SetImpl(EmbedLiteViewImplIface* aViewImpl)
 EmbedLiteViewImplIface*
 EmbedLiteView::GetImpl()
 {
-    LOGT();
     return mViewImpl;
 }
 
@@ -78,6 +77,14 @@ EmbedLiteView::LoadURL(const char* aUrl)
     LOGT("url:%s", aUrl);
     NS_ENSURE_TRUE(mViewImpl, );
     mViewImpl->LoadURL(aUrl);
+}
+
+void
+EmbedLiteView::LoadFrameScript(const char* aURI)
+{
+    LOGT("uri:%s, mViewImpl:%p", aURI, mViewImpl);
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->LoadFrameScript(aURI);
 }
 
 void
@@ -204,6 +211,13 @@ EmbedLiteView::ScheduleRender()
 {
     NS_ENSURE_TRUE(mViewImpl, );
     mViewImpl->ScheduleRender();
+}
+
+void
+EmbedLiteView::SetDisplayPort(gfxRect& aRect)
+{
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->SetDisplayPort(aRect);
 }
 
 bool
