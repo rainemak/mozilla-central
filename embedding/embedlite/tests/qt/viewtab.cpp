@@ -67,7 +67,6 @@ void ViewTab::onContextInitialized()
 {
     mView = mContext->GetApp()->CreateView();
     mView->SetListener(this);
-    mView->SetScrollingMode(true);
 }
 
 void ViewTab::SetupGLViewPort()

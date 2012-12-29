@@ -185,7 +185,6 @@ EmbedLiteCompositorParent::GetEmbedPanZoomController()
 AsyncPanZoomController*
 EmbedLiteCompositorParent::GetDefaultPanZoomController()
 {
-    LOGT("t");
     return GetEmbedPanZoomController();
 }
 
