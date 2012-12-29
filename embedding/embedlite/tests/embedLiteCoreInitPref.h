@@ -62,4 +62,5 @@ void InitDefaultEmbedBrowserPrefs(EmbedLiteApp* aApp)
     aApp->SetBoolPref("layers.offmainthreadcomposition.animate-opacity", true);
     aApp->SetBoolPref("layers.offmainthreadcomposition.animate-transform", true);
     aApp->SetBoolPref("layers.async-video.enabled", true);
+    aApp->SetBoolPref("font.size.inflation.disabledInMasterProcess", true);
 }

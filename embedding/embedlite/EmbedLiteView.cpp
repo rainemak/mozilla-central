@@ -27,7 +27,6 @@ EmbedLiteView::EmbedLiteView(EmbedLiteApp* aApp)
   : mApp(aApp)
   , mListener(new FakeListener())
   , mViewImpl(NULL)
-  , mScrollingMode(false)
   , mPanControlType(PanZoomControlType::GECKO_TOUCH)
 {
     LOGT();

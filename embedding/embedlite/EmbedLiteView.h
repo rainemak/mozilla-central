@@ -83,10 +83,6 @@ public:
     virtual void PinchUpdate(int x, int y, float scale);
     virtual void PinchEnd(int x, int y, float scale);
 
-    // Scrolling mode, enable internal smart scroll/zoom component
-    virtual void SetScrollingMode(bool aEnabled) { mScrollingMode = aEnabled; }
-    virtual bool GetScrollingMode() { return mScrollingMode; }
-
     // Setup renderable view size
     virtual void SetViewSize(int width, int height);
 
@@ -126,7 +122,6 @@ private:
     EmbedLiteApp* mApp;
     EmbedLiteViewListener* mListener;
     EmbedLiteViewImplIface* mViewImpl;
-    bool mScrollingMode;
     PanZoomControlType mPanControlType;
 };
 

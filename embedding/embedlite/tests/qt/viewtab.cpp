@@ -17,6 +17,7 @@
 #include "InputData.h"
 
 using namespace mozilla;
+using namespace mozilla::embedlite;
 
 ViewTab::ViewTab(EmbedContext* aContext, QSize aSize, int flags, QGraphicsWidget* aParent)
     : QGraphicsWidget(aParent)

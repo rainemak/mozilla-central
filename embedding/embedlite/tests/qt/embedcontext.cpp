@@ -135,6 +135,7 @@ EmbedContext::setDefaultPrefs()
     mApp->SetBoolPref("layers.offmainthreadcomposition.animate-opacity", true);
     mApp->SetBoolPref("layers.offmainthreadcomposition.animate-transform", true);
     mApp->SetBoolPref("layers.async-video.enabled", true);
+    mApp->SetBoolPref("font.size.inflation.disabledInMasterProcess", true);
 }
 
 // EmbedLiteAppListener iface

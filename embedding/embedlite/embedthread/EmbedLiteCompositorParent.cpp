@@ -119,12 +119,6 @@ void EmbedLiteCompositorParent::SetClipping(gfxRect aClipRect)
     gfxUtils::GfxRectToIntRect(aClipRect, &mActiveClipping);
 }
 
-bool EmbedLiteCompositorParent::RecvWillStop()
-{
-    LOGT("t");
-    return CompositorParent::RecvWillStop();
-}
-
 static void DeferredDestroyCompositor(EmbedLiteCompositorParent* aCompositorParent, uint32_t id)
 {
     LOGT();
@@ -148,25 +142,6 @@ bool EmbedLiteCompositorParent::RecvStop()
     return CompositorParent::RecvStop();
 }
 
-bool EmbedLiteCompositorParent::RecvPause()
-{
-    LOGT("t");
-    return CompositorParent::RecvPause();
-}
-
-bool EmbedLiteCompositorParent::RecvResume()
-{
-    LOGT("t");
-    return CompositorParent::RecvResume();
-}
-
-bool EmbedLiteCompositorParent::RecvMakeSnapshot(const SurfaceDescriptor& aInSnapshot,
-                                                 SurfaceDescriptor* aOutSnapshot)
-{
-    LOGT("t");
-    return CompositorParent::RecvMakeSnapshot(aInSnapshot, aOutSnapshot);
-}
-
 void EmbedLiteCompositorParent::ShadowLayersUpdated(ShadowLayersParent* aLayerTree,
                                                     const TargetConfig& aTargetConfig,
                                                     bool isFirstPaint)
@@ -178,35 +153,11 @@ void EmbedLiteCompositorParent::ShadowLayersUpdated(ShadowLayersParent* aLayerTr
 
     Layer* shadowRoot = aLayerTree->GetRoot();
     if (ContainerLayer* root = shadowRoot->AsContainerLayer()) {
-        EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
-        EmbedLiteViewThreadParent* pview = static_cast<EmbedLiteViewThreadParent*>(view->GetImpl());
-        if (pview && pview->GetDefaultPanZoomController()) {
-            pview->GetDefaultPanZoomController()->NotifyLayersUpdated(root->GetFrameMetrics(), isFirstPaint);
+        AsyncPanZoomController* controller = GetEmbedPanZoomController();
+        if (controller) {
+            controller->NotifyLayersUpdated(root->GetFrameMetrics(), isFirstPaint);
         }
     }
-}
-
-void EmbedLiteCompositorParent::ScheduleComposition()
-{
-    LOGT("t");
-    CompositorParent::ScheduleComposition();
-}
-
-PLayersParent* EmbedLiteCompositorParent::AllocPLayers(const LayersBackend& aBackendHint,
-                                                       const uint64_t& aId,
-                                                       LayersBackend* aBackend,
-                                                       int32_t* aMaxTextureSize)
-{
-    LOGT("t: ALLOC PLAYERS ID:%llu", aId);
-    return CompositorParent::AllocPLayers(aBackendHint,
-                                          aId, aBackend,
-                                          aMaxTextureSize);
-}
-
-bool EmbedLiteCompositorParent::DeallocPLayers(PLayersParent* aLayers)
-{
-    LOGT("t");
-    return CompositorParent::DeallocPLayers(aLayers);
 }
 
 void EmbedLiteCompositorParent::ScheduleTask(CancelableTask* task, int time)
@@ -223,25 +174,19 @@ void EmbedLiteCompositorParent::ScheduleTask(CancelableTask* task, int time)
     }
 }
 
-void EmbedLiteCompositorParent::Composite()
+AsyncPanZoomController*
+EmbedLiteCompositorParent::GetEmbedPanZoomController()
 {
-    LOGT("t");
-    CompositorParent::Composite();
-}
-
-void EmbedLiteCompositorParent::ComposeToTarget(gfxContext* aTarget)
-{
-    LOGT("t");
-    CompositorParent::ComposeToTarget(aTarget);
+    EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
+    EmbedLiteViewThreadParent* pview = static_cast<EmbedLiteViewThreadParent*>(view->GetImpl());
+    return pview->GetDefaultPanZoomController();
 }
 
 AsyncPanZoomController*
 EmbedLiteCompositorParent::GetDefaultPanZoomController()
 {
     LOGT("t");
-    EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
-    EmbedLiteViewThreadParent* pview = static_cast<EmbedLiteViewThreadParent*>(view->GetImpl());
-    return pview->GetDefaultPanZoomController();
+    return GetEmbedPanZoomController();
 }
 
 void
