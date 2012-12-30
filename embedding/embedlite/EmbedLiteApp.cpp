@@ -83,7 +83,9 @@ EmbedLiteApp::PostTask(EMBEDTaskCallback callback, void* userData, int timeout)
 void
 EmbedLiteApp::CancelTask(void* aTask)
 {
-    static_cast<CancelableTask*>(aTask)->Cancel();
+    if (aTask) {
+        static_cast<CancelableTask*>(aTask)->Cancel();
+    }
 }
 
 void

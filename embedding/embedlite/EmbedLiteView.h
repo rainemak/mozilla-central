@@ -11,6 +11,7 @@
 #include "gfxMatrix.h"
 #include "nsRect.h"
 #include "InputData.h"
+#include "FrameMetrics.h"
 
 namespace mozilla {
 namespace embedlite {
@@ -53,6 +54,7 @@ public:
                                   float aDisplayResolution, bool aLayersUpdated,
                                   nsIntPoint& aScrollOffset, float& aScaleX, float& aScaleY) {}
     virtual void SetPageRect(const gfxRect& aCssPageRect) {}
+    virtual void NotifyLayersUpdated(const mozilla::layers::FrameMetrics& aViewportFrame, bool aIsFirstPaint) {}
 };
 
 class EmbedLiteApp;
@@ -105,8 +107,8 @@ public:
 
     // Set Custom transform for compositor layers tree, Fast Scroll/Zoom
     virtual void SetTransformation(float aScale, nsIntPoint aScrollOffset);
-    virtual void SetDisplayPort(gfxRect& aRect);
     virtual void ScheduleRender();
+    virtual void UpdateDisplayPort(const mozilla::layers::FrameMetrics& aViewportFrame);
 
     // Scripting Interface
     virtual void LoadFrameScript(const char* aURI);

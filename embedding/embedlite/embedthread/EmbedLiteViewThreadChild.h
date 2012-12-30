@@ -37,7 +37,6 @@ protected:
     virtual bool RecvAsyncMessage(const nsString& aMessage,
                                   const nsString& aData);
     virtual bool RecvSetViewSize(const gfxSize&);
-    virtual bool RecvSetDisplayPort(const gfxRect&);
 
     virtual bool RecvUpdateFrame(const mozilla::layers::FrameMetrics& aFrameMetrics);
     virtual bool RecvHandleDoubleTap(const nsIntPoint& aPoint);

@@ -13,11 +13,12 @@
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QPinchGesture>
+#include <QUrl>
 #include "gfxMatrix.h"
-#include "InputData.h"
 
 using namespace mozilla;
 using namespace mozilla::embedlite;
+using namespace mozilla::layers;
 
 ViewTab::ViewTab(EmbedContext* aContext, QSize aSize, int flags, QGraphicsWidget* aParent)
     : QGraphicsWidget(aParent)
@@ -27,6 +28,7 @@ ViewTab::ViewTab(EmbedContext* aContext, QSize aSize, int flags, QGraphicsWidget
     , mContext(aContext)
     , mInitialized(false)
     , mPendingTouchEvent(false)
+    , mController(NULL)
 {
     setAcceptHoverEvents(true);
     setAcceptTouchEvents(true);
@@ -67,6 +69,10 @@ void ViewTab::onContextInitialized()
 {
     mView = mContext->GetApp()->CreateView();
     mView->SetListener(this);
+    if (!getenv("GECKO_AZP")) {
+        mView->SetPanZoomControlType(EmbedLiteView::EXTERNAL);
+        mController = new AsyncPanZoomController(mContext->GetApp(), mView, NULL, AsyncPanZoomController::USE_GESTURE_DETECTOR);
+    }
 }
 
 void ViewTab::SetupGLViewPort()
@@ -81,6 +87,10 @@ void ViewTab::ViewInitialized()
 {
     mInitialized = true;
     mView->SetViewSize(mSize.width(), mSize.height());
+    if (mController) {
+        mController->UpdateCompositionBounds(nsIntRect(0, 0, mSize.width(), mSize.height()));
+    }
+
     SetupGLViewPort();
     if (!pendingUrl.isEmpty()) {
         LoadURL(pendingUrl);
@@ -114,6 +124,14 @@ bool ViewTab::Invalidate()
     return true;
 }
 
+void
+ViewTab::NotifyLayersUpdated(const mozilla::layers::FrameMetrics& aViewportFrame, bool aIsFirstPaint)
+{
+    if (mController) {
+        mController->NotifyLayersUpdated(aViewportFrame, aIsFirstPaint);
+    }
+}
+
 void ViewTab::LoadURL(QString aUrl)
 {
     if (mInitialized) {
@@ -139,6 +157,9 @@ void ViewTab::resizeEvent(QGraphicsSceneResizeEvent* ev)
     mSize = ev->newSize().toSize();
     if (mInitialized) {
         mView->SetViewSize(mSize.width(), mSize.height());
+        if (mController) {
+            mController->UpdateCompositionBounds(nsIntRect(0, 0, mSize.width(), mSize.height()));
+        }
         SetupGLViewPort();
     }
 }
@@ -231,11 +252,20 @@ void ViewTab::touchEvent(QTouchEvent* event)
         }
     }
     if (meventStart.mTouches.Length())
-        mView->ReceiveInputEvent(meventStart);
+        ReceiveInputEvent(meventStart);
     if (meventMove.mTouches.Length())
-        mView->ReceiveInputEvent(meventMove);
+        ReceiveInputEvent(meventMove);
     if (meventEnd.mTouches.Length())
-        mView->ReceiveInputEvent(meventEnd);
+        ReceiveInputEvent(meventEnd);
+}
+
+void ViewTab::ReceiveInputEvent(const InputData& event)
+{
+    if (mController) {
+        mController->ReceiveInputEvent(event);
+    } else {
+        mView->ReceiveInputEvent(event);
+    }
 }
 
 void ViewTab::wheelEvent(QGraphicsSceneWheelEvent* aEvent)
@@ -271,7 +301,7 @@ void ViewTab::mouseMoveEvent(QGraphicsSceneMouseEvent* e)
                                      nsIntPoint(1, 1),
                                      180.0f,
                                      1.0f));
-        mView->ReceiveInputEvent(event);
+        ReceiveInputEvent(event);
         e->setAccepted(accepted);
     }
 
@@ -290,7 +320,7 @@ void ViewTab::mousePressEvent(QGraphicsSceneMouseEvent* e)
                                      nsIntPoint(1, 1),
                                      180.0f,
                                      1.0f));
-        mView->ReceiveInputEvent(event);
+        ReceiveInputEvent(event);
         e->setAccepted(accepted);
     }
 
@@ -308,7 +338,7 @@ void ViewTab::mouseReleaseEvent(QGraphicsSceneMouseEvent* e)
                                      nsIntPoint(1, 1),
                                      180.0f,
                                      1.0f));
-        mView->ReceiveInputEvent(event);
+        ReceiveInputEvent(event);
         e->setAccepted(accepted);
     }
 

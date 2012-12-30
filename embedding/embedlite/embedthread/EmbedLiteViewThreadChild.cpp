@@ -199,12 +199,6 @@ EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
 }
 
 bool
-EmbedLiteViewThreadChild::RecvSetDisplayPort(const gfxRect& aRect)
-{
-    return true;
-}
-
-bool
 EmbedLiteViewThreadChild::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
 {
     if (!mWebBrowser)

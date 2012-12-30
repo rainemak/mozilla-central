@@ -8,6 +8,9 @@ topsrcdir       = @top_srcdir@
 srcdir          = @srcdir@
 VPATH           = @srcdir@
 relativesrcdir  = @relativesrcdir@
+VPATH += \
+  $(srcdir)/geckocopy \
+  $(NULL)
 
 include $(DEPTH)/config/autoconf.mk
 
@@ -42,10 +45,15 @@ CPPSRCS += \
     navbutton.cpp \
     textitem.cpp \
     viewtab.cpp \
+    GestureEventListener.cpp \
+    AsyncPanZoomController.cpp \
+    EmbedKineticModule.cpp \
+    Axis.cpp \
     $(NULL)
 
 LOCAL_INCLUDES	= -I$(srcdir) \
     -I$(LIBXUL_DIST)/include/mozilla/embedlite \
+    -I$(srcdir)/geckocopy \
     $(TK_CFLAGS) \
     $(NULL)
 

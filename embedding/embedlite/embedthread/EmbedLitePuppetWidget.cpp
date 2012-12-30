@@ -135,7 +135,7 @@ EmbedLitePuppetWidget::Create(nsIWidget        *aParent,
 
     mSurface = gfxPlatform::GetPlatform()
                ->CreateOffscreenSurface(gfxIntSize(1, 1),
-                                        gfxASurface::ContentFromFormat(gfxASurface::ImageFormatARGB32));
+                                        gfxASurface::ContentFromFormat(gfxASurface::ImageFormatRGB24));
 
     EmbedLitePuppetWidget* parent = static_cast<EmbedLitePuppetWidget*>(aParent);
     if (parent) {
@@ -489,11 +489,7 @@ EmbedLitePuppetWidget::Paint()
 #endif
         // FIXME, we should be able to initiate forward paint transaction
         // without fake surface
-        static unsigned char bits2[4 * 4 * 2];
-        nsRefPtr<gfxImageSurface> targetSurface =
-            new gfxImageSurface(bits2, gfxIntSize(4, 4), 4 * 2,
-                                gfxASurface::ImageFormatRGB16_565);
-        nsRefPtr<gfxContext> ctx = new gfxContext(targetSurface);
+        nsRefPtr<gfxContext> ctx = new gfxContext(mSurface);
 
         ctx->Rectangle(gfxRect(0,0,0,0));
         ctx->Clip();

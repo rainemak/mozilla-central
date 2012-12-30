@@ -220,10 +220,10 @@ EmbedLiteView::ScheduleRender()
 }
 
 void
-EmbedLiteView::SetDisplayPort(gfxRect& aRect)
+EmbedLiteView::UpdateDisplayPort(const mozilla::layers::FrameMetrics& aViewportFrame)
 {
-    NS_ENSURE_TRUE(mViewImpl, );
-    mViewImpl->SetDisplayPort(aRect);
+    NS_ENSURE_TRUE(mViewImpl, false);
+    mViewImpl->UpdateDisplayPort(aViewportFrame);
 }
 
 bool

@@ -491,9 +491,9 @@ EmbedLiteViewThreadParent::ScheduleRender()
 }
 
 void
-EmbedLiteViewThreadParent::SetDisplayPort(gfxRect& aRect)
+EmbedLiteViewThreadParent::UpdateDisplayPort(const FrameMetrics& aViewportFrame)
 {
-//    unused << SendSetDisplayPort(aRect);
+    unused << SendUpdateFrame(aViewportFrame);
 }
 
 void

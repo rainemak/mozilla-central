@@ -231,7 +231,6 @@ TabChildHelper::SetCSSViewport(float aWidth, float aHeight)
 void
 TabChildHelper::HandlePossibleViewportChange()
 {
-
   nsCOMPtr<nsIDOMDocument> domDoc;
   mView->mWebNavigation->GetDocument(getter_AddRefs(domDoc));
   nsCOMPtr<nsIDocument> document(do_QueryInterface(domDoc));

@@ -18,7 +18,6 @@ child:
     async LoadURL(nsString url);
     async LoadFrameScript(nsString uri);
     async SetViewSize(gfxSize aSize);
-    async SetDisplayPort(gfxRect aRect);
 
     UpdateFrame(FrameMetrics frame) compress;
     HandleDoubleTap(nsIntPoint point);
