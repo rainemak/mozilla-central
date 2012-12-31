@@ -156,11 +156,11 @@ void ViewTab::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, QWid
 {
     QRect r = opt ? opt->exposedRect.toRect() : boundingRect().toRect();
     if (mInitialized) {
-        painter->fillRect(r, mBgColor);
         QMatrix affine = painter->transform().toAffine();
         gfxMatrix matr(affine.m11(), affine.m12(), affine.m21(), affine.m22(), affine.dx(), affine.dy());
         mView->SetGLViewTransform(matr);
         if (mContext->GetApp()->IsAccelerated()) {
+            painter->fillRect(r, mBgColor);
             mView->RenderGL();
         } else {
             if (mTempBufferImage.isNull() || mTempBufferImage.width() != r.width() || mTempBufferImage.height() != r.height()) {
