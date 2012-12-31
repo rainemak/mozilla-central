@@ -18,7 +18,6 @@
 
 using namespace mozilla;
 using namespace mozilla::embedlite;
-using namespace mozilla::layers;
 
 ViewTab::ViewTab(EmbedContext* aContext, QSize aSize, int flags, QGraphicsWidget* aParent)
     : QGraphicsWidget(aParent)
@@ -28,7 +27,6 @@ ViewTab::ViewTab(EmbedContext* aContext, QSize aSize, int flags, QGraphicsWidget
     , mContext(aContext)
     , mInitialized(false)
     , mPendingTouchEvent(false)
-    , mController(NULL)
 {
     setAcceptHoverEvents(true);
     setAcceptTouchEvents(true);
@@ -69,10 +67,6 @@ void ViewTab::onContextInitialized()
 {
     mView = mContext->GetApp()->CreateView();
     mView->SetListener(this);
-    if (getenv("CUSTOM_AZP")) {
-        mView->SetPanZoomControlType(EmbedLiteView::EXTERNAL);
-        mController = new AsyncPanZoomController(mContext->GetApp(), mView, NULL, AsyncPanZoomController::USE_GESTURE_DETECTOR);
-    }
 }
 
 void ViewTab::SetupGLViewPort()
@@ -87,10 +81,6 @@ void ViewTab::ViewInitialized()
 {
     mInitialized = true;
     mView->SetViewSize(mSize.width(), mSize.height());
-    if (mController) {
-        mController->UpdateCompositionBounds(nsIntRect(0, 0, mSize.width(), mSize.height()));
-    }
-
     SetupGLViewPort();
     if (!pendingUrl.isEmpty()) {
         LoadURL(pendingUrl);
@@ -109,7 +99,7 @@ char*
 ViewTab::RecvSyncMessage(const char* aMessage, const char* aData)
 {
     printf(">>>>>>Func:%s::%d msg:%s, data:%s\n", __PRETTY_FUNCTION__, __LINE__, aMessage, aData);
-    return "{\"id\": \"test\", \"val\": \"5\"}";
+    return QString("{\"id\": \"test\", \"val\": \"5\"}").toUtf8().data();
 }
 
 void ViewTab::Destroyed()
@@ -122,14 +112,6 @@ bool ViewTab::Invalidate()
 {
     update();
     return true;
-}
-
-void
-ViewTab::NotifyLayersUpdated(const mozilla::layers::FrameMetrics& aViewportFrame, bool aIsFirstPaint)
-{
-    if (mController) {
-        mController->NotifyLayersUpdated(aViewportFrame, aIsFirstPaint);
-    }
 }
 
 void ViewTab::LoadURL(QString aUrl)
@@ -157,9 +139,6 @@ void ViewTab::resizeEvent(QGraphicsSceneResizeEvent* ev)
     mSize = ev->newSize().toSize();
     if (mInitialized) {
         mView->SetViewSize(mSize.width(), mSize.height());
-        if (mController) {
-            mController->UpdateCompositionBounds(nsIntRect(0, 0, mSize.width(), mSize.height()));
-        }
         SetupGLViewPort();
     }
 }
@@ -261,9 +240,7 @@ void ViewTab::touchEvent(QTouchEvent* event)
 
 void ViewTab::ReceiveInputEvent(const InputData& event)
 {
-    if (mController) {
-        mController->ReceiveInputEvent(event);
-    } else {
+    if (mInitialized) {
         mView->ReceiveInputEvent(event);
     }
 }

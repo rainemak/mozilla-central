@@ -154,6 +154,8 @@ EmbedLiteViewThreadParent::UpdateScrollController()
             type = AsyncPanZoomController::DEFAULT_GESTURES;
         } else if (mView->GetPanZoomControlType() == EmbedLiteView::PanZoomControlType::GECKO_TOUCH) {
             type = AsyncPanZoomController::USE_GESTURE_DETECTOR;
+        } else {
+            return;
         }
         mController = new AsyncPanZoomController(mGeckoController, type);
         mController->SetCompositorParent(mCompositor);
@@ -488,12 +490,6 @@ EmbedLiteViewThreadParent::ScheduleRender()
     if (mCompositor) {
         mCompositor->ScheduleRenderOnCompositorThread();
     }
-}
-
-void
-EmbedLiteViewThreadParent::UpdateDisplayPort(const FrameMetrics& aViewportFrame)
-{
-    unused << SendUpdateFrame(aViewportFrame);
 }
 
 void

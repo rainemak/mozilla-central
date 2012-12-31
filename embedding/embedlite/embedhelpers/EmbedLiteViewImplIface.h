@@ -8,7 +8,6 @@
 
 #include "nsISupports.h"
 #include "nsStringGlue.h"
-#include "FrameMetrics.h"
 
 #include "mozilla/RefPtr.h"
 
@@ -30,7 +29,6 @@ public:
     virtual void SetGLViewTransform(gfxMatrix matrix) {}
     virtual void SetTransformation(float aScale, nsIntPoint aScrollOffset) {}
     virtual void ScheduleRender() {}
-    virtual void UpdateDisplayPort(const mozilla::layers::FrameMetrics& aViewportFrame) {}
     virtual void SetClipping(nsIntRect aClipRect) {}
     virtual bool ScrollBy(int aDX, int aDY, bool aDoOverflow = false) { return false; }
     virtual void ReceiveInputEvent(const InputData& aEvent) {}

@@ -11,7 +11,6 @@
 #include <QTime>
 #include <QImage>
 #include "mozilla/embedlite/EmbedLiteView.h"
-#include "AsyncPanZoomController.h"
 #include "InputData.h"
 
 class EmbedContext;
@@ -55,7 +54,6 @@ private:
     void ViewInitialized();
     void Destroyed();
     bool Invalidate();
-    void NotifyLayersUpdated(const mozilla::layers::FrameMetrics& aViewportFrame, bool aIsFirstPaint);
     void RecvAsyncMessage(const char* aMessage, const char* aData);
     char* RecvSyncMessage(const char* aMessage, const char* aData);
 
@@ -71,7 +69,6 @@ private:
     QSize mSize;
     QImage mTempBufferImage;
     bool mPendingTouchEvent;
-    mozilla::layers::AsyncPanZoomController* mController;
 };
 
 #endif // VIEWTAB_H

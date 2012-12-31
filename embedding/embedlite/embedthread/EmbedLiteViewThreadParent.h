@@ -36,7 +36,6 @@ public:
     virtual void SetGLViewTransform(gfxMatrix matrix);
     virtual void SetTransformation(float aScale, nsIntPoint aScrollOffset);
     virtual void ScheduleRender();
-    virtual void UpdateDisplayPort(const mozilla::layers::FrameMetrics& aViewportFrame);
     virtual void UpdateScrollController();
     virtual bool ScrollBy(int aDX, int aDY, bool aDoOverflow = false);
     virtual void MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);

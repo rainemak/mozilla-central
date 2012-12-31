@@ -219,13 +219,6 @@ EmbedLiteView::ScheduleRender()
     mViewImpl->ScheduleRender();
 }
 
-void
-EmbedLiteView::UpdateDisplayPort(const mozilla::layers::FrameMetrics& aViewportFrame)
-{
-    NS_ENSURE_TRUE(mViewImpl, false);
-    mViewImpl->UpdateDisplayPort(aViewportFrame);
-}
-
 bool
 EmbedLiteView::ScrollBy(int aDX, int aDY, bool aDoOverflow)
 {

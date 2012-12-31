@@ -156,15 +156,6 @@ void EmbedLiteCompositorParent::ShadowLayersUpdated(ShadowLayersParent* aLayerTr
         AsyncPanZoomController* controller = GetEmbedPanZoomController();
         if (controller) {
             controller->NotifyLayersUpdated(root->GetFrameMetrics(), isFirstPaint);
-            EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
-            if (view) {
-                view->GetListener()->NotifyLayersUpdated(root->GetFrameMetrics(), isFirstPaint);
-            }
-        } else {
-            EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
-            if (view) {
-                view->GetListener()->NotifyLayersUpdated(root->GetFrameMetrics(), isFirstPaint);
-            }
         }
     }
 }
