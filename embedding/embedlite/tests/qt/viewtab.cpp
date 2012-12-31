@@ -69,7 +69,7 @@ void ViewTab::onContextInitialized()
 {
     mView = mContext->GetApp()->CreateView();
     mView->SetListener(this);
-    if (!getenv("GECKO_AZP")) {
+    if (getenv("CUSTOM_AZP")) {
         mView->SetPanZoomControlType(EmbedLiteView::EXTERNAL);
         mController = new AsyncPanZoomController(mContext->GetApp(), mView, NULL, AsyncPanZoomController::USE_GESTURE_DETECTOR);
     }
