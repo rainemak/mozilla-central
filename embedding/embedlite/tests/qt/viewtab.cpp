@@ -27,7 +27,9 @@ ViewTab::ViewTab(EmbedContext* aContext, QSize aSize, int flags, QGraphicsWidget
     , mContext(aContext)
     , mInitialized(false)
     , mPendingTouchEvent(false)
+    , mBgColor(Qt::white)
 {
+
     setAcceptHoverEvents(true);
     setAcceptTouchEvents(true);
     setFlag(QGraphicsItem::ItemAcceptsInputMethod, true);
@@ -102,6 +104,13 @@ ViewTab::RecvSyncMessage(const char* aMessage, const char* aData)
     return QString("{\"id\": \"test\", \"val\": \"5\"}").toUtf8().data();
 }
 
+void
+ViewTab::SetBackgroundColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+    printf(">>>>>>Func:%s::%d bgcolor[%i,%i,%i,%i]\n", __PRETTY_FUNCTION__, __LINE__, r, g, b, a);
+    mBgColor = QColor(r, g, b, a);
+}
+
 void ViewTab::Destroyed()
 {
     mView = NULL;
@@ -147,6 +156,7 @@ void ViewTab::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, QWid
 {
     QRect r = opt ? opt->exposedRect.toRect() : boundingRect().toRect();
     if (mInitialized) {
+        painter->fillRect(r, mBgColor);
         QMatrix affine = painter->transform().toAffine();
         gfxMatrix matr(affine.m11(), affine.m12(), affine.m21(), affine.m22(), affine.dx(), affine.dy());
         mView->SetGLViewTransform(matr);
@@ -156,7 +166,7 @@ void ViewTab::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, QWid
             if (mTempBufferImage.isNull() || mTempBufferImage.width() != r.width() || mTempBufferImage.height() != r.height()) {
                 mTempBufferImage = QImage(r.size(), QImage::Format_RGB16);
             }
-            mTempBufferImage.fill(Qt::white);
+            mTempBufferImage.fill(mBgColor.value());
             mView->RenderToImage(mTempBufferImage.bits(), mTempBufferImage.width(),
                                  mTempBufferImage.height(), mTempBufferImage.bytesPerLine(),
                                  mTempBufferImage.depth());

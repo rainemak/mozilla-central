@@ -127,6 +127,7 @@ protected:
     virtual bool
     RecvUpdateZoomConstraints(const bool&, const float&, const float&);
     virtual bool RecvZoomToRect(const gfxRect& aRect);
+    virtual bool RecvSetBackgroundColor(const nscolor& aColor);
 
 private:
     friend class EmbedLiteCompositorParent;

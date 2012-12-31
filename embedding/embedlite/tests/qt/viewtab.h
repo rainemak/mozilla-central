@@ -56,6 +56,7 @@ private:
     bool Invalidate();
     void RecvAsyncMessage(const char* aMessage, const char* aData);
     char* RecvSyncMessage(const char* aMessage, const char* aData);
+    void SetBackgroundColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
     void SetupGLViewPort();
     NavButton* mButton;
@@ -69,6 +70,7 @@ private:
     QSize mSize;
     QImage mTempBufferImage;
     bool mPendingTouchEvent;
+    QColor mBgColor;
 };
 
 #endif // VIEWTAB_H

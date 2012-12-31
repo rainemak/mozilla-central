@@ -20,6 +20,8 @@
 
 #include "nsIDOMWindowUtils.h"
 #include "nsPIDOMWindow.h"
+#include "nsIDocument.h"
+#include "nsIPresShell.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
 
 using namespace mozilla::layers;
@@ -306,6 +308,24 @@ NS_IMETHODIMP EmbedLiteViewThreadChild::OnSecurityChanged(const char* aStatus, u
 /* void onFirstPaint (in int32_t aX, in int32_t aY) */
 NS_IMETHODIMP EmbedLiteViewThreadChild::OnFirstPaint(int32_t aX, int32_t aY)
 {
+    nsresult rv = NS_OK;
+    nsCOMPtr <nsIDOMWindow> window;
+    rv = mWebBrowser->GetContentDOMWindow(getter_AddRefs(window));
+
+    nsCOMPtr<nsIDOMDocument> ddoc;
+    window->GetDocument(getter_AddRefs(ddoc));
+    NS_ENSURE_TRUE(ddoc, NS_OK);
+
+    nsCOMPtr<nsIDocument> doc;
+    doc = do_QueryInterface(ddoc, &rv);
+    NS_ENSURE_TRUE(doc, NS_OK);
+
+    nsIPresShell *presShell = doc->GetShell();
+    if (presShell) {
+        nscolor bgcolor = presShell->GetCanvasBackground();
+        unused << SendSetBackgroundColor(bgcolor);
+    }
+
     return SendOnFirstPaint(aX, aY) ? NS_OK : NS_ERROR_FAILURE;
 }
 

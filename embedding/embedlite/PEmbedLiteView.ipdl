@@ -4,10 +4,13 @@
 
 include protocol PEmbedLiteApp;
 
+include "IPC/nsGUIEventIPC.h";
+
 using gfxSize;
 using gfxRect;
 using nsIntPoint;
 using mozilla::layers::FrameMetrics;
+using nscolor;
 
 namespace mozilla {
 namespace embedlite {
@@ -47,6 +50,7 @@ parent:
     async OnObserve(nsCString aTopic, nsString aData);
     UpdateZoomConstraints(bool aAllowZoom, float aMinZoom, float aMaxZoom);
     ZoomToRect(gfxRect aRect);
+    async SetBackgroundColor(nscolor color);
 
     sync SyncMessage(nsString aMessage, nsString aJSON)
       returns (nsString[] retval);
