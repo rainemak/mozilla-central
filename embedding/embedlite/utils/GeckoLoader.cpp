@@ -102,7 +102,7 @@ GeckoLoader::InitEmbedding(const char* aProfilePath)
     nsCOMPtr<nsIFile> appdir;
     rv = XRE_GetBinaryPath(selfPath.c_str(), getter_AddRefs(appdir));
     if (NS_FAILED(rv)) {
-        LOGE("Unable to create nsIFile for appdir.");
+        LOGE("Unable to create nsIFile for appdir: %s", selfPath.c_str());
         return false;
     }
     printf("Loaded xulDir:%s, appDir:%s\n", greHome, selfPath.c_str());
