@@ -37,8 +37,13 @@ extern PRLogModuleInfo* GetEmbedCommonLog(const char* aModule);
 
 #else // EMBED_LITE_INTERNAL
 
+#ifdef LOG_COMPONENT
 #define LOGT(FMT, ARG...) fprintf(stderr, \
-     "EmbedLiteExt:%s:%d: " FMT "\n", __FUNCTION__, __LINE__, ## ARG)
+     "EmbedLiteExt %s:%s:%d: " FMT "\n", LOG_COMPONENT, __FUNCTION__, __LINE__, ## ARG)
+#else // LOG_COMPONENT
+#define LOGT(FMT, ARG...) fprintf(stderr, \
+     "EmbedLiteExt %s:%d: " FMT "\n", __FUNCTION__, __LINE__, ## ARG)
+#endif // LOG_COMPONENT
 
 #endif // EMBED_LITE_INTERNAL
 
