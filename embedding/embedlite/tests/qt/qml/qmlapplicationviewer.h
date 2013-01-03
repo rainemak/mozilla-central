@@ -38,6 +38,8 @@ public:
     void showExpanded();
     QDeclarativeView* getView();
 
+    virtual void paintEvent(QPaintEvent*);
+
 private:
     explicit QmlApplicationViewer(QDeclarativeView *view, QWidget *parent);
     class QmlApplicationViewerPrivate *d;

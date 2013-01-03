@@ -43,6 +43,12 @@ public:
         EMBED_PROCESS // Initialize XPCOM in separate process
     };
 
+    enum RenderType {
+        RENDER_AUTO,// Default value 
+        RENDER_SW, // Initialize XPCOM in child thread
+        RENDER_HW // Initialize XPCOM in separate process
+    };
+
     // Set Listener interface for EmbedLiteApp notifications
     virtual void SetListener(EmbedLiteAppListener* aListener);
 
@@ -68,7 +74,8 @@ public:
     virtual void DestroyView(EmbedLiteView* aView);
 
     virtual void SetIsAccelerated(bool aIsAccelerated);
-    virtual bool IsAccelerated() { return mIsAccelerated; }
+    virtual bool IsAccelerated() { return mRenderType == RENDER_HW ? true : false ; }
+    virtual RenderType GetRenderType() { return mRenderType; }
 
     // Setup preferences
     virtual void SetBoolPref(const char* aName, bool aValue);
@@ -104,7 +111,7 @@ private:
     std::map<uint32_t, EmbedLiteView*> mViews;
     uint32_t mViewCreateID;
     bool mDestroying;
-    bool mIsAccelerated;
+    RenderType mRenderType;
 };
 
 } // namespace embedlite

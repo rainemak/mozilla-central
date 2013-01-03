@@ -8,7 +8,8 @@ import QtMozilla 1.0
 import QtQuick 1.0
 
 FocusScope {
-    id: root
+    id: mainScope
+    objectName: "mainScope"
 
     anchors.fill: parent
     property alias viewport: webViewport
@@ -16,10 +17,10 @@ FocusScope {
     signal pageTitleChanged(string title)
 
     x: 0; y: 0
-    width: 100; height: 100
+    width: 800; height: 600
 
     function load(address) {
-        viewport.load(address)
+        viewport.child().url = address;
     }
 
     function focusAddressBar() {
@@ -56,14 +57,14 @@ FocusScope {
                     anchors.fill: parent
                     color: reloadButton.color
                     opacity: 0.8
-                    visible: !viewport.canGoBack
+                    visible: !parent.enabled
                 }
 
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
                         console.log("going back")
-                        viewport.goBack()
+                        viewport.child().goBack()
                     }
                 }
             }
@@ -83,14 +84,14 @@ FocusScope {
                     anchors.fill: parent
                     color: forwardButton.color
                     opacity: 0.8
-                    visible: !viewport.canGoForward
+                    visible: !parent.enabled
                 }
 
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
                         console.log("going forward")
-                        viewport.goForward()
+                        viewport.child().goForward()
                     }
                 }
             }
@@ -109,12 +110,13 @@ FocusScope {
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
+                        viewport.child();
                         if (viewport.canStop) {
                             console.log("stop loading")
                             viewport.stop()
                         } else {
                             console.log("reloading")
-                            viewport.reload()
+                            viewport.child().reload()
                         }
                     }
                 }
@@ -136,10 +138,10 @@ FocusScope {
                     bottom: parent.bottom
                     left: parent.left
                 }
-                width: parent.width / 100 * viewport.loadProgress
+                width: parent.width / 100 * viewport.child().loadProgress
                 color: "blue"
                 opacity: 0.3
-                visible: viewport.loadProgress != 100
+                visible: viewport.child().loadProgress != 100
             }
 
             TextInput {
@@ -159,7 +161,7 @@ FocusScope {
 
                 Keys.onReturnPressed:{
                     console.log("going to: ", addressLine.text)
-                    viewport.load(addressLine.text)
+                    viewport.child().url = addressLine.text
                 }
 
                 Keys.onPressed: {
@@ -187,6 +189,32 @@ FocusScope {
             left: parent.left
             right: parent.right
             bottom: parent.bottom
+        }
+        Connections {
+            target: webViewport.child()
+            onViewLoaded: {
+                print("QML View Loaded from Child");
+                webViewport.child().url = startURL;
+            }
+            onTitleChanged: {
+                print("onTitleChanged:");
+                pageTitleChanged(webViewport.child().title);
+            }
+            onLoadProgressChanged: {
+                print("onProgressChanged:");
+            }
+            onUrlChanged: {
+                print("onUrlChanged:");
+                addressLine.text = webViewport.child().url;
+            }
+            onLoadingChanged: {
+                print("onLoadingChanged:");
+            }
+            onNavigationHistoryChanged: {
+                print("onNavigationHistoryChanged:");
+                forwardButton.enabled = webViewport.child().canGoForward;
+                backButton.enabled = webViewport.child().canGoBack;
+            }
         }
     }
 

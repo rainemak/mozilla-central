@@ -57,7 +57,6 @@ QDeclarativeMozView::init()
         setPreferredWidth(d->view->preferredWidth());
     if (!preferredHeight())
         setPreferredHeight(d->view->preferredHeight());
-    connect(d->view, SIGNAL(geometryChanged()), this, SLOT(updateDeclarativeMozViewSize()));
 }
 
 /*!
@@ -107,8 +106,18 @@ void QDeclarativeMozView::updateContentsSize()
 void QDeclarativeMozView::updateDeclarativeMozViewSize()
 {
     QSizeF size = d->view->geometry().size();
-    LOGT("sz:[%g,%g]", size.width(), size.height());
     setImplicitWidth(size.width());
     setImplicitHeight(size.height());
 }
 
+void QDeclarativeMozView::geometryChanged(const QRectF& newGeometry, const QRectF& oldGeometry)
+{
+    d->view->resize(newGeometry.size());
+    QDeclarativeItem::geometryChanged(newGeometry, oldGeometry);
+}
+
+QObject*
+QDeclarativeMozView::child() const
+{
+    return d->view;
+}

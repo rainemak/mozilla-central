@@ -8,8 +8,31 @@
 #define qmozcontext_h
 
 #include <QObject>
+#include <QThread>
 
 class QMozContextPrivate;
+
+namespace mozilla {
+namespace embedlite {
+class EmbedLiteApp;
+}}
+
+class QEventLoop;
+class QMozContext;
+class GeckoThread : public QThread
+{
+    Q_OBJECT
+public:
+    GeckoThread(QMozContext* aContext) : mContext(aContext), mEventLoop(NULL) {}
+    void run();
+
+public slots:
+    void Quit();
+
+public:
+    QMozContext* mContext;
+    QEventLoop* mEventLoop;
+};
 
 class QMozContext : public QObject
 {
@@ -18,8 +41,21 @@ public:
     QMozContext(QObject* parent = 0);
     virtual ~QMozContext();
 
+    bool initialized();
+    mozilla::embedlite::EmbedLiteApp* GetApp();
+
+    static QMozContext* GetInstance();
+
+Q_SIGNALS:
+    void onInitialized();
+
+private slots:
+    void runEmbedding();
+    void onLastWindowClosed();
+
 private:
     QMozContextPrivate* d;
+    friend class QMozContextPrivate;
 };
 
 #endif /* qmozcontext_h */

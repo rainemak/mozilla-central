@@ -16,6 +16,7 @@
 #include <QtDeclarative/QDeclarativeEngine>
 #include <QtDeclarative/QDeclarativeContext>
 #include <QtGui/QApplication>
+#include <QGraphicsObject>
 
 #ifdef HARMATTAN_BOOSTER
 #include <qplatformdefs.h> // MEEGO_EDITION_HARMATTAN
@@ -46,6 +47,50 @@ struct QmlJsDebuggingEnabler
 static QmlJsDebuggingEnabler enableDebuggingHelper;
 
 #endif // QMLJSDEBUGGER
+
+#include <sys/time.h>
+#include <stdio.h>
+
+class MozFPSCounter
+{
+public:
+    MozFPSCounter(const char* aEnv = NULL, const char* aMsg = NULL, int aFreq = 5)
+        : mEnv(aEnv), mMsg(aMsg), mFreq(aFreq), mFpsCounter(0), mEnabled(true) {
+        if (mEnv) {
+            char* envVal = getenv(mEnv);
+            if (!envVal) {
+                mEnabled = false;
+            }
+            if (envVal && *envVal) {
+                mFreq = atoi(envVal);
+            }
+        }
+    }
+    void Count(void) {
+        if (!mEnabled) return;
+        if (!mFpsCounter) {
+            gettimeofday(&mPrevTime, NULL);
+        }
+        mFpsCounter++;
+        if (mFpsCounter > mFreq) {
+            gettimeofday(&mCurrTime, NULL);
+            timersub(&mCurrTime, &mPrevTime, &mDiffTime);
+            float time = mFpsCounter / (mDiffTime.tv_sec + (float)mDiffTime.tv_usec/1000000);
+            printf("%s: time:%ld.%06ld fps:%g\n", mMsg, mDiffTime.tv_sec, mDiffTime.tv_usec, time);
+            mFpsCounter = 0;
+        }
+    }
+    virtual ~MozFPSCounter() {};
+private:
+    const char* mEnv;
+    const char* mMsg;
+    int mFreq;
+    int mFpsCounter;
+    bool mEnabled;
+    struct timeval mDiffTime;
+    struct timeval mCurrTime;
+    struct timeval mPrevTime;
+};
 
 class QmlApplicationViewerPrivate
 {
@@ -199,6 +244,14 @@ void QmlApplicationViewer::showExpanded()
 #else
     d->view->show();
 #endif
+}
+
+void
+QmlApplicationViewer::paintEvent(QPaintEvent* ev)
+{
+    static MozFPSCounter counter("SHOW_FPS", "QGVFPS", 30);
+    counter.Count();
+    QDeclarativeView::paintEvent(ev);
 }
 
 QApplication *createApplication(int &argc, char **argv)

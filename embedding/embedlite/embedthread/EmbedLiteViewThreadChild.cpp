@@ -326,6 +326,8 @@ NS_IMETHODIMP EmbedLiteViewThreadChild::OnFirstPaint(int32_t aX, int32_t aY)
         unused << SendSetBackgroundColor(bgcolor);
     }
 
+    unused << RecvSetViewSize(mViewSize);
+
     return SendOnFirstPaint(aX, aY) ? NS_OK : NS_ERROR_FAILURE;
 }
 

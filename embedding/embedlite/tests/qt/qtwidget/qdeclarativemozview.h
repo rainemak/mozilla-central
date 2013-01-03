@@ -19,7 +19,6 @@ class QDeclarativeMozView : public QDeclarativeItem
 
     Q_PROPERTY(int preferredWidth READ preferredWidth WRITE setPreferredWidth NOTIFY preferredWidthChanged)
     Q_PROPERTY(int preferredHeight READ preferredHeight WRITE setPreferredHeight NOTIFY preferredHeightChanged)
-
 public:
     QDeclarativeMozView(QDeclarativeItem *parent = 0);
 
@@ -29,13 +28,17 @@ public:
     void setPreferredWidth(int);
     int preferredHeight() const;
     void setPreferredHeight(int);
+    Q_INVOKABLE QObject* child() const;
 
 Q_SIGNALS:
     void preferredWidthChanged();
     void preferredHeightChanged();
+    void childChanged();
 
 private Q_SLOTS:
     void updateDeclarativeMozViewSize();
+    virtual void geometryChanged(const QRectF &newGeometry,
+                                 const QRectF &oldGeometry);
 
 private:
     void init();
@@ -54,6 +57,7 @@ public:
 private:
     QDeclarativeMozView *parent;
     friend class QDeclarativeMozView;
+    Q_DISABLE_COPY(GraphicsMozView)
 };
 
 QML_DECLARE_TYPE(QDeclarativeMozView)

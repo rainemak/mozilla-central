@@ -46,7 +46,7 @@ EmbedLiteApp::EmbedLiteApp()
   , mAppThread(NULL)
   , mViewCreateID(0)
   , mDestroying(false)
-  , mIsAccelerated(false)
+  , mRenderType(RENDER_AUTO)
 {
     LOGT();
     sSingleton = this;
@@ -263,8 +263,13 @@ void
 EmbedLiteApp::SetIsAccelerated(bool aIsAccelerated)
 {
 #ifdef GL_PROVIDER_EGL
-    mIsAccelerated = aIsAccelerated;
+    if (aIsAccelerated) {
+        mRenderType = RENDER_HW;
+    } else
 #endif
+    {
+        mRenderType = RENDER_SW;
+    }
 }
 
 } // namespace embedlite

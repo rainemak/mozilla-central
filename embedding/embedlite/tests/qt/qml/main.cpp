@@ -132,6 +132,11 @@ int main(int argc, char *argv[])
         qDebug() << "Not using QGLWidget viewport";
 
     view->setSource(qml);
+    view->rootContext()->setContextProperty("startURL", QVariant(urlstring));
+    QObject* item = view->rootObject()->findChild<QObject*>("mainScope");
+    if (item) {
+        QObject::connect(item, SIGNAL(pageTitleChanged(QString)), view, SLOT(setWindowTitle(QString)));
+    }
 
     // Important - simplify qml and resize, make it works good..
     view->setResizeMode(QDeclarativeView::SizeRootObjectToView);
