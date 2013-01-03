@@ -9,6 +9,8 @@ mk_add_options PROFILE_GEN_SCRIPT=@TOPSRCDIR@/build/profile_pageloader.pl
 mk_add_options MOZ_MAKE_FLAGS="-j2"
 mk_add_options MOZ_OBJDIR="@TOPSRCDIR@/obj-build-mer-qt-fn"
 
+export CXXFLAGS=" -DFORCE_BASICTILEDTHEBESLAYER=1 -DEGL_HAS_BACKING_SURFACE=1 -DUSE_ANDROID_OMTC_HACKS=1 "
+
 ac_add_options --enable-application=mobile/xul
 ac_add_options --enable-update-channel=nightly
 ac_add_options --enable-update-packaging
@@ -23,10 +25,7 @@ ac_add_options --enable-cpp-rtti
 ac_add_options --with-arm-kuser
 ac_add_options --with-thumb=toolchain-default
 ac_add_options --with-float-abi=toolchain-default
-# ac_add_options --enable-official-branding
-# changed release for nightly, it doesn't exist in mobile/xul/branding/
 ac_add_options --with-branding=mobile/xul/branding/nightly
 
-# disabling for now, since the build fails...
 ac_add_options --disable-webrtc
 ac_add_options --enable-profiling
