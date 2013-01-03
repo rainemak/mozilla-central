@@ -383,6 +383,13 @@ EmbedLiteViewThreadParent::LoadURL(const char* aUrl)
 }
 
 void
+EmbedLiteViewThreadParent::SetIsActive(bool aIsActive)
+{
+    LOGT();
+    unused << SendSetIsActive(aIsActive);
+}
+
+void
 EmbedLiteViewThreadParent::LoadFrameScript(const char* aURI)
 {
     LOGT("uri:%s", aURI);
@@ -506,6 +513,25 @@ EmbedLiteViewThreadParent::ReceiveInputEvent(const InputData& aEvent)
         nsEventStatus status;
         status = mController->ReceiveInputEvent(aEvent);
     }
+}
+
+void
+EmbedLiteViewThreadParent::TextEvent(const char* string)
+{
+    LOGT("text:%s", string);
+    unused << SendHandleTextEvent(NS_ConvertUTF8toUTF16(nsDependentCString(string)));
+}
+
+void
+EmbedLiteViewThreadParent::SendKeyPress(int,int,int)
+{
+    LOGT();
+}
+
+void
+EmbedLiteViewThreadParent::SendKeyRelease(int,int,int)
+{
+    LOGT();
 }
 
 void

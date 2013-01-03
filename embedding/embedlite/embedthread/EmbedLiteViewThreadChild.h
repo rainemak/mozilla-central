@@ -33,6 +33,7 @@ protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
     virtual bool RecvDestroy();
     virtual bool RecvLoadURL(const nsString&);
+    virtual bool RecvSetIsActive(const bool&);
     virtual bool RecvLoadFrameScript(const nsString&);
     virtual bool RecvAsyncMessage(const nsString& aMessage,
                                   const nsString& aData);
@@ -49,6 +50,7 @@ protected:
                          const int32_t&  aClickCount,
                          const int32_t&  aModifiers,
                          const bool&     aIgnoreRootScrollFrame);
+    virtual bool RecvHandleTextEvent(const nsString& text);
 
 private:
     void InitGeckoWindow();

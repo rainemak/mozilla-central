@@ -17,6 +17,8 @@
 #include "nsIDOMWindow.h"
 #include "nsNetUtil.h"
 #include "nsIDocShell.h"
+#include "nsIFocusManager.h"
+#include "nsFocusManager.h"
 
 #include "nsIDOMWindowUtils.h"
 #include "nsPIDOMWindow.h"
@@ -168,6 +170,24 @@ EmbedLiteViewThreadChild::RecvLoadURL(const nsString& url)
 }
 
 bool
+EmbedLiteViewThreadChild::RecvSetIsActive(const bool& aIsActive)
+{
+    if (!mWebBrowser || !mDOMWindow)
+        return false;
+    nsCOMPtr<nsIFocusManager> fm = do_GetService(FOCUSMANAGER_CONTRACTID);
+    NS_ENSURE_TRUE(fm, false);
+    if (aIsActive) {
+        fm->WindowRaised(mDOMWindow);
+        LOGT("Activate browser");
+    } else {
+        fm->WindowLowered(mDOMWindow);
+        LOGT("Deactivate browser");
+    }
+    mWebBrowser->SetIsActive(aIsActive);
+    return true;
+}
+
+bool
 EmbedLiteViewThreadChild::RecvLoadFrameScript(const nsString& uri)
 {
     if (mHelper) {
@@ -239,6 +259,16 @@ EmbedLiteViewThreadChild::RecvHandleLongTap(const nsIntPoint& aPoint)
                   0 /* Modifiers */,
                   false /* Ignore root scroll frame */);
 
+    return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvHandleTextEvent(const nsString& text)
+{
+    nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebNavigation);
+    nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
+    NS_ENSURE_TRUE(utils, false);
+    utils->SendTextEvent(text, 0, 0, 0, 0, 0, 0, 0, 0);
     return true;
 }
 

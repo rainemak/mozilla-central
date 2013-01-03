@@ -51,7 +51,7 @@ public:
     virtual void ViewInitialized() {
         mViewInitialized = true;
         UpdateViewSize();
-        emit q->viewLoaded();
+        emit q->viewInitialized();
         emit q->navigationHistoryChanged();
     }
     virtual void SetBackgroundColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
@@ -84,15 +84,15 @@ public:
             emit q->urlChanged();
         }
         if (!mIsLoading) {
+            mIsLoading = true;
             emit q->loadingChanged();
         }
-        mIsLoading = true;
     }
     virtual void OnLoadFinished(void) {
         if (mIsLoading) {
+            mIsLoading = false;
             emit q->loadingChanged();
         }
-        mIsLoading = false;
     }
 
     // View finally destroyed and deleted
@@ -240,6 +240,18 @@ void QGraphicsMozView::setUrl(const QUrl& url)
     d->mView->LoadURL(url.toString().toUtf8().data());
 }
 
+void QGraphicsMozView::load(const QString& url)
+{
+    if (url.isEmpty())
+        return;
+
+    if (!d->mViewInitialized) {
+        return;
+    }
+    LOGT("url: %s", url.toUtf8().data());
+    d->mView->LoadURL(QUrl::fromUserInput(url).toString().toUtf8().data());
+}
+
 QString QGraphicsMozView::title() const
 {
     return d->mTitle;
@@ -321,6 +333,7 @@ void QGraphicsMozViewPrivate::touchEvent(QTouchEvent* event)
     // Always accept the QTouchEvent so that we'll receive also TouchUpdate and TouchEnd events
     event->setAccepted(true);
     if (event->type() == QEvent::TouchBegin) {
+        q->forceActiveFocus();
         mTouchTime.restart();
     }
 
@@ -396,6 +409,7 @@ void QGraphicsMozView::mouseMoveEvent(QGraphicsSceneMouseEvent* e)
 void QGraphicsMozView::mousePressEvent(QGraphicsSceneMouseEvent* e)
 {
     d->mPanningTime.restart();
+    forceActiveFocus();
     if (d->mViewInitialized && !d->mPendingTouchEvent) {
         const bool accepted = e->isAccepted();
         MultiTouchInput event(MultiTouchInput::MULTITOUCH_START, d->mPanningTime.elapsed());
@@ -430,3 +444,65 @@ void QGraphicsMozView::mouseReleaseEvent(QGraphicsSceneMouseEvent* e)
         QGraphicsItem::mouseMoveEvent(e);
 }
 
+void QGraphicsMozView::forceActiveFocus()
+{
+    QGraphicsItem *parent = parentItem();
+    while (parent) {
+        if (parent->flags() & QGraphicsItem::ItemIsFocusScope)
+            parent->setFocus(Qt::OtherFocusReason);
+        parent = parent->parentItem();
+    }
+
+    setFocus(Qt::OtherFocusReason);
+    if (d->mViewInitialized) {
+        d->mView->SetIsActive(true);
+    }
+}
+
+void QGraphicsMozView::inputMethodEvent(QInputMethodEvent* aEvent)
+{
+    LOGT("cStr:%s, preStr:%s", aEvent->commitString().toUtf8().data(), aEvent->preeditString().toUtf8().data());
+    if (d->mViewInitialized) {
+        d->mView->SendTextEvent(aEvent->commitString().toUtf8().data());
+    }
+}
+
+QVariant
+QGraphicsMozView::inputMethodQuery(Qt::InputMethodQuery aQuery) const
+{
+    if (aQuery == 10001) {
+        LOGT("VisualizationPriorityQuery");
+    }
+    if (aQuery == 10003) {
+        LOGT("ImCorrectionEnabledQuery");
+    }
+    if (aQuery == 10004) {
+        LOGT("ImModeQuery");
+    }
+    if (aQuery == 10005) {
+        LOGT("InputMethodToolbarIdQuery");
+    }
+    if (aQuery == 10006) {
+        LOGT("InputMethodAttributeExtensionIdQuery");
+    }
+    if (aQuery == 10007) {
+        LOGT("InputMethodToolbarQuery");
+    }
+    if (aQuery == Qt::ImCurrentSelection) {
+        LOGT("Qt::ImCurrentSelection");
+    }
+    if (aQuery == Qt::ImMicroFocus) {
+        LOGT("Qt::ImMicroFocus");
+    }
+    if (aQuery == Qt::ImSurroundingText) {
+        LOGT("Qt::ImSurroundingText");
+    }
+    if (aQuery == Qt::ImCursorPosition) {
+        LOGT("Qt::ImCursorPosition");
+    }
+    if (aQuery == Qt::ImAnchorPosition) {
+        LOGT("Qt::ImAnchorPosition");
+    }
+
+    return QVariant(0);
+}

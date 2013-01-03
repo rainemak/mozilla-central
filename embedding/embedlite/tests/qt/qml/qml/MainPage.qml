@@ -20,7 +20,7 @@ FocusScope {
     width: 800; height: 600
 
     function load(address) {
-        viewport.child().url = address;
+        viewport.child().load(address)
     }
 
     function focusAddressBar() {
@@ -57,7 +57,7 @@ FocusScope {
                     anchors.fill: parent
                     color: reloadButton.color
                     opacity: 0.8
-                    visible: !parent.enabled
+                    visible: !webViewport.child().canGoBack
                 }
 
                 MouseArea {
@@ -84,7 +84,7 @@ FocusScope {
                     anchors.fill: parent
                     color: forwardButton.color
                     opacity: 0.8
-                    visible: !parent.enabled
+                    visible: !webViewport.child().canGoForward
                 }
 
                 MouseArea {
@@ -104,7 +104,7 @@ FocusScope {
                 Image {
                     anchors.fill: parent
                     anchors.centerIn: parent
-                    source: viewport.canStop ? "../icons/stop.png" : "../icons/refresh.png"
+                    source: viewport.child().loading ? "../icons/stop.png" : "../icons/refresh.png"
                 }
 
                 MouseArea {
@@ -161,7 +161,7 @@ FocusScope {
 
                 Keys.onReturnPressed:{
                     console.log("going to: ", addressLine.text)
-                    viewport.child().url = addressLine.text
+                    load(addressLine.text);
                 }
 
                 Keys.onPressed: {
@@ -192,28 +192,15 @@ FocusScope {
         }
         Connections {
             target: webViewport.child()
-            onViewLoaded: {
-                print("QML View Loaded from Child");
+            onViewInitialized: {
+                print("QML View Initialized");
                 webViewport.child().url = startURL;
             }
             onTitleChanged: {
-                print("onTitleChanged:");
                 pageTitleChanged(webViewport.child().title);
             }
-            onLoadProgressChanged: {
-                print("onProgressChanged:");
-            }
             onUrlChanged: {
-                print("onUrlChanged:");
                 addressLine.text = webViewport.child().url;
-            }
-            onLoadingChanged: {
-                print("onLoadingChanged:");
-            }
-            onNavigationHistoryChanged: {
-                print("onNavigationHistoryChanged:");
-                forwardButton.enabled = webViewport.child().canGoForward;
-                backButton.enabled = webViewport.child().canGoBack;
             }
         }
     }

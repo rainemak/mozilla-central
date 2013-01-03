@@ -79,6 +79,14 @@ EmbedLiteView::LoadURL(const char* aUrl)
 }
 
 void
+EmbedLiteView::SetIsActive(bool aIsActive)
+{
+    LOGT();
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->SetIsActive(aIsActive);
+}
+
+void
 EmbedLiteView::LoadFrameScript(const char* aURI)
 {
     LOGT("uri:%s, mViewImpl:%p", aURI, mViewImpl);
@@ -230,7 +238,27 @@ EmbedLiteView::ScrollBy(int aDX, int aDY, bool aDoOverflow)
 void
 EmbedLiteView::ReceiveInputEvent(const InputData& aEvent)
 {
+    NS_ENSURE_TRUE(mViewImpl,);
     mViewImpl->ReceiveInputEvent(aEvent);
+}
+
+void
+EmbedLiteView::SendTextEvent(const char* text)
+{
+    NS_ENSURE_TRUE(mViewImpl,);
+    mViewImpl->TextEvent(text);
+}
+
+void EmbedLiteView::SendKeyPress(int a, int b, int c)
+{
+    NS_ENSURE_TRUE(mViewImpl,);
+    mViewImpl->SendKeyPress(a, b, c);
+}
+
+void EmbedLiteView::SendKeyRelease(int a, int b, int c)
+{
+    NS_ENSURE_TRUE(mViewImpl,);
+    mViewImpl->SendKeyRelease(a, b, c);
 }
 
 void

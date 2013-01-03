@@ -43,9 +43,10 @@ public Q_SLOTS:
     void goForward();
     void stop();
     void reload();
+    void load(const QString&);
 
 Q_SIGNALS:
-    void viewLoaded();
+    void viewInitialized();
     void urlChanged();
     void titleChanged();
     void loadProgressChanged();
@@ -62,11 +63,15 @@ protected:
     virtual void mouseMoveEvent(QGraphicsSceneMouseEvent*);
     virtual void mousePressEvent(QGraphicsSceneMouseEvent*);
     virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent*);
+    virtual void inputMethodEvent(QInputMethodEvent*);
+    virtual QVariant inputMethodQuery(Qt::InputMethodQuery aQuery) const;
 
 private slots:
     void onInitialized();
 
 private:
+    void forceActiveFocus();
+
     QGraphicsMozViewPrivate* d;
     friend class QGraphicsMozViewPrivate;
 };

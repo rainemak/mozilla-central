@@ -21,11 +21,13 @@ child:
     async LoadURL(nsString url);
     async LoadFrameScript(nsString uri);
     async SetViewSize(gfxSize aSize);
+    async SetIsActive(bool aIsActive);
 
     UpdateFrame(FrameMetrics frame) compress;
     HandleDoubleTap(nsIntPoint point);
     HandleSingleTap(nsIntPoint point);
     HandleLongTap(nsIntPoint point);
+    HandleTextEvent(nsString text);
 
     async Destroy();
 parent:

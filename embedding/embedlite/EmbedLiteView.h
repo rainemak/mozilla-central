@@ -69,11 +69,15 @@ public:
 
     // Embed Interface
     virtual void LoadURL(const char* aUrl);
-
+    virtual void SetIsActive(bool);
 
     // Input Interface
     enum PanZoomControlType { EXTERNAL, GECKO_SIMPLE, GECKO_TOUCH };
     virtual void SetPanZoomControlType(PanZoomControlType aType);
+
+    virtual void SendTextEvent(const char*);
+    virtual void SendKeyPress(int a, int b, int c);
+    virtual void SendKeyRelease(int a,int b, int c);
 
     virtual void ReceiveInputEvent(const mozilla::InputData& aEvent);
     virtual void MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);

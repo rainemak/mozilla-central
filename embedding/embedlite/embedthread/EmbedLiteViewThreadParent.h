@@ -27,6 +27,7 @@ public:
     virtual ~EmbedLiteViewThreadParent();
 
     virtual void LoadURL(const char*);
+    virtual void SetIsActive(bool);
     virtual void LoadFrameScript(const char* aURI);
     virtual void DoSendAsyncMessage(const char* aMessageName, const char* aMessage);
     virtual void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
@@ -42,6 +43,9 @@ public:
     virtual void MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
     virtual void MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
     virtual void ReceiveInputEvent(const InputData& aEvent);
+    virtual void TextEvent(const char*);
+    virtual void SendKeyPress(int,int,int);
+    virtual void SendKeyRelease(int,int,int);
     virtual void ViewAPIDestroyed() { mView = nullptr; }
 
     mozilla::layers::AsyncPanZoomController* GetDefaultPanZoomController();
