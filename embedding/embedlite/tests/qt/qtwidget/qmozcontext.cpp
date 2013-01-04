@@ -133,7 +133,7 @@ public:
         mApp->SetBoolPref("webgl.force-enabled", true);
         // Setup dumping enabled for development
         mApp->SetBoolPref("browser.dom.window.dump.enabled", true);
-        mApp->SetBoolPref("layers.acceleration.draw-fps", true);
+        mApp->SetBoolPref("layers.acceleration.draw-fps", getenv("SHOW_FPS") != 0);
         // SetPref(QString("browser.xul.error_pages.enabled", false);
         // Bug 706179 async animation temporary prefs
         mApp->SetBoolPref("layers.offmainthreadcomposition.animate-opacity", true);

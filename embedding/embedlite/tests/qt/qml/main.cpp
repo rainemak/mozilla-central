@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
         qml = QUrl::fromUserInput(qmlstring);
 
     // See NEMO#415 for an explanation of why this may be necessary.
-    if (glwidget)
+    if (glwidget && !getenv("SWRENDER"))
         view->setViewport(new QGLWidget);
     else
         qDebug() << "Not using QGLWidget viewport";

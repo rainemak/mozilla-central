@@ -11,6 +11,7 @@
 #include <QPainter>
 #include <QTimer>
 #include <QTime>
+#include <QtOpenGL/QGLContext>
 
 #include "mozilla-config.h"
 #include "qgraphicsmozview.h"
@@ -35,6 +36,7 @@ public:
       , mCanGoBack(false)
       , mCanGoForward(false)
       , mIsLoading(false)
+      , mLastIsGoodRotation(true)
     {
     }
     virtual ~QGraphicsMozViewPrivate() {}
@@ -44,7 +46,12 @@ public:
     void UpdateViewSize()
     {
         if (mViewInitialized) {
-            mView->SetGLViewPortSize(mSize.width(), mSize.height());
+            const QGLContext* ctx = QGLContext::currentContext();
+            if (ctx && ctx->device()) {
+                QRectF r(0, 0, ctx->device()->width(), ctx->device()->height());
+                r = q->mapRectToScene(r);
+                mView->SetGLViewPortSize(r.width(), r.height());
+            }
             mView->SetViewSize(mSize.width(), mSize.height());
         }
     }
@@ -135,6 +142,7 @@ public:
     bool mCanGoBack;
     bool mCanGoForward;
     bool mIsLoading;
+    bool mLastIsGoodRotation;
 };
 
 QGraphicsMozView::QGraphicsMozView(QGraphicsItem* parent)
@@ -155,7 +163,9 @@ QGraphicsMozView::QGraphicsMozView(QGraphicsItem* parent)
     setFlag(QGraphicsItem::ItemIsFocusable, true);
 
     d->mContext = QMozContext::GetInstance();
-    d->mContext->GetApp()->SetIsAccelerated(true);
+    if (QGLContext::currentContext()) {
+        d->mContext->GetApp()->SetIsAccelerated(true);
+    }
     if (!d->mContext->initialized()) {
         connect(d->mContext, SIGNAL(onInitialized()), this, SLOT(onInitialized()));
     } else {
@@ -183,10 +193,17 @@ QGraphicsMozView::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, 
     if (d->mViewInitialized) {
         QMatrix affine = painter->transform().toAffine();
         gfxMatrix matr(affine.m11(), affine.m12(), affine.m21(), affine.m22(), affine.dx(), affine.dy());
-        d->mView->SetGLViewTransform(matr);
+        bool changedState = d->mLastIsGoodRotation != matr.PreservesAxisAlignedRectangles();
+        d->mLastIsGoodRotation = matr.PreservesAxisAlignedRectangles();
         if (d->mContext->GetApp()->IsAccelerated()) {
-            painter->fillRect(r, d->mBgColor);
-            d->mView->RenderGL();
+            d->mView->SetGLViewTransform(matr);
+            if (changedState) {
+                d->UpdateViewSize();
+            }
+            if (d->mLastIsGoodRotation) {
+                painter->fillRect(r, d->mBgColor);
+                d->mView->RenderGL();
+            }
         } else {
             if (d->mTempBufferImage.isNull() || d->mTempBufferImage.width() != r.width() || d->mTempBufferImage.height() != r.height()) {
                 d->mTempBufferImage = QImage(r.size(), QImage::Format_RGB32);
