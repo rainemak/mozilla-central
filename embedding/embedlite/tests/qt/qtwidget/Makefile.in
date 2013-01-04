@@ -41,6 +41,7 @@ CPPSRCS += \
     qmozcontext.cpp \
     qgraphicsmozview.cpp \
     qdeclarativemozview.cpp \
+    EmbedQtKeyUtils.cpp \
     $(NULL)
 
 LOCAL_INCLUDES = \

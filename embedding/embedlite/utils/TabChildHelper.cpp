@@ -31,7 +31,6 @@ static const nsIntSize kDefaultViewportSize(980, 480);
 static const char CANCEL_DEFAULT_PAN_ZOOM[] = "cancel-default-pan-zoom";
 static const char BROWSER_ZOOM_TO_RECT[] = "browser-zoom-to-rect";
 static const char BEFORE_FIRST_PAINT[] = "before-first-paint";
-static bool HANDLE_HTML_VIEWPORT = true;
 
 using namespace mozilla::embedlite;
 using namespace mozilla::layers;

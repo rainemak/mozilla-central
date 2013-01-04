@@ -263,12 +263,36 @@ EmbedLiteViewThreadChild::RecvHandleLongTap(const nsIntPoint& aPoint)
 }
 
 bool
-EmbedLiteViewThreadChild::RecvHandleTextEvent(const nsString& text)
+EmbedLiteViewThreadChild::RecvHandleTextEvent(const nsString& commit, const nsString& preEdit)
 {
     nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebNavigation);
     nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
     NS_ENSURE_TRUE(utils, false);
-    utils->SendTextEvent(text, 0, 0, 0, 0, 0, 0, 0, 0);
+    utils->SendTextEvent(commit, 0, 0, 0, 0, 0, 0, 0, 0);
+    return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvHandleKeyPressEvent(const int& domKeyCode, const int& gmodifiers, const int& charCode)
+{
+    nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebNavigation);
+    nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
+    NS_ENSURE_TRUE(utils, true);
+    bool handled = false;
+    // If the key isn't autorepeat, we need to send the initial down event
+    utils->SendKeyEvent(NS_LITERAL_STRING("keydown"), domKeyCode, charCode, gmodifiers, 0, &handled);
+    utils->SendKeyEvent(NS_LITERAL_STRING("keypress"), domKeyCode, charCode, gmodifiers, 0, &handled);
+    return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvHandleKeyReleaseEvent(const int& domKeyCode, const int& gmodifiers, const int& charCode)
+{
+    nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebNavigation);
+    nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
+    NS_ENSURE_TRUE(utils, true);
+    bool handled = false;
+    utils->SendKeyEvent(NS_LITERAL_STRING("keyup"), domKeyCode, charCode, gmodifiers, 0, &handled);
     return true;
 }
 

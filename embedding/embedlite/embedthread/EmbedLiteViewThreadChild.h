@@ -50,7 +50,9 @@ protected:
                          const int32_t&  aClickCount,
                          const int32_t&  aModifiers,
                          const bool&     aIgnoreRootScrollFrame);
-    virtual bool RecvHandleTextEvent(const nsString& text);
+    virtual bool RecvHandleTextEvent(const nsString& commit, const nsString& preEdit);
+    virtual bool RecvHandleKeyPressEvent(const int& domKeyCode, const int& gmodifiers, const int& charCode);
+    virtual bool RecvHandleKeyReleaseEvent(const int& domKeyCode, const int& gmodifiers, const int& charCode);
 
 private:
     void InitGeckoWindow();

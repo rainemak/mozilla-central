@@ -43,7 +43,7 @@ public:
     virtual void MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
     virtual void MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);
     virtual void ReceiveInputEvent(const InputData& aEvent);
-    virtual void TextEvent(const char*);
+    virtual void TextEvent(const char* composite, const char* preEdit);
     virtual void SendKeyPress(int,int,int);
     virtual void SendKeyRelease(int,int,int);
     virtual void ViewAPIDestroyed() { mView = nullptr; }

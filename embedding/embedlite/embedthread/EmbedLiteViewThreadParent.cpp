@@ -516,22 +516,25 @@ EmbedLiteViewThreadParent::ReceiveInputEvent(const InputData& aEvent)
 }
 
 void
-EmbedLiteViewThreadParent::TextEvent(const char* string)
+EmbedLiteViewThreadParent::TextEvent(const char* composite, const char* preEdit)
 {
-    LOGT("text:%s", string);
-    unused << SendHandleTextEvent(NS_ConvertUTF8toUTF16(nsDependentCString(string)));
+    LOGT("commit:%s, pre:%s", composite, preEdit);
+    unused << SendHandleTextEvent(NS_ConvertUTF8toUTF16(nsDependentCString(composite)),
+                                  NS_ConvertUTF8toUTF16(nsDependentCString(preEdit)));
 }
 
 void
-EmbedLiteViewThreadParent::SendKeyPress(int,int,int)
+EmbedLiteViewThreadParent::SendKeyPress(int domKeyCode, int gmodifiers, int charCode)
 {
-    LOGT();
+    LOGT("dom:%i, mod:%i, char:'%c'", domKeyCode, gmodifiers, charCode);
+    unused << SendHandleKeyPressEvent(domKeyCode, gmodifiers, charCode);
 }
 
 void
-EmbedLiteViewThreadParent::SendKeyRelease(int,int,int)
+EmbedLiteViewThreadParent::SendKeyRelease(int domKeyCode, int gmodifiers, int charCode)
 {
-    LOGT();
+    LOGT("dom:%i, mod:%i, char:'%c'", domKeyCode, gmodifiers, charCode);
+    unused << SendHandleKeyReleaseEvent(domKeyCode, gmodifiers, charCode);
 }
 
 void

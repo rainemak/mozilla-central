@@ -172,6 +172,7 @@ EmbedLitePuppetWidget::CreateChild(const nsIntRect  &aRect,
 NS_IMETHODIMP
 EmbedLitePuppetWidget::Destroy()
 {
+    LOGT();
     Base::OnDestroy();
     Base::Destroy();
     mPaintTask.Revoke();
@@ -482,6 +483,8 @@ EmbedLitePuppetWidget::Paint()
     mDirtyRegion.SetEmpty();
     mPaintTask.Revoke();
 
+    nsRefPtr<EmbedLitePuppetWidget> Hold(this);
+
     {
 #ifdef DEBUG
         debug_DumpPaintEvent(stderr, this, region,
@@ -498,6 +501,11 @@ EmbedLitePuppetWidget::Paint()
         listener->PaintWindow(this, region, nsIWidgetListener::WILL_SEND_DID_PAINT);
     }
 
+    listener = mAttachedWidgetListener ? mAttachedWidgetListener : mWidgetListener;
+    if (!listener) {
+        NS_ERROR("Listener disappeared, ups something wrong");
+        return NS_OK;
+    }
     listener->DidPaintWindow();
 
     return NS_OK;

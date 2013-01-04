@@ -32,9 +32,9 @@ public:
     virtual void SetClipping(nsIntRect aClipRect) {}
     virtual bool ScrollBy(int aDX, int aDY, bool aDoOverflow = false) { return false; }
     virtual void ReceiveInputEvent(const InputData& aEvent) {}
-    virtual void TextEvent(const char*) {}
-    virtual void SendKeyPress(int a, int b, int c) {}
-    virtual void SendKeyRelease(int a, int b, int c) {}
+    virtual void TextEvent(const char* composite, const char* preEdit) {}
+    virtual void SendKeyPress(int domKeyCode, int gmodifiers, int charCode) {}
+    virtual void SendKeyRelease(int domKeyCode, int gmodifiers, int charCode) {}
     virtual void MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers) {}
     virtual void MouseRelease(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers) {}
     virtual void MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers) {}

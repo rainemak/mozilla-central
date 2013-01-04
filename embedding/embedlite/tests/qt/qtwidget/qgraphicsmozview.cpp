@@ -12,6 +12,7 @@
 #include <QTimer>
 #include <QTime>
 #include <QtOpenGL/QGLContext>
+#include "EmbedQtKeyUtils.h"
 
 #include "mozilla-config.h"
 #include "qgraphicsmozview.h"
@@ -143,6 +144,7 @@ public:
     bool mCanGoForward;
     bool mIsLoading;
     bool mLastIsGoodRotation;
+    QString mLastPreEdit;
 };
 
 QGraphicsMozView::QGraphicsMozView(QGraphicsItem* parent)
@@ -478,10 +480,38 @@ void QGraphicsMozView::forceActiveFocus()
 
 void QGraphicsMozView::inputMethodEvent(QInputMethodEvent* aEvent)
 {
-    LOGT("cStr:%s, preStr:%s", aEvent->commitString().toUtf8().data(), aEvent->preeditString().toUtf8().data());
+    LOGT("cStr:%s, preStr:%s, replLen:%i, replSt:%i", aEvent->commitString().toUtf8().data(), aEvent->preeditString().toUtf8().data(), aEvent->replacementLength(), aEvent->replacementStart());
     if (d->mViewInitialized) {
-        d->mView->SendTextEvent(aEvent->commitString().toUtf8().data());
+        d->mView->SendTextEvent(aEvent->commitString().toUtf8().data(), aEvent->preeditString().toUtf8().data());
     }
+}
+
+void QGraphicsMozView::keyPressEvent(QKeyEvent* event)
+{
+    if (!d->mViewInitialized)
+        return;
+
+    LOGT();
+    int32_t gmodifiers = MozKey::QtModifierToDOMModifier(event->modifiers());
+    int32_t domKeyCode = MozKey::QtKeyCodeToDOMKeyCode(event->key(), event->modifiers());
+    int32_t charCode = 0;
+    if (event->text().length() && event->text()[0].isPrint())
+        charCode = (int32_t)event->text()[0].unicode();
+    d->mView->SendKeyPress(domKeyCode, gmodifiers, charCode);
+}
+
+void QGraphicsMozView::keyReleaseEvent(QKeyEvent* event)
+{
+    if (!d->mViewInitialized)
+        return;
+
+    LOGT();
+    int32_t gmodifiers = MozKey::QtModifierToDOMModifier(event->modifiers());
+    int32_t domKeyCode = MozKey::QtKeyCodeToDOMKeyCode(event->key(), event->modifiers());
+    int32_t charCode = 0;
+    if (event->text().length() && event->text()[0].isPrint())
+        charCode = (int32_t)event->text()[0].unicode();
+    d->mView->SendKeyRelease(domKeyCode, gmodifiers, charCode);
 }
 
 QVariant

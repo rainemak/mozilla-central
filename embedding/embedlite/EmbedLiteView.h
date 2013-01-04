@@ -75,9 +75,9 @@ public:
     enum PanZoomControlType { EXTERNAL, GECKO_SIMPLE, GECKO_TOUCH };
     virtual void SetPanZoomControlType(PanZoomControlType aType);
 
-    virtual void SendTextEvent(const char*);
-    virtual void SendKeyPress(int a, int b, int c);
-    virtual void SendKeyRelease(int a,int b, int c);
+    virtual void SendTextEvent(const char* composite, const char* preEdit);
+    virtual void SendKeyPress(int domKeyCode, int gmodifiers, int charCode);
+    virtual void SendKeyRelease(int domKeyCode, int gmodifiers, int charCode);
 
     virtual void ReceiveInputEvent(const mozilla::InputData& aEvent);
     virtual void MousePress(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers);

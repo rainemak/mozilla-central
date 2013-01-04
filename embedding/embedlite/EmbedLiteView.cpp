@@ -243,22 +243,22 @@ EmbedLiteView::ReceiveInputEvent(const InputData& aEvent)
 }
 
 void
-EmbedLiteView::SendTextEvent(const char* text)
+EmbedLiteView::SendTextEvent(const char* composite, const char* preEdit)
 {
     NS_ENSURE_TRUE(mViewImpl,);
-    mViewImpl->TextEvent(text);
+    mViewImpl->TextEvent(composite, preEdit);
 }
 
-void EmbedLiteView::SendKeyPress(int a, int b, int c)
+void EmbedLiteView::SendKeyPress(int domKeyCode, int gmodifiers, int charCode)
 {
     NS_ENSURE_TRUE(mViewImpl,);
-    mViewImpl->SendKeyPress(a, b, c);
+    mViewImpl->SendKeyPress(domKeyCode, gmodifiers, charCode);
 }
 
-void EmbedLiteView::SendKeyRelease(int a, int b, int c)
+void EmbedLiteView::SendKeyRelease(int domKeyCode, int gmodifiers, int charCode)
 {
     NS_ENSURE_TRUE(mViewImpl,);
-    mViewImpl->SendKeyRelease(a, b, c);
+    mViewImpl->SendKeyRelease(domKeyCode, gmodifiers, charCode);
 }
 
 void

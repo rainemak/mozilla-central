@@ -63,6 +63,8 @@ protected:
     virtual void mouseMoveEvent(QGraphicsSceneMouseEvent*);
     virtual void mousePressEvent(QGraphicsSceneMouseEvent*);
     virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent*);
+    virtual void keyPressEvent(QKeyEvent*);
+    virtual void keyReleaseEvent(QKeyEvent*);
     virtual void inputMethodEvent(QInputMethodEvent*);
     virtual QVariant inputMethodQuery(Qt::InputMethodQuery aQuery) const;
 

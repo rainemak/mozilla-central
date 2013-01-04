@@ -11,6 +11,8 @@ using gfxRect;
 using nsIntPoint;
 using mozilla::layers::FrameMetrics;
 using nscolor;
+using nsKeyEvent;
+using nsMouseEvent;
 
 namespace mozilla {
 namespace embedlite {
@@ -27,7 +29,9 @@ child:
     HandleDoubleTap(nsIntPoint point);
     HandleSingleTap(nsIntPoint point);
     HandleLongTap(nsIntPoint point);
-    HandleTextEvent(nsString text);
+    HandleTextEvent(nsString commit, nsString preEdit);
+    HandleKeyPressEvent(int domKeyCode, int gmodifiers, int charCode);
+    HandleKeyReleaseEvent(int domKeyCode, int gmodifiers, int charCode);
 
     async Destroy();
 parent:
