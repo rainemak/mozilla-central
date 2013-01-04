@@ -477,6 +477,24 @@ EmbedLitePuppetWidget::Paint()
     if (!listener)
         return NS_OK;
 
+    // Dispatch WillPaintWindow notification to allow scripts etc. to run
+    // before we paint
+    {
+        listener->WillPaintWindow(this, true);
+
+        // If the window has been destroyed during the will paint notification,
+        // there is nothing left to do.
+        if (!mEmbed)
+            return NS_OK;
+
+        // Re-get the listener since the will paint notification might have
+        // killed it.
+        listener =
+            mAttachedWidgetListener ? mAttachedWidgetListener : mWidgetListener;
+        if (!listener)
+            return NS_OK;
+    }
+
     nsIntRegion region = mDirtyRegion;
 
     // reset repaint tracking
@@ -498,14 +516,13 @@ EmbedLitePuppetWidget::Paint()
         ctx->Clip();
         AutoLayerManagerSetup setupLayerManager(this, ctx,
                                                 mozilla::layers::BUFFER_NONE);
-        listener->PaintWindow(this, region, nsIWidgetListener::WILL_SEND_DID_PAINT);
+        listener->PaintWindow(this, region, nsIWidgetListener::WILL_SEND_DID_PAINT | nsIWidgetListener::SENT_WILL_PAINT);
     }
 
     listener = mAttachedWidgetListener ? mAttachedWidgetListener : mWidgetListener;
-    if (!listener) {
-        NS_ERROR("Listener disappeared, ups something wrong");
+    if (!listener)
         return NS_OK;
-    }
+
     listener->DidPaintWindow();
 
     return NS_OK;

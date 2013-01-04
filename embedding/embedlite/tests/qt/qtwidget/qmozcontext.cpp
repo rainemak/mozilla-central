@@ -90,7 +90,8 @@ public:
         mApp->SetCharPref("plugins.force.wmode", "opaque");
         mApp->SetBoolPref("browser.xul.error_pages.enabled", true);
         mApp->SetIntPref("gfx.color_management.mode", 0);
-        mApp->SetCharPref("general.useragent.override", "Mozilla/5.0 (Maemo; Linux armv7l; rv:14.0) Gecko/17.0 Firefox/17.0");
+//        mApp->SetCharPref("general.useragent.override", "Mozilla/5.0 (Maemo; Linux armv7l; rv:14.0) Gecko/17.0 Firefox/17.0");
+        mApp->SetCharPref("general.useragent.override", "Mozilla/5.0 (Android; Mobile; rv:12.0) Gecko/17.0 Firefox/17.0");
         mApp->SetBoolPref("nglayout.debug.paint_flashing", getenv("FLASH_PAINT") != 0);
         mApp->SetBoolPref("nglayout.debug.widget_update_flashing", getenv("FLASH_PAINT_WGT") != 0);
         // Perf trick, speedup motion handlers
