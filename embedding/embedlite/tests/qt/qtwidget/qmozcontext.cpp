@@ -145,6 +145,7 @@ public:
         mApp->SetCharPref("gfx.azpc.y_stationary_size_multiplier", "4.5f");
         mApp->SetCharPref("gfx.axis.max_event_acceleration", "12.0f");
         mApp->SetCharPref("gfx.axis.fling_friction", "0.00245f");
+        mApp->SetCharPref("gfx.azpc.min_skate_speed", "10.0f");
         mApp->SetBoolPref("embedlite.handle_viewport", true);
     }
 

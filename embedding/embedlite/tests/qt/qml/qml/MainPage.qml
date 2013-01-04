@@ -20,6 +20,7 @@ FocusScope {
     width: 800; height: 600
 
     function load(address) {
+        addressLine.text = address;
         viewport.child().load(address)
     }
 
@@ -194,7 +195,9 @@ FocusScope {
             target: webViewport.child()
             onViewInitialized: {
                 print("QML View Initialized");
-                load(startURL);
+                if (startURL.length != 0) {
+                    load(startURL);
+                }
             }
             onTitleChanged: {
                 pageTitleChanged(webViewport.child().title);
