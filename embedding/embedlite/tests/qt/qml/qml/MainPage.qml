@@ -194,7 +194,7 @@ FocusScope {
             target: webViewport.child()
             onViewInitialized: {
                 print("QML View Initialized");
-                webViewport.child().url = startURL;
+                load(startURL);
             }
             onTitleChanged: {
                 pageTitleChanged(webViewport.child().title);
