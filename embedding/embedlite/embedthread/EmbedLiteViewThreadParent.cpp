@@ -86,6 +86,17 @@ public:
         }
     }
 
+    /**
+     * Requests sending a mozbrowserasyncscroll domevent to embedder.
+     * |aContentRect| is in CSS pixels, relative to the current cssPage.
+     * |aScrollableSize| is the current content width/height in CSS pixels.
+     */
+    virtual void SendAsyncScrollDOMEvent(const gfx::Rect &aContentRect,
+                                         const gfx::Size &aScrollableSize)
+    {
+        LOGNI();
+    }
+
     void ClearRenderFrame() { mRenderFrame = nullptr; }
 
 private:
