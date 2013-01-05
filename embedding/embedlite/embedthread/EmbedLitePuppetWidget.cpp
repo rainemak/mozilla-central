@@ -173,6 +173,11 @@ NS_IMETHODIMP
 EmbedLitePuppetWidget::Destroy()
 {
     LOGT();
+    if (mOnDestroyCalled)
+        return NS_OK;
+
+    mOnDestroyCalled = true;
+
     Base::OnDestroy();
     Base::Destroy();
     mPaintTask.Revoke();
@@ -363,6 +368,12 @@ EmbedLitePuppetWidget::GetLayerManager(PLayersChild* aShadowManager,
     LOGT();
     if (aAllowRetaining)
         *aAllowRetaining = true;
+
+    if (Destroyed()) {
+        NS_ERROR("It seems attempt to render widget after destroy");
+        return nullptr;
+    }
+
 
     if (mLayerManager) {
         return mLayerManager;
