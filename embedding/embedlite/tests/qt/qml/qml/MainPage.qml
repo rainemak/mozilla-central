@@ -205,6 +205,17 @@ FocusScope {
             onUrlChanged: {
                 addressLine.text = webViewport.child().url;
             }
+            onRecvAsyncMessage: {
+                print("onRecvAsyncMessage:" + message + ", data:" + data);
+            }
+            onRecvSyncMessage: {
+                print("onRecvSyncMessage:" + message + ", data:" + data);
+                if (message == "browser-element-api:get-fullscreen-allowed") {
+                    response.message = true
+                } else if (message == "browser-element-api:get-name") {
+                    response.message = true;
+                }
+            }
         }
     }
 

@@ -43,42 +43,6 @@ EmbedLiteCompositorParent::~EmbedLiteCompositorParent()
     EmbedLiteApp::GetInstance()->ViewDestroyed(mId);
 }
 
-static inline gfxASurface::gfxImageFormat
-_depth_to_gfxformat(int depth)
-{
-    switch (depth) {
-    case 32:
-        return gfxASurface::ImageFormatARGB32;
-    case 24:
-        return gfxASurface::ImageFormatRGB24;
-    case 16:
-        return gfxASurface::ImageFormatRGB16_565;
-    default:
-        return gfxASurface::ImageFormatUnknown;
-    }
-}
-
-void EmbedLiteCompositorParent::RenderToImage(unsigned char *aData,
-                                              int imgW, int imgH,
-                                              int stride, int depth)
-{
-    LOGT("data:%p, sz[%i,%i], stride:%i, depth:%i", aData, imgW, imgH, stride, depth);
-    LayerManager* mgr = GetLayerManager();
-    NS_ENSURE_TRUE(mgr, );
-
-    Layer* layer = mgr->GetPrimaryScrollableLayer();
-    NS_ENSURE_TRUE(layer, );
-    NS_ENSURE_TRUE(layer->AsContainerLayer(), );
-
-    nsRefPtr<gfxImageSurface> source =
-        new gfxImageSurface(aData, gfxIntSize(imgW, imgH), stride, _depth_to_gfxformat(depth));
-    {
-        nsRefPtr<gfxContext> context = new gfxContext(source);
-        mgr->BeginTransactionWithTarget(context);
-        CompositorParent::Composite();
-    }
-}
-
 bool
 EmbedLiteCompositorParent::IsGLBackend()
 {

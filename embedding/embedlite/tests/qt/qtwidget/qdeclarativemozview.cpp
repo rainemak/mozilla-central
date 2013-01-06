@@ -30,6 +30,11 @@ QDeclarativeMozView::QDeclarativeMozView(QDeclarativeItem* parent)
     , d(new QDeclarativeMozViewPrivate(this))
 {
     init();
+    static bool Initialized = false;
+    if (!Initialized) {
+        qmlRegisterType<QSyncMessageResponse>("QtMozilla", 1, 0, "QSyncMessageResponse");
+        Initialized = true;
+    }
 }
 
 QDeclarativeMozView::~QDeclarativeMozView()

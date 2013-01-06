@@ -442,12 +442,30 @@ EmbedLiteViewThreadParent::RecvSyncMessage(const nsString& aMessage,
     return true;
 }
 
+static inline gfxASurface::gfxImageFormat
+_depth_to_gfxformat(int depth)
+{
+    switch (depth) {
+    case 32:
+        return gfxASurface::ImageFormatARGB32;
+    case 24:
+        return gfxASurface::ImageFormatRGB24;
+    case 16:
+        return gfxASurface::ImageFormatRGB16_565;
+    default:
+        return gfxASurface::ImageFormatUnknown;
+    }
+}
+
 void
 EmbedLiteViewThreadParent::RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth)
 {
     LOGT();
     if (mCompositor) {
-        mCompositor->RenderToImage(aData, imgW, imgH, stride, depth);
+        nsRefPtr<gfxImageSurface> source =
+            new gfxImageSurface(aData, gfxIntSize(imgW, imgH), stride, _depth_to_gfxformat(depth));
+        nsRefPtr<gfxContext> context = new gfxContext(source);
+        mCompositor->RenderToContext(context);
     }
 }
 

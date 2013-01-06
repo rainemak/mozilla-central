@@ -61,6 +61,7 @@ public:
         UpdateViewSize();
         emit q->viewInitialized();
         emit q->navigationHistoryChanged();
+        mView->LoadFrameScript("chrome://global/content/BrowserElementChild.js");
     }
     virtual void SetBackgroundColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
         mBgColor = QColor(r, g, b, a);
@@ -104,22 +105,49 @@ public:
     }
 
     // View finally destroyed and deleted
-    virtual void Destroyed() { LOGT(); }
-    virtual void RecvAsyncMessage(const char* aMessage, const char* aData) { LOGT(); }
-    virtual char* RecvSyncMessage(const char* aMessage, const char* aData) { LOGT(); return NULL; }
+    virtual void Destroyed() {
+        LOGT();
+        emit q->viewDestroyed();
+    }
+    virtual void RecvAsyncMessage(const char* aMessage, const char* aData) {
+        LOGT();
+        emit q->recvAsyncMessage(aMessage, aData);
+    }
+    virtual char* RecvSyncMessage(const char* aMessage, const char* aData) {
+        LOGT();
+        QSyncMessageResponse response;
+        emit q->recvSyncMessage(aMessage, aData, &response);
+        LOGT("msg:%s, response:%s", aMessage, response.getMessage().toUtf8().data());
+        return response.getMessage().toUtf8().data();
+    }
 
-    virtual void OnLoadRedirect(void) { LOGT(); }
+    virtual void OnLoadRedirect(void) {
+        LOGT();
+        emit q->loadRedirect();
+    }
 
-    virtual void OnSecurityChanged(const char* aStatus, unsigned int aState) { LOGT(); }
-    virtual void OnFirstPaint(int32_t aX, int32_t aY) { LOGT(); }
-    virtual void OnContentLoaded(const PRUnichar* aDocURI) { LOGT(); }
+    virtual void OnSecurityChanged(const char* aStatus, unsigned int aState) {
+        LOGT();
+        emit q->securityChanged(aStatus, aState);
+    }
+    virtual void OnFirstPaint(int32_t aX, int32_t aY) {
+        LOGT();
+        emit q->firstPaint(aX, aY);
+    }
+    virtual void OnContentLoaded(const PRUnichar* aDocURI) {
+        LOGT();
+        emit q->contentLoaded(QString((QChar*)aDocURI));
+    }
     virtual void OnLinkAdded(const PRUnichar* aHref, const PRUnichar* aCharset, const PRUnichar* aTitle, const PRUnichar* aRel, const PRUnichar* aSizes, const PRUnichar* aType) { LOGT(); }
     virtual void OnWindowOpenClose(const PRUnichar* aType) { LOGT(); }
     virtual void OnPopupBlocked(const char* aSpec, const char* aCharset, const PRUnichar* aPopupFeatures, const PRUnichar* aPopupWinName) { LOGT(); }
     virtual void OnPageShowHide(const PRUnichar* aType, bool aPersisted) { LOGT(); }
     virtual void OnScrolledAreaChanged(unsigned int aWidth, unsigned int aHeight) { LOGT(); }
     virtual void OnScrollChanged(int32_t offSetX, int32_t offSetY) { }
-    virtual void OnObserve(const char* aTopic, const PRUnichar* aData) { LOGT(); }
+    virtual void OnObserve(const char* aTopic, const PRUnichar* aData) {
+        LOGT();
+        emit q->observeNotification(aTopic, QString((QChar*)aData));
+    }
     virtual void SetFirstPaintViewport(const nsIntPoint& aOffset, float aZoom,
                                        const nsIntRect& aPageRect, const gfxRect& aCssPageRect) { LOGT(); }
     virtual void SyncViewportInfo(const nsIntRect& aDisplayPort,
@@ -210,7 +238,10 @@ QGraphicsMozView::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, 
             if (d->mTempBufferImage.isNull() || d->mTempBufferImage.width() != r.width() || d->mTempBufferImage.height() != r.height()) {
                 d->mTempBufferImage = QImage(r.size(), QImage::Format_RGB32);
             }
-            d->mTempBufferImage.fill(d->mBgColor.value());
+            {
+                QPainter imgPainter(&d->mTempBufferImage);
+                imgPainter.fillRect(r, d->mBgColor);
+            }
             d->mView->RenderToImage(d->mTempBufferImage.bits(), d->mTempBufferImage.width(),
                                     d->mTempBufferImage.height(), d->mTempBufferImage.bytesPerLine(),
                                     d->mTempBufferImage.depth());

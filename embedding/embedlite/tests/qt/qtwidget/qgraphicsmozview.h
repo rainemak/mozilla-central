@@ -11,7 +11,26 @@
 #include <QUrl>
 
 class QMozContext;
+class QSyncMessage;
 class QGraphicsMozViewPrivate;
+
+class QSyncMessageResponse : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(QString message READ getMessage WRITE setMessage FINAL)
+
+public:
+    QSyncMessageResponse(QObject* parent = 0) : QObject(parent) {}
+    QSyncMessageResponse(const QSyncMessageResponse& aMsg) { mMessage = aMsg.mMessage; }
+    virtual ~QSyncMessageResponse() {}
+
+    QString getMessage() const { return mMessage; }
+    void setMessage(const QString msg) { mMessage = msg; }
+
+private:
+    QString mMessage;
+};
+
+Q_DECLARE_METATYPE(QSyncMessageResponse)
 
 class QGraphicsMozView : public QGraphicsWidget
 {
@@ -52,6 +71,14 @@ Q_SIGNALS:
     void loadProgressChanged();
     void navigationHistoryChanged();
     void loadingChanged();
+    void viewDestroyed();
+    void recvAsyncMessage(QString message, QString data);
+    bool recvSyncMessage(QString message, QString data, QSyncMessageResponse* response);
+    void loadRedirect();
+    void securityChanged(QString status, uint32_t state);
+    void firstPaint(int32_t offx, int32_t offy);
+    void contentLoaded(QString docuri);
+    void observeNotification(QString topic, QString data);
 
 protected:
     virtual void setGeometry(const QRectF& rect);

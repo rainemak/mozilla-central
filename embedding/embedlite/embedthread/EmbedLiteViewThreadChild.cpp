@@ -1,4 +1,4 @@
-/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
+/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset:4 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -25,6 +25,7 @@
 #include "nsIDocument.h"
 #include "nsIPresShell.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
+#include "nsIScriptSecurityManager.h"
 
 using namespace mozilla::layers;
 
@@ -138,6 +139,8 @@ EmbedLiteViewThreadChild::InitGeckoWindow()
     if (!mWebNavigation) {
         NS_ERROR("Failed to get the web navigation interface.");
     }
+    nsCOMPtr<nsIDocShell> docShell = do_GetInterface(mWebBrowser);
+    docShell->SetIsBrowserInsideApp(nsIScriptSecurityManager::NO_APP_ID);
 
     mChrome->SetWebBrowser(mWebBrowser);
 

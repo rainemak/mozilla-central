@@ -26,7 +26,7 @@ public:
                               uint32_t id);
     virtual ~EmbedLiteCompositorParent();
 
-    void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
+    void RenderToContext(gfxContext* aContext) { ComposeToTarget(aContext); }
     void RenderGL();
     void SetSurfaceSize(int width, int height);
     void SetWorldTransform(gfxMatrix);
