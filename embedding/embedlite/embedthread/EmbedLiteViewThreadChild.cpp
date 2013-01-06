@@ -26,6 +26,7 @@
 #include "nsIPresShell.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
 #include "nsIScriptSecurityManager.h"
+#include "nsPrintfCString.h"
 
 using namespace mozilla::layers;
 
@@ -238,7 +239,12 @@ EmbedLiteViewThreadChild::RecvHandleDoubleTap(const nsIntPoint& aPoint)
     if (!mWebBrowser)
         return true;
 
-    mScrolling->GestureDoubleTap(aPoint);
+    nsString data;
+    data.AppendPrintf("{ \"x\" : %d", aPoint.x);
+    data.AppendPrintf(", \"y\" : %d", aPoint.y);
+    data.AppendPrintf(" }");
+
+    mHelper->RecvAsyncMessage(NS_LITERAL_STRING("Gesture:DoubleTap"), data);
 
     return true;
 }

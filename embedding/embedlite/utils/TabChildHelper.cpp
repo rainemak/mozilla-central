@@ -186,8 +186,10 @@ TabChildHelper::Observe(nsISupports *aSubject,
         LOGNI("top:%s >>>>>>>>>>>>>.", aTopic);
     } else if (!strcmp(aTopic, BROWSER_ZOOM_TO_RECT)) {
         nsCOMPtr<nsIDocShell> docShell(do_QueryInterface(aSubject));
-        LOGNI("top:%s >>>>>>>>>>>>>.", aTopic);
         gfxRect rect;
+        sscanf(NS_ConvertUTF16toUTF8(aData).get(),
+               "{\"x\":%lf,\"y\":%lf,\"w\":%lf,\"h\":%lf}",
+               &rect.x, &rect.y, &rect.width, &rect.height);
         mView->SendZoomToRect(rect);
     } else if (!strcmp(aTopic, BEFORE_FIRST_PAINT) && GetHandleViewport()) {
         nsCOMPtr<nsIDocument> subject(do_QueryInterface(aSubject));
@@ -418,6 +420,39 @@ TabChildHelper::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
     // The BrowserElementScrolling helper must know about these updated metrics
     // for other functions it performs, such as double tap handling.
     mView->mScrolling->ViewportChange(aFrameMetrics, cssCompositedRect);
+
+    nsString data;
+    data.AppendPrintf("{ \"x\" : %d", NS_lround(aFrameMetrics.mScrollOffset.x));
+    data.AppendPrintf(", \"y\" : %d", NS_lround(aFrameMetrics.mScrollOffset.y));
+    data.AppendPrintf(", \"viewport\" : ");
+        data.AppendPrintf("{ \"width\" : %f", aFrameMetrics.mViewport.width);
+        data.AppendPrintf(", \"height\" : %f", aFrameMetrics.mViewport.height);
+        data.AppendPrintf(" }");
+    data.AppendPrintf(", \"displayPort\" : ");
+        data.AppendPrintf("{ \"x\" : %f", aFrameMetrics.mDisplayPort.x);
+        data.AppendPrintf(", \"y\" : %f", aFrameMetrics.mDisplayPort.y);
+        data.AppendPrintf(", \"width\" : %f", aFrameMetrics.mDisplayPort.width);
+        data.AppendPrintf(", \"height\" : %f", aFrameMetrics.mDisplayPort.height);
+        data.AppendPrintf(" }");
+    data.AppendPrintf(", \"compositionBounds\" : ");
+        data.AppendPrintf("{ \"x\" : %d", aFrameMetrics.mCompositionBounds.x);
+        data.AppendPrintf(", \"y\" : %d", aFrameMetrics.mCompositionBounds.y);
+        data.AppendPrintf(", \"width\" : %d", aFrameMetrics.mCompositionBounds.width);
+        data.AppendPrintf(", \"height\" : %d", aFrameMetrics.mCompositionBounds.height);
+        data.AppendPrintf(" }");
+    data.AppendPrintf(", \"cssPageRect\" : ");
+        data.AppendPrintf("{ \"x\" : %f", aFrameMetrics.mScrollableRect.x);
+        data.AppendPrintf(", \"y\" : %f", aFrameMetrics.mScrollableRect.y);
+        data.AppendPrintf(", \"width\" : %f", aFrameMetrics.mScrollableRect.width);
+        data.AppendPrintf(", \"height\" : %f", aFrameMetrics.mScrollableRect.height);
+        data.AppendPrintf(" }");
+    data.AppendPrintf(", \"cssCompositedRect\" : ");
+            data.AppendPrintf("{ \"width\" : %f", cssCompositedRect.width);
+            data.AppendPrintf(", \"height\" : %f", cssCompositedRect.height);
+            data.AppendPrintf(" }");
+    data.AppendPrintf(" }");
+
+    RecvAsyncMessage(NS_LITERAL_STRING("Viewport:Change"), data);
 
     nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mView->mWebNavigation);
     nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
