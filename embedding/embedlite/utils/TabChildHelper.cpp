@@ -184,6 +184,7 @@ TabChildHelper::Observe(nsISupports *aSubject,
 {
     if (!strcmp(aTopic, CANCEL_DEFAULT_PAN_ZOOM)) {
         LOGNI("top:%s >>>>>>>>>>>>>.", aTopic);
+        mView->SendCancelDefaultPanZoom();
     } else if (!strcmp(aTopic, BROWSER_ZOOM_TO_RECT)) {
         nsCOMPtr<nsIDocShell> docShell(do_QueryInterface(aSubject));
         gfxRect rect;

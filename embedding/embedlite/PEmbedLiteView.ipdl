@@ -32,7 +32,9 @@ child:
     HandleTextEvent(nsString commit, nsString preEdit);
     HandleKeyPressEvent(int domKeyCode, int gmodifiers, int charCode);
     HandleKeyReleaseEvent(int domKeyCode, int gmodifiers, int charCode);
-
+    MouseEvent(nsString aType, float aX, float aY,
+               int32_t aButton, int32_t aClickCount,
+               int32_t aModifiers, bool aIgnoreRootScrollFrame);
     async Destroy();
 parent:
     async Initialized();
@@ -57,6 +59,7 @@ parent:
     UpdateZoomConstraints(bool aAllowZoom, float aMinZoom, float aMaxZoom);
     ZoomToRect(gfxRect aRect);
     async SetBackgroundColor(nscolor color);
+    async CancelDefaultPanZoom();
 
     sync SyncMessage(nsString aMessage, nsString aJSON)
       returns (nsString[] retval);

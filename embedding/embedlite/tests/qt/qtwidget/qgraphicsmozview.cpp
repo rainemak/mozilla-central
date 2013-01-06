@@ -62,6 +62,7 @@ public:
         emit q->viewInitialized();
         emit q->navigationHistoryChanged();
         mView->LoadFrameScript("chrome://global/content/BrowserElementChild.js");
+        mView->SendAsyncMessage("DocShell:SetAsyncZoomPanEnabled", "false");
     }
     virtual void SetBackgroundColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
         mBgColor = QColor(r, g, b, a);
@@ -442,6 +443,7 @@ void QGraphicsMozView::mouseMoveEvent(QGraphicsSceneMouseEvent* e)
 {
     if (d->mViewInitialized && !d->mPendingTouchEvent) {
         const bool accepted = e->isAccepted();
+#if 0
         MultiTouchInput event(MultiTouchInput::MULTITOUCH_MOVE, d->mPanningTime.elapsed());
         event.mTouches.AppendElement(SingleTouchData(0,
                                      nsIntPoint(e->pos().x(), e->pos().y()),
@@ -449,6 +451,9 @@ void QGraphicsMozView::mouseMoveEvent(QGraphicsSceneMouseEvent* e)
                                      180.0f,
                                      1.0f));
         d->ReceiveInputEvent(event);
+#else
+        d->mView->MouseMove(e->pos().x(), e->pos().y(), d->mPanningTime.elapsed(), 0, 0);
+#endif
         e->setAccepted(accepted);
     }
 
@@ -462,6 +467,7 @@ void QGraphicsMozView::mousePressEvent(QGraphicsSceneMouseEvent* e)
     forceActiveFocus();
     if (d->mViewInitialized && !d->mPendingTouchEvent) {
         const bool accepted = e->isAccepted();
+#if 0
         MultiTouchInput event(MultiTouchInput::MULTITOUCH_START, d->mPanningTime.elapsed());
         event.mTouches.AppendElement(SingleTouchData(0,
                                      nsIntPoint(e->pos().x(), e->pos().y()),
@@ -469,6 +475,9 @@ void QGraphicsMozView::mousePressEvent(QGraphicsSceneMouseEvent* e)
                                      180.0f,
                                      1.0f));
         d->ReceiveInputEvent(event);
+#else
+        d->mView->MousePress(e->pos().x(), e->pos().y(), d->mPanningTime.elapsed(), 0, 0);
+#endif
         e->setAccepted(accepted);
     }
 
@@ -480,6 +489,7 @@ void QGraphicsMozView::mouseReleaseEvent(QGraphicsSceneMouseEvent* e)
 {
     if (d->mViewInitialized && !d->mPendingTouchEvent) {
         const bool accepted = e->isAccepted();
+#if 0
         MultiTouchInput event(MultiTouchInput::MULTITOUCH_END, d->mPanningTime.elapsed());
         event.mTouches.AppendElement(SingleTouchData(0,
                                      nsIntPoint(e->pos().x(), e->pos().y()),
@@ -487,6 +497,9 @@ void QGraphicsMozView::mouseReleaseEvent(QGraphicsSceneMouseEvent* e)
                                      180.0f,
                                      1.0f));
         d->ReceiveInputEvent(event);
+#else
+        d->mView->MouseRelease(e->pos().x(), e->pos().y(), d->mPanningTime.elapsed(), 0, 0);
+#endif
         e->setAccepted(accepted);
     }
 

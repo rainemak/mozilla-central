@@ -47,6 +47,7 @@ public:
     virtual void SendKeyPress(int,int,int);
     virtual void SendKeyRelease(int,int,int);
     virtual void ViewAPIDestroyed() { mView = nullptr; }
+    virtual bool RecvCancelDefaultPanZoom() MOZ_OVERRIDE;
 
     mozilla::layers::AsyncPanZoomController* GetDefaultPanZoomController();
 

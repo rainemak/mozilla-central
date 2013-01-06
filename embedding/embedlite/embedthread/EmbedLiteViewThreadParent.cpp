@@ -378,6 +378,15 @@ EmbedLiteViewThreadParent::RecvZoomToRect(const gfxRect& aRect)
 }
 
 bool
+EmbedLiteViewThreadParent::RecvCancelDefaultPanZoom()
+{
+    if (mController) {
+        mController->CancelDefaultPanZoom();
+    }
+    return true;
+}
+
+bool
 EmbedLiteViewThreadParent::RecvSetBackgroundColor(const nscolor& aColor)
 {
     mView->GetListener()->SetBackgroundColor(NS_GET_R(aColor), NS_GET_G(aColor), NS_GET_B(aColor), NS_GET_A(aColor));
@@ -579,6 +588,9 @@ EmbedLiteViewThreadParent::MousePress(int x, int y, int mstime, unsigned int but
                                      180.0f,
                                      1.0f));
         status = mController->ReceiveInputEvent(event);
+        unused << SendMouseEvent(NS_LITERAL_STRING("mousedown"),
+                                 x, y, buttons, 1, modifiers,
+                                 true);
     }
 }
 
@@ -595,6 +607,9 @@ EmbedLiteViewThreadParent::MouseRelease(int x, int y, int mstime, unsigned int b
                                      180.0f,
                                      1.0f));
         status = mController->ReceiveInputEvent(event);
+        unused << SendMouseEvent(NS_LITERAL_STRING("mouseup"),
+                                 x, y, buttons, 1, modifiers,
+                                 true);
     }
 }
 
@@ -611,6 +626,9 @@ EmbedLiteViewThreadParent::MouseMove(int x, int y, int mstime, unsigned int butt
                                      180.0f,
                                      1.0f));
         status = mController->ReceiveInputEvent(event);
+        unused << SendMouseEvent(NS_LITERAL_STRING("mousemove"),
+                                 x, y, buttons, 1, modifiers,
+                                 true);
     }
 }
 
