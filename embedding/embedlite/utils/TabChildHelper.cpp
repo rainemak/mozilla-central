@@ -522,6 +522,7 @@ TabChildHelper::DoSendSyncMessage(const nsAString& aMessage,
                                   const mozilla::dom::StructuredCloneData& aData,
                                   InfallibleTArray<nsString>* aJSONRetVal)
 {
+    NS_ENSURE_TRUE(mCx, false);
     JSAutoRequest ar(mCx);
 
     // FIXME: Need callback interface for simple JSON to avoid useless conversion here
@@ -543,6 +544,7 @@ bool
 TabChildHelper::DoSendAsyncMessage(const nsAString& aMessage,
                                    const mozilla::dom::StructuredCloneData& aData)
 {
+    NS_ENSURE_TRUE(mCx, false);
     JSAutoRequest ar(mCx);
 
     // FIXME: Need callback interface for simple JSON to avoid useless conversion here
@@ -573,6 +575,7 @@ bool
 TabChildHelper::RecvAsyncMessage(const nsString& aMessageName,
                                  const nsString& aJSONData)
 {
+    NS_ENSURE_TRUE(mCx, false);
     JSAutoRequest ar(mCx);
     jsval json = JSVAL_NULL;
     StructuredCloneData cloneData;
