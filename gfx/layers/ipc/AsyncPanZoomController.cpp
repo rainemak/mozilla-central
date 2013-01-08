@@ -1014,6 +1014,17 @@ AsyncPanZoomController::CalculateResolution(const FrameMetrics& aMetrics)
                  intrinsicScale.height * userZoom.height);
 }
 
+gfxSize
+AsyncPanZoomController::CalculateResolution()
+{
+  gfxSize currentResolution;
+  {
+    MonitorAutoLock monitor(mMonitor);
+    currentResolution = CalculateResolution(mFrameMetrics);
+  }
+  return currentResolution;
+}
+
 /*static*/ gfx::Rect
 AsyncPanZoomController::CalculateCompositedRectInCssPixels(const FrameMetrics& aMetrics)
 {
