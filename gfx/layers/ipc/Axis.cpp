@@ -88,7 +88,8 @@ Axis::Axis(AsyncPanZoomController* aAsyncPanZoomController)
   : mPos(0.0f),
     mVelocity(0.0f),
     mAcceleration(0),
-    mAsyncPanZoomController(aAsyncPanZoomController)
+    mAsyncPanZoomController(aAsyncPanZoomController),
+    mLastDiff(0)
 {
   InitAxisPrefs();
 }
@@ -99,6 +100,7 @@ void Axis::UpdateWithTouchAtDevicePoint(int32_t aPos, const TimeDuration& aTimeD
     return;
   }
 
+  mLastDiff = mPos - aPos;
   float newVelocity = (mPos - aPos) / aTimeDelta.ToMilliseconds();
 
   bool curVelocityIsLow = fabsf(newVelocity) < 0.01f;
@@ -132,8 +134,14 @@ float Axis::GetDisplacementForDuration(float aScale, const TimeDuration& aDelta)
     mAcceleration = 0;
   }
 
-  float accelerationFactor = GetAccelerationFactor();
-  float displacement = mVelocity * aScale * aDelta.ToMilliseconds() * accelerationFactor;
+  
+  float displacement;
+  if (aDelta.ToMilliseconds() || !mLastDiff) {
+    float accelerationFactor = GetAccelerationFactor();
+    displacement = mVelocity * aScale * aDelta.ToMilliseconds() * accelerationFactor;
+  } else {
+    displacement = mLastDiff * aScale;
+  }
   // If this displacement will cause an overscroll, throttle it. Can potentially
   // bring it to 0 even if the velocity is high.
   if (DisplacementWillOverscroll(displacement) != OVERSCROLL_NONE) {
