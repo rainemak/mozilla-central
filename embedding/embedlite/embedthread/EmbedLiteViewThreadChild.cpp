@@ -340,7 +340,7 @@ EmbedLiteViewThreadChild::RecvInputDataTouchEvent(const mozilla::MultiTouchInput
                 SendContentReceivedTouch(nsIPresShell::gPreventMouseEvents);
             }
         } else if (status != nsEventStatus_eConsumeNoDefault) {
-            mHelper->DispatchSynthesizedMouseEvent(localEvent);
+            mHelper->UpdateTapState(localEvent, status);
         }
     }
     return true;

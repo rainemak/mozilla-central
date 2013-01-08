@@ -70,6 +70,7 @@ parent:
     async SetBackgroundColor(nscolor color);
     async CancelDefaultPanZoom();
     ContentReceivedTouch(bool aPreventDefault);
+    async DetectScrollableSubframe();
 
     sync SyncMessage(nsString aMessage, nsString aJSON)
       returns (nsString[] retval);

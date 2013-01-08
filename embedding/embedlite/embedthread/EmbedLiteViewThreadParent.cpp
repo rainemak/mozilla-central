@@ -396,6 +396,15 @@ EmbedLiteViewThreadParent::RecvContentReceivedTouch(const bool& aPreventDefault)
 }
 
 bool
+EmbedLiteViewThreadParent::RecvDetectScrollableSubframe()
+{
+    if (mController) {
+        mController->DetectScrollableSubframe();
+    }
+    return true;
+}
+
+bool
 EmbedLiteViewThreadParent::RecvSetBackgroundColor(const nscolor& aColor)
 {
     mView->GetListener()->SetBackgroundColor(NS_GET_R(aColor), NS_GET_G(aColor), NS_GET_B(aColor), NS_GET_A(aColor));
