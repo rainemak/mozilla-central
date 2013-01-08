@@ -748,7 +748,7 @@ void AsyncPanZoomController::UpdateWithTouchAtDevicePoint(const MultiTouchInput&
 }
 
 void AsyncPanZoomController::TrackTouch(const MultiTouchInput& aEvent) {
-  TimeDuration timeDelta = TimeDuration().FromMilliseconds(NS_MIN(aEvent.mTime - mLastEventTime, uint32_t(16)));
+  TimeDuration timeDelta = TimeDuration().FromMilliseconds(aEvent.mTime - mLastEventTime);
 
   // Probably a duplicate event, just throw it away.
   if (timeDelta.ToMilliseconds() <= EPSILON) {
@@ -763,11 +763,12 @@ void AsyncPanZoomController::TrackTouch(const MultiTouchInput& aEvent) {
     // We want to inversely scale it because when you're zoomed further in, a
     // larger swipe should move you a shorter distance.
     gfxFloat inverseResolution = 1 / CalculateResolution(mFrameMetrics).width;
+    timeDelta = TimeDuration().FromMilliseconds(0);
 
     float xDisplacement = mX.GetDisplacementForDuration(inverseResolution,
-                                                        TimeDuration().FromMilliseconds(0));
+                                                        timeDelta);
     float yDisplacement = mY.GetDisplacementForDuration(inverseResolution,
-                                                        TimeDuration().FromMilliseconds(0));
+                                                        timeDelta);
     if (fabs(xDisplacement) <= EPSILON && fabs(yDisplacement) <= EPSILON) {
       return;
     }
