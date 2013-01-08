@@ -595,6 +595,16 @@ TabChildHelper::RecvAsyncMessage(const nsString& aMessageName,
     return true;
 }
 
+static nsIntPoint
+ToWidgetPoint(float aX, float aY, const nsPoint& aOffset,
+              nsPresContext* aPresContext)
+{
+  double appPerDev = aPresContext->AppUnitsPerDevPixel();
+  nscoord appPerCSS = nsPresContext::AppUnitsPerCSSPixel();
+  return nsIntPoint(NSToIntRound((aX * appPerCSS + aOffset.x) / appPerDev),
+                    NSToIntRound((aY * appPerCSS + aOffset.y) / appPerDev));
+}
+
 bool
 TabChildHelper::ConvertMutiTouchInputToEvent(const mozilla::MultiTouchInput& aData,
                                              const gfxSize& res, nsTouchEvent& aEvent)
@@ -628,17 +638,31 @@ TabChildHelper::ConvertMutiTouchInputToEvent(const mozilla::MultiTouchInput& aDa
         default:
             return false;
     }
+    // get the widget to send the event to
+    nsPoint offset;
+    nsCOMPtr<nsIWidget> widget = GetWidget(&offset);
+    if (!widget)
+        return false;
+
+    aEvent.widget = widget;
     aEvent.mFlags.mIsTrusted = true;
     aEvent.message = msg;
     aEvent.eventStructType = NS_TOUCH_EVENT;
     aEvent.time = aData.mTime;
+
+    nsPresContext* presContext = GetPresContext();
+    if (!presContext) {
+        return false;
+    }
+
     for (uint32_t i = 0; i < aData.mTouches.Length(); ++i) {
         const SingleTouchData& data = aData.mTouches[i];
         gfx::Point pt(data.mScreenPoint.x, data.mScreenPoint.y);
         pt.x = pt.x / res.width;
         pt.y = pt.y / res.height;
+        nsIntPoint tpt = ToWidgetPoint(pt.x, pt.y, offset, presContext);
         aEvent.touches.AppendElement(new nsDOMTouch(data.mIdentifier,
-            nsIntPoint(pt.x, pt.y),
+            tpt,
             data.mRadius,
             data.mRotationAngle,
             data.mForce));
@@ -678,27 +702,13 @@ TabChildHelper::GetPresContext()
 nsEventStatus
 TabChildHelper::DispatchWidgetEvent(nsGUIEvent& event)
 {
-    if (!mView->mWidget)
+    if (!mView->mWidget || !event.widget)
         return nsEventStatus_eConsumeNoDefault;
-
-    // get the widget to send the event to
-    nsPoint offset;
-    nsCOMPtr<nsIWidget> widget = GetWidget(&offset);
-    if (!widget)
-        return nsEventStatus_eConsumeNoDefault;
-
-    event.widget = widget;
-    event.time = PR_Now();
-
-    nsPresContext* presContext = GetPresContext();
-    if (!presContext) {
-        return nsEventStatus_eConsumeNoDefault;
-    }
 
     event.mFlags.mIsBeingDispatched = false;
 
     nsEventStatus status;
-    NS_ENSURE_SUCCESS(widget->DispatchEvent(&event, status),
+    NS_ENSURE_SUCCESS(event.widget->DispatchEvent(&event, status),
                       nsEventStatus_eConsumeNoDefault);
     return status;
 }
