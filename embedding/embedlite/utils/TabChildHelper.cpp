@@ -588,6 +588,152 @@ TabChildHelper::RecvAsyncMessage(const nsString& aMessageName,
     return true;
 }
 
+bool
+TabChildHelper::ConvertMutiTouchInputToEvent(const mozilla::MultiTouchInput& aData,
+                                             const gfxSize& res, nsTouchEvent& aEvent)
+{
+    uint32_t msg = NS_USER_DEFINED_EVENT;
+    switch (aData.mType) {
+        case MultiTouchInput::MULTITOUCH_START: {
+            msg = NS_TOUCH_START;
+            break;
+        }
+        case MultiTouchInput::MULTITOUCH_MOVE: {
+            msg = NS_TOUCH_MOVE;
+            break;
+        }
+        case MultiTouchInput::MULTITOUCH_END: {
+            msg = NS_TOUCH_END;
+            break;
+        }
+        case MultiTouchInput::MULTITOUCH_ENTER: {
+            msg = NS_TOUCH_ENTER;
+            break;
+        }
+        case MultiTouchInput::MULTITOUCH_LEAVE: {
+            msg = NS_TOUCH_LEAVE;
+            break;
+        }
+        case MultiTouchInput::MULTITOUCH_CANCEL: {
+            msg = NS_TOUCH_CANCEL;
+            break;
+        }
+        default:
+            return false;
+    }
+    aEvent.mFlags.mIsTrusted = true;
+    aEvent.message = msg;
+    aEvent.eventStructType = NS_TOUCH_EVENT;
+    aEvent.time = aData.mTime;
+    for (uint32_t i = 0; i < aData.mTouches.Length(); ++i) {
+        const SingleTouchData& data = aData.mTouches[i];
+        gfx::Point pt(data.mScreenPoint.x, data.mScreenPoint.y);
+        pt.x = pt.x / res.width;
+        pt.y = pt.y / res.height;
+        aEvent.touches.AppendElement(new nsDOMTouch(data.mIdentifier,
+            nsIntPoint(pt.x, pt.y),
+            data.mRadius,
+            data.mRotationAngle,
+            data.mForce));
+    }
+
+    return true;
+}
+
+nsIWidget*
+TabChildHelper::GetWidget(nsPoint* aOffset)
+{
+    nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mView->mWebNavigation);
+    NS_ENSURE_TRUE(window, nullptr);
+    nsIDocShell *docShell = window->GetDocShell();
+    NS_ENSURE_TRUE(docShell, nullptr);
+    nsCOMPtr<nsIPresShell> presShell = docShell->GetPresShell();
+    NS_ENSURE_TRUE(presShell, nullptr);
+    nsIFrame* frame = presShell->GetRootFrame();
+    if (frame)
+        return frame->GetView()->GetNearestWidget(aOffset);
+
+    return nullptr;
+}
+
+nsPresContext*
+TabChildHelper::GetPresContext()
+{
+    nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mView->mWebNavigation);
+    NS_ENSURE_TRUE(window, nullptr);
+    nsIDocShell *docShell = window->GetDocShell();
+    NS_ENSURE_TRUE(docShell, nullptr);
+    nsRefPtr<nsPresContext> presContext;
+    docShell->GetPresContext(getter_AddRefs(presContext));
+    return presContext;
+}
+
+nsEventStatus
+TabChildHelper::DispatchWidgetEvent(nsGUIEvent& event)
+{
+    if (!mView->mWidget)
+        return nsEventStatus_eConsumeNoDefault;
+
+    // get the widget to send the event to
+    nsPoint offset;
+    nsCOMPtr<nsIWidget> widget = GetWidget(&offset);
+    if (!widget)
+        return nsEventStatus_eConsumeNoDefault;
+
+    event.widget = widget;
+    event.time = PR_Now();
+
+    nsPresContext* presContext = GetPresContext();
+    if (!presContext) {
+        return nsEventStatus_eConsumeNoDefault;
+    }
+
+    event.mFlags.mIsBeingDispatched = false;
+
+    nsEventStatus status;
+    NS_ENSURE_SUCCESS(widget->DispatchEvent(&event, status),
+                      nsEventStatus_eConsumeNoDefault);
+    return status;
+}
+
+void
+TabChildHelper::DispatchSynthesizedMouseEvent(const nsTouchEvent& aEvent)
+{
+    // Synthesize a phony mouse event.
+    uint32_t msg;
+    switch (aEvent.message) {
+    case NS_TOUCH_START:
+        msg = NS_MOUSE_BUTTON_DOWN;
+        break;
+    case NS_TOUCH_MOVE:
+        msg = NS_MOUSE_MOVE;
+        break;
+    case NS_TOUCH_END:
+    case NS_TOUCH_CANCEL:
+        msg = NS_MOUSE_BUTTON_UP;
+        break;
+    default:
+        MOZ_NOT_REACHED("Unknown touch event message");
+    }
+
+    nsIntPoint refPoint(0, 0);
+    if (aEvent.touches.Length()) {
+        refPoint = aEvent.touches[0]->mRefPoint;
+    }
+
+    nsMouseEvent event(true, msg, NULL,
+        nsMouseEvent::eReal, nsMouseEvent::eNormal);
+    event.refPoint = refPoint;
+    event.time = aEvent.time;
+    event.button = nsMouseEvent::eLeftButton;
+    if (msg != NS_MOUSE_MOVE) {
+        event.clickCount = 1;
+    }
+
+    DispatchWidgetEvent(event);
+}
+
+
 EmbedTabChildGlobal::EmbedTabChildGlobal(TabChildHelper* aTabChild)
   : mTabChild(aTabChild)
 {

@@ -53,6 +53,8 @@ protected:
     virtual bool RecvHandleTextEvent(const nsString& commit, const nsString& preEdit);
     virtual bool RecvHandleKeyPressEvent(const int& domKeyCode, const int& gmodifiers, const int& charCode);
     virtual bool RecvHandleKeyReleaseEvent(const int& domKeyCode, const int& gmodifiers, const int& charCode);
+    virtual bool RecvInputDataTouchEvent(const mozilla::MultiTouchInput&, const gfxSize& res);
+    virtual bool RecvInputDataTouchMoveEvent(const mozilla::MultiTouchInput&, const gfxSize& res);
 
 private:
     void InitGeckoWindow();

@@ -5,6 +5,7 @@
 include protocol PEmbedLiteApp;
 
 include "IPC/nsGUIEventIPC.h";
+include "IPC/InputDataIPC.h";
 
 using gfxSize;
 using gfxRect;
@@ -13,6 +14,8 @@ using mozilla::layers::FrameMetrics;
 using nscolor;
 using nsKeyEvent;
 using nsMouseEvent;
+using InputData;
+using MultiTouchInput;
 
 namespace mozilla {
 namespace embedlite {
@@ -35,6 +38,12 @@ child:
     MouseEvent(nsString aType, float aX, float aY,
                int32_t aButton, int32_t aClickCount,
                int32_t aModifiers, bool aIgnoreRootScrollFrame);
+
+    InputDataTouchEvent(MultiTouchInput event, gfxSize res);
+    // We use a separate message for touchmove events only to apply
+    // compression to them.
+    InputDataTouchMoveEvent(MultiTouchInput event, gfxSize res) compress;
+
     async Destroy();
 parent:
     async Initialized();
@@ -60,6 +69,7 @@ parent:
     ZoomToRect(gfxRect aRect);
     async SetBackgroundColor(nscolor color);
     async CancelDefaultPanZoom();
+    ContentReceivedTouch(bool aPreventDefault);
 
     sync SyncMessage(nsString aMessage, nsString aJSON)
       returns (nsString[] retval);

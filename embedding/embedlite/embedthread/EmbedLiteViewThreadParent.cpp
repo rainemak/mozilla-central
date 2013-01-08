@@ -387,6 +387,15 @@ EmbedLiteViewThreadParent::RecvCancelDefaultPanZoom()
 }
 
 bool
+EmbedLiteViewThreadParent::RecvContentReceivedTouch(const bool& aPreventDefault)
+{
+    if (mController) {
+        mController->ContentReceivedTouch(aPreventDefault);
+    }
+    return true;
+}
+
+bool
 EmbedLiteViewThreadParent::RecvSetBackgroundColor(const nscolor& aColor)
 {
     mView->GetListener()->SetBackgroundColor(NS_GET_R(aColor), NS_GET_G(aColor), NS_GET_B(aColor), NS_GET_A(aColor));
@@ -544,12 +553,39 @@ EmbedLiteViewThreadParent::ScheduleRender()
     }
 }
 
+static gfx::Point
+WidgetSpaceToCompensatedViewportSpace(const gfx::Point& aPoint,
+                                      gfxFloat aCurrentZoom)
+{
+    // Transform the input point from local widget space to the content document
+    // space that the user is seeing, from last composite.
+    gfx::Point pt(aPoint);
+    pt = pt / aCurrentZoom;
+
+    // FIXME/bug 775451: this doesn't attempt to compensate for content transforms
+    // in effect on the compositor.  The problem is that it's very hard for us to
+    // know what content CSS pixel is at widget point 0,0 based on information
+    // available here.  So we use this hacky implementation for now, which works
+    // in quiescent states.
+
+    return pt;
+}
+
 void
 EmbedLiteViewThreadParent::ReceiveInputEvent(const InputData& aEvent)
 {
     if (mController) {
         nsEventStatus status;
         status = mController->ReceiveInputEvent(aEvent);
+        if (aEvent.mInputType == MULTITOUCH_INPUT) {
+            const MultiTouchInput& multiTouchInput = aEvent.AsMultiTouchInput();
+            const SingleTouchData& data = multiTouchInput.mTouches[0];
+            gfxSize sz = mController->CalculateResolution();
+            if (multiTouchInput.mType == MultiTouchInput::MULTITOUCH_MOVE)
+                unused << SendInputDataTouchMoveEvent(multiTouchInput, sz);
+            else
+                unused << SendInputDataTouchEvent(multiTouchInput, sz);
+        }
     }
 }
 

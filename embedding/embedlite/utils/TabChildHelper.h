@@ -14,6 +14,7 @@
 #include "nsIScriptObjectPrincipal.h"
 #include "nsIWebNavigation.h"
 #include "nsITabChild.h"
+#include "InputData.h"
 
 namespace mozilla {
 namespace embedlite {
@@ -122,6 +123,16 @@ public:
 
     bool RecvAsyncMessage(const nsString& aMessage,
                           const nsString& aData);
+
+protected:
+    nsIWidget* GetWidget(nsPoint* aOffset);
+    nsPresContext* GetPresContext();
+    nsEventStatus DispatchWidgetEvent(nsGUIEvent& event);
+    // Sends a simulated mouse event from a touch event for compatibility.
+    void DispatchSynthesizedMouseEvent(const nsTouchEvent& aEvent);
+    bool ConvertMutiTouchInputToEvent(const mozilla::MultiTouchInput& aData,
+                                      const gfxSize& res, nsTouchEvent& aEvent);
+
 private:
     bool InitTabChildGlobal();
     void Disconnect();

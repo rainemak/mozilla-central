@@ -148,7 +148,7 @@ public:
         mApp->SetCharPref("gfx.axis.fling_friction", "0.00245f");
         mApp->SetCharPref("gfx.azpc.min_skate_speed", "10.0f");
         mApp->SetBoolPref("embedlite.handle_viewport", true);
-        mApp->SetBoolPref("dom.w3c_touch_events.enabled", true);
+        mApp->SetIntPref("dom.w3c_touch_events.enabled", 1);
         mApp->SetIntPref("ui.dragThresholdX", 25);
         mApp->SetIntPref("ui.dragThresholdY", 25);
     }

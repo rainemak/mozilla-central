@@ -26,7 +26,6 @@
 #include "nsIPresShell.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
 #include "nsIScriptSecurityManager.h"
-#include "nsPrintfCString.h"
 
 using namespace mozilla::layers;
 
@@ -307,12 +306,12 @@ EmbedLiteViewThreadChild::RecvHandleKeyReleaseEvent(const int& domKeyCode, const
 
 bool
 EmbedLiteViewThreadChild::RecvMouseEvent(const nsString& aType,
-                         const float&    aX,
-                         const float&    aY,
-                         const int32_t&  aButton,
-                         const int32_t&  aClickCount,
-                         const int32_t&  aModifiers,
-                         const bool&     aIgnoreRootScrollFrame)
+                                         const float&    aX,
+                                         const float&    aY,
+                                         const int32_t&  aButton,
+                                         const int32_t&  aClickCount,
+                                         const int32_t&  aModifiers,
+                                         const bool&     aIgnoreRootScrollFrame)
 {
     if (!mWebBrowser)
         return true;
@@ -324,6 +323,33 @@ EmbedLiteViewThreadChild::RecvMouseEvent(const nsString& aType,
     utils->SendMouseEvent(aType, aX, aY, aButton, aClickCount, aModifiers,
                           aIgnoreRootScrollFrame, 0, 0);
     return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvInputDataTouchEvent(const mozilla::MultiTouchInput& aData, const gfxSize& res)
+{
+    nsTouchEvent localEvent;
+    if (mHelper->ConvertMutiTouchInputToEvent(aData, res, localEvent)) {
+        nsEventStatus status =
+            mHelper->DispatchWidgetEvent(localEvent);
+        if (/*IsAsyncPanZoomEnabled()*/ true) {
+            nsCOMPtr<nsPIDOMWindow> outerWindow = do_GetInterface(mWebNavigation);
+            nsCOMPtr<nsPIDOMWindow> innerWindow = outerWindow->GetCurrentInnerWindow();
+
+            if (innerWindow && innerWindow->HasTouchEventListeners()) {
+                SendContentReceivedTouch(nsIPresShell::gPreventMouseEvents);
+            }
+        } else if (status != nsEventStatus_eConsumeNoDefault) {
+            mHelper->DispatchSynthesizedMouseEvent(localEvent);
+        }
+    }
+    return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvInputDataTouchMoveEvent(const mozilla::MultiTouchInput& aData, const gfxSize& res)
+{
+    return RecvInputDataTouchEvent(aData, res);
 }
 
 /* void onTitleChanged (in wstring aTitle) */

@@ -28,13 +28,17 @@ IS_COMPONENT = 1
 
 LIBRARY_NAME = embedlite
 
-EXPORTS_NAMESPACES = mozilla/embedlite
+EXPORTS_NAMESPACES = mozilla/embedlite IPC
 EXPORTS_mozilla/embedlite = \
     EmbedInitGlue.h \
     EmbedLiteAPI.h \
     EmbedLiteApp.h \
     EmbedLiteView.h \
     EmbedLog.h \
+    $(NULL)
+
+EXPORTS_IPC = \
+    InputDataIPC.h \
     $(NULL)
 
 CPPSRCS = \
