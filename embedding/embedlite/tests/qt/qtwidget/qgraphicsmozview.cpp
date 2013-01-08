@@ -119,7 +119,7 @@ public:
         QSyncMessageResponse response;
         emit q->recvSyncMessage(aMessage, aData, &response);
         LOGT("msg:%s, response:%s", aMessage, response.getMessage().toUtf8().data());
-        return response.getMessage().toUtf8().data();
+        return strdup(response.getMessage().toUtf8().data());
     }
 
     virtual void OnLoadRedirect(void) {

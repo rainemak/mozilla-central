@@ -459,12 +459,13 @@ EmbedLiteViewThreadParent::RecvSyncMessage(const nsString& aMessage,
 {
     LOGT("msg:%s, data:%s", NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aJSON).get());
     NS_ENSURE_TRUE(mView, false);
-    const char* retval =
+    char* retval =
         mView->GetListener()->
             RecvSyncMessage(NS_ConvertUTF16toUTF8(aMessage).get(),
                             NS_ConvertUTF16toUTF8(aJSON).get());
     if (retval) {
         aJSONRetVal->AppendElement(NS_ConvertUTF8toUTF16(nsDependentCString(retval)));
+        delete retval;
     }
     return true;
 }
@@ -491,8 +492,10 @@ EmbedLiteViewThreadParent::RenderToImage(unsigned char *aData, int imgW, int img
     if (mCompositor) {
         nsRefPtr<gfxImageSurface> source =
             new gfxImageSurface(aData, gfxIntSize(imgW, imgH), stride, _depth_to_gfxformat(depth));
-        nsRefPtr<gfxContext> context = new gfxContext(source);
-        mCompositor->RenderToContext(context);
+        {
+            nsRefPtr<gfxContext> context = new gfxContext(source);
+            mCompositor->RenderToContext(context);
+        }
     }
 }
 
