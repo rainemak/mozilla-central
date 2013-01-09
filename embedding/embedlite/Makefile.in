@@ -79,6 +79,8 @@ DIRS += tests
 
 DEFINES += -DEMBED_LITE_INTERNAL=1
 
+PREF_JS_EXPORTS = $(srcdir)/embedding.js
+
 include $(topsrcdir)/config/config.mk
 include $(topsrcdir)/config/rules.mk
 include $(topsrcdir)/ipc/chromium/chromium-config.mk

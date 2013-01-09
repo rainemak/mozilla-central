@@ -65,6 +65,19 @@ DirProvider::GetFile(const char* aKey, bool* aPersist,
         return sProfileDir->Clone(aResult);
     }
 
+    if (sProfileDir && !strcmp(aKey, NS_APP_PREF_DEFAULTS_50_DIR)) {
+        nsCOMPtr<nsIFile> file;
+        nsresult rv = sGREDir->Clone(getter_AddRefs(file));
+        if (NS_SUCCEEDED(rv)) {
+            rv = file->AppendNative(NS_LITERAL_CSTRING("defaults"));
+            if (NS_SUCCEEDED(rv)) {
+                rv = file->AppendNative(NS_LITERAL_CSTRING("pref"));
+                NS_ADDREF(*aResult = file);
+                return rv;
+            }
+        }
+    }
+
     LOGT("Failed to GetFile: key:%s\n", aKey);
     return NS_ERROR_FAILURE;
 }

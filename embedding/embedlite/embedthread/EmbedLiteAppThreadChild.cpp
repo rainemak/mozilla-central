@@ -58,7 +58,6 @@ EmbedLiteAppThreadChild::Init(EmbedLiteAppThreadParent* aParent)
     AsyncChannel::Side childSide = mozilla::ipc::AsyncChannel::Child;
     Open(parentChannel, mParentLoop, childSide);
     RecvSetBoolPref(nsCString("layers.offmainthreadcomposition.enabled"), true);
-    RecvSetIntPref(nsCString("dom.w3c_touch_events.enabled"), 1);
     SendInitialized();
 }
 
