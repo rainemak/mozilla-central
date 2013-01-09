@@ -763,8 +763,8 @@ void AsyncPanZoomController::TrackTouch(const MultiTouchInput& aEvent) {
     // We want to inversely scale it because when you're zoomed further in, a
     // larger swipe should move you a shorter distance.
     gfxFloat inverseResolution = 1 / CalculateResolution(mFrameMetrics).width;
-    timeDelta = TimeDuration().FromMilliseconds(0);
 
+    timeDelta = TimeDuration().FromMilliseconds(0);
     float xDisplacement = mX.GetDisplacementForDuration(inverseResolution,
                                                         timeDelta);
     float yDisplacement = mY.GetDisplacementForDuration(inverseResolution,
@@ -1105,7 +1105,6 @@ void AsyncPanZoomController::RequestContentRepaint() {
   // This message is compressed, so fire whether or not we already have a paint
   // queued up. We need to know whether or not a paint was requested anyways,
   // for the purposes of content calling window.scrollTo().
-
   mPaintThrottler.PostTask(
     FROM_HERE,
     NewRunnableMethod(mGeckoContentController.get(),
