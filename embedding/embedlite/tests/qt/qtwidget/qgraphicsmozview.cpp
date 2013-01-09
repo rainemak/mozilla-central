@@ -61,8 +61,6 @@ public:
         UpdateViewSize();
         emit q->viewInitialized();
         emit q->navigationHistoryChanged();
-        mView->LoadFrameScript("chrome://global/content/BrowserElementChild.js");
-        mView->SendAsyncMessage("DocShell:SetAsyncZoomPanEnabled", "false");
     }
     virtual void SetBackgroundColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
         mBgColor = QColor(r, g, b, a);
