@@ -2074,10 +2074,13 @@ nsGfxScrollFrameInner::BuildDisplayList(nsDisplayListBuilder*   aBuilder,
   } else {
     nsRect scrollRange = GetScrollRange();
     ScrollbarStyles styles = GetScrollbarStylesFromFrame();
+    // Allow to build scrollable layer for Chrome process if pref enabled (OMTC embedding)
+    static bool wrapScrollableViewIntoLayers =
+        Preferences::GetBool("layout.build_layers_for_scrollable_views", false);
     mShouldBuildLayer =
        ((styles.mHorizontal != NS_STYLE_OVERFLOW_HIDDEN && mHScrollbarBox) ||
         (styles.mVertical   != NS_STYLE_OVERFLOW_HIDDEN && mVScrollbarBox)) &&
-       (XRE_GetProcessType() == GeckoProcessType_Content &&
+       ((XRE_GetProcessType() == GeckoProcessType_Content || wrapScrollableViewIntoLayers) &&
         (scrollRange.width > 0 || scrollRange.height > 0) &&
         (!mIsRoot || !mOuter->PresContext()->IsRootContentDocument()));
   }
