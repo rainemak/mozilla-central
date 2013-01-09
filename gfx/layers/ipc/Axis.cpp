@@ -95,11 +95,6 @@ Axis::Axis(AsyncPanZoomController* aAsyncPanZoomController)
 }
 
 void Axis::UpdateWithTouchAtDevicePoint(int32_t aPos, const TimeDuration& aTimeDelta) {
-  if (mPos == aPos) {
-    // Does not make sense to calculate velocity when distance is 0
-    return;
-  }
-
   mLastDiff = mPos - aPos;
   float newVelocity = (mPos - aPos) / aTimeDelta.ToMilliseconds();
 
