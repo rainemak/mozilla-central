@@ -248,8 +248,12 @@ public:
    * Gets the current frame metrics. This is *not* the Gecko copy stored in the
    * layers code.
    */
-
   gfxSize CalculateResolution();
+
+  /**
+   * Get Difference between layout scroll offset and AZPC layers temp scroll offset
+   */
+  gfxPoint GetTempScrollOffset();
 
   /**
    * Handler for events which should not be intercepted by the touch listener.
@@ -431,7 +435,7 @@ protected:
    * a new paint request arrives before a paint is completed, the old request
    * gets discarded.
    */
-  void RequestContentRepaint();
+  void RequestContentRepaint(bool aForce = false);
 
   /**
    * Advances a fling by an interpolated amount based on the passed in |aDelta|.

@@ -413,6 +413,7 @@ nsEventStatus AsyncPanZoomController::OnTouchStart(const MultiTouchInput& aEvent
     case NOTHING:
       mX.StartTouch(xPos);
       mY.StartTouch(yPos);
+      mDisableNextTouchBatch = false;
       SetState(TOUCHING);
       break;
     case TOUCHING:
@@ -475,6 +476,7 @@ nsEventStatus AsyncPanZoomController::OnTouchMove(const MultiTouchInput& aEvent)
 nsEventStatus AsyncPanZoomController::OnTouchEnd(const MultiTouchInput& aEvent) {
   if (mDisableNextTouchBatch) {
     mDisableNextTouchBatch = false;
+    SetState(NOTHING);
     return nsEventStatus_eIgnore;
   }
 
@@ -502,7 +504,7 @@ nsEventStatus AsyncPanZoomController::OnTouchEnd(const MultiTouchInput& aEvent) 
     {
       MonitorAutoLock monitor(mMonitor);
       ScheduleComposite();
-      RequestContentRepaint();
+      RequestContentRepaint(true);
     }
     mX.EndTouch();
     mY.EndTouch();
@@ -799,7 +801,7 @@ bool AsyncPanZoomController::DoFling(const TimeDuration& aDelta) {
     // the zoom while accelerating.
     SetZoomAndResolution(mFrameMetrics.mZoom.width);
     SendAsyncScrollEvent();
-    RequestContentRepaint();
+    RequestContentRepaint(true);
     mState = NOTHING;
     return false;
   }
@@ -1051,7 +1053,7 @@ void AsyncPanZoomController::ScheduleComposite() {
   }
 }
 
-void AsyncPanZoomController::RequestContentRepaint() {
+void AsyncPanZoomController::RequestContentRepaint(bool aForce) {
   mPreviousPaintStartTime = TimeStamp::Now();
 
   double estimatedPaintSum = 0.0;
@@ -1086,7 +1088,9 @@ void AsyncPanZoomController::RequestContentRepaint() {
       fabsf(oldDisplayPort.width - newDisplayPort.width) < EPSILON &&
       fabsf(oldDisplayPort.height - newDisplayPort.height) < EPSILON &&
       mFrameMetrics.mResolution.width == mLastPaintRequestMetrics.mResolution.width) {
-    return;
+    if (!aForce) {
+        return;
+    }
   }
 
   SendAsyncScrollEvent();
@@ -1244,6 +1248,17 @@ bool AsyncPanZoomController::SampleContentTransformForFrame(const TimeStamp& aSa
   return requestAnimationFrame;
 }
 
+gfxPoint
+AsyncPanZoomController::GetTempScrollOffset()
+{
+  gfx::Point diff;
+  {
+    MonitorAutoLock monitor(mMonitor);
+    diff = mLastContentPaintMetrics.mScrollOffset - mFrameMetrics.mScrollOffset;
+  }
+  return gfxPoint(diff.x, diff.y);
+}
+
 void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aViewportFrame, bool aIsFirstPaint) {
   MonitorAutoLock monitor(mMonitor);
 
@@ -1271,7 +1286,7 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aViewportFr
     case FLING:
     case TOUCHING:
     case WAITING_LISTENERS:
-      mFrameMetrics.mScrollOffset = aViewportFrame.mScrollOffset;
+//      mFrameMetrics.mScrollOffset = aViewportFrame.mScrollOffset;
       break;
     // Don't clobber if we're in other states.
     default:
