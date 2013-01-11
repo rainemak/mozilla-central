@@ -26,6 +26,7 @@
 #include "nsIPresShell.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
 #include "nsIScriptSecurityManager.h"
+#include "mozilla/Preferences.h"
 
 using namespace mozilla::layers;
 
@@ -36,6 +37,7 @@ EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(uint32_t aId)
   : mId(aId)
   , mViewSize(0, 0)
   , mScrolling(new EmbedLiteViewScrolling(this))
+  , mDispatchSynthMouseEvents(true)
 {
     LOGT();
     AddRef();
@@ -326,30 +328,50 @@ EmbedLiteViewThreadChild::RecvMouseEvent(const nsString& aType,
 }
 
 bool
-EmbedLiteViewThreadChild::RecvInputDataTouchEvent(const mozilla::MultiTouchInput& aData, const gfxSize& res)
+EmbedLiteViewThreadChild::RecvInputDataTouchEvent(const mozilla::MultiTouchInput& aData, const gfxSize& res, const gfxPoint& diff)
 {
     nsTouchEvent localEvent;
-    if (mHelper->ConvertMutiTouchInputToEvent(aData, res, localEvent)) {
+    if (mHelper->ConvertMutiTouchInputToEvent(aData, res, diff, localEvent)) {
         nsEventStatus status =
             mHelper->DispatchWidgetEvent(localEvent);
-        if (/*IsAsyncPanZoomEnabled()*/ true) {
-            nsCOMPtr<nsPIDOMWindow> outerWindow = do_GetInterface(mWebNavigation);
-            nsCOMPtr<nsPIDOMWindow> innerWindow = outerWindow->GetCurrentInnerWindow();
-
-            if (innerWindow && innerWindow->HasTouchEventListeners()) {
-                SendContentReceivedTouch(nsIPresShell::gPreventMouseEvents);
+        nsCOMPtr<nsPIDOMWindow> outerWindow = do_GetInterface(mWebNavigation);
+        nsCOMPtr<nsPIDOMWindow> innerWindow = outerWindow->GetCurrentInnerWindow();
+        if (innerWindow && innerWindow->HasTouchEventListeners()) {
+            SendContentReceivedTouch(nsIPresShell::gPreventMouseEvents);
+            if (status == nsEventStatus_eConsumeNoDefault) {
+                SendCancelDefaultPanZoom();
             }
-        } else if (status != nsEventStatus_eConsumeNoDefault) {
-            mHelper->UpdateTapState(localEvent, status);
         }
+        static bool sDispatchMouseEvents;
+        static bool sDispatchMouseEventsCached = false;
+        if (!sDispatchMouseEventsCached) {
+            sDispatchMouseEventsCached = true;
+            Preferences::AddBoolVarCache(&sDispatchMouseEvents,
+                "embedlite.dispatch_mouse_events", false);
+        }
+        if (status != nsEventStatus_eConsumeNoDefault && mDispatchSynthMouseEvents && sDispatchMouseEvents) {
+            // Touch event not handled
+            //mHelper->UpdateTapState(localEvent, status);
+            status = mHelper->DispatchSynthesizedMouseEvent(localEvent);
+            if (status != nsEventStatus_eConsumeNoDefault && status != nsEventStatus_eConsumeDoDefault) {
+                mDispatchSynthMouseEvents = false;
+            } else {
+                SendCancelDefaultPanZoom();
+            }
+        }
+    }
+    if (aData.mType == MultiTouchInput::MULTITOUCH_END ||
+        aData.mType == MultiTouchInput::MULTITOUCH_CANCEL ||
+        aData.mType == MultiTouchInput::MULTITOUCH_LEAVE) {
+        mDispatchSynthMouseEvents = true;
     }
     return true;
 }
 
 bool
-EmbedLiteViewThreadChild::RecvInputDataTouchMoveEvent(const mozilla::MultiTouchInput& aData, const gfxSize& res)
+EmbedLiteViewThreadChild::RecvInputDataTouchMoveEvent(const mozilla::MultiTouchInput& aData, const gfxSize& res, const gfxPoint& diff)
 {
-    return RecvInputDataTouchEvent(aData, res);
+    return RecvInputDataTouchEvent(aData, res, diff);
 }
 
 /* void onTitleChanged (in wstring aTitle) */

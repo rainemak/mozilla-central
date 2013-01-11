@@ -131,9 +131,12 @@ protected:
     nsEventStatus DispatchWidgetEvent(nsGUIEvent& event);
     // Sends a simulated mouse event from a touch event for compatibility.
     bool ConvertMutiTouchInputToEvent(const mozilla::MultiTouchInput& aData,
-                                      const gfxSize& res, nsTouchEvent& aEvent);
+                                      const gfxSize& res, const gfxPoint& diff,
+                                      nsTouchEvent& aEvent);
     void DispatchSynthesizedMouseEvent(uint32_t aMsg, uint64_t aTime,
                                        const nsIntPoint& aRefPoint);
+    nsEventStatus DispatchSynthesizedMouseEvent(const nsTouchEvent& aEvent);
+
 
     // These methods are used for tracking synthetic mouse events
     // dispatched for compatibility.  On each touch event, we

@@ -610,7 +610,8 @@ ToWidgetPoint(float aX, float aY, const nsPoint& aOffset,
 
 bool
 TabChildHelper::ConvertMutiTouchInputToEvent(const mozilla::MultiTouchInput& aData,
-                                             const gfxSize& res, nsTouchEvent& aEvent)
+                                             const gfxSize& res, const gfxPoint& diff,
+                                             nsTouchEvent& aEvent)
 {
     uint32_t msg = NS_USER_DEFINED_EVENT;
     switch (aData.mType) {
@@ -664,6 +665,10 @@ TabChildHelper::ConvertMutiTouchInputToEvent(const mozilla::MultiTouchInput& aDa
         pt.x = pt.x / res.width;
         pt.y = pt.y / res.height;
         nsIntPoint tpt = ToWidgetPoint(pt.x, pt.y, offset, presContext);
+        if (!getenv("TT1")) {
+        tpt.x -= diff.x;
+        tpt.y -= diff.y;
+        }
         aEvent.touches.AppendElement(new nsDOMTouch(data.mIdentifier,
             tpt,
             data.mRadius,
@@ -714,6 +719,59 @@ TabChildHelper::DispatchWidgetEvent(nsGUIEvent& event)
     NS_ENSURE_SUCCESS(event.widget->DispatchEvent(&event, status),
                       nsEventStatus_eConsumeNoDefault);
     return status;
+}
+
+nsEventStatus
+TabChildHelper::DispatchSynthesizedMouseEvent(const nsTouchEvent& aEvent)
+{
+  // Synthesize a phony mouse event.
+  uint32_t msg;
+  switch (aEvent.message) {
+    case NS_TOUCH_START:
+      msg = NS_MOUSE_BUTTON_DOWN;
+      break;
+    case NS_TOUCH_MOVE:
+      msg = NS_MOUSE_MOVE;
+      break;
+    case NS_TOUCH_END:
+    case NS_TOUCH_CANCEL:
+      msg = NS_MOUSE_BUTTON_UP;
+      break;
+    default:
+      MOZ_NOT_REACHED("Unknown touch event message");
+  }
+
+  // get the widget to send the event to
+  nsPoint offset;
+  nsCOMPtr<nsIWidget> widget = GetWidget(&offset);
+  if (!widget)
+    return nsEventStatus_eIgnore;
+
+  nsMouseEvent event(true, msg, widget, nsMouseEvent::eReal, nsMouseEvent::eNormal);
+
+  event.widget = widget;
+  if (msg != NS_MOUSE_MOVE) {
+    event.clickCount = 1;
+  }
+  event.time = PR_IntervalNow();
+
+  nsPresContext* presContext = GetPresContext();
+  if (!presContext)
+    return nsEventStatus_eIgnore;
+
+  nsIntPoint refPoint;
+  if (aEvent.touches.Length()) {
+    refPoint = aEvent.touches[0]->mRefPoint;
+  }
+
+  event.refPoint = ToWidgetPoint(refPoint.x, refPoint.y, offset, presContext);
+  event.ignoreRootScrollFrame = true;
+
+  nsEventStatus status;
+  if NS_SUCCEEDED(widget->DispatchEvent(&event, status)) {
+    return status;
+  }
+  return nsEventStatus_eIgnore;
 }
 
 void

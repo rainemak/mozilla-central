@@ -151,6 +151,7 @@ public:
         mApp->SetIntPref("ui.dragThresholdX", 25);
         mApp->SetIntPref("ui.dragThresholdY", 25);
         mApp->SetBoolPref("layout.build_layers_for_scrollable_views", true);
+        mApp->SetBoolPref("embedlite.dispatch_mouse_events", false); // Will dispatch mouse events if page using them
     }
 
 private:

@@ -148,6 +148,7 @@ private:
     RefPtr<EmbedContentController> mGeckoController;
 
     gfxSize mViewSize;
+    bool mInTouchProcess;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadParent);
 };

@@ -9,6 +9,7 @@ include "IPC/InputDataIPC.h";
 
 using gfxSize;
 using gfxRect;
+using gfxPoint;
 using nsIntPoint;
 using mozilla::layers::FrameMetrics;
 using nscolor;
@@ -39,10 +40,10 @@ child:
                int32_t aButton, int32_t aClickCount,
                int32_t aModifiers, bool aIgnoreRootScrollFrame);
 
-    InputDataTouchEvent(MultiTouchInput event, gfxSize res);
+    InputDataTouchEvent(MultiTouchInput event, gfxSize res, gfxPoint diff);
     // We use a separate message for touchmove events only to apply
     // compression to them.
-    InputDataTouchMoveEvent(MultiTouchInput event, gfxSize res) compress;
+    InputDataTouchMoveEvent(MultiTouchInput event, gfxSize res, gfxPoint diff) compress;
 
     async Destroy();
 parent:

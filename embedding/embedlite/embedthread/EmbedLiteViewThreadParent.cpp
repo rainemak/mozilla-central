@@ -117,6 +117,7 @@ EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id)
   , mCompositor(nullptr)
   , mScrollOffset(0, 0)
   , mLastScale(1.0f)
+  , mInTouchProcess(false)
 {
     MOZ_COUNT_CTOR(EmbedLiteViewThreadParent);
     LOGT("id:%u", mId);
@@ -380,7 +381,7 @@ EmbedLiteViewThreadParent::RecvZoomToRect(const gfxRect& aRect)
 bool
 EmbedLiteViewThreadParent::RecvCancelDefaultPanZoom()
 {
-    if (mController) {
+    if (mController && mInTouchProcess) {
         mController->CancelDefaultPanZoom();
     }
     return true;
@@ -593,10 +594,18 @@ EmbedLiteViewThreadParent::ReceiveInputEvent(const InputData& aEvent)
             const MultiTouchInput& multiTouchInput = aEvent.AsMultiTouchInput();
             const SingleTouchData& data = multiTouchInput.mTouches[0];
             gfxSize sz = mController->CalculateResolution();
+            if (multiTouchInput.mType == MultiTouchInput::MULTITOUCH_START ||
+                multiTouchInput.mType == MultiTouchInput::MULTITOUCH_ENTER) {
+                mInTouchProcess = true;
+            } else if (multiTouchInput.mType == MultiTouchInput::MULTITOUCH_END ||
+                       multiTouchInput.mType == MultiTouchInput::MULTITOUCH_LEAVE) {
+                mInTouchProcess = false;
+            }
+            gfxPoint diff = mController->GetTempScrollOffset();
             if (multiTouchInput.mType == MultiTouchInput::MULTITOUCH_MOVE)
-                unused << SendInputDataTouchMoveEvent(multiTouchInput, sz);
+                unused << SendInputDataTouchMoveEvent(multiTouchInput, sz, diff);
             else
-                unused << SendInputDataTouchEvent(multiTouchInput, sz);
+                unused << SendInputDataTouchEvent(multiTouchInput, sz, diff);
         }
     }
 }
