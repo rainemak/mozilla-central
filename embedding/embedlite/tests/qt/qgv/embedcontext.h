@@ -22,7 +22,7 @@ public:
 Q_SIGNALS:
     void geckoSymbolsLoaded();
 
-public slots:
+public Q_SLOTS:
     void Quit();
 
 public:
@@ -52,12 +52,12 @@ public:
 
     bool IsInitialized() { return mInitialized; }
 
-public slots:
+public Q_SLOTS:
     void contextInitialized();
     void onLastWindowClosed();
     void runEmbedding();
 
-signals:
+Q_SIGNALS:
     void geckoContextInitialized();
     void contextFinalized();
     void contextFinalizedThread();

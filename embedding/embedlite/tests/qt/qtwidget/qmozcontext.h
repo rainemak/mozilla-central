@@ -26,7 +26,7 @@ public:
     GeckoThread(QMozContext* aContext) : mContext(aContext), mEventLoop(NULL) {}
     void run();
 
-public slots:
+public Q_SLOTS:
     void Quit();
 
 public:
@@ -49,7 +49,7 @@ public:
 Q_SIGNALS:
     void onInitialized();
 
-private slots:
+private Q_SLOTS:
     void runEmbedding();
     void onLastWindowClosed();
 

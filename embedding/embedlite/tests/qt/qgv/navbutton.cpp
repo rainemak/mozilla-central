@@ -28,7 +28,7 @@ void NavButton::mousePressEvent(QGraphicsSceneMouseEvent *event)
 void NavButton::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
     // printf("NavButton::mouseReleaseEvent [%g,%g]\n", event->scenePos().x(), event->scenePos().y());
-    emit buttonClicked();
+    Q_EMIT buttonClicked();
 }
 
 void NavButton::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)

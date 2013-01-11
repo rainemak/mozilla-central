@@ -79,7 +79,7 @@ void QDeclarativeMozView::setPreferredWidth(int width)
         return;
     d->preferredwidth = width;
     updateContentsSize();
-    emit preferredWidthChanged();
+    Q_EMIT preferredWidthChanged();
 }
 
 /*!
@@ -98,7 +98,7 @@ void QDeclarativeMozView::setPreferredHeight(int height)
         return;
     d->preferredheight = height;
     updateContentsSize();
-    emit preferredHeightChanged();
+    Q_EMIT preferredHeightChanged();
 }
 
 void QDeclarativeMozView::updateContentsSize()

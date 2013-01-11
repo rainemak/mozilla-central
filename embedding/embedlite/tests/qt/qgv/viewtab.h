@@ -40,11 +40,11 @@ protected:
     virtual void mousePressEvent(QGraphicsSceneMouseEvent*);
     virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent*);
 
-signals:
+Q_SIGNALS:
     void tabButtonClicked(ViewTab*);
     void tabLocationChanged(ViewTab*);
 
-public slots:
+public Q_SLOTS:
     void onContextInitialized();
     void onButtonClicked();
 

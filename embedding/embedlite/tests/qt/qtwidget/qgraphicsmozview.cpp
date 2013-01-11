@@ -59,8 +59,8 @@ public:
     virtual void ViewInitialized() {
         mViewInitialized = true;
         UpdateViewSize();
-        emit q->viewInitialized();
-        emit q->navigationHistoryChanged();
+        Q_EMIT q->viewInitialized();
+        Q_EMIT q->navigationHistoryChanged();
     }
     virtual void SetBackgroundColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
         mBgColor = QColor(r, g, b, a);
@@ -71,71 +71,71 @@ public:
     }
     virtual void OnTitleChanged(const PRUnichar* aTitle) {
         mTitle = QString((const QChar*)aTitle);
-        emit q->titleChanged();
+        Q_EMIT q->titleChanged();
     }
     virtual void OnLocationChanged(const char* aLocation, bool aCanGoBack, bool aCanGoForward) {
         mLocation = QString(aLocation);
         if (mCanGoBack != aCanGoBack || mCanGoForward != aCanGoForward) {
             mCanGoBack = aCanGoBack;
             mCanGoForward = aCanGoForward;
-            emit q->navigationHistoryChanged();
+            Q_EMIT q->navigationHistoryChanged();
         }
-        emit q->urlChanged();
+        Q_EMIT q->urlChanged();
     }
     virtual void OnLoadProgress(int32_t aProgress, int32_t aCurTotal, int32_t aMaxTotal) {
         mProgress = aProgress;
-        emit q->loadProgressChanged();
+        Q_EMIT q->loadProgressChanged();
     }
     virtual void OnLoadStarted(const char* aLocation) {
         if (mLocation != aLocation) {
             mLocation = aLocation;
-            emit q->urlChanged();
+            Q_EMIT q->urlChanged();
         }
         if (!mIsLoading) {
             mIsLoading = true;
-            emit q->loadingChanged();
+            Q_EMIT q->loadingChanged();
         }
     }
     virtual void OnLoadFinished(void) {
         if (mIsLoading) {
             mIsLoading = false;
-            emit q->loadingChanged();
+            Q_EMIT q->loadingChanged();
         }
     }
 
     // View finally destroyed and deleted
     virtual void Destroyed() {
         LOGT();
-        emit q->viewDestroyed();
+        Q_EMIT q->viewDestroyed();
     }
     virtual void RecvAsyncMessage(const char* aMessage, const char* aData) {
         LOGT();
-        emit q->recvAsyncMessage(aMessage, aData);
+        Q_EMIT q->recvAsyncMessage(aMessage, aData);
     }
     virtual char* RecvSyncMessage(const char* aMessage, const char* aData) {
         LOGT();
         QSyncMessageResponse response;
-        emit q->recvSyncMessage(aMessage, aData, &response);
+        Q_EMIT q->recvSyncMessage(aMessage, aData, &response);
         LOGT("msg:%s, response:%s", aMessage, response.getMessage().toUtf8().data());
         return strdup(response.getMessage().toUtf8().data());
     }
 
     virtual void OnLoadRedirect(void) {
         LOGT();
-        emit q->loadRedirect();
+        Q_EMIT q->loadRedirect();
     }
 
     virtual void OnSecurityChanged(const char* aStatus, unsigned int aState) {
         LOGT();
-        emit q->securityChanged(aStatus, aState);
+        Q_EMIT q->securityChanged(aStatus, aState);
     }
     virtual void OnFirstPaint(int32_t aX, int32_t aY) {
         LOGT();
-        emit q->firstPaint(aX, aY);
+        Q_EMIT q->firstPaint(aX, aY);
     }
     virtual void OnContentLoaded(const PRUnichar* aDocURI) {
         LOGT();
-        emit q->contentLoaded(QString((QChar*)aDocURI));
+        Q_EMIT q->contentLoaded(QString((QChar*)aDocURI));
     }
     virtual void OnLinkAdded(const PRUnichar* aHref, const PRUnichar* aCharset, const PRUnichar* aTitle, const PRUnichar* aRel, const PRUnichar* aSizes, const PRUnichar* aType) { LOGT(); }
     virtual void OnWindowOpenClose(const PRUnichar* aType) { LOGT(); }
@@ -145,7 +145,7 @@ public:
     virtual void OnScrollChanged(int32_t offSetX, int32_t offSetY) { }
     virtual void OnObserve(const char* aTopic, const PRUnichar* aData) {
         LOGT();
-        emit q->observeNotification(aTopic, QString((QChar*)aData));
+        Q_EMIT q->observeNotification(aTopic, QString((QChar*)aData));
     }
     virtual void SetFirstPaintViewport(const nsIntPoint& aOffset, float aZoom,
                                        const nsIntRect& aPageRect, const gfxRect& aCssPageRect) { LOGT(); }

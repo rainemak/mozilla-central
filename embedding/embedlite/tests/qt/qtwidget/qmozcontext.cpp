@@ -75,7 +75,7 @@ public:
         mInitialized = true;
         setDefaultPrefs();
         mApp->LoadGlobalStyleSheet("chrome://global/content/embedScrollStyles.css", true);
-        q->emit onInitialized();
+        Q_EMIT q->onInitialized();
     }
     // App Destroyed, and ready to delete and program exit
     virtual void Destroyed() {

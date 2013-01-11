@@ -2,9 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// Define it in order to prevent conflicts with mozilla slots names
-#define QT_NO_KEYWORDS
-
 #include <QApplication>
 #include <QStyle>
 #include <QPalette>

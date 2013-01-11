@@ -8,7 +8,7 @@
 #define jsfriendapi_h___
 
 // Define it in order to prevent conflicts with mozilla slots names
-#undef slots
+//#undef slots
 
 #include "mozilla/GuardObjects.h"
 

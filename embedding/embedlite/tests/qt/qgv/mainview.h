@@ -22,10 +22,10 @@ public:
     void CreateLayout();
     void SetMozContext(EmbedContext* aContext);
 
-signals:
+Q_SIGNALS:
     void onCloseEvent();
 
-public slots:
+public Q_SLOTS:
     void onTabButtonClicked(ViewTab* tab);
     void onTabLocationChanged(ViewTab* tab);
     void onButtonOpenClicked();

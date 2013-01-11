@@ -140,7 +140,7 @@ void ViewTab::Reload()
 
 void ViewTab::onButtonClicked()
 {
-    emit tabButtonClicked(this);
+    Q_EMIT tabButtonClicked(this);
 }
 
 void ViewTab::resizeEvent(QGraphicsSceneResizeEvent* ev)

@@ -95,7 +95,7 @@ protected:
     virtual void inputMethodEvent(QInputMethodEvent*);
     virtual QVariant inputMethodQuery(Qt::InputMethodQuery aQuery) const;
 
-private slots:
+private Q_SLOTS:
     void onInitialized();
 
 private:

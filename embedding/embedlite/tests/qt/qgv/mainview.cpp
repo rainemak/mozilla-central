@@ -51,7 +51,7 @@ MainView::MainView(EmbedContext* aContext)
 
 void MainView::closeEvent(QCloseEvent* aEvent)
 {
-    emit onCloseEvent();
+    Q_EMIT onCloseEvent();
 }
 
 void MainView::SetMozContext(EmbedContext* aContext)

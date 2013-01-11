@@ -167,10 +167,10 @@ void EmbedContext::Initialized()
     mInitialized = true;
     setDefaultPrefs();
     GetApp()->LoadGlobalStyleSheet("chrome://global/content/embedScrollStyles.css", true);
-    emit geckoContextInitialized();
+    Q_EMIT geckoContextInitialized();
 }
 
 void EmbedContext::Destroyed()
 {
-    emit contextFinalized();
+    Q_EMIT contextFinalized();
 }

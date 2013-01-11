@@ -25,7 +25,7 @@ public:
         update();
     }
 
-signals:
+Q_SIGNALS:
     void buttonClicked();
 
 protected:
