@@ -63,3 +63,6 @@ pref("ui.dragThresholdX", 25);
 pref("ui.dragThresholdY", 25);
 pref("layout.build_layers_for_scrollable_views", true);
 pref("embedlite.dispatch_mouse_events", false); // Will dispatch mouse events if page using them
+//pref("dom.mozBrowserFramesEnabled", true);
+//pref("browser.prompt.allowNative", true);
+

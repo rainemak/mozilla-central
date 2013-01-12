@@ -73,6 +73,7 @@ private:
     nsCOMPtr<TabChildHelper> mHelper;
     bool mDispatchSynthMouseEvents;
 
+    friend class EmbedLiteViewScrolling;
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadChild);
 };
 

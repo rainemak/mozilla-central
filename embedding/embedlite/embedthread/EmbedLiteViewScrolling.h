@@ -23,11 +23,17 @@ public:
     void GestureDoubleTap(const nsIntPoint& aPoint);
 
 private:
+    bool IsRectZoomedIn(gfx::Rect aRect, gfx::Rect aViewport);
+    bool ShouldZoomToElement(nsIDOMElement* aElement);
+    void AnyElementFromPoint(nsIDOMWindow* aWindow, double aX, double aY, nsIDOMElement* *aElem);
+    gfx::Rect GetBoundingContentRect(nsIDOMElement* aElement);
+
     gfx::Rect mViewport;
     gfx::Rect mCssCompositedRect;
     gfx::Rect mCssPageRect;
 
     EmbedLiteViewThreadChild* mView;
+    bool mGotViewPortUpdate;
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewScrolling);
 };
 

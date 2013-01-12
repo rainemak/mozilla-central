@@ -6,18 +6,19 @@
 #define LOG_COMPONENT "TabChildHelper"
 
 #include "TabChildHelper.h"
+
+#include "nsIWidget.h"
+
+#include "EmbedTabChildGlobal.h"
 #include "EmbedLog.h"
 
 #include "EmbedLiteViewThreadChild.h"
 #include "EmbedLiteViewScrolling.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
 
-#include "nsIObserverService.h"
 #include "nsNetUtil.h"
-#include "nsIDOMDocument.h"
-#include "nsIDocument.h"
+#include "nsEventListenerManager.h"
 #include "nsIDOMWindowUtils.h"
-#include "nsIDOMElement.h"
 #include "mozilla/dom/Element.h"
 #include "nsGlobalWindow.h"
 #include "nsIDocShell.h"
@@ -52,8 +53,6 @@ TabChildHelper::TabChildHelper(EmbedLiteViewThreadChild* aView)
   : mView(aView)
   , mContentDocumentIsDisplayed(false)
   , mTabChildGlobal(nullptr)
-  , mActivePointerId(-1)
-  , mTapHoldTimer(nullptr)
 {
     LOGT();
 
@@ -794,229 +793,9 @@ TabChildHelper::DispatchSynthesizedMouseEvent(uint32_t aMsg, uint64_t aTime,
     DispatchWidgetEvent(event);
 }
 
-static nsDOMTouch*
-GetTouchForIdentifier(const nsTouchEvent& aEvent, int32_t aId)
+bool
+TabChildHelper::RecvHandleDoubleTap(const nsIntPoint& aPoint)
 {
-  for (uint32_t i = 0; i < aEvent.touches.Length(); ++i) {
-    nsDOMTouch* touch = static_cast<nsDOMTouch*>(aEvent.touches[i].get());
-    if (touch->mIdentifier == aId) {
-      return touch;
-    }
-  }
-  return nullptr;
-}
-
-void
-TabChildHelper::UpdateTapState(const nsTouchEvent& aEvent, nsEventStatus aStatus)
-{
-  static bool sHavePrefs;
-  static bool sClickHoldContextMenusEnabled;
-  static nsIntSize sDragThreshold;
-  static int32_t sContextMenuDelayMs;
-  if (!sHavePrefs) {
-    sHavePrefs = true;
-    Preferences::AddBoolVarCache(&sClickHoldContextMenusEnabled,
-                                 "ui.click_hold_context_menus", true);
-    Preferences::AddIntVarCache(&sDragThreshold.width,
-                                "ui.dragThresholdX", 25);
-    Preferences::AddIntVarCache(&sDragThreshold.height,
-                                "ui.dragThresholdY", 25);
-    Preferences::AddIntVarCache(&sContextMenuDelayMs,
-                                "ui.click_hold_context_menus.delay", 500);
-  }
-
-  bool currentlyTrackingTouch = (mActivePointerId >= 0);
-  if (aEvent.message == NS_TOUCH_START) {
-    if (currentlyTrackingTouch || aEvent.touches.Length() > 1) {
-      // We're tracking a possible tap for another point, or we saw a
-      // touchstart for a later pointer after we canceled tracking of
-      // the first point.  Ignore this one.
-      return;
-    }
-    if (aStatus == nsEventStatus_eConsumeNoDefault ||
-        nsIPresShell::gPreventMouseEvents) {
-      return;
-    }
-
-    nsDOMTouch* touch = static_cast<nsDOMTouch*>(aEvent.touches[0].get());
-    mGestureDownPoint = touch->mRefPoint;
-    mActivePointerId = touch->mIdentifier;
-    if (sClickHoldContextMenusEnabled) {
-      MOZ_ASSERT(!mTapHoldTimer);
-      mTapHoldTimer = NewRunnableMethod(this,
-                                        &TabChildHelper::FireContextMenuEvent);
-      MessageLoop::current()->PostDelayedTask(FROM_HERE, mTapHoldTimer,
-                                              sContextMenuDelayMs);
-    }
-    return;
-  }
-
-  // If we're not tracking a touch or this event doesn't include the
-  // one we care about, bail.
-  if (!currentlyTrackingTouch) {
-    return;
-  }
-  nsDOMTouch* trackedTouch = GetTouchForIdentifier(aEvent, mActivePointerId);
-  if (!trackedTouch) {
-    return;
-  }
-
-  nsIntPoint currentPoint = trackedTouch->mRefPoint;
-  int64_t time = aEvent.time;
-  switch (aEvent.message) {
-  case NS_TOUCH_MOVE:
-    if (abs(currentPoint.x - mGestureDownPoint.x) > sDragThreshold.width ||
-        abs(currentPoint.y - mGestureDownPoint.y) > sDragThreshold.height) {
-      CancelTapTracking();
-    }
-    return;
-
-  case NS_TOUCH_END:
-    if (!nsIPresShell::gPreventMouseEvents) {
-      DispatchSynthesizedMouseEvent(NS_MOUSE_MOVE, time, currentPoint);
-      DispatchSynthesizedMouseEvent(NS_MOUSE_BUTTON_DOWN, time, currentPoint);
-      DispatchSynthesizedMouseEvent(NS_MOUSE_BUTTON_UP, time, currentPoint);
-    }
-    // fall through
-  case NS_TOUCH_CANCEL:
-    CancelTapTracking();
-    return;
-
-  default:
-    NS_WARNING("Unknown touch event type");
-  }
-}
-
-void
-TabChildHelper::FireContextMenuEvent()
-{
-  MOZ_ASSERT(mTapHoldTimer && mActivePointerId >= 0);
-  mView->RecvHandleLongTap(mGestureDownPoint);
-  CancelTapTracking();
-}
-
-void
-TabChildHelper::CancelTapTracking()
-{
-  mActivePointerId = -1;
-  if (mTapHoldTimer) {
-    mTapHoldTimer->Cancel();
-  }
-  mTapHoldTimer = nullptr;
-}
-
-EmbedTabChildGlobal::EmbedTabChildGlobal(TabChildHelper* aTabChild)
-  : mTabChild(aTabChild)
-{
-}
-
-void
-EmbedTabChildGlobal::Init()
-{
-  NS_ASSERTION(!mMessageManager, "Re-initializing?!?");
-  mMessageManager = new nsFrameMessageManager(mTabChild,
-                                              nullptr,
-                                              mTabChild->GetJSContext(),
-                                              mozilla::dom::ipc::MM_CHILD);
-}
-
-NS_IMPL_CYCLE_COLLECTION_CLASS(EmbedTabChildGlobal)
-
-NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN_INHERITED(EmbedTabChildGlobal,
-                                                nsDOMEventTargetHelper)
-  NS_IMPL_CYCLE_COLLECTION_UNLINK(mMessageManager)
-NS_IMPL_CYCLE_COLLECTION_UNLINK_END
-
-NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INHERITED(EmbedTabChildGlobal,
-                                                  nsDOMEventTargetHelper)
-  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mMessageManager)
-NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
-
-NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION_INHERITED(EmbedTabChildGlobal)
-  NS_INTERFACE_MAP_ENTRY(nsIMessageListenerManager)
-  NS_INTERFACE_MAP_ENTRY(nsIMessageSender)
-  NS_INTERFACE_MAP_ENTRY(nsISyncMessageSender)
-  NS_INTERFACE_MAP_ENTRY(nsIContentFrameMessageManager)
-  NS_INTERFACE_MAP_ENTRY(nsIScriptContextPrincipal)
-  NS_INTERFACE_MAP_ENTRY(nsIScriptObjectPrincipal)
-  NS_INTERFACE_MAP_ENTRY(nsITabChild)
-  NS_DOM_INTERFACE_MAP_ENTRY_CLASSINFO(ContentFrameMessageManager)
-NS_INTERFACE_MAP_END_INHERITING(nsDOMEventTargetHelper)
-
-NS_IMPL_ADDREF_INHERITED(EmbedTabChildGlobal, nsDOMEventTargetHelper)
-NS_IMPL_RELEASE_INHERITED(EmbedTabChildGlobal, nsDOMEventTargetHelper)
-
-/* [notxpcom] boolean markForCC (); */
-// This method isn't automatically forwarded safely because it's notxpcom, so
-// the IDL binding doesn't know what value to return.
-NS_IMETHODIMP_(bool)
-EmbedTabChildGlobal::MarkForCC()
-{
-    return mMessageManager ? mMessageManager->MarkForCC() : false;
-}
-
-NS_IMETHODIMP
-EmbedTabChildGlobal::GetContent(nsIDOMWindow** aContent)
-{
-    *aContent = nullptr;
-    if (!mTabChild)
-        return NS_ERROR_NULL_POINTER;
-    nsCOMPtr<nsIDOMWindow> window = do_GetInterface(mTabChild->WebNavigation());
-    window.swap(*aContent);
-    return NS_OK;
-}
-
-NS_IMETHODIMP
-EmbedTabChildGlobal::PrivateNoteIntentionalCrash()
-{
-//    mozilla::NoteIntentionalCrash("tab");
-    return NS_OK;
-}
-
-NS_IMETHODIMP
-EmbedTabChildGlobal::GetDocShell(nsIDocShell** aDocShell)
-{
-    *aDocShell = nullptr;
-    if (!mTabChild)
-        return NS_ERROR_NULL_POINTER;
-    nsCOMPtr<nsIDocShell> docShell = do_GetInterface(mTabChild->WebNavigation());
-    docShell.swap(*aDocShell);
-    return NS_OK;
-}
-
-NS_IMETHODIMP
-EmbedTabChildGlobal::Btoa(const nsAString& aBinaryData,
-                          nsAString& aAsciiBase64String)
-{
-  return nsContentUtils::Btoa(aBinaryData, aAsciiBase64String);
-}
-
-NS_IMETHODIMP
-EmbedTabChildGlobal::Atob(const nsAString& aAsciiString,
-                          nsAString& aBinaryData)
-{
-  return nsContentUtils::Atob(aAsciiString, aBinaryData);
-}
-
-JSContext*
-EmbedTabChildGlobal::GetJSContextForEventHandlers()
-{
-    if (!mTabChild)
-        return nullptr;
-    return mTabChild->GetJSContext();
-}
-
-nsIPrincipal*
-EmbedTabChildGlobal::GetPrincipal()
-{
-    if (!mTabChild)
-        return nullptr;
-    return mTabChild->GetPrincipal();
-}
-
-NS_IMETHODIMP
-EmbedTabChildGlobal::GetMessageManager(nsIContentFrameMessageManager** aResult)
-{
-    NS_ADDREF(*aResult = this);
-    return NS_OK;
+    mView->mScrolling->GestureDoubleTap(aPoint);
+    return true;
 }

@@ -245,7 +245,10 @@ EmbedLiteViewThreadChild::RecvHandleDoubleTap(const nsIntPoint& aPoint)
     data.AppendPrintf(", \"y\" : %d", aPoint.y);
     data.AppendPrintf(" }");
 
-    mHelper->RecvAsyncMessage(NS_LITERAL_STRING("Gesture:DoubleTap"), data);
+    if (getenv("LOAD_BR_CHILD"))
+        mHelper->RecvAsyncMessage(NS_LITERAL_STRING("Gesture:DoubleTap"), data);
+    else
+        mHelper->RecvHandleDoubleTap(aPoint);
 
     return true;
 }
@@ -351,7 +354,6 @@ EmbedLiteViewThreadChild::RecvInputDataTouchEvent(const mozilla::MultiTouchInput
         }
         if (status != nsEventStatus_eConsumeNoDefault && mDispatchSynthMouseEvents && sDispatchMouseEvents) {
             // Touch event not handled
-            //mHelper->UpdateTapState(localEvent, status);
             status = mHelper->DispatchSynthesizedMouseEvent(localEvent);
             if (status != nsEventStatus_eConsumeNoDefault && status != nsEventStatus_eConsumeDoDefault) {
                 mDispatchSynthMouseEvents = false;

@@ -6,84 +6,20 @@
 #ifndef __TabChildHelper_h_
 #define __TabChildHelper_h_
 
-#include "nsCOMPtr.h"
 #include "nsIObserver.h"
 #include "FrameMetrics.h"
 #include "nsFrameMessageManager.h"
-#include "nsDOMEventTargetHelper.h"
-#include "nsIScriptObjectPrincipal.h"
 #include "nsIWebNavigation.h"
-#include "nsITabChild.h"
+#include "nsIWidget.h"
 #include "InputData.h"
-#include "base/task.h"
+
+class CancelableTask;
+class nsPresContext;
 
 namespace mozilla {
 namespace embedlite {
 
-class TabChildHelper;
-class EmbedTabChildGlobal : public nsDOMEventTargetHelper,
-                            public nsIContentFrameMessageManager,
-                            public nsIScriptObjectPrincipal,
-                            public nsIScriptContextPrincipal,
-                            public nsITabChild
-{
-public:
-  EmbedTabChildGlobal(TabChildHelper* aTabChild);
-  void Init();
-  NS_DECL_ISUPPORTS_INHERITED
-  NS_DECL_NSITABCHILD
-  NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(EmbedTabChildGlobal, nsDOMEventTargetHelper)
-  NS_FORWARD_SAFE_NSIMESSAGELISTENERMANAGER(mMessageManager)
-  NS_FORWARD_SAFE_NSIMESSAGESENDER(mMessageManager)
-  NS_IMETHOD SendSyncMessage(const nsAString& aMessageName,
-                             const jsval& aObject,
-                             JSContext* aCx,
-                             uint8_t aArgc,
-                             jsval* aRetval)
-  {
-      return mMessageManager
-          ? mMessageManager->SendSyncMessage(aMessageName, aObject, aCx, aArgc, aRetval)
-          : NS_ERROR_NULL_POINTER;
-  }
-  NS_IMETHOD GetContent(nsIDOMWindow** aContent);
-  NS_IMETHOD GetDocShell(nsIDocShell** aDocShell);
-  NS_IMETHOD Dump(const nsAString& aStr)
-  {
-      return mMessageManager ? mMessageManager->Dump(aStr) : NS_OK;
-  }
-  NS_IMETHOD PrivateNoteIntentionalCrash();
-  NS_IMETHOD Btoa(const nsAString& aBinaryData,
-                  nsAString& aAsciiBase64String);
-  NS_IMETHOD Atob(const nsAString& aAsciiString,
-                  nsAString& aBinaryData);
-
-  NS_IMETHOD AddEventListener(const nsAString& aType,
-                              nsIDOMEventListener* aListener,
-                              bool aUseCapture)
-  {
-      // By default add listeners only for trusted events!
-      return nsDOMEventTargetHelper::AddEventListener(aType, aListener,
-                                                      aUseCapture, false, 2);
-  }
-  NS_IMETHOD AddEventListener(const nsAString& aType,
-                              nsIDOMEventListener* aListener,
-                              bool aUseCapture, bool aWantsUntrusted,
-                              uint8_t optional_argc)
-  {
-      return nsDOMEventTargetHelper::AddEventListener(aType, aListener,
-                                                      aUseCapture,
-                                                      aWantsUntrusted,
-                                                      optional_argc);
-  }
-
-  virtual nsIScriptObjectPrincipal* GetObjectPrincipal() { return this; }
-  virtual JSContext* GetJSContextForEventHandlers();
-  virtual nsIPrincipal* GetPrincipal();
-
-  TabChildHelper* mTabChild;
-    nsRefPtr<nsFrameMessageManager> mMessageManager;
-};
-
+class EmbedTabChildGlobal;
 class EmbedLiteViewThreadChild;
 class TabChildHelper : public nsIObserver,
                        public nsFrameScriptExecutor,
@@ -124,6 +60,7 @@ public:
 
     bool RecvAsyncMessage(const nsString& aMessage,
                           const nsString& aData);
+    bool RecvHandleDoubleTap(const nsIntPoint& aPoint);
 
 protected:
     nsIWidget* GetWidget(nsPoint* aOffset);
@@ -137,16 +74,7 @@ protected:
                                        const nsIntPoint& aRefPoint);
     nsEventStatus DispatchSynthesizedMouseEvent(const nsTouchEvent& aEvent);
 
-
-    // These methods are used for tracking synthetic mouse events
-    // dispatched for compatibility.  On each touch event, we
-    // UpdateTapState().  If we've detected that the current gesture
-    // isn't a tap, then we CancelTapTracking().  In the meantime, we
-    // may detect a context-menu event, and if so we
-    // FireContextMenuEvent().
-    void FireContextMenuEvent();
     void CancelTapTracking();
-    void UpdateTapState(const nsTouchEvent& aEvent, nsEventStatus aStatus);
 
 private:
     bool InitTabChildGlobal();
@@ -160,15 +88,6 @@ private:
     nsIntSize mInnerSize;
     float mOldViewportWidth;
     nsRefPtr<EmbedTabChildGlobal> mTabChildGlobal;
-    // When we're tracking a possible tap gesture, this is the "down"
-    // point of the touchstart.
-    nsIntPoint mGestureDownPoint;
-    // The touch identifier of the active gesture.
-    int32_t mActivePointerId;
-    // A timer task that fires if the tap-hold timeout is exceeded by
-    // the touch we're tracking.  That is, if touchend or a touchmove
-    // that exceeds the gesture threshold doesn't happen.
-    CancelableTask* mTapHoldTimer;
 };
 
 }}

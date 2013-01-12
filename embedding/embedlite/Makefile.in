@@ -55,6 +55,7 @@ CPPSRCS = \
     EmbedLiteCompositorParent.cpp \
     EmbedLiteViewScrolling.cpp \
     TabChildHelper.cpp \
+    EmbedTabChildGlobal.cpp \
     WebBrowserChrome.cpp \
     GeckoLoader.cpp \
     DirProvider.cpp \
