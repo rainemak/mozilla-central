@@ -5,7 +5,6 @@
 
 #include "mozilla/embedlite/EmbedInitGlue.h"
 #include "mozilla/embedlite/EmbedLiteApp.h"
-#include "embedLiteCoreInitPref.h"
 
 #ifdef MOZ_WIDGET_QT
 #include <QApplication>
@@ -27,7 +26,6 @@ public:
     virtual void Initialized()
     {
         printf("Embedding initialized, let's make view");
-        InitDefaultEmbedBrowserPrefs(mApp);
         mApp->Stop();
     }
 
