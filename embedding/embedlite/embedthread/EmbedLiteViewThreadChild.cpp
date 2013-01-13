@@ -165,17 +165,56 @@ bool
 EmbedLiteViewThreadChild::RecvLoadURL(const nsString& url)
 {
     LOGT("url:%s", NS_ConvertUTF16toUTF8(url).get());
+    NS_ENSURE_TRUE(mWebNavigation, false);
+
     nsCOMPtr<nsIIOService> ioService = do_GetService(NS_IOSERVICE_CONTRACTID);
     if (!ioService)
         return true;
 
     ioService->SetOffline(false);
-    if (mWebNavigation) {
-        mWebNavigation->LoadURI(url.get(),
-                                nsIWebNavigation::LOAD_FLAGS_NONE,
-                                0, 0, 0);
-    }
+    mWebNavigation->LoadURI(url.get(),
+                            nsIWebNavigation::LOAD_FLAGS_NONE,
+                            0, 0, 0);
 
+    return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvGoBack()
+{
+    NS_ENSURE_TRUE(mWebNavigation, false);
+
+    mWebNavigation->GoBack();
+    return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvGoForward()
+{
+    NS_ENSURE_TRUE(mWebNavigation, false);
+
+    mWebNavigation->GoForward();
+    return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvStopLoad()
+{
+    NS_ENSURE_TRUE(mWebNavigation, false);
+
+    mWebNavigation->Stop(nsIWebNavigation::STOP_NETWORK);
+    return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvReload(const bool& aHardReload)
+{
+    NS_ENSURE_TRUE(mWebNavigation, false);
+    uint32_t reloadFlags = aHardReload ?
+      nsIWebNavigation::LOAD_FLAGS_BYPASS_PROXY | nsIWebNavigation::LOAD_FLAGS_BYPASS_CACHE :
+      nsIWebNavigation::LOAD_FLAGS_NONE;
+
+    mWebNavigation->Reload(reloadFlags);
     return true;
 }
 

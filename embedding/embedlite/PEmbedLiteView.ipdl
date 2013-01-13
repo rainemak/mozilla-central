@@ -25,6 +25,10 @@ rpc protocol PEmbedLiteView {
     manager PEmbedLiteApp;
 child:
     async LoadURL(nsString url);
+    async GoBack();
+    async GoForward();
+    async StopLoad();
+    async Reload(bool hardReload);
     async LoadFrameScript(nsString uri);
     async SetViewSize(gfxSize aSize);
     async SetIsActive(bool aIsActive);

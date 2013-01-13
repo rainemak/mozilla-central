@@ -86,6 +86,30 @@ EmbedLiteView::SetIsActive(bool aIsActive)
     mViewImpl->SetIsActive(aIsActive);
 }
 
+void EmbedLiteView::GoBack()
+{
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->GoBack();
+}
+
+void EmbedLiteView::GoForward()
+{
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->GoForward();
+}
+
+void EmbedLiteView::StopLoad()
+{
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->StopLoad();
+}
+
+void EmbedLiteView::Reload(bool hard)
+{
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->Reload(hard);
+}
+
 void
 EmbedLiteView::LoadFrameScript(const char* aURI)
 {

@@ -82,6 +82,10 @@ public:
     // Embed Interface
     virtual void LoadURL(const char* aUrl);
     virtual void SetIsActive(bool);
+    virtual void GoBack();
+    virtual void GoForward();
+    virtual void StopLoad();
+    virtual void Reload(bool hard);
 
     // Input Interface
     enum PanZoomControlType { EXTERNAL, GECKO_SIMPLE, GECKO_TOUCH };

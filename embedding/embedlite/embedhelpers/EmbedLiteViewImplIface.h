@@ -19,6 +19,10 @@ class EmbedLiteViewImplIface
 {
 public:
     virtual void LoadURL(const char*) {}
+    virtual void GoBack() {}
+    virtual void GoForward() {}
+    virtual void StopLoad() {}
+    virtual void Reload(bool hardReload) {}
     virtual void LoadFrameScript(const char* aURI) {}
     virtual void DoSendAsyncMessage(const char* aMessageName, const char* aMessage) {}
     virtual void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth) {}

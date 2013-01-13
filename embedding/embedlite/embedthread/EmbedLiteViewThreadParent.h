@@ -27,6 +27,10 @@ public:
     virtual ~EmbedLiteViewThreadParent();
 
     virtual void LoadURL(const char*);
+    virtual void GoBack();
+    virtual void GoForward();
+    virtual void StopLoad();
+    virtual void Reload(bool hardReload);
     virtual void SetIsActive(bool);
     virtual void LoadFrameScript(const char* aURI);
     virtual void DoSendAsyncMessage(const char* aMessageName, const char* aMessage);

@@ -370,21 +370,33 @@ void QGraphicsMozView::loadHtml(const QString& html, const QUrl& baseUrl)
 void QGraphicsMozView::goBack()
 {
     LOGT();
+    if (!d->mViewInitialized)
+        return;
+    d->mView->GoBack();
 }
 
 void QGraphicsMozView::goForward()
 {
     LOGT();
+    if (!d->mViewInitialized)
+        return;
+    d->mView->GoForward();
 }
 
 void QGraphicsMozView::stop()
 {
     LOGT();
+    if (!d->mViewInitialized)
+        return;
+    d->mView->StopLoad();
 }
 
 void QGraphicsMozView::reload()
 {
     LOGT();
+    if (!d->mViewInitialized)
+        return;
+    d->mView->Reload(false);
 }
 
 bool QGraphicsMozView::event(QEvent* event)

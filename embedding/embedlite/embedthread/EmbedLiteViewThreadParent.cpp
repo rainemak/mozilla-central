@@ -422,6 +422,26 @@ EmbedLiteViewThreadParent::LoadURL(const char* aUrl)
     unused << SendLoadURL(NS_ConvertUTF8toUTF16(nsDependentCString(aUrl)));
 }
 
+void EmbedLiteViewThreadParent::GoBack()
+{
+    unused << SendGoBack();
+}
+
+void EmbedLiteViewThreadParent::GoForward()
+{
+    unused << SendGoForward();
+}
+
+void EmbedLiteViewThreadParent::StopLoad()
+{
+    unused << SendStopLoad();
+}
+
+void EmbedLiteViewThreadParent::Reload(bool hardReload)
+{
+    unused << SendReload(hardReload);
+}
+
 void
 EmbedLiteViewThreadParent::SetIsActive(bool aIsActive)
 {

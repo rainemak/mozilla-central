@@ -36,6 +36,11 @@ protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
     virtual bool RecvDestroy();
     virtual bool RecvLoadURL(const nsString&);
+    virtual bool RecvGoBack();
+    virtual bool RecvGoForward();
+    virtual bool RecvStopLoad();
+    virtual bool RecvReload(const bool&);
+
     virtual bool RecvSetIsActive(const bool&);
     virtual bool RecvLoadFrameScript(const nsString&);
     virtual bool RecvAsyncMessage(const nsString& aMessage,
