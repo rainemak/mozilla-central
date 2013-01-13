@@ -102,6 +102,20 @@ EmbedLiteView::SendAsyncMessage(const char* aMessageName, const char* aMessage)
 }
 
 void
+EmbedLiteView::UnblockPrompt(uint64_t winid, bool checkValue, bool confirm,
+                             const char* retValue, const char* username,
+                             const char* password)
+{
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->UnblockPrompt(winid, checkValue, confirm,
+                             NS_ConvertUTF8toUTF16(retValue),
+                             NS_ConvertUTF8toUTF16(username),
+                             NS_ConvertUTF8toUTF16(password));
+}
+
+// Render interface
+
+void
 EmbedLiteView::RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth)
 {
     LOGT("data:%p, sz[%i,%i], stride:%i, depth:%i", aData, imgW, imgH, stride, depth);

@@ -7,6 +7,7 @@
 #define MOZ_APP_EMBED_THREAD_CHILD_H
 
 #include "mozilla/embedlite/PEmbedLiteAppChild.h"
+#include "EmbedLiteModulesService.h"
 
 namespace mozilla {
 namespace embedlite {
@@ -23,6 +24,8 @@ public:
 
     static EmbedLiteAppThreadChild* GetInstance();
 
+    EmbedLiteModulesService* ModulesService() { return mModulesService; }
+
 protected:
     // Embed API ipdl interface
     virtual bool RecvSetBoolPref(const nsCString&, const bool&);
@@ -38,12 +41,13 @@ protected:
     virtual PEmbedLiteViewChild* AllocPEmbedLiteView(const uint32_t&);
     virtual bool DeallocPEmbedLiteView(PEmbedLiteViewChild*);
 
-
 private:
     void InitWindowWatcher();
+    friend class EmbedLiteViewThreadChild;
 
     MessageLoop* mParentLoop;
     RefPtr<EmbedLiteAppThreadParent> mThreadParent;
+    nsRefPtr<EmbedLiteModulesService> mModulesService;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteAppThreadChild);
 };

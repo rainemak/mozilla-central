@@ -48,6 +48,7 @@ public:
     virtual void SendKeyRelease(int,int,int);
     virtual void ViewAPIDestroyed() { mView = nullptr; }
     mozilla::layers::AsyncPanZoomController* GetDefaultPanZoomController();
+    virtual void UnblockPrompt(uint64_t winid, const bool&, const bool&, const nsString&, const nsString&, const nsString&);
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
@@ -135,6 +136,17 @@ protected:
     virtual bool RecvContentReceivedTouch(const bool& aPreventDefault);
     virtual bool RecvDetectScrollableSubframe() MOZ_OVERRIDE;
 
+    // prompt API
+    virtual bool RecvAlert(const nsString&, const nsString&,
+                           const nsString& checkMessage,
+                           const bool& checkValue, const uint64_t& winID);
+    virtual bool RecvConfirm(const nsString&, const nsString&,
+                             const nsString& checkMessage,
+                             const bool& checkValue, const uint64_t& winID);
+
+    virtual bool RecvPrompt(const nsString&, const nsString&,
+                             const nsString& checkMessage, const nsString& defaultValue,
+                             const bool& checkValue, const uint64_t& winID);
 private:
     friend class EmbedLiteCompositorParent;
     void SetCompositor(EmbedLiteCompositorParent* aCompositor);
@@ -149,6 +161,7 @@ private:
 
     gfxSize mViewSize;
     bool mInTouchProcess;
+    MessageLoop* mUILoop;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadParent);
 };

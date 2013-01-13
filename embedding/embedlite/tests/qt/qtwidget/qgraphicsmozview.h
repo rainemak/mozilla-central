@@ -63,6 +63,8 @@ public Q_SLOTS:
     void stop();
     void reload();
     void load(const QString&);
+    void sendAsyncMessage(const QString& name, const QString& message);
+    void unblockPrompt(qulonglong winid, const bool& checkVal, const bool& confirmVal, const QString& retVal, const QString& username, const QString& password);
 
 Q_SIGNALS:
     void viewInitialized();
@@ -79,6 +81,9 @@ Q_SIGNALS:
     void firstPaint(int32_t offx, int32_t offy);
     void contentLoaded(QString docuri);
     void observeNotification(QString topic, QString data);
+    void promptAlert(QString title, QString message, QString checkMessage, bool checkValue, qulonglong winid);
+    void promptConfirm(QString title, QString message, QString checkMessage, bool checkValue, qulonglong winid);
+    void promptPrompt(QString title, QString message, QString defaultValue, QString checkMessage, bool checkValue, qulonglong winid);
 
 protected:
     virtual void setGeometry(const QRectF& rect);

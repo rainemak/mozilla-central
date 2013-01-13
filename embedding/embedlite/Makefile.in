@@ -13,6 +13,7 @@ VPATH += \
   $(srcdir)/embedhelpers \
   $(srcdir)/utils \
   $(srcdir)/embedthread \
+  $(srcdir)/modules \
   $(NULL)
 
 include $(DEPTH)/config/autoconf.mk
@@ -61,6 +62,8 @@ CPPSRCS = \
     DirProvider.cpp \
     WindowCreator.cpp \
     EmbedLog.cpp \
+    EmbedLiteModulesService.cpp \
+    EmbedPromptService.cpp \
     $(NULL)
 
 XPIDLSRCS = \
@@ -69,6 +72,7 @@ XPIDLSRCS = \
 
 LOCAL_INCLUDES += \
     -I$(srcdir)/utils \
+    -I$(srcdir)/modules \
     -I$(srcdir)/embedhelpers \
     -I$(srcdir)/embedthread \
     -I$(topsrcdir)/widget/xpwidgets \

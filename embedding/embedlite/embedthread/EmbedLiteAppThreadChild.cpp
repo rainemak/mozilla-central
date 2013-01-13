@@ -20,6 +20,7 @@
 #include "EmbedLiteViewThreadChild.h"
 #include "mozilla/unused.h"
 #include "mozilla/layers/ImageBridgeChild.h"
+#include "EmbedLiteModulesService.h"
 
 using namespace base;
 using namespace mozilla::ipc;
@@ -58,6 +59,8 @@ EmbedLiteAppThreadChild::Init(EmbedLiteAppThreadParent* aParent)
     AsyncChannel::Side childSide = mozilla::ipc::AsyncChannel::Child;
     Open(parentChannel, mParentLoop, childSide);
     RecvSetBoolPref(nsCString("layers.offmainthreadcomposition.enabled"), true);
+    mModulesService = new EmbedLiteModulesService();
+    mModulesService->Init();
     SendInitialized();
 }
 

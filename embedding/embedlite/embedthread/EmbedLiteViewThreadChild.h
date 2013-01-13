@@ -19,6 +19,7 @@ namespace mozilla {
 namespace embedlite {
 
 class EmbedLiteViewScrolling;
+class EmbedLiteViewPromptResponse;
 class EmbedLiteViewThreadChild : public PEmbedLiteViewChild,
                                  public nsIEmbedBrowserChromeListener
 {
@@ -28,6 +29,8 @@ public:
     virtual ~EmbedLiteViewThreadChild();
 
     NS_DECL_NSIEMBEDBROWSERCHROMELISTENER
+
+    void WaitForPromptResult(EmbedLiteViewPromptResponse*);
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
@@ -56,6 +59,9 @@ protected:
     virtual bool RecvInputDataTouchEvent(const mozilla::MultiTouchInput&, const gfxSize& res, const gfxPoint& diff);
     virtual bool RecvInputDataTouchMoveEvent(const mozilla::MultiTouchInput&, const gfxSize& res, const gfxPoint& diff);
 
+    // prompt interface
+    virtual bool RecvUnblockPrompt(const uint64_t&, const bool&, const bool&, const nsString&, const nsString&, const nsString&);
+
 private:
     void InitGeckoWindow();
 
@@ -70,8 +76,11 @@ private:
 
     RefPtr<EmbedLiteViewScrolling> mScrolling;
     friend class TabChildHelper;
+    friend class EmbedLiteModulesService;
     nsCOMPtr<TabChildHelper> mHelper;
     bool mDispatchSynthMouseEvents;
+    int mModalDepth;
+    std::map<uint64_t, EmbedLiteViewPromptResponse*> modalWinMap;
 
     friend class EmbedLiteViewScrolling;
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadChild);

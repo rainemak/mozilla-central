@@ -118,6 +118,7 @@ EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id)
   , mScrollOffset(0, 0)
   , mLastScale(1.0f)
   , mInTouchProcess(false)
+  , mUILoop(MessageLoop::current())
 {
     MOZ_COUNT_CTOR(EmbedLiteViewThreadParent);
     LOGT("id:%u", mId);
@@ -566,24 +567,6 @@ EmbedLiteViewThreadParent::ScheduleRender()
     }
 }
 
-static gfx::Point
-WidgetSpaceToCompensatedViewportSpace(const gfx::Point& aPoint,
-                                      gfxFloat aCurrentZoom)
-{
-    // Transform the input point from local widget space to the content document
-    // space that the user is seeing, from last composite.
-    gfx::Point pt(aPoint);
-    pt = pt / aCurrentZoom;
-
-    // FIXME/bug 775451: this doesn't attempt to compensate for content transforms
-    // in effect on the compositor.  The problem is that it's very hard for us to
-    // know what content CSS pixel is at widget point 0,0 based on information
-    // available here.  So we use this hacky implementation for now, which works
-    // in quiescent states.
-
-    return pt;
-}
-
 void
 EmbedLiteViewThreadParent::ReceiveInputEvent(const InputData& aEvent)
 {
@@ -687,6 +670,51 @@ EmbedLiteViewThreadParent::MouseMove(int x, int y, int mstime, unsigned int butt
                                  x, y, buttons, 1, modifiers,
                                  true);
     }
+}
+
+bool
+EmbedLiteViewThreadParent::RecvAlert(const nsString& title,
+                                     const nsString& message,
+                                     const nsString& checkMessage,
+                                     const bool& checkValue,
+                                     const uint64_t& winID)
+{
+    mView->GetListener()->OnAlert(title, message, checkMessage, checkValue, winID);
+    return true;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvConfirm(const nsString& title,
+                                       const nsString& message,
+                                       const nsString& checkMessage,
+                                       const bool& checkValue,
+                                       const uint64_t& winID)
+{
+    mView->GetListener()->OnConfirm(title, message, checkMessage, checkValue, winID);
+    return true;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvPrompt(const nsString& title,
+                                      const nsString& message,
+                                      const nsString& defaultValue,
+                                      const nsString& checkMessage,
+                                      const bool& checkValue,
+                                      const uint64_t& winID)
+{
+    mView->GetListener()->OnPrompt(title, message, defaultValue, checkMessage, checkValue, winID);
+    return true;
+}
+
+void
+EmbedLiteViewThreadParent::UnblockPrompt(uint64_t winid,
+                                         const bool& checkValue,
+                                         const bool& confirm,
+                                         const nsString& retValue,
+                                         const nsString& username,
+                                         const nsString& password)
+{
+    unused << SendUnblockPrompt(winid, checkValue, confirm, retValue, username, password);
 }
 
 } // namespace embedlite

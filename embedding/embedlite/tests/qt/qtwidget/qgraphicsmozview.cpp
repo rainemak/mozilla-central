@@ -21,7 +21,6 @@
 #include "mozilla/embedlite/EmbedLog.h"
 #include "mozilla/embedlite/EmbedLiteView.h"
 #include "mozilla/embedlite/EmbedLiteApp.h"
-
 using namespace mozilla;
 using namespace mozilla::embedlite;
 
@@ -137,6 +136,27 @@ public:
         LOGT();
         Q_EMIT q->contentLoaded(QString((QChar*)aDocURI));
     }
+    virtual void OnAlert(const nsString& aTitle, const nsString& aMessage,
+                         const nsString& checkMessage, const bool& checkValue,
+                         const uint64_t& winID) {
+        Q_EMIT q->promptAlert(QString((QChar*)aTitle.get()), QString((QChar*)aMessage.get()),
+                              QString((QChar*)checkMessage.get()), checkValue, winID);
+    }
+    virtual void OnConfirm(const nsString& aTitle, const nsString& aMessage,
+                           const nsString& checkMessage, const bool& checkValue,
+                           const uint64_t& winID) {
+        Q_EMIT q->promptConfirm(QString((QChar*)aTitle.get()), QString((QChar*)aMessage.get()),
+                                QString((QChar*)checkMessage.get()), checkValue, winID);
+    }
+    virtual void OnPrompt(const nsString& aTitle, const nsString& aMessage,
+                          const nsString& aDefaultValue,
+                          const nsString& checkMessage, const bool& checkValue,
+                          const uint64_t& winID) {
+        Q_EMIT q->promptPrompt(QString((QChar*)aTitle.get()), QString((QChar*)aMessage.get()),
+                               QString((QChar*)aDefaultValue.get()),
+                               QString((QChar*)checkMessage.get()), checkValue, winID);
+    }
+
     virtual void OnLinkAdded(const PRUnichar* aHref, const PRUnichar* aCharset, const PRUnichar* aTitle, const PRUnichar* aRel, const PRUnichar* aSizes, const PRUnichar* aType) { LOGT(); }
     virtual void OnWindowOpenClose(const PRUnichar* aType) { LOGT(); }
     virtual void OnPopupBlocked(const char* aSpec, const char* aCharset, const PRUnichar* aPopupFeatures, const PRUnichar* aPopupWinName) { LOGT(); }
@@ -299,6 +319,22 @@ void QGraphicsMozView::load(const QString& url)
     }
     LOGT("url: %s", url.toUtf8().data());
     d->mView->LoadURL(QUrl::fromUserInput(url).toString().toUtf8().data());
+}
+
+void
+QGraphicsMozView::sendAsyncMessage(const QString& name, const QString& message)
+{
+    if (!d->mViewInitialized)
+        return;
+    d->mView->SendAsyncMessage(name.toUtf8().data(), message.toUtf8().data());
+}
+
+void
+QGraphicsMozView::unblockPrompt(qulonglong winid, const bool& checkVal, const bool& confirmVal, const QString& retVal, const QString& username, const QString& password)
+{
+    if (!d->mViewInitialized)
+        return;
+    d->mView->UnblockPrompt(winid, checkVal, confirmVal, retVal.toUtf8().data(), username.toUtf8().data(), password.toUtf8().data());
 }
 
 QString QGraphicsMozView::title() const

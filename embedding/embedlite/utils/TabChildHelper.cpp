@@ -73,6 +73,9 @@ TabChildHelper::TabChildHelper(EmbedLiteViewThreadChild* aView)
                                      DETECT_SCROLLABLE_SUBFRAME,
                                      false);
     }
+    if (!mCx && !InitTabChildGlobal()) {
+        NS_WARNING("Failed to register child global ontext");
+    }
 }
 
 TabChildHelper::~TabChildHelper()

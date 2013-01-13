@@ -45,6 +45,10 @@ child:
     // compression to them.
     InputDataTouchMoveEvent(MultiTouchInput event, gfxSize res, gfxPoint diff) compress;
 
+    // Prompt Interface
+    async UnblockPrompt(uint64_t winID, bool checkValue, bool confirm,
+                        nsString retValue, nsString username,
+                        nsString password);
     async Destroy();
 parent:
     async Initialized();
@@ -75,6 +79,11 @@ parent:
 
     sync SyncMessage(nsString aMessage, nsString aJSON)
       returns (nsString[] retval);
+
+    // Prompt Interface
+    async Alert(nsString title, nsString message, nsString checkMessage, bool checkValue, uint64_t winID);
+    async Confirm(nsString title, nsString message, nsString checkMessage, bool checkValue, uint64_t winID);
+    async Prompt(nsString title, nsString message, nsString defaultValue, nsString checkMessage, bool checkValue, uint64_t winID);
 
 both:
     AsyncMessage(nsString aMessage, nsString aData);

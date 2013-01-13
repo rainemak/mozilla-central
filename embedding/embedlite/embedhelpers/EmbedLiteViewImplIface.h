@@ -40,6 +40,7 @@ public:
     virtual void MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers) {}
     virtual void UpdateScrollController() {}
     virtual void ViewAPIDestroyed() {}
+    virtual void UnblockPrompt(uint64_t, const bool&, const bool&, const nsString&, const nsString&, const nsString&) {}
 };
 
 } // namespace embedlite

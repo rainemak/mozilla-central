@@ -216,6 +216,73 @@ FocusScope {
                     response.message = true;
                 }
             }
+            onPromptAlert: {
+                print("onAlert: title:" + title + ", msg:" + message);
+                popup.show(title, message, winid);
+            }
+            onPromptConfirm: {
+                print("onConfirm: title:" + title + ", msg:" + message);
+                popup.show(title, message, winid);
+            }
+            onPromptPrompt: {
+                print("onPrompt: title:" + title + ", msg:" + message);
+                popup.show(title, message, winid);
+            }
+        }
+        Rectangle {
+            id: popup
+
+            property Item text: dialogText
+            y: parent.height // off "screen"
+            anchors.horizontalCenter: parent.horizontalCenter
+            border.color: "black"; border.width: 2
+            property variant winid: 0
+
+            signal closed
+            signal opened
+            function forceClose() {
+                webViewport.child().unblockPrompt(popup.winid, true, true, "HelloSuks", "NoName", "NoPasswd");
+                if (popup.opacity == 0)
+                    return; //already closed
+                popup.closed();
+                popup.opacity = 0;
+                popup.state = ""
+            }
+            states: State {
+                name: "visible"
+                PropertyChanges { target: popup; opacity: 1 }
+                PropertyChanges { target: popup; y: (webViewport.height-popup.height)/2 }
+            }
+
+            function show(title, txt, awinid) {
+                popup.winid = awinid;
+                popup.opened();
+                titleText.text = title;
+                dialogText.text = txt;
+                popup.state = "visible"
+            }
+
+            width: dialogText.width + titleText.width + 20; height: dialogText.height + titleText.height + 20
+            color: "white"
+            opacity: 0
+            visible: opacity > 0
+            Behavior on opacity {
+                NumberAnimation { duration: 1000 }
+            }
+            Column {
+                id: controlsCol
+                spacing: 2
+                Text {
+                    id: titleText;
+                    text: "Hello Title!"
+                }
+                Text {
+                    id: dialogText;
+                    text: "Hello World!"
+                }
+            }
+
+            MouseArea { anchors.fill: parent; onClicked: popup.forceClose(); }
         }
     }
 
