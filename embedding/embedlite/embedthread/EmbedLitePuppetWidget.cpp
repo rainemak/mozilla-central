@@ -172,9 +172,10 @@ EmbedLitePuppetWidget::CreateChild(const nsIntRect  &aRect,
 NS_IMETHODIMP
 EmbedLitePuppetWidget::Destroy()
 {
-    LOGT();
     if (mOnDestroyCalled)
         return NS_OK;
+
+    LOGF();
 
     mOnDestroyCalled = true;
 
@@ -193,7 +194,7 @@ EmbedLitePuppetWidget::Destroy()
 NS_IMETHODIMP
 EmbedLitePuppetWidget::Show(bool aState)
 {
-    LOGT();
+    LOGF("state:", aState);
     NS_ASSERTION(mEnabled,
                  "does it make sense to Show()/Hide() a disabled widget?");
 
@@ -221,8 +222,8 @@ EmbedLitePuppetWidget::Resize(double aWidth,
                               double aHeight,
                               bool    aRepaint)
 {
-    LOGT();
     nsIntRect oldBounds = mBounds;
+    LOGF("sz[%i,%i]->[%g,%g]", oldBounds.width, oldBounds.height, aWidth, aHeight);
     mBounds.SizeTo(nsIntSize(NSToIntRound(aWidth), NSToIntRound(aHeight)));
 
     if (mChild) {
@@ -365,7 +366,6 @@ EmbedLitePuppetWidget::GetLayerManager(PLayersChild* aShadowManager,
                                        LayerManagerPersistence aPersistence,
                                        bool* aAllowRetaining)
 {
-    LOGT();
     if (aAllowRetaining)
         *aAllowRetaining = true;
 
@@ -378,6 +378,8 @@ EmbedLitePuppetWidget::GetLayerManager(PLayersChild* aShadowManager,
     if (mLayerManager) {
         return mLayerManager;
     }
+
+    LOGF();
 
     EmbedLitePuppetWidget *topWindow = TopWindow();
 
@@ -436,7 +438,7 @@ EmbedLitePuppetWidget::GetLayerManager(PLayersChild* aShadowManager,
 
 void EmbedLitePuppetWidget::CreateCompositor()
 {
-    LOGT();
+    LOGF();
     bool renderToEGLSurface = true;
     nsIntRect rect;
     GetBounds(rect);

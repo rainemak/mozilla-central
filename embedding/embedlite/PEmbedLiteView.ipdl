@@ -54,6 +54,7 @@ child:
                         nsString retValue, nsString username,
                         nsString password);
     async Destroy();
+
 parent:
     async Initialized();
     async __delete__();
@@ -88,6 +89,7 @@ parent:
     async Alert(nsString title, nsString message, nsString checkMessage, bool checkValue, uint64_t winID);
     async Confirm(nsString title, nsString message, nsString checkMessage, bool checkValue, uint64_t winID);
     async Prompt(nsString title, nsString message, nsString defaultValue, nsString checkMessage, bool checkValue, uint64_t winID);
+    async AuthentificationRequired(uint64_t requestID, nsCString hostname, nsCString httprealm, nsString username, bool isOnlyPassword);
 
 both:
     AsyncMessage(nsString aMessage, nsString aData);

@@ -139,22 +139,31 @@ public:
     virtual void OnAlert(const nsString& aTitle, const nsString& aMessage,
                          const nsString& checkMessage, const bool& checkValue,
                          const uint64_t& winID) {
-        Q_EMIT q->promptAlert(QString((QChar*)aTitle.get()), QString((QChar*)aMessage.get()),
-                              QString((QChar*)checkMessage.get()), checkValue, winID);
+        Q_EMIT q->alert(QString((QChar*)aTitle.get()), QString((QChar*)aMessage.get()),
+                        QString((QChar*)checkMessage.get()), checkValue, winID);
     }
     virtual void OnConfirm(const nsString& aTitle, const nsString& aMessage,
                            const nsString& checkMessage, const bool& checkValue,
                            const uint64_t& winID) {
-        Q_EMIT q->promptConfirm(QString((QChar*)aTitle.get()), QString((QChar*)aMessage.get()),
-                                QString((QChar*)checkMessage.get()), checkValue, winID);
+        Q_EMIT q->confirm(QString((QChar*)aTitle.get()), QString((QChar*)aMessage.get()),
+                          QString((QChar*)checkMessage.get()), checkValue, winID);
     }
     virtual void OnPrompt(const nsString& aTitle, const nsString& aMessage,
                           const nsString& aDefaultValue,
                           const nsString& checkMessage, const bool& checkValue,
                           const uint64_t& winID) {
-        Q_EMIT q->promptPrompt(QString((QChar*)aTitle.get()), QString((QChar*)aMessage.get()),
-                               QString((QChar*)aDefaultValue.get()),
-                               QString((QChar*)checkMessage.get()), checkValue, winID);
+        Q_EMIT q->prompt(QString((QChar*)aTitle.get()), QString((QChar*)aMessage.get()),
+                         QString((QChar*)aDefaultValue.get()),
+                         QString((QChar*)checkMessage.get()), checkValue, winID);
+    }
+    virtual void OnAuthentificationRequired(const nsCString& hostname,
+                                            const nsCString& httprealm,
+                                            const nsString& username,
+                                            const bool& isOnlyPassword,
+                                            const uint64_t& winID)
+    {
+        Q_EMIT q->authRequired(QString(hostname.get()), QString(httprealm.get()),
+                               QString((QChar*)username.get()), isOnlyPassword, winID);
     }
 
     virtual void OnLinkAdded(const PRUnichar* aHref, const PRUnichar* aCharset, const PRUnichar* aTitle, const PRUnichar* aRel, const PRUnichar* aSizes, const PRUnichar* aType) { LOGT(); }

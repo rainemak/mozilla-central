@@ -81,9 +81,10 @@ Q_SIGNALS:
     void firstPaint(int32_t offx, int32_t offy);
     void contentLoaded(QString docuri);
     void observeNotification(QString topic, QString data);
-    void promptAlert(QString title, QString message, QString checkMessage, bool checkValue, qulonglong winid);
-    void promptConfirm(QString title, QString message, QString checkMessage, bool checkValue, qulonglong winid);
-    void promptPrompt(QString title, QString message, QString defaultValue, QString checkMessage, bool checkValue, qulonglong winid);
+    void alert(QString title, QString message, QString checkMessage, bool checkValue, qulonglong winid);
+    void confirm(QString title, QString message, QString checkMessage, bool checkValue, qulonglong winid);
+    void prompt(QString title, QString message, QString defaultValue, QString checkMessage, bool checkValue, qulonglong winid);
+    void authRequired(QString title, QString message, QString defaultUsername, bool onlyPassword, qulonglong winid);
 
 protected:
     virtual void setGeometry(const QRectF& rect);

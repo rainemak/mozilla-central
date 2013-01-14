@@ -566,9 +566,8 @@ EmbedLiteViewThreadChild::WaitForPromptResult(EmbedLiteViewPromptResponse* resp)
     nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(resp->mWin);
     NS_ENSURE_TRUE(utils, );
 
-    uint64_t outerWindowID = 0;
+    uint64_t outerWindowID = 0, innerWindowID = 0;
     utils->GetOuterWindowID(&outerWindowID);
-    uint64_t innerWindowID = 0;
     utils->GetCurrentInnerWindowID(&innerWindowID);
     if (innerWindowID == 0) {
         // I have no idea what waiting for a result means when there's no inner

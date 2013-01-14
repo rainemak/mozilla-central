@@ -29,12 +29,16 @@ WindowCreator::CreateChromeWindow2(nsIWebBrowserChrome* aParent,
                                    bool* aCancel,
                                    nsIWebBrowserChrome* *_retval)
 {
+    NS_ENSURE_ARG_POINTER(aCancel);
+    NS_ENSURE_ARG_POINTER(_retval);
+    *aCancel = false;
+    *_retval = 0;
+  
     LOGNI();
 /*
     See bug 80707
     Desktop FF allow to create popup window if aChromeFlags == 1670, aContextFlags == 0
 */
-    NS_ENSURE_ARG_POINTER(_retval);
 
     if (mOpenBlock) {
         mOpenBlock = PR_FALSE;

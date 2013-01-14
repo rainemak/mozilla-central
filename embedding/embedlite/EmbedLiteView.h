@@ -65,7 +65,11 @@ public:
                           const nsString& defaultValue,
                           const nsString& checkMessage, const bool& checkValue,
                           const uint64_t& winID) { }
-
+    virtual void OnAuthentificationRequired(const nsCString& hostname,
+                                            const nsCString& httprealm,
+                                            const nsString& username,
+                                            const bool& isOnlyPassword,
+                                            const uint64_t& winID) {}
 };
 
 class EmbedLiteApp;

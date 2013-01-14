@@ -216,73 +216,48 @@ FocusScope {
                     response.message = true;
                 }
             }
-            onPromptAlert: {
-                print("onAlert: title:" + title + ", msg:" + message);
-                popup.show(title, message, winid);
+            onAlert: {
+                print("onAlert: title:" + title + ", msg:" + message + " winid:" + winid);
+                alertDlg.show(title, message, winid);
             }
-            onPromptConfirm: {
+            onConfirm: {
                 print("onConfirm: title:" + title + ", msg:" + message);
-                popup.show(title, message, winid);
+                confirmDlg.show(title, message, winid);
             }
-            onPromptPrompt: {
+            onPrompt: {
                 print("onPrompt: title:" + title + ", msg:" + message);
-                popup.show(title, message, winid);
+                promptDlg.show(title, message, defaultValue, winid);
+            }
+            onAuthRequired: {
+                print("onAuthRequired: title:" + title + ", msg:" + message + ", winid:" + winid);
+                authDlg.show(title, message, defaultUsername, winid);
+            }
+
+        }
+        AlertDialog {
+            id: alertDlg
+            onHandled: {
+                webViewport.child().unblockPrompt(winid, alertDlg.checkval, alertDlg.accepted, "", "", "");
             }
         }
-        Rectangle {
-            id: popup
-
-            property Item text: dialogText
-            y: parent.height // off "screen"
-            anchors.horizontalCenter: parent.horizontalCenter
-            border.color: "black"; border.width: 2
-            property variant winid: 0
-
-            signal closed
-            signal opened
-            function forceClose() {
-                webViewport.child().unblockPrompt(popup.winid, true, true, "HelloSuks", "NoName", "NoPasswd");
-                if (popup.opacity == 0)
-                    return; //already closed
-                popup.closed();
-                popup.opacity = 0;
-                popup.state = ""
+        ConfirmDialog {
+            id: confirmDlg
+            onHandled: {
+                webViewport.child().unblockPrompt(winid, confirmDlg.checkval, confirmDlg.accepted,"", "", "");
             }
-            states: State {
-                name: "visible"
-                PropertyChanges { target: popup; opacity: 1 }
-                PropertyChanges { target: popup; y: (webViewport.height-popup.height)/2 }
+        }
+        PromptDialog {
+            id: promptDlg
+            onHandled: {
+                webViewport.child().unblockPrompt(winid, promptDlg.checkval, promptDlg.accepted, promptDlg.prompttext, "", "");
             }
-
-            function show(title, txt, awinid) {
-                popup.winid = awinid;
-                popup.opened();
-                titleText.text = title;
-                dialogText.text = txt;
-                popup.state = "visible"
+        }
+        AuthenticationDialog {
+            id: authDlg
+            onHandled: {
+                print("AuthenticationDialog handled:" + authDlg.checkval + authDlg.accepted + authDlg.username + authDlg.password + ", winid:" + authDlg.winid);
+                webViewport.child().unblockPrompt(winid, authDlg.checkval, authDlg.accepted, "", authDlg.username, authDlg.password);
             }
-
-            width: dialogText.width + titleText.width + 20; height: dialogText.height + titleText.height + 20
-            color: "white"
-            opacity: 0
-            visible: opacity > 0
-            Behavior on opacity {
-                NumberAnimation { duration: 1000 }
-            }
-            Column {
-                id: controlsCol
-                spacing: 2
-                Text {
-                    id: titleText;
-                    text: "Hello Title!"
-                }
-                Text {
-                    id: dialogText;
-                    text: "Hello World!"
-                }
-            }
-
-            MouseArea { anchors.fill: parent; onClicked: popup.forceClose(); }
         }
     }
 

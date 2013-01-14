@@ -110,7 +110,7 @@ void EmbedLiteCompositorParent::ShadowLayersUpdated(ShadowLayersParent* aLayerTr
                                                     const TargetConfig& aTargetConfig,
                                                     bool isFirstPaint)
 {
-    LOGT("t");
+    LOGF();
     CompositorParent::ShadowLayersUpdated(aLayerTree,
                                           aTargetConfig,
                                           isFirstPaint);
@@ -126,7 +126,7 @@ void EmbedLiteCompositorParent::ShadowLayersUpdated(ShadowLayersParent* aLayerTr
 
 void EmbedLiteCompositorParent::ScheduleTask(CancelableTask* task, int time)
 {
-    LOGT("t");
+    LOGF();
     EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
     if (!view) {
         LOGE("view not available.. forgot SuspendComposition call?");

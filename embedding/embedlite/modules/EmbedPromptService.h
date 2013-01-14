@@ -13,6 +13,11 @@
 #include "nsIDOMWindow.h"
 #include "nsCOMPtr.h"
 #include "nsStringGlue.h"
+#include "nsICancelable.h"
+#include "nsIAuthInformation.h"
+#include "nsDataHashtable.h"
+#include <map>
+#include <string>
 
 namespace mozilla {
 namespace embedlite {
@@ -46,6 +51,35 @@ private:
     nsCOMPtr<nsIDOMWindow> mWin;
 };
 
+class EmbedAuthPromptService;
+class EmbedAsyncAuthPrompt
+{
+public:
+    EmbedAsyncAuthPrompt(nsICancelable* aCancelable, nsIChannel* aChannel,
+                         nsIAuthInformation* aAuthInfo, uint32_t aLevel,
+                         bool aInProgress, EmbedLiteViewThreadChild* aView)
+        : mChannel(aChannel)
+        , mAuthInfo(aAuthInfo)
+        , mLevel(aLevel)
+        , mInProgress(aInProgress)
+        , mView(aView)
+        , mService(NULL)
+    {
+        consumers.AppendElement(aCancelable);
+    }
+
+    virtual ~EmbedAsyncAuthPrompt() {}
+    nsTArray<nsCOMPtr<nsICancelable>> consumers;
+    nsIDOMWindow* mWin;
+    nsCOMPtr<nsIChannel> mChannel;
+    nsCOMPtr<nsIAuthInformation> mAuthInfo;
+    uint32_t mLevel;
+    bool mInProgress;
+    EmbedLiteViewThreadChild* mView;
+    nsCString mHashKey;
+    nsCOMPtr<EmbedAuthPromptService> mService;
+};
+
 class EmbedAuthPromptService : public nsIAuthPrompt2
 {
 public:
@@ -54,9 +88,20 @@ public:
 
     NS_DECL_ISUPPORTS
     NS_DECL_NSIAUTHPROMPT2
+
+    void DoResponseAsyncPrompt(EmbedAsyncAuthPrompt* aPrompt,
+                               const bool& confirmed,
+                               const nsCString& username,
+                               const nsCString& password);
+
 private:
+    void DoAsyncPrompt();
+
+
     RefPtr<EmbedLiteViewThreadChild> mView;
     nsCOMPtr<nsIDOMWindow> mWin;
+    std::map<std::string, EmbedAsyncAuthPrompt*> asyncPrompts;
+    std::map<EmbedLiteViewThreadChild*, bool> asyncPromptInProgress;
 };
 
 class EmbedPromptFactory :  public nsIPromptFactory

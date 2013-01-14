@@ -151,6 +151,13 @@ protected:
     virtual bool RecvPrompt(const nsString&, const nsString&,
                              const nsString& checkMessage, const nsString& defaultValue,
                              const bool& checkValue, const uint64_t& winID);
+    virtual bool
+    RecvAuthentificationRequired(const uint64_t& requestID,
+            const nsCString& hostname,
+            const nsCString& httprealm,
+            const nsString& username,
+            const bool& isOnlyPassword);
+
 private:
     friend class EmbedLiteCompositorParent;
     void SetCompositor(EmbedLiteCompositorParent* aCompositor);

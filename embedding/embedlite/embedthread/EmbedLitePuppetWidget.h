@@ -90,7 +90,7 @@ public:
         { LOGNI(); return NS_ERROR_UNEXPECTED; }
     // PuppetWidgets are always at <0, 0>.
     virtual nsIntPoint WidgetToScreenOffset()
-        { LOGNI(); return nsIntPoint(0, 0); }
+        { LOGF(); return nsIntPoint(0, 0); }
     NS_IMETHOD DispatchEvent(nsGUIEvent* event, nsEventStatus& aStatus);
     NS_IMETHOD CaptureRollupEvents(nsIRollupListener* aListener,
                                    bool aDoCapture)

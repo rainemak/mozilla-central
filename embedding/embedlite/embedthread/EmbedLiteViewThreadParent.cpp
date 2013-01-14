@@ -178,7 +178,6 @@ EmbedLiteViewThreadParent::UpdateScrollController()
 AsyncPanZoomController*
 EmbedLiteViewThreadParent::GetDefaultPanZoomController()
 {
-    LOGT("t");
     return mController;
 }
 
@@ -445,7 +444,7 @@ void EmbedLiteViewThreadParent::Reload(bool hardReload)
 void
 EmbedLiteViewThreadParent::SetIsActive(bool aIsActive)
 {
-    LOGT();
+    LOGF();
     unused << SendSetIsActive(aIsActive);
 }
 
@@ -510,7 +509,7 @@ _depth_to_gfxformat(int depth)
 void
 EmbedLiteViewThreadParent::RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth)
 {
-    LOGT();
+    LOGF("d:%p, sz[%i,%i], stride:%i, depth:%i", aData, imgW, imgH, stride, depth);
     if (mCompositor) {
         nsRefPtr<gfxImageSurface> source =
             new gfxImageSurface(aData, gfxIntSize(imgW, imgH), stride, _depth_to_gfxformat(depth));
@@ -723,6 +722,18 @@ EmbedLiteViewThreadParent::RecvPrompt(const nsString& title,
                                       const uint64_t& winID)
 {
     mView->GetListener()->OnPrompt(title, message, defaultValue, checkMessage, checkValue, winID);
+    return true;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvAuthentificationRequired(const uint64_t& requestID,
+                                                        const nsCString& hostname,
+                                                        const nsCString& httprealm,
+                                                        const nsString& username,
+                                                        const bool& isOnlyPassword)
+{
+    LOGT("host:%s, realm:%s, user:%s, isPWDOnly:%i", hostname.get(), httprealm.get(), NS_ConvertUTF16toUTF8(username).get(), isOnlyPassword);
+    mView->GetListener()->OnAuthentificationRequired(hostname, httprealm, username, isOnlyPassword, requestID);
     return true;
 }
 
