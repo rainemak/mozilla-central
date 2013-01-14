@@ -64,7 +64,8 @@ EmbedLiteModulesService::Init()
             }
         }
     }
-    rv = cr->RegisterFactory(EMBED_LITE_PROMPT_SERVICE_CID, "EmbedLite Prompt",
+    nsCID promptCID = EMBED_LITE_PROMPT_SERVICE_CID;
+    rv = cr->RegisterFactory(promptCID, "EmbedLite Prompt",
                              "@mozilla.org/prompter;1", f);
 
     NS_ASSERTION(NS_SUCCEEDED(rv), "Unable to register factory for component");
