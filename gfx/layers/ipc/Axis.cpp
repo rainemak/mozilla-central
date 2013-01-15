@@ -113,12 +113,11 @@ void Axis::UpdateWithTouchAtDevicePoint(int32_t aPos, const TimeDuration& aTimeD
 
   // If a direction change has happened, or the current velocity due to this new
   // touch is relatively low, then just apply it. If not, throttle it.
-  if (!mVelocity || curVelocityIsLow || (directionChange && fabs(newVelocity) - EPSILON <= 0.0f)) {
-    mVelocity = newVelocity;
-  } else {
-    float maxChange = fabsf(mVelocity * aTimeDelta.ToMilliseconds() * gMaxEventAcceleration);
-    mVelocity = std::min(mVelocity + maxChange, std::max(mVelocity - maxChange, newVelocity));
+  if (!(curVelocityIsLow || (directionChange && fabs(newVelocity) - EPSILON <= 0.0f))) {
+    newVelocity = std::min(std::max(newVelocity, -MAX_EVENT_ACCELERATION), MAX_EVENT_ACCELERATION);
   }
+  mVelocity += newVelocity;
+  mVelocity /= 2;
 
   mPos = aPos;
 }
