@@ -34,8 +34,8 @@ public:
     virtual void SetIsActive(bool);
     virtual void LoadFrameScript(const char* aURI);
     virtual void DoSendAsyncMessage(const char* aMessageName, const char* aMessage);
-    virtual void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
-    virtual void RenderGL();
+    virtual bool RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
+    virtual bool RenderGL();
     virtual void SetViewSize(int width, int height);
     virtual void SetGLViewPortSize(int width, int height);
     virtual void SetGLViewTransform(gfxMatrix matrix);

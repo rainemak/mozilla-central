@@ -26,8 +26,8 @@ public:
                               uint32_t id);
     virtual ~EmbedLiteCompositorParent();
 
-    void RenderToContext(gfxContext* aContext) { ComposeToTarget(aContext); }
-    void RenderGL();
+    bool RenderToContext(gfxContext* aContext);
+    bool RenderGL();
     void SetSurfaceSize(int width, int height);
     void SetWorldTransform(gfxMatrix);
     void SetClipping(gfxRect aClipRect);

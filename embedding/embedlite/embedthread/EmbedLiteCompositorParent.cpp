@@ -52,11 +52,22 @@ EmbedLiteCompositorParent::IsGLBackend()
     return mgr->GetBackendType() == mozilla::layers::LAYERS_OPENGL;
 }
 
-void EmbedLiteCompositorParent::RenderGL()
+bool EmbedLiteCompositorParent::RenderToContext(gfxContext* aContext)
 {
-    NS_ENSURE_TRUE(IsGLBackend(),);
+    LayerManager* mgr = GetLayerManager();
+    NS_ENSURE_TRUE(mgr, false);
+    NS_ENSURE_TRUE(mgr->GetRoot(), false);
+    ComposeToTarget(aContext);
+    return true;
+}
+
+bool EmbedLiteCompositorParent::RenderGL()
+{
+    NS_ENSURE_TRUE(IsGLBackend(), false);
 
     LayerManager* mgr = GetLayerManager();
+    NS_ENSURE_TRUE(mgr, false);
+    NS_ENSURE_TRUE(mgr->GetRoot(), false);
     if (mgr->GetBackendType() == mozilla::layers::LAYERS_OPENGL) {
         static_cast<LayerManagerOGL*>(mgr)->
             SetWorldTransform(mWorldTransform);
@@ -65,6 +76,7 @@ void EmbedLiteCompositorParent::RenderGL()
         mgr->GetRoot()->SetClipRect(&mActiveClipping);
     }
     CompositorParent::Composite();
+    return true;
 }
 
 void EmbedLiteCompositorParent::SetSurfaceSize(int width, int height)

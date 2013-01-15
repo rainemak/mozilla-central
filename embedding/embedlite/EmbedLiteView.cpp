@@ -139,18 +139,19 @@ EmbedLiteView::UnblockPrompt(uint64_t winid, bool checkValue, bool confirm,
 
 // Render interface
 
-void
+bool
 EmbedLiteView::RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth)
 {
     LOGF("data:%p, sz[%i,%i], stride:%i, depth:%i", aData, imgW, imgH, stride, depth);
-    NS_ENSURE_TRUE(mViewImpl, );
-    mViewImpl->RenderToImage(aData, imgW, imgH, stride, depth);
+    NS_ENSURE_TRUE(mViewImpl, false);
+    return mViewImpl->RenderToImage(aData, imgW, imgH, stride, depth);
 }
 
-void
+bool
 EmbedLiteView::RenderGL()
 {
-    mViewImpl->RenderGL();
+    NS_ENSURE_TRUE(mViewImpl, false);
+    return mViewImpl->RenderGL();
 }
 
 char*

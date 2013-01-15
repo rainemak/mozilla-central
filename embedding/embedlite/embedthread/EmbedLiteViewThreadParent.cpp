@@ -507,7 +507,7 @@ _depth_to_gfxformat(int depth)
     }
 }
 
-void
+bool
 EmbedLiteViewThreadParent::RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth)
 {
     LOGF("d:%p, sz[%i,%i], stride:%i, depth:%i", aData, imgW, imgH, stride, depth);
@@ -516,18 +516,20 @@ EmbedLiteViewThreadParent::RenderToImage(unsigned char *aData, int imgW, int img
             new gfxImageSurface(aData, gfxIntSize(imgW, imgH), stride, _depth_to_gfxformat(depth));
         {
             nsRefPtr<gfxContext> context = new gfxContext(source);
-            mCompositor->RenderToContext(context);
+            return mCompositor->RenderToContext(context);
         }
     }
+    return false;
 }
 
-void
+bool
 EmbedLiteViewThreadParent::RenderGL()
 {
     LOGT();
     if (mCompositor) {
-        mCompositor->RenderGL();
+        return mCompositor->RenderGL();
     }
+    return false;
 }
 
 bool

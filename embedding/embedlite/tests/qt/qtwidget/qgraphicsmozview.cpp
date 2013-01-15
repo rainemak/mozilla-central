@@ -33,6 +33,7 @@ public:
       , mContext(NULL)
       , mView(NULL)
       , mViewInitialized(false)
+      , mBgColor(Qt::white)
       , mPendingTouchEvent(false)
       , mProgress(100)
       , mCanGoBack(false)

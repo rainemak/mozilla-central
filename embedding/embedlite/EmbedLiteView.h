@@ -120,10 +120,10 @@ public:
     virtual char* GetImageAsURL(int aWidth = -1, int aHeight = -1);
 
     // Render content into custom rgb image (SW Rendering)
-    virtual void RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
+    virtual bool RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
 
     //   GL Rendering setuo
-    virtual void RenderGL();
+    virtual bool RenderGL();
     //   Setup renderable GL/EGL window surface size
     virtual void SetGLViewPortSize(int width, int height);
     //   GL world transform offset and simple rotation are allowed (orientation change)
