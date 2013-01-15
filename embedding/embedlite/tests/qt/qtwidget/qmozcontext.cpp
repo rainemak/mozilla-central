@@ -140,6 +140,12 @@ public:
         mApp->SetBoolPref("layers.offmainthreadcomposition.animate-transform", true);
         mApp->SetBoolPref("layers.async-video.enabled", true);
         mApp->SetBoolPref("font.size.inflation.disabledInMasterProcess", true);
+        mApp->SetIntPref("gfx.azpc.pan_repaint_interval", 5050);
+        mApp->SetCharPref("gfx.azpc.y_skate_size_multiplier", "4.5f");
+        mApp->SetCharPref("gfx.azpc.y_stationary_size_multiplier", "4.5f");
+        mApp->SetCharPref("gfx.axis.max_event_acceleration", "12.0f");
+        mApp->SetCharPref("gfx.axis.fling_friction", "0.00245f");
+        mApp->SetBoolPref("embedlite.handle_viewport", true);
     }
 
 private:

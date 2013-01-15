@@ -24,16 +24,29 @@
 #include "nsViewportInfo.h"
 #include "nsPIWindowRoot.h"
 #include "StructuredCloneUtils.h"
+#include "mozilla/Preferences.h"
 
 static const nsIntSize kDefaultViewportSize(980, 480);
 
 static const char CANCEL_DEFAULT_PAN_ZOOM[] = "cancel-default-pan-zoom";
 static const char BROWSER_ZOOM_TO_RECT[] = "browser-zoom-to-rect";
 static const char BEFORE_FIRST_PAINT[] = "before-first-paint";
+static bool HANDLE_HTML_VIEWPORT = true;
 
 using namespace mozilla::embedlite;
 using namespace mozilla::layers;
 using namespace mozilla::dom;
+
+static bool GetHandleViewport()
+{
+    static bool sHandleViewport;
+    static bool sHandleViewportCached = false;
+    if (!sHandleViewportCached) {
+        mozilla::Preferences::AddBoolVarCache(&sHandleViewport, "embedlite.handle_viewport", true);
+        sHandleViewportCached = true;
+    }
+    return sHandleViewport;
+}
 
 TabChildHelper::TabChildHelper(EmbedLiteViewThreadChild* aView)
   : mView(aView)
@@ -41,6 +54,7 @@ TabChildHelper::TabChildHelper(EmbedLiteViewThreadChild* aView)
   , mTabChildGlobal(nullptr)
 {
     LOGT();
+
     nsCOMPtr<nsIObserverService> observerService =
         do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
 
@@ -176,7 +190,7 @@ TabChildHelper::Observe(nsISupports *aSubject,
         LOGNI("top:%s >>>>>>>>>>>>>.", aTopic);
         gfxRect rect;
         mView->SendZoomToRect(rect);
-    } else if (!strcmp(aTopic, BEFORE_FIRST_PAINT)) {
+    } else if (!strcmp(aTopic, BEFORE_FIRST_PAINT) && GetHandleViewport()) {
         nsCOMPtr<nsIDocument> subject(do_QueryInterface(aSubject));
         nsCOMPtr<nsIDOMDocument> domDoc;
         mView->mWebNavigation->GetDocument(getter_AddRefs(domDoc));
@@ -231,6 +245,10 @@ TabChildHelper::SetCSSViewport(float aWidth, float aHeight)
 void
 TabChildHelper::HandlePossibleViewportChange()
 {
+  if (!GetHandleViewport()) {
+    return;
+  }
+
   nsCOMPtr<nsIDOMDocument> domDoc;
   mView->mWebNavigation->GetDocument(getter_AddRefs(domDoc));
   nsCOMPtr<nsIDocument> document(do_QueryInterface(domDoc));
