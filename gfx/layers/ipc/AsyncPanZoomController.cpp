@@ -1158,7 +1158,7 @@ bool AsyncPanZoomController::SampleContentTransformForFrame(const TimeStamp& aSa
     case FLING:
       // If a fling is currently happening, apply it now. We can pull
       // the updated metrics afterwards.
-      requestAnimationFrame |= DoFling(aSampleTime - mLastSampleTime);
+      requestAnimationFrame |= DoFling(TimeDuration().FromMilliseconds(16));
       break;
     case ANIMATING_ZOOM: {
       double animPosition = (aSampleTime - mAnimationStartTime) / ZOOM_TO_DURATION;
