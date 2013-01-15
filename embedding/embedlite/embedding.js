@@ -61,6 +61,5 @@ pref("gfx.azpc.min_skate_speed", "10.0f");
 pref("embedlite.handle_viewport", false);
 pref("ui.dragThresholdX", 25);
 pref("ui.dragThresholdY", 25);
-pref("layout.build_layers_for_scrollable_views", true);
 pref("embedlite.dispatch_mouse_events", false); // Will dispatch mouse events if page using them
 pref("embedlite.prompt_enabled", true);

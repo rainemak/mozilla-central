@@ -90,6 +90,7 @@ public:
         } else {
             mApp->SetCharPref("general.useragent.override", "Mozilla/5.0 (Android; Mobile; rv:12.0) Gecko/17.0 Firefox/17.0");
         }
+        mApp->SetBoolPref("layout.build_layers_for_scrollable_views", getenv("USE_SCROLL_VIEWS") != 0);
     }
 
 private:
