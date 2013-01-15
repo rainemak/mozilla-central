@@ -85,6 +85,11 @@ public:
     void setDefaultPrefs()
     {
         LOGT();
+        if (getenv("DS_UA")) {
+            mApp->SetCharPref("general.useragent.override", "Mozilla/5.0 (Maemo; Linux armv7l; rv:14.0) Gecko/17.0 Firefox/17.0");
+        } else {
+            mApp->SetCharPref("general.useragent.override", "Mozilla/5.0 (Android; Mobile; rv:12.0) Gecko/17.0 Firefox/17.0");
+        }
     }
 
 private:

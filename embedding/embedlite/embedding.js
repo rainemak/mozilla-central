@@ -4,8 +4,6 @@ pref("dom.ipc.plugins.enabled", true);
 pref("plugins.force.wmode", "opaque");
 pref("browser.xul.error_pages.enabled", true);
 pref("gfx.color_management.mode", 0);
-//pref("general.useragent.override", "Mozilla/5.0 (Maemo; Linux armv7l; rv:14.0) Gecko/17.0 Firefox/17.0");
-pref("general.useragent.override", "Mozilla/5.0 (Android; Mobile; rv:12.0) Gecko/17.0 Firefox/17.0");
 pref("nglayout.debug.paint_flashing", false);
 pref("nglayout.debug.widget_update_flashing", false);
 // Perf trick, speedup motion handlers
