@@ -120,10 +120,10 @@ public:
 #include "gfxCrashReporterUtils.h"
 
 
-#if defined(MOZ_PLATFORM_MAEMO) || defined(MOZ_WIDGET_GONK)
+#if defined(MOZ_PLATFORM_MAEMO) || defined(MOZ_WIDGET_GONK) || defined(EGL_HAS_BACKING_SURFACE)
 static bool gUseBackingSurface = true;
 #else
-static bool gUseBackingSurface = getenv("USE_BACKING_SURFACE") != 0;
+static bool gUseBackingSurface = false;
 #endif
 
 #ifdef MOZ_WIDGET_GONK
