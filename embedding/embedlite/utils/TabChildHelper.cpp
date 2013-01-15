@@ -20,6 +20,8 @@
 #include "nsEventListenerManager.h"
 #include "nsIDOMWindowUtils.h"
 #include "mozilla/dom/Element.h"
+#include "nsIDOMHTMLBodyElement.h"
+#include "mozilla/dom/HTMLBodyElement.h"
 #include "nsGlobalWindow.h"
 #include "nsIDocShell.h"
 #include "nsViewportInfo.h"
@@ -313,7 +315,7 @@ TabChildHelper::HandlePossibleViewportChange()
   float minScale = 1.0f;
 
   nsCOMPtr<nsIDOMElement> htmlDOMElement = do_QueryInterface(document->GetHtmlElement());
-  nsCOMPtr<nsIDOMElement> bodyDOMElement = do_QueryInterface(document->GetBodyElement());
+  mozilla::dom::HTMLBodyElement* bodyDOMElement = document->GetBodyElement();
 
   int32_t htmlWidth = 0, htmlHeight = 0;
   if (htmlDOMElement) {

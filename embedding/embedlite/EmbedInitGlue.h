@@ -198,9 +198,4 @@ bool LoadEmbedLite(int argc = 0, char** argv = 0)
     return true;
 }
 
-void UnloadEmbedLite()
-{
-    XPCOMGlueShutdown();
-}
-
 #endif // EMBED_INIT_GLUE_H

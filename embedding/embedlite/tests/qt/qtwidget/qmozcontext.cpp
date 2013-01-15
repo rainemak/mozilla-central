@@ -109,7 +109,6 @@ QMozContext::QMozContext(QObject* parent)
 
 QMozContext::~QMozContext()
 {
-    UnloadEmbedLite();
     delete d;
 }
 

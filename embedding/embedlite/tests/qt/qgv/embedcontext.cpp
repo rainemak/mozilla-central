@@ -45,7 +45,6 @@ EmbedContext::EmbedContext(int argc, char *argv[], QObject*)
 EmbedContext::~EmbedContext()
 {
     delete mThread;
-    UnloadEmbedLite();
 }
 
 void

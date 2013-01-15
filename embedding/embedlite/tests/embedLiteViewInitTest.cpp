@@ -143,6 +143,5 @@ int main(int argc, char** argv)
     } else {
         printf("XUL Symbols failed to load\n");
     }
-    UnloadEmbedLite();
     return 0;
 }
