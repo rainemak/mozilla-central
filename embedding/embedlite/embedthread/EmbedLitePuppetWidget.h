@@ -54,7 +54,7 @@ public:
 
     NS_IMETHOD Show(bool aState);
     virtual bool IsVisible() const
-        { LOGNI(); return mVisible; }
+        { LOGF(); return mVisible; }
     NS_IMETHOD ConstrainPosition(bool     /*ignored aAllowSlop*/,
                                  int32_t* aX,
                                  int32_t* aY)
@@ -95,6 +95,7 @@ public:
     NS_IMETHOD CaptureRollupEvents(nsIRollupListener* aListener,
                                    bool aDoCapture)
         { LOGNI(); return NS_ERROR_UNEXPECTED; }
+    NS_IMETHOD ResetInputState();
     NS_IMETHOD_(void) SetInputContext(const InputContext& aContext,
                                       const InputContextAction& aAction);
     NS_IMETHOD_(InputContext) GetInputContext();
@@ -140,6 +141,7 @@ private:
 
     bool mVisible;
     bool mEnabled;
+    InputContext mInputContext;
     nsRefPtr<EmbedLitePuppetWidget> mChild;
 
     // XXX/cjones: keeping this around until we teach LayerManager to do

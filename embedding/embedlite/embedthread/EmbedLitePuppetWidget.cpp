@@ -26,6 +26,7 @@
 #include "GLContext.h"
 #include "GLContextProvider.h"
 #include "EmbedLiteCompositorParent.h"
+#include "mozilla/Preferences.h"
 
 using namespace mozilla::dom;
 using namespace mozilla::hal;
@@ -345,19 +346,65 @@ EmbedLitePuppetWidget::DispatchEvent(nsGUIEvent* event, nsEventStatus& aStatus)
     return NS_OK;
 }
 
+NS_IMETHODIMP
+EmbedLitePuppetWidget::ResetInputState()
+{
+    LOGNI();
+#if 0
+    RemoveIMEComposition();
+    AndroidBridge::NotifyIME(AndroidBridge::NOTIFY_IME_RESETINPUTSTATE, 0);
+#endif
+    return NS_OK;
+}
+
+
 NS_IMETHODIMP_(void)
 EmbedLitePuppetWidget::SetInputContext(const InputContext& aContext,
                                        const InputContextAction& aAction)
 {
-    LOGNI();
+    LOGF("IME: SetInputContext: s=0x%X, 0x%X, action=0x%X, 0x%X",
+         aContext.mIMEState.mEnabled, aContext.mIMEState.mOpen,
+         aAction.mCause, aAction.mFocusChange);
+
+    mInputContext = aContext;
+
+    // Ensure that opening the virtual keyboard is allowed for this specific
+    // InputContext depending on the content.ime.strict.policy pref
+    if (aContext.mIMEState.mEnabled != IMEState::DISABLED &&
+        aContext.mIMEState.mEnabled != IMEState::PLUGIN &&
+        Preferences::GetBool("content.ime.strict_policy", false) &&
+        !aAction.ContentGotFocusByTrustedCause() &&
+        !aAction.UserMightRequestOpenVKB()) {
+        return;
+    }
+
+    if (!mEmbed)
+        return;
+
+    mEmbed->SendSetInputContext(
+        static_cast<int32_t>(aContext.mIMEState.mEnabled),
+        static_cast<int32_t>(aContext.mIMEState.mOpen),
+        aContext.mHTMLInputType,
+        aContext.mHTMLInputInputmode,
+        aContext.mActionHint,
+        static_cast<int32_t>(aAction.mCause),
+        static_cast<int32_t>(aAction.mFocusChange));
 }
 
 NS_IMETHODIMP_(InputContext)
 EmbedLitePuppetWidget::GetInputContext()
 {
-    LOGNI();
-    InputContext context;
-    return context;
+    mInputContext.mIMEState.mOpen = IMEState::OPEN_STATE_NOT_SUPPORTED;
+    mInputContext.mNativeIMEContext = nullptr;
+    if (mEmbed) {
+        int32_t enabled, open;
+        intptr_t nativeIMEContext;
+        mEmbed->SendGetInputContext(&enabled, &open, &nativeIMEContext);
+        mInputContext.mIMEState.mEnabled = static_cast<IMEState::Enabled>(enabled);
+        mInputContext.mIMEState.mOpen = static_cast<IMEState::Open>(open);
+        mInputContext.mNativeIMEContext = reinterpret_cast<void*>(nativeIMEContext);
+    }
+    return mInputContext;
 }
 
 LayerManager*

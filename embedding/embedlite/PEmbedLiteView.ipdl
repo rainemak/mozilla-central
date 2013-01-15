@@ -91,6 +91,18 @@ parent:
     async Prompt(nsString title, nsString message, nsString defaultValue, nsString checkMessage, bool checkValue, uint64_t winID);
     async AuthentificationRequired(uint64_t requestID, nsCString hostname, nsCString httprealm, nsString username, bool isOnlyPassword);
 
+    // IME
+    sync GetInputContext() returns (int32_t IMEEnabled, int32_t IMEOpen,
+                                    intptr_t NativeIMEContext);
+
+    SetInputContext(int32_t IMEEnabled,
+                    int32_t IMEOpen,
+                    nsString type,
+                    nsString inputmode,
+                    nsString actionHint,
+                    int32_t cause,
+                    int32_t focusChange);
+
 both:
     AsyncMessage(nsString aMessage, nsString aData);
 };

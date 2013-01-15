@@ -16,6 +16,7 @@
 #include "mozilla/layers/GeckoContentController.h"
 
 using namespace mozilla::layers;
+using namespace mozilla::widget;
 
 namespace mozilla {
 namespace embedlite {
@@ -747,6 +748,34 @@ EmbedLiteViewThreadParent::UnblockPrompt(uint64_t winid,
 {
     unused << SendUnblockPrompt(winid, checkValue, confirm, retValue, username, password);
 }
+
+bool
+EmbedLiteViewThreadParent::RecvGetInputContext(int32_t* aIMEEnabled,
+                                               int32_t* aIMEOpen,
+                                               intptr_t* aNativeIMEContext)
+{
+    LOGT();
+    *aIMEEnabled = IMEState::ENABLED;
+    *aIMEOpen = IMEState::OPEN_STATE_NOT_SUPPORTED;
+    return true;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvSetInputContext(const int32_t& aIMEEnabled,
+                                               const int32_t& aIMEOpen,
+                                               const nsString& aType,
+                                               const nsString& aInputmode,
+                                               const nsString& aActionHint,
+                                               const int32_t& aCause,
+                                               const int32_t& aFocusChange)
+{
+    LOGT("IMEEnabled:%i, IMEOpen:%i, type:%s, imMode:%s, actHint:%s, cause:%i, focusChange:%i",
+        aIMEEnabled, aIMEOpen, NS_ConvertUTF16toUTF8(aType).get(), NS_ConvertUTF16toUTF8(aInputmode).get(),
+        NS_ConvertUTF16toUTF8(aActionHint).get(), aCause, aFocusChange);
+    mView->GetListener()->IMENotification(aIMEEnabled, aIMEOpen, aCause, aFocusChange);
+    return true;
+}
+
 
 } // namespace embedlite
 } // namespace mozilla

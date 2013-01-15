@@ -12,6 +12,8 @@
 #include <QTimer>
 #include <QTime>
 #include <QtOpenGL/QGLContext>
+#include <QInputContext>
+#include <QApplication>
 #include "EmbedQtKeyUtils.h"
 
 #include "mozilla-config.h"
@@ -164,6 +166,27 @@ public:
     {
         Q_EMIT q->authRequired(QString(hostname.get()), QString(httprealm.get()),
                                QString((QChar*)username.get()), isOnlyPassword, winID);
+    }
+    virtual void IMENotification(bool aEnabled, bool aOpen, int aCause, int aFocusChange)
+    {
+        QWidget* focusWidget = qApp->focusWidget();
+        if (focusWidget && aFocusChange) {
+            QInputContext *inputContext = qApp->inputContext();
+            if (!inputContext) {
+                LOGT("Requesting SIP: but no input context");
+                return;
+            }
+            if (aEnabled) {
+                QEvent request(QEvent::RequestSoftwareInputPanel);
+                inputContext->filterEvent(&request);
+                focusWidget->setAttribute(Qt::WA_InputMethodEnabled, true);
+                inputContext->setFocusWidget(focusWidget);
+            } else {
+                QEvent request(QEvent::CloseSoftwareInputPanel);
+                inputContext->filterEvent(&request);
+                inputContext->reset();
+            }
+        }
     }
 
     virtual void OnLinkAdded(const PRUnichar* aHref, const PRUnichar* aCharset, const PRUnichar* aTitle, const PRUnichar* aRel, const PRUnichar* aSizes, const PRUnichar* aType) { LOGT(); }
