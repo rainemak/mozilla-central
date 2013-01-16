@@ -43,6 +43,9 @@
 #include "qdeclarativemozview.h"
 #include "qgraphicsmozview.h"
 #include <QtDeclarative>
+#if defined(Q_WS_X11)
+#include <X11/Xlib.h>
+#endif
 
 #ifdef HAS_BOOSTER
 Q_DECL_EXPORT
@@ -50,8 +53,14 @@ Q_DECL_EXPORT
 int main(int argc, char *argv[])
 {
 #if defined(Q_WS_X11)
+#if QT_VERSION >= 0x040800
     QApplication::setAttribute(Qt::AA_X11InitThreads, true);
+#else
+    XInitThreads();
+    QApplication::setAttribute(static_cast<Qt::ApplicationAttribute>(10), true);
 #endif
+#endif
+
     QApplication *application;
     QDeclarativeView *view;
 #ifdef HARMATTAN_BOOSTER
