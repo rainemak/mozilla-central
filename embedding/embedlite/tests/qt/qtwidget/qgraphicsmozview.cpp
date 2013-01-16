@@ -436,8 +436,8 @@ bool QGraphicsMozView::event(QEvent* event)
 {
     switch (event->type()) {
     case QEvent::TouchBegin:
-    case QEvent::TouchEnd:
-    case QEvent::TouchUpdate: {
+    case QEvent::TouchUpdate:
+    case QEvent::TouchEnd: {
         d->touchEvent(static_cast<QTouchEvent*>(event));
         return true;
     }
@@ -459,8 +459,8 @@ bool QGraphicsMozView::event(QEvent* event)
 
 void QGraphicsMozViewPrivate::touchEvent(QTouchEvent* event)
 {
-    mPendingTouchEvent = event->type() == QEvent::TouchEnd ? false : true;
     // Always accept the QTouchEvent so that we'll receive also TouchUpdate and TouchEnd events
+    mPendingTouchEvent = true;
     event->setAccepted(true);
     if (event->type() == QEvent::TouchBegin) {
         q->forceActiveFocus();
@@ -568,6 +568,9 @@ void QGraphicsMozView::mouseReleaseEvent(QGraphicsSceneMouseEvent* e)
                                      1.0f));
         d->ReceiveInputEvent(event);
         e->setAccepted(accepted);
+    }
+    if (d->mPendingTouchEvent) {
+        d->mPendingTouchEvent = false;
     }
 
     if (!e->isAccepted())
