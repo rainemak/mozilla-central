@@ -391,7 +391,7 @@ WebBrowserChrome::HandleEvent(nsIDOMEvent* aEvent)
         nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
         target->RemoveEventListener(NS_LITERAL_STRING(MOZ_AFTER_PAINT_LITERAL), this,  PR_FALSE);
         if (mFirstPaint) {
-            LOGNI("Send UpdateDisplayPort");
+            mListener->OnUpdateDisplayPort();
             return NS_OK;
         }
         mFirstPaint = true;

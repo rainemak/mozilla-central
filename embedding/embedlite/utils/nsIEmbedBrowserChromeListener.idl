@@ -34,4 +34,5 @@ interface nsIEmbedBrowserChromeListener
     void onScrollChanged(in int32_t offSetX, in int32_t offSetY);
     void onObserve(in string aTopic, in wstring aData);
     void onMetaAdded();
+    void onUpdateDisplayPort();
 };

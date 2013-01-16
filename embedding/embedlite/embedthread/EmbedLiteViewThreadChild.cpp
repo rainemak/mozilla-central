@@ -568,6 +568,12 @@ NS_IMETHODIMP EmbedLiteViewThreadChild::OnMetaAdded()
     return NS_OK;
 }
 
+NS_IMETHODIMP EmbedLiteViewThreadChild::OnUpdateDisplayPort()
+{
+    LOGNI();
+    return NS_OK;
+}
+
 void
 EmbedLiteViewThreadChild::WaitForPromptResult(EmbedLiteViewPromptResponse* resp)
 {

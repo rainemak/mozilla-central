@@ -324,17 +324,20 @@ void EmbedLiteViewScrolling::ZoomToElement(nsIDOMElement* aElement, int aClickY,
     gfx::Rect clrect = GetBoundingContentRect(aElement);
     gfxRect rect(clrect.x, clrect.y, clrect.width, clrect.height);
 
-    gfx::Rect bRect = gfx::Rect(NS_MAX(mCssPageRect.x, clrect.x - margin),
+    gfx::Rect bRect = gfx::Rect(aCanZoomIn ? NS_MAX(mCssPageRect.x, clrect.x - margin) : mCssPageRect.x,
                                 clrect.y,
-                                clrect.width + 2 * margin,
+                                aCanZoomIn ? clrect.width + 2 * margin : mCssPageRect.width,
                                 clrect.height);
+
     // constrict the rect to the screen's right edge
     bRect.width = NS_MIN(bRect.width, (mCssPageRect.x + mCssPageRect.width) - bRect.x);
 
     // if the rect is already taking up most of the visible area and is stretching the
     // width of the page, then we want to zoom out instead.
     if (IsRectZoomedIn(bRect, mCssCompositedRect)) {
-        mView->SendZoomToRect(gfxRect(0,0,0,0));
+        if (aCanZoomOut) {
+            mView->SendZoomToRect(gfxRect(0,0,0,0));
+        }
         return;
     }
 

@@ -425,6 +425,7 @@ ScrollWindowTo(nsIDOMWindow* aWindow, const mozilla::gfx::Point& aPoint)
 bool
 TabChildHelper::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
 {
+    LOGF();
     gfx::Rect cssCompositedRect =
       AsyncPanZoomController::CalculateCompositedRectInCssPixels(aFrameMetrics);
     // The BrowserElementScrolling helper must know about these updated metrics

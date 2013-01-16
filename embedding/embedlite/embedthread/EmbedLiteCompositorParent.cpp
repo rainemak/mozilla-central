@@ -54,6 +54,7 @@ EmbedLiteCompositorParent::IsGLBackend()
 
 bool EmbedLiteCompositorParent::RenderToContext(gfxContext* aContext)
 {
+    LOGF();
     LayerManager* mgr = GetLayerManager();
     NS_ENSURE_TRUE(mgr, false);
     NS_ENSURE_TRUE(mgr->GetRoot(), false);
@@ -63,6 +64,7 @@ bool EmbedLiteCompositorParent::RenderToContext(gfxContext* aContext)
 
 bool EmbedLiteCompositorParent::RenderGL()
 {
+    LOGF();
     NS_ENSURE_TRUE(IsGLBackend(), false);
 
     LayerManager* mgr = GetLayerManager();
