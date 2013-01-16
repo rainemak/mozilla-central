@@ -14,7 +14,7 @@
 
 #ifdef EMBED_LITE_INTERNAL
 
-#define FORCE_PR_LOG
+#define FORCE_PR_LOG 1
 #include "prlog.h"
 
 extern PRLogModuleInfo* GetEmbedCommonLog(const char* aModule);

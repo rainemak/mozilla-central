@@ -4,10 +4,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #define LOG_COMPONENT "EmbedTabChildGlobal"
+#include "EmbedLog.h"
 
 #include "EmbedTabChildGlobal.h"
 #include "TabChildHelper.h"
-#include "EmbedLog.h"
 #include "EmbedLiteViewThreadChild.h"
 #include "nsGenericHTMLElement.h"
 #include "nsNetUtil.h"

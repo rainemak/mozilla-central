@@ -4,6 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #define LOG_COMPONENT "WebBrowserChrome"
+#include "EmbedLog.h"
 
 #include "WebBrowserChrome.h"
 #include "nsIDOMWindow.h"
@@ -29,7 +30,6 @@
 #include "nsIEmbedBrowserChromeListener.h"
 
 #include <inttypes.h>
-#include "EmbedLog.h"
 
 #define MOZ_AFTER_PAINT_LITERAL "MozAfterPaint"
 #define MOZ_DOMContentLoaded "DOMContentLoaded"

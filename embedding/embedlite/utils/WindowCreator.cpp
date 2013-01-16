@@ -3,10 +3,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#define LOG_COMPONENT "WindowCreator"
+#include "EmbedLog.h"
+
 #include "nsIWebBrowserChrome.h"
 #include "WindowCreator.h"
 #include <stdio.h>
-#include "EmbedLog.h"
 
 WindowCreator::WindowCreator()
   : mOpenBlock(false)

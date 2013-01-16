@@ -4,10 +4,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #define LOG_COMPONENT "EmbedLiteView"
+#include "EmbedLog.h"
 
 #include "EmbedLiteView.h"
 #include "EmbedLiteApp.h"
-#include "EmbedLog.h"
 
 #include "mozilla/unused.h"
 

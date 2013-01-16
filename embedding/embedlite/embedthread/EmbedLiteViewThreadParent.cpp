@@ -4,9 +4,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #define LOG_COMPONENT "EmbedLiteViewThreadParent"
+#include "EmbedLog.h"
 
 #include "EmbedLiteViewThreadParent.h"
-#include "EmbedLog.h"
 #include "EmbedLiteApp.h"
 #include "EmbedLiteView.h"
 
@@ -525,7 +525,6 @@ EmbedLiteViewThreadParent::RenderToImage(unsigned char *aData, int imgW, int img
 bool
 EmbedLiteViewThreadParent::RenderGL()
 {
-    LOGT();
     if (mCompositor) {
         return mCompositor->RenderGL();
     }

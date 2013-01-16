@@ -4,9 +4,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #define LOG_COMPONENT "EmbedLiteAppThreadChild"
+#include "EmbedLog.h"
 
 #include "EmbedLiteAppThreadChild.h"
-#include "EmbedLog.h"
 
 #include "nsIPrefBranch.h"
 #include "nsIPrefService.h"

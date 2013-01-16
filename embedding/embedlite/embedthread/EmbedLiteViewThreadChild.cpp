@@ -4,11 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #define LOG_COMPONENT "EmbedLiteViewThreadChild"
+#include "EmbedLog.h"
 
 #include "EmbedLiteViewThreadChild.h"
 #include "EmbedLiteAppThreadChild.h"
 #include "EmbedLiteViewScrolling.h"
-#include "EmbedLog.h"
+
 #include "mozilla/unused.h"
 
 #include "nsEmbedCID.h"

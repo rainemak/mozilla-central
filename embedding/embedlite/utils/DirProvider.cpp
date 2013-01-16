@@ -3,11 +3,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#define LOG_COMPONENT "DirProvider"
+#include "EmbedLog.h"
+
 #include "DirProvider.h"
 #include "nsAppDirectoryServiceDefs.h"
 #include "nsDirectoryServiceDefs.h"
 #include "nsXULAppAPI.h"
-#include "EmbedLog.h"
+
 
 nsIDirectoryServiceProvider* DirProvider::sAppFileLocProvider = 0;
 nsCOMPtr<nsIFile> DirProvider::sProfileDir = 0;

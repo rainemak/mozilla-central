@@ -6,10 +6,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #define LOG_COMPONENT "EmbedLiteSubThread"
+#include "EmbedLog.h"
 
 #include "EmbedLiteSubThread.h"
 #include "GeckoLoader.h"
-#include "EmbedLog.h"
 #include "EmbedLiteApp.h"
 
 namespace mozilla {

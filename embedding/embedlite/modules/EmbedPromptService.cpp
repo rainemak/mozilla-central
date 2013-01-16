@@ -4,11 +4,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #define LOG_COMPONENT "EmbedPromptService"
+#include "EmbedLog.h"
 
 #include "EmbedPromptService.h"
 
 #include "nsStringGlue.h"
-#include "EmbedLog.h"
 #include "nsIAuthPrompt.h"
 #include "EmbedLiteViewThreadChild.h"
 #include "EmbedLiteAppThreadChild.h"

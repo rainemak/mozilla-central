@@ -4,6 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #define LOG_COMPONENT "EmbedLiteApp"
+#include "EmbedLog.h"
 
 #include "EmbedLiteApp.h"
 #include "nsISupports.h"
@@ -11,7 +12,7 @@
 #include "mozilla/unused.h"
 
 #include "mozilla/embedlite/EmbedLiteAPI.h"
-#include "EmbedLog.h"
+
 #include "EmbedLiteUILoop.h"
 #include "EmbedLiteSubThread.h"
 #include "GeckoLoader.h"

@@ -4,14 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #define LOG_COMPONENT "TabChildHelper"
+#include "EmbedLog.h"
 
 #include "TabChildHelper.h"
-
 #include "nsIWidget.h"
 
 #include "EmbedTabChildGlobal.h"
-#include "EmbedLog.h"
-
 #include "EmbedLiteViewThreadChild.h"
 #include "EmbedLiteViewScrolling.h"
 #include "mozilla/layers/AsyncPanZoomController.h"

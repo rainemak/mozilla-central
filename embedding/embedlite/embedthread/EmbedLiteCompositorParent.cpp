@@ -4,12 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #define LOG_COMPONENT "EmbedLiteCompositorParent"
+#include "EmbedLog.h"
 
 #include "EmbedLiteCompositorParent.h"
 #include "LayerManagerOGL.h"
 #include "mozilla/layers/ShadowLayersParent.h"
 #include "BasicLayers.h"
-#include "EmbedLog.h"
 #include "EmbedLiteAppThreadParent.h"
 #include "EmbedLiteViewThreadParent.h"
 #include "EmbedLiteApp.h"

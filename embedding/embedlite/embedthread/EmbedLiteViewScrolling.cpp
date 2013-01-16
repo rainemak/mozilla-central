@@ -4,9 +4,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #define LOG_COMPONENT "EmbedLiteViewScrolling"
+#include "EmbedLog.h"
 
 #include "EmbedLiteViewScrolling.h"
-#include "EmbedLog.h"
 #include "mozilla/unused.h"
 #include "nsIDOMWindowUtils.h"
 #include "nsNetUtil.h"

@@ -3,8 +3,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "EmbedLiteUILoop.h"
+#define LOG_COMPONENT "EmbedLiteUILoopd"
 #include "EmbedLog.h"
+
+#include "EmbedLiteUILoop.h"
 
 namespace mozilla {
 namespace embedlite {
