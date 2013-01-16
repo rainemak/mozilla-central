@@ -21,12 +21,18 @@ public:
 
     void ViewportChange(const mozilla::layers::FrameMetrics& aMetrics, gfx::Rect cssCompositedRect);
     void GestureDoubleTap(const nsIntPoint& aPoint);
+    void ScrollToFocusedInput(bool aAllowZoom);
 
 private:
     bool IsRectZoomedIn(gfx::Rect aRect, gfx::Rect aViewport);
     bool ShouldZoomToElement(nsIDOMElement* aElement);
     void AnyElementFromPoint(nsIDOMWindow* aWindow, double aX, double aY, nsIDOMElement* *aElem);
     gfx::Rect GetBoundingContentRect(nsIDOMElement* aElement);
+    nsresult GetFocusedInput(nsIDOMElement* *aElement, bool aOnlyInputElements = false);
+    void ZoomToElement(nsIDOMElement* aElement,
+                       int aClickY = -1,
+                       bool aCanZoomOut = true,
+                       bool aCanZoomIn = true);
 
     gfx::Rect mViewport;
     gfx::Rect mCssCompositedRect;

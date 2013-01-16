@@ -17,6 +17,9 @@
 #include "nsIDOMNode.h"
 #include "nsIDOMElement.h"
 #include "nsIDOMHTMLLIElement.h"
+#include "nsIDOMHTMLTextAreaElement.h"
+#include "nsIDOMHTMLBodyElement.h"
+#include "nsIDOMHTMLInputElement.h"
 
 using namespace mozilla::layers;
 
@@ -77,41 +80,7 @@ EmbedLiteViewScrolling::GestureDoubleTap(const nsIntPoint& aPoint)
     if (!element) {
         mView->SendZoomToRect(gfxRect(0,0,0,0));
     } else {
-        const int margin = 15;
-        gfx::Rect clrect = GetBoundingContentRect(element);
-        gfxRect rect(clrect.x, clrect.y, clrect.width, clrect.height);
-
-        gfx::Rect bRect = gfx::Rect(NS_MAX(mCssPageRect.x, clrect.x - margin),
-                                           clrect.y,
-                                           clrect.width + 2 * margin,
-                                           clrect.height);
-        // constrict the rect to the screen's right edge
-        bRect.width = NS_MIN(bRect.width, (mCssPageRect.x + mCssPageRect.width) - bRect.x);
-
-        // if the rect is already taking up most of the visible area and is stretching the
-        // width of the page, then we want to zoom out instead.
-        if (IsRectZoomedIn(bRect, mCssCompositedRect)) {
-            mView->SendZoomToRect(gfxRect(0,0,0,0));
-            return;
-        }
-
-        rect.x = round(bRect.x);
-        rect.y = round(bRect.y);
-        rect.width = round(bRect.width);
-        rect.height = round(bRect.height);
-
-        // if the block we're zooming to is really tall, and the user double-tapped
-        // more than a screenful of height from the top of it, then adjust the y-coordinate
-        // so that we center the actual point the user double-tapped upon. this prevents
-        // flying to the top of a page when double-tapping to zoom in (bug 761721).
-        // the 1.2 multiplier is just a little fuzz to compensate for bRect including horizontal
-        // margins but not vertical ones.
-        float cssTapY = mViewport.y + aPoint.y;
-        if ((bRect.height > rect.height) && (cssTapY > rect.y + (rect.height * 1.2))) {
-            rect.y = cssTapY - (rect.height / 2);
-        }
-
-        mView->SendZoomToRect(rect);
+        ZoomToElement(element, aPoint.y, true, true);
     }
 }
 
@@ -179,8 +148,8 @@ EmbedLiteViewScrolling::AnyElementFromPoint(nsIDOMWindow* aWindow, double aX, do
         aX -= left;
         aY -= top;
         nsCOMPtr<nsIDOMDocument> contentDocument;
-        if (NS_FAILED(elAsIFrame->GetContentDocument(getter_AddRefs(contentDocument)))) {
-            if (NS_FAILED(elAsFrame->GetContentDocument(getter_AddRefs(contentDocument)))) {
+        if (!elAsIFrame || NS_FAILED(elAsIFrame->GetContentDocument(getter_AddRefs(contentDocument)))) {
+            if (!elAsFrame || NS_FAILED(elAsFrame->GetContentDocument(getter_AddRefs(contentDocument)))) {
                 break;
             }
         }
@@ -189,6 +158,9 @@ EmbedLiteViewScrolling::AnyElementFromPoint(nsIDOMWindow* aWindow, double aX, do
         utils = do_GetInterface(newWin);
         if (NS_FAILED(utils->ElementFromPoint(aX, aY, true, true, getter_AddRefs(elem)))) {
             elem = nullptr;
+        } else {
+            elAsIFrame = do_QueryInterface(elem);
+            elAsFrame = do_QueryInterface(elem);
         }
     }
     if (elem) {
@@ -262,6 +234,127 @@ EmbedLiteViewScrolling::GetBoundingContentRect(nsIDOMElement* aElement)
     return gfx::Rect(rleft + scrollX,
                      rtop + scrollY,
                      rwidth, rheight);
+}
+
+void EmbedLiteViewScrolling::ScrollToFocusedInput(bool aAllowZoom)
+{
+    nsCOMPtr<nsIDOMElement> focused;
+    GetFocusedInput(getter_AddRefs(focused));
+    if (focused) {
+        // _zoomToElement will handle not sending any message if this input is already mostly filling the screen
+        ZoomToElement(focused, -1, false, aAllowZoom);
+    }
+}
+
+nsresult
+EmbedLiteViewScrolling::GetFocusedInput(nsIDOMElement* *aElement,
+                                        bool aOnlyInputElements)
+{
+    nsresult rv;
+    nsCOMPtr<nsIDOMDocument> doc;
+    rv = mView->mDOMWindow->GetDocument(getter_AddRefs(doc));
+    NS_ENSURE_TRUE(doc, rv);
+
+    nsCOMPtr<nsIDOMElement> focused;
+    doc->GetActiveElement(getter_AddRefs(focused));
+
+    nsCOMPtr<nsIDOMHTMLIFrameElement> elAsIFrame = do_QueryInterface(focused);
+    nsCOMPtr<nsIDOMHTMLFrameElement> elAsFrame = do_QueryInterface(focused);
+    while (elAsIFrame || elAsFrame) {
+        if (!elAsIFrame || NS_FAILED(elAsIFrame->GetContentDocument(getter_AddRefs(doc)))) {
+            if (!elAsFrame || NS_FAILED(elAsFrame->GetContentDocument(getter_AddRefs(doc)))) {
+                NS_ERROR("This should not happen");
+            }
+        }
+        doc->GetActiveElement(getter_AddRefs(focused));
+        elAsIFrame = do_QueryInterface(focused);
+        elAsFrame = do_QueryInterface(focused);
+    }
+    nsCOMPtr<nsIDOMHTMLInputElement> input = do_QueryInterface(focused);
+    if (input) {
+        bool isText = false;
+        if (NS_SUCCEEDED(input->MozIsTextField(false, &isText)) && isText) {
+            NS_ADDREF(*aElement = input);
+            return NS_OK;
+        }
+    }
+
+    if (aOnlyInputElements) {
+        return NS_ERROR_FAILURE;
+    }
+
+    nsCOMPtr<nsIDOMHTMLTextAreaElement> textarea = do_QueryInterface(focused);
+    bool IsContentEditable = false;
+    if (!textarea) {
+        nsCOMPtr<nsIDOMHTMLElement> editDiv = do_QueryInterface(focused);
+        if (editDiv) {
+            editDiv->GetIsContentEditable(&IsContentEditable);
+        }
+    }
+    if (textarea || IsContentEditable) {
+        nsCOMPtr<nsIDOMHTMLBodyElement> body = do_QueryInterface(focused);
+        if (body) {
+            // we are putting focus into a contentEditable frame. scroll the frame into
+            // view instead of the contentEditable document contained within, because that
+            // results in a better user experience
+            nsCOMPtr<nsIDOMNode> node = do_QueryInterface(focused);
+            if (node) {
+                node->GetOwnerDocument(getter_AddRefs(doc));
+                if (doc) {
+                    nsCOMPtr<nsIDOMWindow> newWin;
+                    doc->GetDefaultView(getter_AddRefs(newWin));
+                    if (newWin) {
+                        newWin->GetFrameElement(getter_AddRefs(focused));
+                    }
+                }
+            }
+        }
+        NS_ADDREF(*aElement = focused);
+        return NS_OK;
+    }
+    return NS_ERROR_FAILURE;
+}
+
+/* Zoom to an element, optionally keeping a particular part of it
+ * in view if it is really tall.
+ */
+void EmbedLiteViewScrolling::ZoomToElement(nsIDOMElement* aElement, int aClickY, bool aCanZoomOut, bool aCanZoomIn)
+{
+    const int margin = 15;
+    gfx::Rect clrect = GetBoundingContentRect(aElement);
+    gfxRect rect(clrect.x, clrect.y, clrect.width, clrect.height);
+
+    gfx::Rect bRect = gfx::Rect(NS_MAX(mCssPageRect.x, clrect.x - margin),
+                                clrect.y,
+                                clrect.width + 2 * margin,
+                                clrect.height);
+    // constrict the rect to the screen's right edge
+    bRect.width = NS_MIN(bRect.width, (mCssPageRect.x + mCssPageRect.width) - bRect.x);
+
+    // if the rect is already taking up most of the visible area and is stretching the
+    // width of the page, then we want to zoom out instead.
+    if (IsRectZoomedIn(bRect, mCssCompositedRect)) {
+        mView->SendZoomToRect(gfxRect(0,0,0,0));
+        return;
+    }
+
+    rect.x = round(bRect.x);
+    rect.y = round(bRect.y);
+    rect.width = round(bRect.width);
+    rect.height = round(bRect.height);
+
+    // if the block we're zooming to is really tall, and the user double-tapped
+    // more than a screenful of height from the top of it, then adjust the y-coordinate
+    // so that we center the actual point the user double-tapped upon. this prevents
+    // flying to the top of a page when double-tapping to zoom in (bug 761721).
+    // the 1.2 multiplier is just a little fuzz to compensate for bRect including horizontal
+    // margins but not vertical ones.
+    float cssTapY = mViewport.y + aClickY;
+    if ((bRect.height > rect.height) && (cssTapY > rect.y + (rect.height * 1.2))) {
+        rect.y = cssTapY - (rect.height / 2);
+    }
+
+    mView->SendZoomToRect(rect);
 }
 
 } // namespace embedlite

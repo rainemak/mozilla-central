@@ -524,7 +524,7 @@ EmbedAuthPromptService::DoResponseAsyncPrompt(EmbedAsyncAuthPrompt* prompt,
         prompt->mAuthInfo->SetPassword(NS_ConvertUTF8toUTF16(password));
     }
 
-    for (int i = 0; i < prompt->consumers.Length(); i++) {
+    for (unsigned int i = 0; i < prompt->consumers.Length(); i++) {
         nsCOMPtr<nsICancelable> consumerI = prompt->consumers[i];
         nsCOMPtr<nsAuthCancelableConsumer> consumer = do_QueryInterface(consumerI);
         if (!consumer->mCallback) {

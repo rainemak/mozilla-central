@@ -32,6 +32,7 @@
 #include "EmbedPromptService.h"
 
 using namespace mozilla::layers;
+using namespace mozilla::widget;
 
 namespace mozilla {
 namespace embedlite {
@@ -267,6 +268,12 @@ EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
     nsCOMPtr<nsIBaseWindow> baseWindow = do_QueryInterface(mWebBrowser);
     baseWindow->SetPositionAndSize(0, 0, mViewSize.width, mViewSize.height, true);
     baseWindow->SetVisibility(true);
+
+    const InputContext& ctx = mWidget->GetInputContext();
+    if (ctx.mIMEState.mEnabled) {
+        mScrolling->ScrollToFocusedInput(false);
+    }
+
     return true;
 }
 
