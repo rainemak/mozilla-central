@@ -48,6 +48,9 @@ protected:
     virtual bool RecvAsyncMessage(const nsString& aMessage,
                                   const nsString& aData);
     virtual bool RecvSetViewSize(const gfxSize&);
+    virtual bool RecvAsyncScrollDOMEvent(
+            const gfxRect& contentRect,
+            const gfxSize& scrollSize);
 
     virtual bool RecvUpdateFrame(const mozilla::layers::FrameMetrics& aFrameMetrics);
     virtual bool RecvHandleDoubleTap(const nsIntPoint& aPoint);
@@ -96,6 +99,7 @@ private:
 
     nsCOMPtr<TabChildHelper> mHelper;
     bool mDispatchSynthMouseEvents;
+    bool mHadResizeSinceLastFrameUpdate;
     int mModalDepth;
     std::map<uint64_t, EmbedLiteViewPromptResponse*> modalWinMap;
 

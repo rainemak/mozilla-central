@@ -43,6 +43,7 @@ EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(uint32_t aId)
   , mScrolling(new EmbedLiteViewScrolling(this))
   , mDispatchSynthMouseEvents(true)
   , mModalDepth(0)
+  , mHadResizeSinceLastFrameUpdate(false)
 {
     LOGT();
     AddRef();
@@ -268,12 +269,16 @@ EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
     nsCOMPtr<nsIBaseWindow> baseWindow = do_QueryInterface(mWebBrowser);
     baseWindow->SetPositionAndSize(0, 0, mViewSize.width, mViewSize.height, true);
     baseWindow->SetVisibility(true);
+    mHadResizeSinceLastFrameUpdate = true;
 
-    const InputContext& ctx = mWidget->GetInputContext();
-    if (ctx.mIMEState.mEnabled) {
-        mScrolling->ScrollToFocusedInput(false);
-    }
+    return true;
+}
 
+bool
+EmbedLiteViewThreadChild::RecvAsyncScrollDOMEvent(const gfxRect& contentRect,
+                                                  const gfxSize& scrollSize)
+{
+    mScrolling->AsyncScrollDOMEvent(contentRect, scrollSize);
     return true;
 }
 
@@ -283,7 +288,14 @@ EmbedLiteViewThreadChild::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
     if (!mWebBrowser)
         return true;
 
-    return mHelper->RecvUpdateFrame(aFrameMetrics);
+    bool ret = mHelper->RecvUpdateFrame(aFrameMetrics);
+    const InputContext& ctx = mWidget->GetInputContext();
+    if (ctx.mIMEState.mEnabled && mHadResizeSinceLastFrameUpdate) {
+        mScrolling->ScrollToFocusedInput(false);
+    }
+    mHadResizeSinceLastFrameUpdate = false;
+
+    return ret;
 }
 
 bool

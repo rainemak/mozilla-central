@@ -22,6 +22,7 @@ public:
     void ViewportChange(const mozilla::layers::FrameMetrics& aMetrics, gfx::Rect cssCompositedRect);
     void GestureDoubleTap(const nsIntPoint& aPoint);
     void ScrollToFocusedInput(bool aAllowZoom);
+    void AsyncScrollDOMEvent(const gfxRect& contentRect, const gfxSize& scrollSize);
 
 private:
     bool IsRectZoomedIn(gfx::Rect aRect, gfx::Rect aViewport);
@@ -37,6 +38,8 @@ private:
     gfx::Rect mViewport;
     gfx::Rect mCssCompositedRect;
     gfx::Rect mCssPageRect;
+    gfxRect mContentRect;
+    gfxSize mScrollSize;
 
     EmbedLiteViewThreadChild* mView;
     bool mGotViewPortUpdate;

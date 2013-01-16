@@ -95,7 +95,8 @@ public:
     virtual void SendAsyncScrollDOMEvent(const gfx::Rect &aContentRect,
                                          const gfx::Size &aScrollableSize)
     {
-        LOGNI();
+        LOGNI("contentR[%g,%g,%g,%g], scrSize[%g,%g]", aContentRect.x, aContentRect.y, aContentRect.width, aContentRect.height, aScrollableSize.width, aScrollableSize.height);
+        unused << mRenderFrame->SendAsyncScrollDOMEvent(gfxRect(aContentRect.x, aContentRect.y, aContentRect.width, aContentRect.height), gfxSize(aScrollableSize.width, aScrollableSize.height));
     }
 
     void ClearRenderFrame() { mRenderFrame = nullptr; }

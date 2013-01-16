@@ -32,6 +32,7 @@ child:
     async LoadFrameScript(nsString uri);
     async SetViewSize(gfxSize aSize);
     async SetIsActive(bool aIsActive);
+    async AsyncScrollDOMEvent(gfxRect contentRect, gfxSize scrollSize);
 
     UpdateFrame(FrameMetrics frame) compress;
     HandleDoubleTap(nsIntPoint point);

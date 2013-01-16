@@ -65,11 +65,13 @@ bool EmbedLiteCompositorParent::RenderToContext(gfxContext* aContext)
 bool EmbedLiteCompositorParent::RenderGL()
 {
     LOGF();
+    bool retval = true;
     NS_ENSURE_TRUE(IsGLBackend(), false);
 
     LayerManager* mgr = GetLayerManager();
-    NS_ENSURE_TRUE(mgr, false);
-    NS_ENSURE_TRUE(mgr->GetRoot(), false);
+    if (!mgr->GetRoot()) {
+        retval = false;
+    }
     if (mgr->GetBackendType() == mozilla::layers::LAYERS_OPENGL) {
         static_cast<LayerManagerOGL*>(mgr)->
             SetWorldTransform(mWorldTransform);
@@ -78,7 +80,7 @@ bool EmbedLiteCompositorParent::RenderGL()
         mgr->GetRoot()->SetClipRect(&mActiveClipping);
     }
     CompositorParent::Composite();
-    return true;
+    return retval;
 }
 
 void EmbedLiteCompositorParent::SetSurfaceSize(int width, int height)

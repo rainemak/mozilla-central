@@ -39,6 +39,14 @@ EmbedLiteViewScrolling::~EmbedLiteViewScrolling()
 }
 
 void
+EmbedLiteViewScrolling::AsyncScrollDOMEvent(const gfxRect& contentRect, const gfxSize& scrollSize)
+{
+    LOGT();
+    mContentRect = contentRect;
+    mScrollSize = scrollSize;
+}
+
+void
 EmbedLiteViewScrolling::ViewportChange(const FrameMetrics& aMetrics, gfx::Rect cssCompositedRect)
 {
     mGotViewPortUpdate = true;
