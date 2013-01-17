@@ -1274,6 +1274,9 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aViewportFr
 
     mPreviousPaintDurations.AppendElement(
       TimeStamp::Now() - mPreviousPaintStartTime);
+    if (mState == NOTHING) {
+      mFrameMetrics.mScrollOffset = aViewportFrame.mScrollOffset;
+    }
   } else {
     // No paint was requested, but we got one anyways. One possible cause of this
     // is that content could have fired a scrollTo(). In this case, we should take
@@ -1283,10 +1286,10 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aViewportFr
     // updating our local copy of it anyways just in case.
     switch (mState) {
     case NOTHING:
-    case FLING:
-    case TOUCHING:
-    case WAITING_LISTENERS:
-//      mFrameMetrics.mScrollOffset = aViewportFrame.mScrollOffset;
+//    case FLING:
+//    case TOUCHING:
+//    case WAITING_LISTENERS:
+      mFrameMetrics.mScrollOffset = aViewportFrame.mScrollOffset;
       break;
     // Don't clobber if we're in other states.
     default:
