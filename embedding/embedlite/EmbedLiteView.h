@@ -25,6 +25,8 @@ public:
     virtual void ViewInitialized() {}
     // View finally destroyed and deleted
     virtual void Destroyed() {}
+
+    // Messaging interface, allow to receive json messages from content child scripts
     virtual void RecvAsyncMessage(const char* aMessage, const char* aData) {}
     virtual char* RecvSyncMessage(const char* aMessage, const char* aData) { return NULL; }
 
@@ -133,7 +135,12 @@ public:
     virtual void SetTransformation(float aScale, nsIntPoint aScrollOffset);
     virtual void ScheduleRender();
 
-    // Scripting Interface
+    // Scripting Interface, allow to extend embedding API by creating
+    // child js scripts and messaging interface.
+    // and do communication between UI and Content child via json messages. 
+    // See RecvAsyncMessage, RecvSyncMessage, SendAsyncMessage
+    // For more detailed info see https://developer.mozilla.org/en-US/docs/The_message_manager
+    //   https://wiki.mozilla.org/Content_Process_Event_Handlers
     virtual void LoadFrameScript(const char* aURI);
     virtual void SendAsyncMessage(const char* aMessageName, const char* aMessage);
 

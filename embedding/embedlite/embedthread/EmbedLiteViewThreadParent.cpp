@@ -593,11 +593,9 @@ void
 EmbedLiteViewThreadParent::ReceiveInputEvent(const InputData& aEvent)
 {
     if (mController) {
-        nsEventStatus status;
-        status = mController->ReceiveInputEvent(aEvent);
+        mController->ReceiveInputEvent(aEvent);
         if (aEvent.mInputType == MULTITOUCH_INPUT) {
             const MultiTouchInput& multiTouchInput = aEvent.AsMultiTouchInput();
-            const SingleTouchData& data = multiTouchInput.mTouches[0];
             gfxSize sz = mController->CalculateResolution();
             if (multiTouchInput.mType == MultiTouchInput::MULTITOUCH_START ||
                 multiTouchInput.mType == MultiTouchInput::MULTITOUCH_ENTER) {
@@ -642,14 +640,13 @@ EmbedLiteViewThreadParent::MousePress(int x, int y, int mstime, unsigned int but
 {
     LOGT("pt[%i,%i], t:%i, bt:%u, mod:%u", x, y, mstime, buttons, modifiers);
     if (mController) {
-        nsEventStatus status;
         MultiTouchInput event(MultiTouchInput::MULTITOUCH_START, mstime);
         event.mTouches.AppendElement(SingleTouchData(0,
                                      nsIntPoint(x, y),
                                      nsIntPoint(1, 1),
                                      180.0f,
                                      1.0f));
-        status = mController->ReceiveInputEvent(event);
+        mController->ReceiveInputEvent(event);
         unused << SendMouseEvent(NS_LITERAL_STRING("mousedown"),
                                  x, y, buttons, 1, modifiers,
                                  true);
@@ -661,14 +658,13 @@ EmbedLiteViewThreadParent::MouseRelease(int x, int y, int mstime, unsigned int b
 {
     LOGT("pt[%i,%i], t:%i, bt:%u, mod:%u", x, y, mstime, buttons, modifiers);
     if (mController) {
-        nsEventStatus status;
         MultiTouchInput event(MultiTouchInput::MULTITOUCH_END, mstime);
         event.mTouches.AppendElement(SingleTouchData(0,
                                      nsIntPoint(x, y),
                                      nsIntPoint(1, 1),
                                      180.0f,
                                      1.0f));
-        status = mController->ReceiveInputEvent(event);
+        mController->ReceiveInputEvent(event);
         unused << SendMouseEvent(NS_LITERAL_STRING("mouseup"),
                                  x, y, buttons, 1, modifiers,
                                  true);
@@ -680,14 +676,13 @@ EmbedLiteViewThreadParent::MouseMove(int x, int y, int mstime, unsigned int butt
 {
     LOGT("pt[%i,%i], t:%i, bt:%u, mod:%u", x, y, mstime, buttons, modifiers);
     if (mController) {
-        nsEventStatus status;
         MultiTouchInput event(MultiTouchInput::MULTITOUCH_MOVE, mstime);
         event.mTouches.AppendElement(SingleTouchData(0,
                                      nsIntPoint(x, y),
                                      nsIntPoint(1, 1),
                                      180.0f,
                                      1.0f));
-        status = mController->ReceiveInputEvent(event);
+        mController->ReceiveInputEvent(event);
         unused << SendMouseEvent(NS_LITERAL_STRING("mousemove"),
                                  x, y, buttons, 1, modifiers,
                                  true);
