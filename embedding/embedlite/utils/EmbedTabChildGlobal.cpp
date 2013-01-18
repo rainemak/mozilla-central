@@ -34,8 +34,6 @@ EmbedTabChildGlobal::Init()
                                               mozilla::dom::ipc::MM_CHILD);
 }
 
-NS_IMPL_CYCLE_COLLECTION_CLASS(EmbedTabChildGlobal)
-
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN_INHERITED(EmbedTabChildGlobal,
                                                 nsDOMEventTargetHelper)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mMessageManager)

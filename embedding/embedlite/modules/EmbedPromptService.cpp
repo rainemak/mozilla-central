@@ -381,6 +381,7 @@ EmbedAuthRunnable::Run()
     nsresult rv;
     uint32_t authInfoFlags;
     rv = mPrompt->mAuthInfo->GetFlags(&authInfoFlags);
+    NS_ENSURE_SUCCESS(rv, rv);
     bool isOnlyPassword = !!(authInfoFlags & nsIAuthInformation::ONLY_PASSWORD);
     mPrompt->mAuthInfo->GetUsername(username);
 
@@ -505,6 +506,7 @@ EmbedAuthPromptService::DoResponseAsyncPrompt(EmbedAsyncAuthPrompt* prompt,
     // by user.
     uint32_t flags;
     rv = prompt->mAuthInfo->GetFlags(&flags);
+    NS_ENSURE_SUCCESS(rv, );
     if (!username.IsEmpty()) {
         if (flags & nsIAuthInformation::NEED_DOMAIN) {
             // Domain is separated from username by a backslash

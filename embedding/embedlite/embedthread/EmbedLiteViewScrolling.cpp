@@ -101,7 +101,7 @@ EmbedLiteViewScrolling::IsRectZoomedIn(gfx::Rect aRect, gfx::Rect aViewport)
     gfx::Rect vRect(aViewport);
     gfx::Rect overlap = vRect.Intersect(aRect);
     float overlapArea = overlap.width * overlap.height;
-    float availHeight = NS_MIN(aRect.width * vRect.height / vRect.width, aRect.height);
+    float availHeight = std::min(aRect.width * vRect.height / vRect.width, aRect.height);
     float showing = overlapArea / (aRect.width * availHeight);
     float ratioW = (aRect.width / vRect.width);
     float ratioH = (aRect.height / vRect.height);
@@ -332,13 +332,13 @@ void EmbedLiteViewScrolling::ZoomToElement(nsIDOMElement* aElement, int aClickY,
     gfx::Rect clrect = GetBoundingContentRect(aElement);
     gfxRect rect(clrect.x, clrect.y, clrect.width, clrect.height);
 
-    gfx::Rect bRect = gfx::Rect(aCanZoomIn ? NS_MAX(mCssPageRect.x, clrect.x - margin) : mCssPageRect.x,
+    gfx::Rect bRect = gfx::Rect(aCanZoomIn ? std::max(mCssPageRect.x, clrect.x - margin) : mCssPageRect.x,
                                 clrect.y,
                                 aCanZoomIn ? clrect.width + 2 * margin : mCssPageRect.width,
                                 clrect.height);
 
     // constrict the rect to the screen's right edge
-    bRect.width = NS_MIN(bRect.width, (mCssPageRect.x + mCssPageRect.width) - bRect.x);
+    bRect.width = std::min(bRect.width, (mCssPageRect.x + mCssPageRect.width) - bRect.x);
 
     // if the rect is already taking up most of the visible area and is stretching the
     // width of the page, then we want to zoom out instead.

@@ -328,8 +328,8 @@ TabChildHelper::HandlePossibleViewportChange()
 
   float pageWidth, pageHeight;
   if (htmlDOMElement || bodyDOMElement) {
-    pageWidth = NS_MAX(htmlWidth, bodyWidth);
-    pageHeight = NS_MAX(htmlHeight, bodyHeight);
+    pageWidth = std::max(htmlWidth, bodyWidth);
+    pageHeight = std::max(htmlHeight, bodyHeight);
   } else {
     // For non-HTML content (e.g. SVG), just assume page size == viewport size.
     pageWidth = viewportW;
@@ -342,7 +342,7 @@ TabChildHelper::HandlePossibleViewportChange()
                      viewportInfo.GetMaxZoom());
   NS_ENSURE_TRUE_VOID(minScale); // (return early rather than divide by 0)
 
-  viewportH = NS_MAX(viewportH, screenH / minScale);
+  viewportH = std::max(viewportH, screenH / minScale);
   SetCSSViewport(viewportW, viewportH);
 
   // This change to the zoom accounts for all types of changes I can conceive:
