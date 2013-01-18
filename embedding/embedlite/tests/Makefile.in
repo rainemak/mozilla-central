@@ -28,15 +28,15 @@ LIBS += \
     $(XPCOM_STANDALONE_GLUE_LDOPTS) \
     $(NULL)
 
-ifeq (qt,$(MOZ_WIDGET_TOOLKIT))
 LIBS += \
     $(TK_LIBS) \
+    $(MOZ_GTHREAD_LIBS) \
     $(NULL)
 
 LOCAL_INCLUDES = \
     $(TK_CFLAGS) \
+    $(MOZ_GTHREAD_CFLAGS) \
     $(NULL)
-endif
 
 NSDISTMODE = copy
 
