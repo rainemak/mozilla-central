@@ -289,7 +289,7 @@ QGraphicsMozView::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, 
             }
         } else {
             if (d->mTempBufferImage.isNull() || d->mTempBufferImage.width() != r.width() || d->mTempBufferImage.height() != r.height()) {
-                d->mTempBufferImage = QImage(r.size(), QImage::Format_RGB32);
+                d->mTempBufferImage = QImage(r.size(), QImage::Format_RGB16);
             }
             {
                 QPainter imgPainter(&d->mTempBufferImage);
