@@ -60,7 +60,7 @@ EmbedLiteModulesService::Init()
         rv = cr->ContractIDToCID("@mozilla.org/prompter;1", &cid);
         if (!NS_FAILED(rv)) {
             rv = cr->UnregisterFactory(*cid, oldFactory.get());
-            delete cid;
+            NS_Free(cid);
             if (NS_FAILED(rv)) {
                 return NS_ERROR_FAILURE;
             }

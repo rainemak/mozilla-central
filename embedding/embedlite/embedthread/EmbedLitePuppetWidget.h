@@ -82,7 +82,7 @@ public:
     // PuppetWidgets don't care about children.
     virtual nsresult ConfigureChildren(const nsTArray<Configuration>& aConfigurations)
         { LOGNI(); return NS_OK; }
-    NS_IMETHOD Invalidate(const nsIntRect& aRect);
+    NS_IMETHOD Invalidate(const nsIntRect& aRect) { return NS_OK; }
     // PuppetWidgets don't have native data, as they're purely nonnative.
     virtual void* GetNativeData(uint32_t aDataType);
     // PuppetWidgets don't have any concept of titles..
@@ -125,28 +125,13 @@ private:
     EmbedLitePuppetWidget* TopWindow();
     bool IsTopLevel();
 
-    class PaintTask : public nsRunnable {
-    public:
-        NS_DECL_NSIRUNNABLE
-        PaintTask(EmbedLitePuppetWidget* widget) : mWidget(widget) {}
-        void Revoke() { mWidget = nullptr; }
-    private:
-        EmbedLitePuppetWidget* mWidget;
-    };
-
     EmbedLiteViewThreadChild* mEmbed;
-
-    nsIntRegion mDirtyRegion;
-    nsRevocableEventPtr<PaintTask> mPaintTask;
 
     bool mVisible;
     bool mEnabled;
     InputContext mInputContext;
     nsRefPtr<EmbedLitePuppetWidget> mChild;
 
-    // XXX/cjones: keeping this around until we teach LayerManager to do
-    // retained-content-only transactions
-    nsRefPtr<gfxASurface> mSurface;
     uint32_t mId;
 };
 

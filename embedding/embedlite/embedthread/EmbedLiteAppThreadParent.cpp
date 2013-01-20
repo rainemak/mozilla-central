@@ -48,11 +48,8 @@ EmbedLiteAppThreadParent::RecvInitialized()
     LOGT();
     SetBoolPref("layers.acceleration.disabled", !mApp->IsAccelerated());
     SetBoolPref("layers.acceleration.force-enabled", mApp->IsAccelerated());
-    if (mApp->IsAccelerated()) {
-        setenv("USE_TILED_THEBES", "1", 1);
-    } else {
-        unsetenv("USE_TILED_THEBES");
-    }
+    SetBoolPref("layers.async-video.enabled", mApp->IsAccelerated());
+    SetBoolPref("gfx.use_tiled_thebes", mApp->IsAccelerated());
     setenv("MOZ_USE_OMTC", "1", 1);
     mozilla::layers::CompositorParent::StartUpWithExistingThread(MessageLoop::current(), PlatformThread::CurrentId());
     mApp->GetListener()->Initialized();

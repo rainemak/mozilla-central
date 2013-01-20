@@ -134,10 +134,6 @@ EmbedLitePuppetWidget::Create(nsIWidget        *aParent,
     mEnabled = true;
     mVisible = true;
 
-    mSurface = gfxPlatform::GetPlatform()
-               ->CreateOffscreenSurface(gfxIntSize(1, 1),
-                                        gfxASurface::ContentFromFormat(gfxASurface::ImageFormatRGB24));
-
     EmbedLitePuppetWidget* parent = static_cast<EmbedLitePuppetWidget*>(aParent);
     if (parent) {
         parent->mChild = this;
@@ -182,7 +178,6 @@ EmbedLitePuppetWidget::Destroy()
 
     Base::OnDestroy();
     Base::Destroy();
-    mPaintTask.Revoke();
     mChild = nullptr;
     if (mLayerManager) {
         mLayerManager->Destroy();
@@ -252,23 +247,6 @@ NS_IMETHODIMP
 EmbedLitePuppetWidget::SetFocus(bool aRaise)
 {
     LOGNI();
-    return NS_OK;
-}
-
-NS_IMETHODIMP
-EmbedLitePuppetWidget::Invalidate(const nsIntRect& aRect)
-{
-    if (mChild) {
-        return mChild->Invalidate(aRect);
-    }
-
-    mDirtyRegion.Or(mDirtyRegion, aRect);
-
-    if (!mDirtyRegion.IsEmpty() && !mPaintTask.IsPending()) {
-        mPaintTask = new PaintTask(this);
-        return NS_DispatchToCurrentThread(mPaintTask.get());
-    }
-
     return NS_OK;
 }
 
@@ -524,77 +502,6 @@ void EmbedLitePuppetWidget::CreateCompositor()
         delete lm;
         mCompositorChild = nullptr;
     }
-}
-
-nsresult
-EmbedLitePuppetWidget::Paint()
-{
-    NS_ABORT_IF_FALSE(!mDirtyRegion.IsEmpty(), "paint event logic messed up");
-
-    nsIWidgetListener *listener =
-        mAttachedWidgetListener ? mAttachedWidgetListener : mWidgetListener;
-
-    if (!listener)
-        return NS_OK;
-
-    // Dispatch WillPaintWindow notification to allow scripts etc. to run
-    // before we paint
-    {
-        listener->WillPaintWindow(this, true);
-
-        // If the window has been destroyed during the will paint notification,
-        // there is nothing left to do.
-        if (!mEmbed)
-            return NS_OK;
-
-        // Re-get the listener since the will paint notification might have
-        // killed it.
-        listener =
-            mAttachedWidgetListener ? mAttachedWidgetListener : mWidgetListener;
-        if (!listener)
-            return NS_OK;
-    }
-
-    nsIntRegion region = mDirtyRegion;
-
-    // reset repaint tracking
-    mDirtyRegion.SetEmpty();
-    mPaintTask.Revoke();
-
-    nsRefPtr<EmbedLitePuppetWidget> Hold(this);
-
-    {
-#ifdef DEBUG
-        debug_DumpPaintEvent(stderr, this, region,
-                             nsAutoCString("MozEmbedWidget"), 0);
-#endif
-        // FIXME, we should be able to initiate forward paint transaction
-        // without fake surface
-        nsRefPtr<gfxContext> ctx = new gfxContext(mSurface);
-
-        ctx->Rectangle(gfxRect(0,0,0,0));
-        ctx->Clip();
-        AutoLayerManagerSetup setupLayerManager(this, ctx,
-                                                mozilla::layers::BUFFER_NONE);
-        listener->PaintWindow(this, region, nsIWidgetListener::WILL_SEND_DID_PAINT | nsIWidgetListener::SENT_WILL_PAINT);
-    }
-
-    listener = mAttachedWidgetListener ? mAttachedWidgetListener : mWidgetListener;
-    if (!listener)
-        return NS_OK;
-
-    listener->DidPaintWindow();
-
-    return NS_OK;
-}
-
-NS_IMETHODIMP
-EmbedLitePuppetWidget::PaintTask::Run()
-{
-    if (mWidget) {
-        mWidget->Paint();
-    }
-    return NS_OK;
 }
 
 nsIntRect

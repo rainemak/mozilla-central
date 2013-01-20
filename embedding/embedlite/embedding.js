@@ -48,7 +48,6 @@ pref("layers.acceleration.draw-fps", false);
 // Bug 706179 async animation temporary prefs
 pref("layers.offmainthreadcomposition.animate-opacity", true);
 pref("layers.offmainthreadcomposition.animate-transform", true);
-pref("layers.async-video.enabled", true);
 pref("font.size.inflation.disabledInMasterProcess", true);
 pref("gfx.azpc.pan_repaint_interval", 5050);
 pref("gfx.azpc.fling_repaint_interval", 75);
