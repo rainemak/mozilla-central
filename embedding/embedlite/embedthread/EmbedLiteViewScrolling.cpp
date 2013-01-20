@@ -365,6 +365,15 @@ void EmbedLiteViewScrolling::ZoomToElement(nsIDOMElement* aElement, int aClickY,
         rect.y = cssTapY - (rect.height / 2);
     }
 
+    // rect.height by default equals to element height, and will cause zoomIn
+    if (!aCanZoomIn) {
+        // set rect height to current page height and adjust rect.y in order to cover possible CSS page size
+        rect.height = mCssCompositedRect.height;
+        if (rect.YMost() > mCssPageRect.YMost()) {
+            rect.y -= rect.YMost() - mCssPageRect.YMost();
+        }
+    }
+
     mView->SendZoomToRect(rect);
 }
 
