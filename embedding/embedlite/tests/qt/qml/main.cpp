@@ -84,7 +84,11 @@ int main(int argc, char *argv[])
 #else
     bool isFullscreen = false;
 #endif
+#if !defined(Q_WS_MAEMO_5)
     bool glwidget = true;
+#else
+    bool glwidget = false;
+#endif
     QStringList arguments = application->arguments();
     for (int i = 0; i < arguments.count(); ++i) {
         QString parameter = arguments.at(i);
@@ -107,6 +111,8 @@ int main(int argc, char *argv[])
             isFullscreen = true;
         } else if (parameter == "-no-glwidget") {
             glwidget = false;
+        } else if (parameter == "-glwidget") {
+            glwidget = true;
         } else if (parameter == "-help") {
             qDebug() << "EMail application";
             qDebug() << "-fullscreen   - show QML fullscreen";
@@ -126,7 +132,7 @@ int main(int argc, char *argv[])
 
     QUrl qml;
     if (qmlstring.isEmpty())
-#ifdef __arm__
+#ifdef __arm__ && !defined(Q_WS_MAEMO_5)
         qml = QUrl("qrc:/qml/main_meego.qml");
 #else
         qml = QUrl("qrc:/qml/main.qml");
@@ -151,8 +157,14 @@ int main(int argc, char *argv[])
     view->setResizeMode(QDeclarativeView::SizeRootObjectToView);
     view->setAttribute(Qt::WA_OpaquePaintEvent);
     view->setAttribute(Qt::WA_NoSystemBackground);
+#if defined(Q_WS_MAEMO_5)
+    view->setAttribute(Qt::WA_Maemo5NonComposited);
+#endif
     view->viewport()->setAttribute(Qt::WA_OpaquePaintEvent);
     view->viewport()->setAttribute(Qt::WA_NoSystemBackground);
+#if defined(Q_WS_MAEMO_5)
+    view->viewport()->setAttribute(Qt::WA_Maemo5NonComposited);
+#endif
     view->setWindowTitle("QtMozEmbedBrowser");
     view->setWindowFlags(Qt::Window | Qt::WindowTitleHint |
                          Qt::WindowMinMaxButtonsHint |
