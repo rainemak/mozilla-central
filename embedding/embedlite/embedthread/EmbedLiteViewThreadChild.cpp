@@ -350,6 +350,14 @@ EmbedLiteViewThreadChild::RecvHandleTextEvent(const nsString& commit, const nsSt
     {
         nsCompositionEvent event(true, NS_COMPOSITION_START, widget);
         mHelper->InitEvent(event, nullptr);
+        event.data = commit;
+        mHelper->DispatchWidgetEvent(event);
+    }
+
+    {
+        nsCompositionEvent event(true, NS_COMPOSITION_UPDATE, widget);
+        mHelper->InitEvent(event, nullptr);
+        event.data = commit;
         mHelper->DispatchWidgetEvent(event);
     }
 
@@ -363,6 +371,7 @@ EmbedLiteViewThreadChild::RecvHandleTextEvent(const nsString& commit, const nsSt
     {
         nsCompositionEvent event(true, NS_COMPOSITION_END, widget);
         mHelper->InitEvent(event, nullptr);
+        event.data = commit;
         mHelper->DispatchWidgetEvent(event);
     }
 

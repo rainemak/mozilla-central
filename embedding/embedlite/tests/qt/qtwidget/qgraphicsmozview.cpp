@@ -612,6 +612,9 @@ void QGraphicsMozView::keyPressEvent(QKeyEvent* event)
     int32_t charCode = 0;
     if (event->text().length() && event->text()[0].isPrint()) {
         charCode = (int32_t)event->text()[0].unicode();
+        if (getenv("USE_TEXT_EVENTS")) {
+            return;
+        }
     }
     d->mView->SendKeyPress(domKeyCode, gmodifiers, charCode);
 }
@@ -627,6 +630,10 @@ void QGraphicsMozView::keyReleaseEvent(QKeyEvent* event)
     int32_t charCode = 0;
     if (event->text().length() && event->text()[0].isPrint()) {
         charCode = (int32_t)event->text()[0].unicode();
+        if (getenv("USE_TEXT_EVENTS")) {
+            d->mView->SendTextEvent(event->text().toUtf8().data(), "");
+            return;
+        }
     }
     d->mView->SendKeyRelease(domKeyCode, gmodifiers, charCode);
 }
