@@ -6,6 +6,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #define LOG_COMPONENT "EmbedLitePuppetWidget"
+#include "EmbedLog.h"
 
 #include "base/basictypes.h"
 

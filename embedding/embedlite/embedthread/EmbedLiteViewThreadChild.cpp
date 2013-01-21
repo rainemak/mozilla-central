@@ -42,8 +42,8 @@ EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(uint32_t aId)
   , mViewSize(0, 0)
   , mScrolling(new EmbedLiteViewScrolling(this))
   , mDispatchSynthMouseEvents(true)
-  , mModalDepth(0)
   , mHadResizeSinceLastFrameUpdate(false)
+  , mModalDepth(0)
 {
     LOGT();
     AddRef();
@@ -342,10 +342,30 @@ EmbedLiteViewThreadChild::RecvHandleLongTap(const nsIntPoint& aPoint)
 bool
 EmbedLiteViewThreadChild::RecvHandleTextEvent(const nsString& commit, const nsString& preEdit)
 {
-    nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebNavigation);
-    nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
-    NS_ENSURE_TRUE(utils, false);
-    utils->SendTextEvent(commit, 0, 0, 0, 0, 0, 0, 0, 0);
+    nsPoint offset;
+    nsCOMPtr<nsIWidget> widget = mHelper->GetWidget(&offset);
+    if (!widget)
+        return false;
+
+    {
+        nsCompositionEvent event(true, NS_COMPOSITION_START, widget);
+        mHelper->InitEvent(event, nullptr);
+        mHelper->DispatchWidgetEvent(event);
+    }
+
+    {
+        nsTextEvent event(true, NS_TEXT_TEXT, widget);
+        mHelper->InitEvent(event, nullptr);
+        event.theText = commit;
+        mHelper->DispatchWidgetEvent(event);
+    }
+
+    {
+        nsCompositionEvent event(true, NS_COMPOSITION_END, widget);
+        mHelper->InitEvent(event, nullptr);
+        mHelper->DispatchWidgetEvent(event);
+    }
+
     return true;
 }
 

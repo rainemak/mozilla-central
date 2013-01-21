@@ -15,12 +15,13 @@
 #ifndef mozilla_widget_EmbedLitePuppetWidget_h__
 #define mozilla_widget_EmbedLitePuppetWidget_h__
 
+#include "EmbedLog.h"
+
 #include "nsBaseWidget.h"
 #include "nsThreadUtils.h"
 #include "nsWeakReference.h"
 #include "mozilla/Attributes.h"
 #include "EmbedLiteViewThreadChild.h"
-#include "EmbedLog.h"
 
 namespace mozilla {
 namespace embedlite {

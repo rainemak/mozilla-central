@@ -710,6 +710,20 @@ TabChildHelper::GetPresContext()
     return presContext;
 }
 
+void
+TabChildHelper::InitEvent(nsGUIEvent& event, nsIntPoint* aPoint)
+{
+    if (aPoint) {
+        event.refPoint.x = aPoint->x;
+        event.refPoint.y = aPoint->y;
+    } else {
+        event.refPoint.x = 0;
+        event.refPoint.y = 0;
+    }
+
+    event.time = PR_Now() / 1000;
+}
+
 nsEventStatus
 TabChildHelper::DispatchWidgetEvent(nsGUIEvent& event)
 {

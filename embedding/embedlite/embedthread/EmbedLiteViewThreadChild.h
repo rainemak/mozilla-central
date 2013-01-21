@@ -21,6 +21,8 @@ namespace embedlite {
 class EmbedLiteViewScrolling;
 class EmbedLiteViewPromptResponse;
 class EmbedAsyncAuthPrompt;
+class EmbedLitePuppetWidget;
+
 class EmbedLiteViewThreadChild : public PEmbedLiteViewChild,
                                  public nsIEmbedBrowserChromeListener
 {

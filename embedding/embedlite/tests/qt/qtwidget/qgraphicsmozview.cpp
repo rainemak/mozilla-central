@@ -593,11 +593,11 @@ void QGraphicsMozView::forceActiveFocus()
     }
 }
 
-void QGraphicsMozView::inputMethodEvent(QInputMethodEvent* aEvent)
+void QGraphicsMozView::inputMethodEvent(QInputMethodEvent* event)
 {
-    LOGT("cStr:%s, preStr:%s, replLen:%i, replSt:%i", aEvent->commitString().toUtf8().data(), aEvent->preeditString().toUtf8().data(), aEvent->replacementLength(), aEvent->replacementStart());
+    LOGT("cStr:%s, preStr:%s, replLen:%i, replSt:%i", event->commitString().toUtf8().data(), event->preeditString().toUtf8().data(), event->replacementLength(), event->replacementStart());
     if (d->mViewInitialized) {
-        d->mView->SendTextEvent(aEvent->commitString().toUtf8().data(), aEvent->preeditString().toUtf8().data());
+        d->mView->SendTextEvent(event->commitString().toUtf8().data(), event->preeditString().toUtf8().data());
     }
 }
 
@@ -610,8 +610,9 @@ void QGraphicsMozView::keyPressEvent(QKeyEvent* event)
     int32_t gmodifiers = MozKey::QtModifierToDOMModifier(event->modifiers());
     int32_t domKeyCode = MozKey::QtKeyCodeToDOMKeyCode(event->key(), event->modifiers());
     int32_t charCode = 0;
-    if (event->text().length() && event->text()[0].isPrint())
+    if (event->text().length() && event->text()[0].isPrint()) {
         charCode = (int32_t)event->text()[0].unicode();
+    }
     d->mView->SendKeyPress(domKeyCode, gmodifiers, charCode);
 }
 
@@ -624,8 +625,9 @@ void QGraphicsMozView::keyReleaseEvent(QKeyEvent* event)
     int32_t gmodifiers = MozKey::QtModifierToDOMModifier(event->modifiers());
     int32_t domKeyCode = MozKey::QtKeyCodeToDOMKeyCode(event->key(), event->modifiers());
     int32_t charCode = 0;
-    if (event->text().length() && event->text()[0].isPrint())
+    if (event->text().length() && event->text()[0].isPrint()) {
         charCode = (int32_t)event->text()[0].unicode();
+    }
     d->mView->SendKeyRelease(domKeyCode, gmodifiers, charCode);
 }
 
@@ -633,37 +635,37 @@ QVariant
 QGraphicsMozView::inputMethodQuery(Qt::InputMethodQuery aQuery) const
 {
     if (aQuery == 10001) {
-        LOGT("VisualizationPriorityQuery");
+//        LOGT("VisualizationPriorityQuery");
     }
     if (aQuery == 10003) {
-        LOGT("ImCorrectionEnabledQuery");
+//        LOGT("ImCorrectionEnabledQuery");
     }
     if (aQuery == 10004) {
-        LOGT("ImModeQuery");
+//        LOGT("ImModeQuery");
     }
     if (aQuery == 10005) {
-        LOGT("InputMethodToolbarIdQuery");
+//        LOGT("InputMethodToolbarIdQuery");
     }
     if (aQuery == 10006) {
-        LOGT("InputMethodAttributeExtensionIdQuery");
+//        LOGT("InputMethodAttributeExtensionIdQuery");
     }
     if (aQuery == 10007) {
-        LOGT("InputMethodToolbarQuery");
+//        LOGT("InputMethodToolbarQuery");
     }
     if (aQuery == Qt::ImCurrentSelection) {
-        LOGT("Qt::ImCurrentSelection");
+//        LOGT("Qt::ImCurrentSelection");
     }
     if (aQuery == Qt::ImMicroFocus) {
-        LOGT("Qt::ImMicroFocus");
+//        LOGT("Qt::ImMicroFocus");
     }
     if (aQuery == Qt::ImSurroundingText) {
-        LOGT("Qt::ImSurroundingText");
+//        LOGT("Qt::ImSurroundingText");
     }
     if (aQuery == Qt::ImCursorPosition) {
-        LOGT("Qt::ImCursorPosition");
+//        LOGT("Qt::ImCursorPosition");
     }
     if (aQuery == Qt::ImAnchorPosition) {
-        LOGT("Qt::ImAnchorPosition");
+//        LOGT("Qt::ImAnchorPosition");
     }
 
     return QVariant(0);

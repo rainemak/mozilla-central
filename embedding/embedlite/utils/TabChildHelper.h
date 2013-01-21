@@ -65,6 +65,7 @@ public:
 protected:
     nsIWidget* GetWidget(nsPoint* aOffset);
     nsPresContext* GetPresContext();
+    void InitEvent(nsGUIEvent& event, nsIntPoint* aPoint = nullptr);
     nsEventStatus DispatchWidgetEvent(nsGUIEvent& event);
     // Sends a simulated mouse event from a touch event for compatibility.
     bool ConvertMutiTouchInputToEvent(const mozilla::MultiTouchInput& aData,
