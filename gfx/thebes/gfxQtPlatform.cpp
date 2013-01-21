@@ -132,7 +132,8 @@ gfxQtPlatform::gfxQtPlatform()
     // Qt doesn't provide a public API to detect the graphicssystem type. We hack
     // around this by checking what type of graphicssystem a test QPixmap uses.
     QPixmap pixmap(1, 1);
-    if (pixmap.depth() == 16) {
+    if (pixmap.depth() == 16 ||
+        Preferences::GetBool("gfx.qt.rgb16.force", false)) {
         sOffscreenFormat = gfxASurface::ImageFormatRGB16_565;
     }
     mScreenDepth = pixmap.depth();
