@@ -56,6 +56,12 @@ LIBS += \
     $(TK_LIBS) \
     $(NULL)
 
+ifeq (1 ,$(MOZ_X11))
+LIBS += \
+    -lX11 \
+    $(NULL)
+endif
+
 NSDISTMODE = copy
 
 include $(topsrcdir)/config/rules.mk

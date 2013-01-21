@@ -41,6 +41,7 @@ CPPSRCS += \
 LOCAL_INCLUDES	= -I$(srcdir) \
     $(TK_CFLAGS) \
     -I/usr/include/qt4/QtDeclarative \
+    -I/usr/include/QtDeclarative \
     -I$(srcdir)/../qtwidget \
     $(NULL)
 
@@ -53,6 +54,12 @@ LIBS += \
 LIBS += \
     $(XPCOM_STANDALONE_GLUE_LDOPTS) \
     $(NULL)
+
+ifeq (1 ,$(MOZ_X11))
+    LIBS += \
+    -lX11 \
+    $(NULL)
+endif
 
 NSDISTMODE = copy
 
