@@ -49,7 +49,9 @@ EmbedLiteAppThreadParent::RecvInitialized()
     SetBoolPref("layers.acceleration.disabled", !mApp->IsAccelerated());
     SetBoolPref("layers.acceleration.force-enabled", mApp->IsAccelerated());
     SetBoolPref("layers.async-video.enabled", mApp->IsAccelerated());
-    SetBoolPref("gfx.use_tiled_thebes", mApp->IsAccelerated());
+    SetBoolPref("gfx.use_tiled_thebes", mApp->IsAccelerated() && getenv("DISABLE_TILED") == 0);
+    SetBoolPref("egl.use_backing_surface", mApp->IsAccelerated() && getenv("DISABLE_BACKING") == 0);
+    SetBoolPref("layers.reuse-invalid-tiles", getenv("DISABLE_REUSE_TILES") != 0);
     setenv("MOZ_USE_OMTC", "1", 1);
     mozilla::layers::CompositorParent::StartUpWithExistingThread(MessageLoop::current(), PlatformThread::CurrentId());
     mApp->GetListener()->Initialized();

@@ -120,7 +120,7 @@ public:
 #include "gfxCrashReporterUtils.h"
 
 
-#if defined(MOZ_PLATFORM_MAEMO) || defined(MOZ_WIDGET_GONK) || defined(EGL_HAS_BACKING_SURFACE)
+#if defined(MOZ_PLATFORM_MAEMO) || defined(MOZ_WIDGET_GONK)
 static bool gUseBackingSurface = true;
 #else
 static bool gUseBackingSurface = false;
@@ -338,6 +338,8 @@ public:
         property_get("ro.build.version.sdk", propValue, "0");
         if (atoi(propValue) < 15)
             gUseBackingSurface = false;
+#else
+        gUseBackingSurface = Preferences::GetBool("egl.use_backing_surface", gUseBackingSurface);
 #endif
 
         bool current = MakeCurrent();
