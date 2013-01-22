@@ -35,6 +35,7 @@ public:
 
     void WaitForPromptResult(EmbedLiteViewPromptResponse*);
     void PushPendingAuthRequest(EmbedAsyncAuthPrompt*);
+    void ResetInputState();
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
@@ -103,7 +104,7 @@ private:
     bool mDispatchSynthMouseEvents;
     bool mHadResizeSinceLastFrameUpdate;
     int mModalDepth;
-    bool mIsComposition;
+    bool mIMEComposing;
     std::map<uint64_t, EmbedLiteViewPromptResponse*> modalWinMap;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadChild);

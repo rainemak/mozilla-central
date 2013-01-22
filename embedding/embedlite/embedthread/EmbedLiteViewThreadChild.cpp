@@ -44,7 +44,7 @@ EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(uint32_t aId)
   , mDispatchSynthMouseEvents(true)
   , mHadResizeSinceLastFrameUpdate(false)
   , mModalDepth(0)
-  , mIsComposition(false)
+  , mIMEComposing(false)
 {
     LOGT();
     AddRef();
@@ -345,15 +345,18 @@ EmbedLiteViewThreadChild::RecvHandleTextEvent(const nsString& commit, const nsSt
 {
     nsPoint offset;
     nsCOMPtr<nsIWidget> widget = mHelper->GetWidget(&offset);
-    if (!widget)
+    const InputContext& ctx = mWidget->GetInputContext();
+
+    printf(">>>>>>Func:%s::%d ctx.mIMEState.mEnabled:%i, com:%s, pre:%s\n", __FUNCTION__, __LINE__, ctx.mIMEState.mEnabled, NS_ConvertUTF16toUTF8(commit).get(), NS_ConvertUTF16toUTF8(preEdit).get());
+    if (!widget || !ctx.mIMEState.mEnabled)
         return false;
 
     // probably logic here is over engineered, but clean enough
-    bool prevIsComposition = mIsComposition;
+    bool prevIsComposition = mIMEComposing;
     bool StartComposite = !prevIsComposition && commit.IsEmpty() && !preEdit.IsEmpty();
     bool UpdateComposite = prevIsComposition && commit.IsEmpty() && !preEdit.IsEmpty();
     bool EndComposite = prevIsComposition && !commit.IsEmpty() && preEdit.IsEmpty();
-    mIsComposition = UpdateComposite || StartComposite;
+    mIMEComposing = UpdateComposite || StartComposite;
     nsString pushStr = preEdit.IsEmpty() ? commit : preEdit;
     if (!commit.IsEmpty() && !EndComposite) {
         StartComposite = UpdateComposite = EndComposite = true;
@@ -363,35 +366,40 @@ EmbedLiteViewThreadChild::RecvHandleTextEvent(const nsString& commit, const nsSt
     {
         nsCompositionEvent event(true, NS_COMPOSITION_START, widget);
         mHelper->InitEvent(event, nullptr);
-        event.data = pushStr;
+        mHelper->DispatchWidgetEvent(event);
+    }
+
+    if (StartComposite || UpdateComposite)
+    {
+        nsCompositionEvent event(true, NS_COMPOSITION_UPDATE, widget);
+        mHelper->InitEvent(event, nullptr);
         mHelper->DispatchWidgetEvent(event);
     }
 
     if (StartComposite || UpdateComposite || EndComposite)
     {
-        {
-            nsCompositionEvent event(true, NS_COMPOSITION_UPDATE, widget);
-            mHelper->InitEvent(event, nullptr);
-            event.data = pushStr;
-            mHelper->DispatchWidgetEvent(event);
-        }
-        {
-            nsTextEvent event(true, NS_TEXT_TEXT, widget);
-            mHelper->InitEvent(event, nullptr);
-            event.theText = pushStr;
-            mHelper->DispatchWidgetEvent(event);
-        }
+        nsTextEvent event(true, NS_TEXT_TEXT, widget);
+        mHelper->InitEvent(event, nullptr);
+        event.theText = pushStr;
+        mHelper->DispatchWidgetEvent(event);
     }
 
     if (EndComposite)
     {
         nsCompositionEvent event(true, NS_COMPOSITION_END, widget);
         mHelper->InitEvent(event, nullptr);
-        event.data = pushStr;
         mHelper->DispatchWidgetEvent(event);
     }
 
     return true;
+}
+
+void EmbedLiteViewThreadChild::ResetInputState()
+{
+    if (!mIMEComposing)
+        return;
+
+    mIMEComposing = false;
 }
 
 bool

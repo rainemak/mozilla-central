@@ -55,7 +55,7 @@ public:
 
     NS_IMETHOD Show(bool aState);
     virtual bool IsVisible() const
-        { LOGF(); return mVisible; }
+        { return mVisible; }
     NS_IMETHOD ConstrainPosition(bool     /*ignored aAllowSlop*/,
                                  int32_t* aX,
                                  int32_t* aY)
@@ -101,6 +101,8 @@ public:
                                       const InputContextAction& aAction);
     NS_IMETHOD_(InputContext) GetInputContext();
 
+    NS_IMETHOD OnIMEFocusChange(bool aFocus);
+
     // This API is going away, steer clear.
     virtual void Scroll(const nsIntPoint& aDelta,
                         const nsTArray<nsIntRect>& aDestRects,
@@ -125,12 +127,15 @@ private:
 
     EmbedLitePuppetWidget* TopWindow();
     bool IsTopLevel();
+    void RemoveIMEComposition();
 
     EmbedLiteViewThreadChild* mEmbed;
 
     bool mVisible;
     bool mEnabled;
     InputContext mInputContext;
+    bool mIMEComposing;
+    nsString mIMEComposingText;
     nsRefPtr<EmbedLitePuppetWidget> mChild;
 
     uint32_t mId;

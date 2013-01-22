@@ -105,6 +105,7 @@ EmbedLitePuppetWidget::EmbedLitePuppetWidget(EmbedLiteViewThreadChild* aEmbed, u
   : mEmbed(aEmbed)
   , mVisible(false)
   , mEnabled(false)
+  , mIMEComposing(false)
   , mId(aId)
 {
     MOZ_COUNT_CTOR(EmbedLitePuppetWidget);
@@ -289,38 +290,27 @@ EmbedLitePuppetWidget::DispatchEvent(nsGUIEvent* event, nsEventStatus& aStatus)
 
     NS_ABORT_IF_FALSE(listener, "No listener!");
 
-#if 0
-    if (event->message == NS_COMPOSITION_START) {
-        mIMEComposing = true;
+    if (event->eventStructType == NS_KEY_EVENT) {
+        RemoveIMEComposition();
     }
-    switch (event->eventStructType) {
-    case NS_COMPOSITION_EVENT:
-        mIMELastReceivedSeqno = static_cast<nsCompositionEvent*>(event)->seqno;
-        if (mIMELastReceivedSeqno < mIMELastBlurSeqno)
-            return NS_OK;
-        break;
-    case NS_TEXT_EVENT:
-        mIMELastReceivedSeqno = static_cast<nsTextEvent*>(event)->seqno;
-        if (mIMELastReceivedSeqno < mIMELastBlurSeqno)
-            return NS_OK;
-        break;
-    case NS_SELECTION_EVENT:
-        mIMELastReceivedSeqno = static_cast<nsSelectionEvent*>(event)->seqno;
-        if (mIMELastReceivedSeqno < mIMELastBlurSeqno)
-            return NS_OK;
-        break;
-    default:
-        break;
-    }
-#endif
 
     aStatus = listener->HandleEvent(event, mUseAttachedEvents);
 
-#if 0
-    if (event->message == NS_COMPOSITION_END) {
-        mIMEComposing = false;
+    switch (event->message) {
+        case NS_COMPOSITION_START:
+            MOZ_ASSERT(!mIMEComposing);
+            mIMEComposing = true;
+            break;
+        case NS_COMPOSITION_END:
+            MOZ_ASSERT(mIMEComposing);
+            mIMEComposing = false;
+            mIMEComposingText.Truncate();
+            break;
+        case NS_TEXT_TEXT:
+            MOZ_ASSERT(mIMEComposing);
+            mIMEComposingText = static_cast<nsTextEvent*>(event)->theText;
+            break;
     }
-#endif
 
     return NS_OK;
 }
@@ -328,11 +318,7 @@ EmbedLitePuppetWidget::DispatchEvent(nsGUIEvent* event, nsEventStatus& aStatus)
 NS_IMETHODIMP
 EmbedLitePuppetWidget::ResetInputState()
 {
-    LOGNI();
-#if 0
     RemoveIMEComposition();
-    AndroidBridge::NotifyIME(AndroidBridge::NOTIFY_IME_RESETINPUTSTATE, 0);
-#endif
     return NS_OK;
 }
 
@@ -384,6 +370,40 @@ EmbedLitePuppetWidget::GetInputContext()
         mInputContext.mNativeIMEContext = reinterpret_cast<void*>(nativeIMEContext);
     }
     return mInputContext;
+}
+
+NS_IMETHODIMP EmbedLitePuppetWidget::OnIMEFocusChange(bool aFocus)
+{
+    LOGF("aFocus:%i", aFocus);
+    if (!aFocus) {
+        mIMEComposing = false;
+        mIMEComposingText.Truncate();
+    }
+
+    return NS_OK;
+}
+
+void
+EmbedLitePuppetWidget::RemoveIMEComposition()
+{
+    // Remove composition on Gecko side
+    if (!mIMEComposing)
+        return;
+
+    if (mEmbed)
+        mEmbed->ResetInputState();
+
+    nsRefPtr<EmbedLitePuppetWidget> kungFuDeathGrip(this);
+
+    nsTextEvent textEvent(true, NS_TEXT_TEXT, this);
+    textEvent.time = PR_Now() / 1000;
+    textEvent.theText = mIMEComposingText;
+    nsEventStatus status;
+    DispatchEvent(&textEvent, status);
+
+    nsCompositionEvent event(true, NS_COMPOSITION_END, this);
+    event.time = PR_Now() / 1000;
+    DispatchEvent(&event, status);
 }
 
 LayerManager*

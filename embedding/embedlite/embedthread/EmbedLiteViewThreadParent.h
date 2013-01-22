@@ -185,6 +185,7 @@ private:
     gfxSize mViewSize;
     bool mInTouchProcess;
     MessageLoop* mUILoop;
+    bool mIMEEnabled;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadParent);
 };
