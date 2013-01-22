@@ -88,7 +88,8 @@ public:
         if (getenv("DS_UA")) {
             mApp->SetCharPref("general.useragent.override", "Mozilla/5.0 (Maemo; Linux armv7l; rv:14.0) Gecko/17.0 Firefox/17.0");
         } else {
-            mApp->SetCharPref("general.useragent.override", "Mozilla/5.0 (Android; Mobile; rv:12.0) Gecko/17.0 Firefox/17.0");
+            const char* customUA = getenv("CUSTOM_UA");
+            mApp->SetCharPref("general.useragent.override", customUA ? customUA : "Mozilla/5.0 (Android; Mobile; rv:12.0) Gecko/17.0 Firefox/17.0");
         }
         mApp->SetBoolPref("layout.build_layers_for_scrollable_views", getenv("USE_SCROLL_VIEWS") != 0);
     }
