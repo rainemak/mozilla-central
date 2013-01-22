@@ -103,6 +103,7 @@ private:
     bool mDispatchSynthMouseEvents;
     bool mHadResizeSinceLastFrameUpdate;
     int mModalDepth;
+    bool mIsComposition;
     std::map<uint64_t, EmbedLiteViewPromptResponse*> modalWinMap;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadChild);

@@ -44,6 +44,7 @@ EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(uint32_t aId)
   , mDispatchSynthMouseEvents(true)
   , mHadResizeSinceLastFrameUpdate(false)
   , mModalDepth(0)
+  , mIsComposition(false)
 {
     LOGT();
     AddRef();
@@ -347,31 +348,46 @@ EmbedLiteViewThreadChild::RecvHandleTextEvent(const nsString& commit, const nsSt
     if (!widget)
         return false;
 
+    // probably logic here is over engineered, but clean enough
+    bool prevIsComposition = mIsComposition;
+    bool StartComposite = !prevIsComposition && commit.IsEmpty() && !preEdit.IsEmpty();
+    bool UpdateComposite = prevIsComposition && commit.IsEmpty() && !preEdit.IsEmpty();
+    bool EndComposite = prevIsComposition && !commit.IsEmpty() && preEdit.IsEmpty();
+    mIsComposition = UpdateComposite || StartComposite;
+    nsString pushStr = preEdit.IsEmpty() ? commit : preEdit;
+    if (!commit.IsEmpty() && !EndComposite) {
+        StartComposite = UpdateComposite = EndComposite = true;
+    }
+
+    if (StartComposite)
     {
         nsCompositionEvent event(true, NS_COMPOSITION_START, widget);
         mHelper->InitEvent(event, nullptr);
-        event.data = commit;
+        event.data = pushStr;
         mHelper->DispatchWidgetEvent(event);
     }
 
+    if (StartComposite || UpdateComposite || EndComposite)
     {
-        nsCompositionEvent event(true, NS_COMPOSITION_UPDATE, widget);
-        mHelper->InitEvent(event, nullptr);
-        event.data = commit;
-        mHelper->DispatchWidgetEvent(event);
+        {
+            nsCompositionEvent event(true, NS_COMPOSITION_UPDATE, widget);
+            mHelper->InitEvent(event, nullptr);
+            event.data = pushStr;
+            mHelper->DispatchWidgetEvent(event);
+        }
+        {
+            nsTextEvent event(true, NS_TEXT_TEXT, widget);
+            mHelper->InitEvent(event, nullptr);
+            event.theText = pushStr;
+            mHelper->DispatchWidgetEvent(event);
+        }
     }
 
-    {
-        nsTextEvent event(true, NS_TEXT_TEXT, widget);
-        mHelper->InitEvent(event, nullptr);
-        event.theText = commit;
-        mHelper->DispatchWidgetEvent(event);
-    }
-
+    if (EndComposite)
     {
         nsCompositionEvent event(true, NS_COMPOSITION_END, widget);
         mHelper->InitEvent(event, nullptr);
-        event.data = commit;
+        event.data = pushStr;
         mHelper->DispatchWidgetEvent(event);
     }
 

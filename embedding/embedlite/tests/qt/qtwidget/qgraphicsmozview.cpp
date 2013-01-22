@@ -641,39 +641,6 @@ void QGraphicsMozView::keyReleaseEvent(QKeyEvent* event)
 QVariant
 QGraphicsMozView::inputMethodQuery(Qt::InputMethodQuery aQuery) const
 {
-    if (aQuery == 10001) {
-//        LOGT("VisualizationPriorityQuery");
-    }
-    if (aQuery == 10003) {
-//        LOGT("ImCorrectionEnabledQuery");
-    }
-    if (aQuery == 10004) {
-//        LOGT("ImModeQuery");
-    }
-    if (aQuery == 10005) {
-//        LOGT("InputMethodToolbarIdQuery");
-    }
-    if (aQuery == 10006) {
-//        LOGT("InputMethodAttributeExtensionIdQuery");
-    }
-    if (aQuery == 10007) {
-//        LOGT("InputMethodToolbarQuery");
-    }
-    if (aQuery == Qt::ImCurrentSelection) {
-//        LOGT("Qt::ImCurrentSelection");
-    }
-    if (aQuery == Qt::ImMicroFocus) {
-//        LOGT("Qt::ImMicroFocus");
-    }
-    if (aQuery == Qt::ImSurroundingText) {
-//        LOGT("Qt::ImSurroundingText");
-    }
-    if (aQuery == Qt::ImCursorPosition) {
-//        LOGT("Qt::ImCursorPosition");
-    }
-    if (aQuery == Qt::ImAnchorPosition) {
-//        LOGT("Qt::ImAnchorPosition");
-    }
-
-    return QVariant(0);
+    static bool commitNow = getenv("DO_FAST_COMMIT") != 0;
+    return commitNow ? QVariant(0) : QVariant();
 }
