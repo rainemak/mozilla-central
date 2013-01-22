@@ -121,7 +121,7 @@ EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id)
   , mLastScale(1.0f)
   , mInTouchProcess(false)
   , mUILoop(MessageLoop::current())
-  , mIMEEnabled(false)
+  , mLastIMEState(0)
 {
     MOZ_COUNT_CTOR(EmbedLiteViewThreadParent);
     LOGT("id:%u", mId);
@@ -617,8 +617,8 @@ EmbedLiteViewThreadParent::ReceiveInputEvent(const InputData& aEvent)
 void
 EmbedLiteViewThreadParent::TextEvent(const char* composite, const char* preEdit)
 {
-    LOGT("commit:%s, pre:%s, mIMEEnabled:%i", composite, preEdit, mIMEEnabled);
-    if (mIMEEnabled) {
+    LOGT("commit:%s, pre:%s, mLastIMEState:%i", composite, preEdit, mLastIMEState);
+    if (mLastIMEState) {
         unused << SendHandleTextEvent(NS_ConvertUTF8toUTF16(nsDependentCString(composite)),
                                       NS_ConvertUTF8toUTF16(nsDependentCString(preEdit)));
     } else {
@@ -756,8 +756,8 @@ EmbedLiteViewThreadParent::RecvGetInputContext(int32_t* aIMEEnabled,
                                                int32_t* aIMEOpen,
                                                intptr_t* aNativeIMEContext)
 {
-    LOGT("mIMEEnabled:%i", mIMEEnabled);
-    *aIMEEnabled = mIMEEnabled ? IMEState::ENABLED : IMEState::DISABLED;
+    LOGT("mLastIMEState:%i", mLastIMEState);
+    *aIMEEnabled = mLastIMEState;
     *aIMEOpen = IMEState::OPEN_STATE_NOT_SUPPORTED;
     *aNativeIMEContext = 0;
     return true;
@@ -772,10 +772,10 @@ EmbedLiteViewThreadParent::RecvSetInputContext(const int32_t& aIMEEnabled,
                                                const int32_t& aCause,
                                                const int32_t& aFocusChange)
 {
-    LOGT("IMEEnabled:%i, IMEOpen:%i, type:%s, imMode:%s, actHint:%s, cause:%i, focusChange:%i, mIMEEnabled:%i->%i",
+    LOGT("IMEEnabled:%i, IMEOpen:%i, type:%s, imMode:%s, actHint:%s, cause:%i, focusChange:%i, mLastIMEState:%i->%i",
         aIMEEnabled, aIMEOpen, NS_ConvertUTF16toUTF8(aType).get(), NS_ConvertUTF16toUTF8(aInputmode).get(),
-        NS_ConvertUTF16toUTF8(aActionHint).get(), aCause, aFocusChange, mIMEEnabled, aIMEEnabled == IMEState::ENABLED ? true : false);
-    mIMEEnabled = aIMEEnabled == IMEState::ENABLED ? true : false;
+        NS_ConvertUTF16toUTF8(aActionHint).get(), aCause, aFocusChange, mLastIMEState, aIMEEnabled);
+    mLastIMEState = aIMEEnabled;
     mView->GetListener()->IMENotification(aIMEEnabled, aIMEOpen, aCause, aFocusChange);
     return true;
 }

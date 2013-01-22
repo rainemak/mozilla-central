@@ -72,7 +72,7 @@ public:
                                             const nsString& username,
                                             const bool& isOnlyPassword,
                                             const uint64_t& winID) {}
-    virtual void IMENotification(bool aEnabled, bool aOpen, int aCause, int aFocusChange) {}
+    virtual void IMENotification(int aEnabled, bool aOpen, int aCause, int aFocusChange) {}
 };
 
 class EmbedLiteApp;

@@ -40,6 +40,7 @@ public:
       , mCanGoForward(false)
       , mIsLoading(false)
       , mLastIsGoodRotation(true)
+      , mIsPasswordField(false)
     {
     }
     virtual ~QGraphicsMozViewPrivate() {}
@@ -168,8 +169,10 @@ public:
         Q_EMIT q->authRequired(QString(hostname.get()), QString(httprealm.get()),
                                QString((QChar*)username.get()), isOnlyPassword, winID);
     }
-    virtual void IMENotification(bool aEnabled, bool aOpen, int aCause, int aFocusChange)
+    virtual void IMENotification(int aIstate, bool aOpen, int aCause, int aFocusChange)
     {
+        LOGT("imeState:%i", aIstate);
+        q->setInputMethodHints(aIstate == 2 ? Qt::ImhHiddenText : Qt::ImhPreferLowercase);
         QWidget* focusWidget = qApp->focusWidget();
         if (focusWidget && aFocusChange) {
             QInputContext *inputContext = qApp->inputContext();
@@ -177,7 +180,7 @@ public:
                 LOGT("Requesting SIP: but no input context");
                 return;
             }
-            if (aEnabled) {
+            if (aIstate) {
                 QEvent request(QEvent::RequestSoftwareInputPanel);
                 inputContext->filterEvent(&request);
                 focusWidget->setAttribute(Qt::WA_InputMethodEnabled, true);
@@ -224,7 +227,7 @@ public:
     bool mCanGoForward;
     bool mIsLoading;
     bool mLastIsGoodRotation;
-    QString mLastPreEdit;
+    bool mIsPasswordField;
 };
 
 QGraphicsMozView::QGraphicsMozView(QGraphicsItem* parent)
@@ -243,6 +246,7 @@ QGraphicsMozView::QGraphicsMozView(QGraphicsItem* parent)
     setAcceptedMouseButtons(Qt::LeftButton | Qt::RightButton | Qt::MiddleButton);
     setFlag(QGraphicsItem::ItemIsFocusScope, true);
     setFlag(QGraphicsItem::ItemIsFocusable, true);
+    setInputMethodHints(Qt::ImhPreferLowercase);
 
     d->mContext = QMozContext::GetInstance();
     if (QGLContext::currentContext()) {
