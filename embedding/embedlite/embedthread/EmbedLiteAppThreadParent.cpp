@@ -48,7 +48,7 @@ EmbedLiteAppThreadParent::RecvInitialized()
     LOGT();
     SetBoolPref("layers.acceleration.disabled", !mApp->IsAccelerated());
     SetBoolPref("layers.acceleration.force-enabled", mApp->IsAccelerated());
-    SetBoolPref("layers.async-video.enabled", mApp->IsAccelerated());
+    SetBoolPref("layers.async-video.enabled", mApp->IsAccelerated() && getenv("DISABLE_ASYNC_VIDEO") == 0);
     SetBoolPref("gfx.use_tiled_thebes", mApp->IsAccelerated() && getenv("DISABLE_TILED") == 0);
     SetBoolPref("egl.use_backing_surface", mApp->IsAccelerated() && getenv("DISABLE_BACKING") == 0);
     SetBoolPref("layers.reuse-invalid-tiles", getenv("DISABLE_REUSE_TILES") != 0);

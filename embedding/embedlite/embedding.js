@@ -62,3 +62,5 @@ pref("ui.dragThresholdX", 25);
 pref("ui.dragThresholdY", 25);
 pref("embedlite.dispatch_mouse_events", false); // Will dispatch mouse events if page using them
 pref("embedlite.prompt_enabled", true);
+pref("media.gstreamer.enabled", true);
+
