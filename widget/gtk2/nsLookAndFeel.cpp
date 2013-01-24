@@ -54,6 +54,7 @@ nscolor   nsLookAndFeel::sComboBoxBackground = 0;
 PRUnichar nsLookAndFeel::sInvisibleCharacter = PRUnichar('*');
 float     nsLookAndFeel::sCaretRatio = 0;
 bool      nsLookAndFeel::sMenuSupportsDrag = false;
+static bool sUseLookNFeel = getenv("NO_LOOK_N_FEEL_GTK") == 0;
 
 nsLookAndFeel::nsLookAndFeel()
     : nsXPLookAndFeel(),
@@ -79,6 +80,9 @@ nsLookAndFeel::~nsLookAndFeel()
 nsresult
 nsLookAndFeel::NativeGetColor(ColorID aID, nscolor& aColor)
 {
+    if (!sUseLookNFeel)
+        return NS_ERROR_FAILURE;
+
     nsresult res = NS_OK;
 
     switch (aID) {
@@ -371,6 +375,9 @@ static int32_t ConvertGTKStepperStyleToMozillaScrollArrowStyle(GtkWidget* aWidge
 nsresult
 nsLookAndFeel::GetIntImpl(IntID aID, int32_t &aResult)
 {
+    if (!sUseLookNFeel)
+        return NS_ERROR_FAILURE;
+
     nsresult res = NS_OK;
 
     // Set these before they can get overrided in the nsXPLookAndFeel. 
@@ -574,6 +581,9 @@ nsLookAndFeel::GetIntImpl(IntID aID, int32_t &aResult)
 nsresult
 nsLookAndFeel::GetFloatImpl(FloatID aID, float &aResult)
 {
+    if (!sUseLookNFeel)
+        return NS_ERROR_FAILURE;
+
     nsresult res = NS_OK;
     res = nsXPLookAndFeel::GetFloatImpl(aID, aResult);
     if (NS_SUCCEEDED(res))
@@ -784,6 +794,9 @@ nsLookAndFeel::GetFontImpl(FontID aID, nsString& aFontName,
 void
 nsLookAndFeel::InitLookAndFeel()
 {
+    if (!sUseLookNFeel)
+        return;
+
     GtkStyle *style;
 
     // tooltip foreground and background
@@ -966,6 +979,9 @@ nsLookAndFeel::InitLookAndFeel()
 void
 nsLookAndFeel::InitWidget()
 {
+    if (!sUseLookNFeel)
+        return;
+
     NS_ASSERTION(!mStyle, "already initialized");
     // GtkInvisibles come with a refcount that is not floating
     // (since their initialization code calls g_object_ref_sink) and
