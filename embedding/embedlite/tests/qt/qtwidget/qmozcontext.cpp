@@ -89,6 +89,8 @@ public:
             mApp->SetCharPref("general.useragent.override", "Mozilla/5.0 (Maemo; Linux armv7l; rv:14.0) Gecko/17.0 Firefox/17.0");
         } else if (getenv("CT_UA")) {
             mApp->SetCharPref("general.useragent.override", "Mozilla/5.0 (Linux; Android 4.0.3; Transformer Prime TF201 Build/IML74K) AppleWebKit/535.19 (KHTML, like Gecko) Tablet Chrome/18.0.1025.166 Safari/535.19");
+        } else if (getenv("GB_UA")) {
+            mApp->SetCharPref("general.useragent.override", "Mozilla/5.0 (Meego; NokiaN9) AppleWebKit/534.13 (KHTML, like Gecko) NokiaBrowser/8.5.0 Mobile Safari/534.13");
         } else {
             const char* customUA = getenv("CUSTOM_UA");
             mApp->SetCharPref("general.useragent.override", customUA ? customUA : "Mozilla/5.0 (Android; Mobile; rv:12.0) Gecko/17.0 Firefox/17.0");
