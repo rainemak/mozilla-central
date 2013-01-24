@@ -24,7 +24,7 @@ public:
     // View intialized and ready for API calls
     virtual void ViewInitialized() {}
     // View finally destroyed and deleted
-    virtual void Destroyed() {}
+    virtual void ViewDestroyed() {}
 
     // Messaging interface, allow to receive json messages from content child scripts
     virtual void RecvAsyncMessage(const char* aMessage, const char* aData) {}

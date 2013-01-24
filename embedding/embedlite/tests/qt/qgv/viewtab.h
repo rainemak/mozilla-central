@@ -52,7 +52,7 @@ private:
     void ReceiveInputEvent(const mozilla::InputData& event);
     void touchEvent(QTouchEvent* event);
     void ViewInitialized();
-    void Destroyed();
+    void ViewDestroyed();
     bool Invalidate();
     void RecvAsyncMessage(const char* aMessage, const char* aData);
     char* RecvSyncMessage(const char* aMessage, const char* aData);

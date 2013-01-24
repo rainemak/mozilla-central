@@ -16,6 +16,7 @@
 using namespace mozilla::embedlite;
 
 static bool sDoExit = getenv("NORMAL_EXIT");
+static bool sDoExitSeq = getenv("NORMAL_EXIT_SEQ");
 
 class MyListener : public EmbedLiteAppListener, public EmbedLiteViewListener
 {
@@ -33,8 +34,11 @@ public:
     virtual void ViewInitialized()
     {
         printf("Embedding has created view:%p, Yay\n", mView);
-//        mView->LoadURL("data:text/html,<body bgcolor=red>TestApp</body>");
-        mView->LoadURL("http://ya.ru");
+        // FIXME if resize is not called,
+        // then Widget/View not initialized properly and prevent destroy process
+        mView->SetViewSize(800, 600);
+        mView->LoadURL("data:text/html,<body bgcolor=red>TestApp</body>");
+//        mView->LoadURL("http://ya.ru");
     }
     virtual bool Invalidate()
     {
@@ -44,11 +48,42 @@ public:
     }
     static void RenderImage(void* aData)
     {
+        printf("OnRenderImage\n");
         MyListener* self = static_cast<MyListener*>(aData);
+#if 1
+        unsigned char* data = (unsigned char*)malloc(960000);
+        self->mView->RenderToImage(data, 800, 600, 1600, 16);
+#else
         char* data = self->mView->GetImageAsURL(800, 600);
         data[25] = 0;
         printf("Embedding render Image: %s\n", data);
+#endif
         delete data;
+    }
+    virtual void Destroyed()
+    {
+        printf("OnAppDestroyed\n");
+    }
+    virtual void ViewDestroyed()
+    {
+        printf("OnViewDestroyed\n");
+        if (sDoExitSeq) {
+            mApp->PostTask(&MyListener::DoDestroyApp, this, 100);
+        }
+    }
+    static void DoDestroyApp(void* aData)
+    {
+        MyListener* self = static_cast<MyListener*>(aData);
+        printf("DoDestroyApp\n");
+        self->mApp->Stop();
+    }
+    static void DoDestroyView(void* aData)
+    {
+        MyListener* self = static_cast<MyListener*>(aData);
+        printf("DoDestroyView\n");
+        if (sDoExitSeq) {
+            self->mApp->PostTask(&MyListener::DoDestroyApp, self, 100);
+        }
     }
     virtual void OnTitleChanged(const PRUnichar* aTitle)
     {
@@ -65,6 +100,11 @@ public:
     virtual void OnLoadFinished(void)
     {
         printf("OnLoadFinished\n");
+        if (sDoExitSeq) {
+            mApp->PostTask(&MyListener::DoDestroyView, this, 2000);
+        } else if (sDoExit) {
+            mApp->PostTask(&MyListener::DoDestroyApp, this, 2000);
+        }
     }
     virtual void OnLoadRedirect(void)
     {
@@ -125,6 +165,7 @@ private:
 int main(int argc, char** argv)
 {
 #ifdef MOZ_WIDGET_QT
+    QApplication::setAttribute(Qt::AA_X11InitThreads, true);
     QApplication app(argc, argv);
 #elif defined(MOZ_WIDGET_GTK2)
     g_type_init();
