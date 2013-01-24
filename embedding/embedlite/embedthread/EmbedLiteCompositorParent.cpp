@@ -158,8 +158,10 @@ AsyncPanZoomController*
 EmbedLiteCompositorParent::GetEmbedPanZoomController()
 {
     EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
-    EmbedLiteViewThreadParent* pview = static_cast<EmbedLiteViewThreadParent*>(view->GetImpl());
-    return pview->GetDefaultPanZoomController();
+    NS_ASSERTION(view, "View is not available");
+    EmbedLiteViewThreadParent* pview = view ? static_cast<EmbedLiteViewThreadParent*>(view->GetImpl()) : nullptr;
+    NS_ASSERTION(pview, "PView is not available");
+    return pview ? pview->GetDefaultPanZoomController() : nullptr;
 }
 
 AsyncPanZoomController*

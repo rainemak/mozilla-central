@@ -11,6 +11,10 @@
 #include <QApplication>
 #elif defined(MOZ_WIDGET_GTK2)
 #include <glib-object.h>
+#include <gtk/gtk.h>
+#ifdef MOZ_X11
+#include <gdk/gdkx.h>
+#endif /* MOZ_X11 */
 #endif
 
 using namespace mozilla::embedlite;
@@ -170,6 +174,11 @@ int main(int argc, char** argv)
 #elif defined(MOZ_WIDGET_GTK2)
     g_type_init();
     g_thread_init(NULL);
+    gdk_rgb_set_install(TRUE);
+    const char *display_name = gdk_get_display_arg_name();
+    GdkDisplay* mGdkDisplay = gdk_display_open(display_name);
+    gdk_display_manager_set_default_display (gdk_display_manager_get(), mGdkDisplay);
+    gtk_widget_set_default_colormap(gdk_rgb_get_colormap());
 #endif
 
     printf("Load XUL Symbols\n");

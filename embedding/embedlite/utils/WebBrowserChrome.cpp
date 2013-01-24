@@ -762,6 +762,7 @@ void WebBrowserChrome::RemoveEventHandler()
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_MozScrolledAreaChanged), this,  PR_FALSE);
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_scroll), this,  PR_FALSE);
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMMetaAdded), this,  PR_FALSE);
+    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_AFTER_PAINT_LITERAL), this,  PR_FALSE);
 }
 
 void WebBrowserChrome::AddObserver(const char* topic)
