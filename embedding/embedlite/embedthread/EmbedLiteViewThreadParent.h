@@ -50,7 +50,7 @@ public:
     virtual void TextEvent(const char* composite, const char* preEdit);
     virtual void SendKeyPress(int,int,int);
     virtual void SendKeyRelease(int,int,int);
-    virtual void ViewAPIDestroyed() { mView = nullptr; }
+    virtual void ViewAPIDestroyed();
     mozilla::layers::AsyncPanZoomController* GetDefaultPanZoomController();
     virtual void UnblockPrompt(uint64_t winid, const bool&, const bool&, const nsString&, const nsString&, const nsString&);
 
@@ -175,6 +175,7 @@ private:
     void SetCompositor(EmbedLiteCompositorParent* aCompositor);
     uint32_t mId;
     EmbedLiteView* mView;
+    bool mViewAPIDestroyed;
     RefPtr<EmbedLiteCompositorParent> mCompositor;
     gfx::Point mScrollOffset;
     float mLastScale;
