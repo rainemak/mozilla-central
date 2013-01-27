@@ -40,6 +40,10 @@ NS_IMPL_ISUPPORTS2(EmbedLiteModulesService, nsIObserver, nsSupportsWeakReference
 nsresult
 EmbedLiteModulesService::Init()
 {
+    if (!Preferences::GetBool("embedlite.prompt_enabled", true)) {
+        return NS_OK;
+    }
+
     nsCOMPtr<nsIComponentRegistrar> cr;
     nsresult rv = NS_GetComponentRegistrar(getter_AddRefs(cr));
     NS_ENSURE_SUCCESS(rv, NS_ERROR_FAILURE);

@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 
     QUrl qml;
     if (qmlstring.isEmpty())
-#ifdef __arm__ && !defined(Q_WS_MAEMO_5)
+#if defined(__arm__) && !defined(Q_WS_MAEMO_5)
         qml = QUrl("qrc:/qml/main_meego.qml");
 #else
         qml = QUrl("qrc:/qml/main.qml");

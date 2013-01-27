@@ -21,6 +21,7 @@
 #include "nsIIOService.h"
 #include "nsNetCID.h"
 #include "nsIProtocolHandler.h"
+#include "mozilla/Preferences.h"
 
 // Prompt Factory Implementation
 
