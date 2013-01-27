@@ -22,6 +22,7 @@
 #include "nsIDocShellTreeItem.h"
 #include "nsIDOMChromeWindow.h"
 #include "nsContentUtils.h"
+#include "mozilla/Preferences.h"
 
 using namespace mozilla::embedlite;
 
