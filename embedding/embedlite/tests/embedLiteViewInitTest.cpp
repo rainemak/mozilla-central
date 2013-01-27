@@ -9,6 +9,9 @@
 
 #ifdef MOZ_WIDGET_QT
 #include <QApplication>
+#if defined(Q_WS_X11) && QT_VERSION < 0x040800
+#include <X11/Xlib.h>
+#endif
 #elif defined(MOZ_WIDGET_GTK2)
 #include <glib-object.h>
 #include <gtk/gtk.h>

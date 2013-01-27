@@ -33,6 +33,12 @@ LIBS += \
     $(MOZ_GTHREAD_LIBS) \
     $(NULL)
 
+ifeq (1 ,$(MOZ_X11))
+    LIBS += \
+    -lX11 \
+    $(NULL)
+endif
+
 LOCAL_INCLUDES = \
     $(TK_CFLAGS) \
     $(MOZ_GTHREAD_CFLAGS) \
