@@ -288,8 +288,12 @@ QGraphicsMozView::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, 
             }
             if (d->mLastIsGoodRotation) {
                 painter->fillRect(r, d->mBgColor);
-                if (!d->mView->RenderGL())
+                painter->beginNativePainting();
+                bool retval = d->mView->RenderGL();
+                painter->endNativePainting();
+                if (!retval) {
                     painter->fillRect(r, d->mBgColor);
+                }
             }
         } else {
             if (d->mTempBufferImage.isNull() || d->mTempBufferImage.width() != r.width() || d->mTempBufferImage.height() != r.height()) {
