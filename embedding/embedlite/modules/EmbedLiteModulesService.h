@@ -27,9 +27,9 @@ public:
     NS_DECL_NSIOBSERVER
 
     nsresult Init();
-    void RegisterView(EmbedLiteViewThreadChild* aView);
-    void UnregisterView(EmbedLiteViewThreadChild* aView);
-    EmbedLiteViewThreadChild* GetViewForWindow(nsIDOMWindow*);
+//    void RegisterView(EmbedLiteViewThreadChild* aView);
+//    void UnregisterView(EmbedLiteViewThreadChild* aView);
+//    EmbedLiteViewThreadChild* GetViewForWindow(nsIDOMWindow*);
 private:
     std::map<uint64_t, EmbedLiteViewThreadChild*> mViewWeakMap;
 };

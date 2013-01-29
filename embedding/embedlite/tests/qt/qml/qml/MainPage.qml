@@ -32,7 +32,7 @@ FocusScope {
     Rectangle {
         id: navigationBar
         color: "#efefef"
-        height: 30
+        height: 45
         anchors {
             top: parent.top
             left: parent.left

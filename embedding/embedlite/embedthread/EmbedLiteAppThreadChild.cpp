@@ -21,6 +21,7 @@
 #include "mozilla/unused.h"
 #include "mozilla/layers/ImageBridgeChild.h"
 #include "EmbedLiteModulesService.h"
+#include "EmbedLiteAppService.h"
 
 using namespace base;
 using namespace mozilla::ipc;
@@ -64,6 +65,14 @@ EmbedLiteAppThreadChild::Init(EmbedLiteAppThreadParent* aParent)
     SendInitialized();
 }
 
+EmbedLiteAppService*
+EmbedLiteAppThreadChild::AppService()
+{
+    nsCOMPtr<nsIEmbedAppService> service =
+        do_GetService("@mozilla.org/embedlite-app-service;1");
+    return static_cast<EmbedLiteAppService*>(service.get());
+}
+
 void
 EmbedLiteAppThreadChild::InitWindowWatcher()
 {
@@ -99,16 +108,30 @@ EmbedLiteAppThreadChild::RecvCreateView(const uint32_t& id)
 PEmbedLiteViewChild*
 EmbedLiteAppThreadChild::AllocPEmbedLiteView(const uint32_t& id)
 {
-    LOGT();
-    return new EmbedLiteViewThreadChild(id);
+    LOGT("id:%u", id);
+    EmbedLiteViewThreadChild* view = new EmbedLiteViewThreadChild(id);
+    mWeakViewMap[id] = view;
+    return view;
 }
 
 bool
 EmbedLiteAppThreadChild::DeallocPEmbedLiteView(PEmbedLiteViewChild* actor)
 {
     LOGT();
+    std::map<uint32_t, EmbedLiteViewThreadChild*>::iterator it;
+    for (it = mWeakViewMap.begin(); it != mWeakViewMap.end(); ++it) {
+        if (actor == it->second)
+            break;
+    }
+    mWeakViewMap.erase(it);
     delete actor;
     return true;
+}
+
+EmbedLiteViewThreadChild*
+EmbedLiteAppThreadChild::GetViewByID(uint32_t aId)
+{
+    return mWeakViewMap[aId];
 }
 
 bool

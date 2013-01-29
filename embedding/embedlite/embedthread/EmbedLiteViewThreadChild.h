@@ -22,6 +22,7 @@ class EmbedLiteViewScrolling;
 class EmbedLiteViewPromptResponse;
 class EmbedAsyncAuthPrompt;
 class EmbedLitePuppetWidget;
+class EmbedLiteAppThreadChild;
 
 class EmbedLiteViewThreadChild : public PEmbedLiteViewChild,
                                  public nsIEmbedBrowserChromeListener
@@ -33,9 +34,13 @@ public:
 
     NS_DECL_NSIEMBEDBROWSERCHROMELISTENER
 
+    uint64_t GetOuterID() { return mOuterId; }
     void WaitForPromptResult(EmbedLiteViewPromptResponse*);
     void PushPendingAuthRequest(EmbedAsyncAuthPrompt*);
     void ResetInputState();
+
+    void RecvAsyncMessage(const nsAString& aMessage,
+                          const nsAString& aData);
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
@@ -48,8 +53,6 @@ protected:
 
     virtual bool RecvSetIsActive(const bool&);
     virtual bool RecvLoadFrameScript(const nsString&);
-    virtual bool RecvAsyncMessage(const nsString& aMessage,
-                                  const nsString& aData);
     virtual bool RecvSetViewSize(const gfxSize&);
     virtual bool RecvAsyncScrollDOMEvent(
             const gfxRect& contentRect,
@@ -72,6 +75,9 @@ protected:
     virtual bool RecvInputDataTouchEvent(const mozilla::MultiTouchInput&, const gfxSize& res, const gfxPoint& diff);
     virtual bool RecvInputDataTouchMoveEvent(const mozilla::MultiTouchInput&, const gfxSize& res, const gfxPoint& diff);
 
+    virtual bool RecvAsyncMessage(const nsString& aMessage,
+                                  const nsString& aData);
+
     // prompt interface
     virtual bool
     RecvUnblockPrompt(
@@ -84,8 +90,10 @@ protected:
 
 private:
     void InitGeckoWindow();
+    EmbedLiteAppThreadChild* AppChild();
 
     uint32_t mId;
+    uint64_t mOuterId;
     nsCOMPtr<nsIWidget> mWidget;
     nsCOMPtr<nsIWebBrowser> mWebBrowser;
     nsCOMPtr<nsIWebBrowserChrome> mChrome;
@@ -99,6 +107,7 @@ private:
     friend class EmbedLiteModulesService;
     friend class EmbedAuthPromptService;
     friend class EmbedLiteViewScrolling;
+    friend class EmbedLiteAppService;
 
     nsCOMPtr<TabChildHelper> mHelper;
     bool mDispatchSynthMouseEvents;

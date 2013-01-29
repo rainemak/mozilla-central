@@ -8,25 +8,37 @@
 
 #include "EmbedLiteModulesService.h"
 
+#include "nsNetCID.h"
+#include "nsServiceManagerUtils.h"
+#include "nsIObserverService.h"
+#include "nsStringGlue.h"
+#include "nsIChannel.h"
+#include "EmbedPromptService.h"
+#include "EmbedLiteAppService.h"
+
 #include "nsIComponentRegistrar.h"
 #include "nsIComponentManager.h"
 #include "mozilla/GenericFactory.h"
 #include "mozilla/ModuleUtils.h"
-#include "EmbedPromptService.h"
-#include "nsIObserverService.h"
-#include "nsServiceManagerUtils.h"
-#include "nsNetUtil.h"
-#include "EmbedLiteViewThreadChild.h"
-#include "nsIDOMWindow.h"
+#include "nsComponentManagerUtils.h"
+#include "mozilla/Preferences.h"
+
+
 #include "nsIDOMWindowUtils.h"
 #include "nsIDocShellTreeItem.h"
-#include "nsIDOMChromeWindow.h"
+#include "nsIWebNavigation.h"
+#include "nsIInterfaceRequestorUtils.h"
+
+// nsCxPusher
 #include "nsContentUtils.h"
-#include "mozilla/Preferences.h"
+#include "nsISupportsPrimitives.h"
+
+#include "EmbedLiteViewThreadChild.h"
 
 using namespace mozilla::embedlite;
 
 NS_GENERIC_FACTORY_CONSTRUCTOR(EmbedPromptFactory)
+NS_GENERIC_FACTORY_CONSTRUCTOR(EmbedLiteAppService)
 
 EmbedLiteModulesService::EmbedLiteModulesService()
 {
@@ -41,10 +53,6 @@ NS_IMPL_ISUPPORTS2(EmbedLiteModulesService, nsIObserver, nsSupportsWeakReference
 nsresult
 EmbedLiteModulesService::Init()
 {
-    if (!Preferences::GetBool("embedlite.prompt_enabled", true)) {
-        return NS_OK;
-    }
-
     nsCOMPtr<nsIComponentRegistrar> cr;
     nsresult rv = NS_GetComponentRegistrar(getter_AddRefs(cr));
     NS_ENSURE_SUCCESS(rv, NS_ERROR_FAILURE);
@@ -53,29 +61,44 @@ EmbedLiteModulesService::Init()
     rv = NS_GetComponentManager (getter_AddRefs (cm));
     NS_ENSURE_SUCCESS(rv, NS_ERROR_FAILURE);
 
-    nsCOMPtr<nsIFactory> f = new mozilla::GenericFactory(EmbedPromptFactoryConstructor);
-    if (!f) {
-        NS_WARNING("Unable to create factory for component");
-        return NS_ERROR_FAILURE;
-    }
+    if (Preferences::GetBool("embedlite.prompt_enabled", true)) {
 
-    nsCOMPtr<nsIFactory> oldFactory = do_GetClassObject("@mozilla.org/prompter;1");
-    if (oldFactory) {
-        nsCID* cid = NULL;
-        rv = cr->ContractIDToCID("@mozilla.org/prompter;1", &cid);
-        if (!NS_FAILED(rv)) {
-            rv = cr->UnregisterFactory(*cid, oldFactory.get());
-            NS_Free(cid);
-            if (NS_FAILED(rv)) {
-                return NS_ERROR_FAILURE;
+        nsCOMPtr<nsIFactory> f = new mozilla::GenericFactory(EmbedPromptFactoryConstructor);
+        if (!f) {
+            NS_WARNING("Unable to create factory for component");
+            return NS_ERROR_FAILURE;
+        }
+
+        nsCOMPtr<nsIFactory> oldFactory = do_GetClassObject("@mozilla.org/prompter;1");
+        if (oldFactory) {
+            nsCID* cid = NULL;
+            rv = cr->ContractIDToCID("@mozilla.org/prompter;1", &cid);
+            if (!NS_FAILED(rv)) {
+                rv = cr->UnregisterFactory(*cid, oldFactory.get());
+                NS_Free(cid);
+                if (NS_FAILED(rv)) {
+                    return NS_ERROR_FAILURE;
+                }
             }
         }
-    }
-    nsCID promptCID = EMBED_LITE_PROMPT_SERVICE_CID;
-    rv = cr->RegisterFactory(promptCID, "EmbedLite Prompt",
-                             "@mozilla.org/prompter;1", f);
+        nsCID promptCID = EMBED_LITE_PROMPT_SERVICE_CID;
+        rv = cr->RegisterFactory(promptCID, "EmbedLite Prompt",
+                                 "@mozilla.org/prompter;1", f);
 
-    NS_ASSERTION(NS_SUCCEEDED(rv), "Unable to register factory for component");
+        NS_ASSERTION(NS_SUCCEEDED(rv), "Unable to register factory for component");
+    }
+
+    {
+        nsCOMPtr<nsIFactory> f = new mozilla::GenericFactory(EmbedLiteAppServiceConstructor);
+        if (!f) {
+            NS_WARNING("Unable to create factory for component");
+            return NS_ERROR_FAILURE;
+        }
+
+        nsCID appCID = NS_EMBED_LITE_APP_SERVICE_CID;
+        rv = cr->RegisterFactory(appCID, NS_EMBED_LITE_APP_SERVICE_CLASSNAME,
+                                 NS_EMBED_LITE_APP_CONTRACTID, f);
+    }
 
     nsCOMPtr<nsIObserverService> observerService =
         do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
@@ -105,6 +128,7 @@ EmbedLiteModulesService::Observe(nsISupports *aSubject,
     return NS_OK;
 }
 
+/*
 void
 EmbedLiteModulesService::RegisterView(EmbedLiteViewThreadChild* aView)
 {
@@ -155,3 +179,4 @@ EmbedLiteModulesService::GetViewForWindow(nsIDOMWindow* aParent)
     utils->GetOuterWindowID(&OuterWindowID);
     return mViewWeakMap[OuterWindowID];
 }
+*/

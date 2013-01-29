@@ -29,6 +29,7 @@
 #include "mozilla/layers/AsyncPanZoomController.h"
 #include "nsIScriptSecurityManager.h"
 #include "mozilla/Preferences.h"
+#include "EmbedLiteAppService.h"
 #include "EmbedPromptService.h"
 
 using namespace mozilla::layers;
@@ -39,6 +40,7 @@ namespace embedlite {
 
 EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(uint32_t aId)
   : mId(aId)
+  , mOuterId(0)
   , mViewSize(0, 0)
   , mScrolling(new EmbedLiteViewScrolling(this))
   , mDispatchSynthMouseEvents(true)
@@ -59,6 +61,12 @@ EmbedLiteViewThreadChild::~EmbedLiteViewThreadChild()
     LOGT();
 }
 
+EmbedLiteAppThreadChild*
+EmbedLiteViewThreadChild::AppChild()
+{
+  return EmbedLiteAppThreadChild::GetInstance();
+}
+
 void
 EmbedLiteViewThreadChild::ActorDestroy(ActorDestroyReason aWhy)
 {
@@ -69,7 +77,8 @@ EmbedLiteViewThreadChild::ActorDestroy(ActorDestroyReason aWhy)
 bool EmbedLiteViewThreadChild::RecvDestroy()
 {
     LOGT("destroy");
-    EmbedLiteAppThreadChild::GetInstance()->ModulesService()->UnregisterView(this);
+//    AppChild()->ModulesService()->UnregisterView(this);
+    AppChild()->AppService()->UnregisterView(mId);
     mHelper->Unload();
     mBChrome->RemoveEventHandler();
     mWidget = nullptr;
@@ -145,6 +154,9 @@ EmbedLiteViewThreadChild::InitGeckoWindow()
         NS_ERROR("Got stuck with DOMWindow1!");
     }
 
+    nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(mDOMWindow);
+    utils->GetOuterWindowID(&mOuterId);
+
     mWebNavigation = do_QueryInterface(baseWindow);
     if (!mWebNavigation) {
         NS_ERROR("Failed to get the web navigation interface.");
@@ -159,7 +171,8 @@ EmbedLiteViewThreadChild::InitGeckoWindow()
         NS_ERROR("SetVisibility failed.\n");
     }
 
-    EmbedLiteAppThreadChild::GetInstance()->ModulesService()->RegisterView(this);
+//    AppChild()->ModulesService()->RegisterView(this);
+    AppChild()->AppService()->RegisterView(mId);
 
     mHelper = new TabChildHelper(this);
     unused << SendInitialized();
@@ -254,8 +267,17 @@ EmbedLiteViewThreadChild::RecvAsyncMessage(const nsString& aMessage,
                                            const nsString& aData)
 {
     LOGT("msg:%s, data:%s", NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());
+    AppChild()->AppService()->HandleAsyncMessage(NS_ConvertUTF16toUTF8(aMessage).get(), aData);
     mHelper->RecvAsyncMessage(aMessage, aData);
     return true;
+}
+
+void
+EmbedLiteViewThreadChild::RecvAsyncMessage(const nsAString& aMessage,
+                                           const nsAString& aData)
+{
+    LOGT("msg:%s, data:%s", NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());
+    mHelper->RecvAsyncMessage(aMessage, aData);
 }
 
 bool
@@ -629,7 +651,7 @@ NS_IMETHODIMP EmbedLiteViewThreadChild::OnObserve(const char* aTopic, const PRUn
 
 NS_IMETHODIMP EmbedLiteViewThreadChild::OnMetaAdded()
 {
-    mHelper->HandlePossibleViewportChange();
+    LOGNI();
     return NS_OK;
 }
 

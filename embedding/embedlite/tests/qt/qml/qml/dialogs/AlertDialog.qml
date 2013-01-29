@@ -36,6 +36,7 @@ Dialog {
         visible = true;
     }
     function hide() {
+        accepted = true;
         component.handled();
         title = "No Title";
         message = "No Message";

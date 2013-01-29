@@ -22,6 +22,7 @@
 #include "nsNetCID.h"
 #include "nsIProtocolHandler.h"
 #include "mozilla/Preferences.h"
+#include "EmbedLiteAppService.h"
 
 // Prompt Factory Implementation
 
@@ -49,19 +50,26 @@ EmbedPromptFactory::~EmbedPromptFactory()
 
 NS_IMPL_ISUPPORTS1(EmbedPromptFactory, nsIPromptFactory)
 
+static EmbedLiteViewThreadChild*
+GetViewByWindow(nsIDOMWindow* aParent)
+{
+    EmbedLiteAppThreadChild* app = EmbedLiteAppThreadChild::GetInstance();
+    uint32_t winid;
+    app->AppService()->GetIDByWindow(aParent, &winid);
+    EmbedLiteViewThreadChild* view = app->GetViewByID(winid);
+    return view;
+}
 
 NS_IMETHODIMP
 EmbedPromptFactory::GetPrompt(nsIDOMWindow* aParent, const nsIID& iid, void **result)
 {
     if (iid.Equals(NS_GET_IID(nsIAuthPrompt)) ||
         iid.Equals(NS_GET_IID(nsIAuthPrompt2))) {
-        EmbedLiteViewThreadChild* view = EmbedLiteAppThreadChild::GetInstance()->ModulesService()->GetViewForWindow(aParent);
-        EmbedAuthPromptService* service = new EmbedAuthPromptService(view, aParent);
+        EmbedAuthPromptService* service = new EmbedAuthPromptService(GetViewByWindow(aParent), aParent);
         *result = service;
         NS_ADDREF(service);
     } else if (iid.Equals(NS_GET_IID(nsIPrompt))) {
-        EmbedLiteViewThreadChild* view = EmbedLiteAppThreadChild::GetInstance()->ModulesService()->GetViewForWindow(aParent);
-        EmbedPromptService* service = new EmbedPromptService(view, aParent);
+        EmbedPromptService* service = new EmbedPromptService(GetViewByWindow(aParent), aParent);
         *result = service;
         NS_ADDREF(service);
     }
@@ -246,12 +254,10 @@ EmbedAuthPromptService::EmbedAuthPromptService(EmbedLiteViewThreadChild* aView, 
   : mView(aView)
   , mWin(aWin)
 {
-        printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
 }
 
 EmbedAuthPromptService::~EmbedAuthPromptService()
 {
-        printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
 }
 
 NS_IMPL_ISUPPORTS1(EmbedAuthPromptService, nsIAuthPrompt2)
@@ -277,12 +283,10 @@ public:
         , mContext(aContext)
     {
         NS_ASSERTION(mCallback, "null callback");
-        printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
     }
 
     ~nsAuthCancelableConsumer()
     {
-        printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
     }
 
     NS_IMETHOD Cancel(nsresult reason)
@@ -359,11 +363,9 @@ public:
     EmbedAuthRunnable(EmbedAsyncAuthPrompt* aPrompt)
       : mPrompt(aPrompt)
     {
-        printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
     }
     virtual ~EmbedAuthRunnable()
     {
-        printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
     }
     NS_IMETHOD Run();
     EmbedAsyncAuthPrompt* mPrompt;
@@ -372,7 +374,6 @@ public:
 NS_IMETHODIMP
 EmbedAuthRunnable::Run()
 {
-    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
     if (!mPrompt->mView) {
         return NS_ERROR_FAILURE;
     }

@@ -9,10 +9,13 @@
 #include "mozilla/embedlite/PEmbedLiteAppChild.h"
 #include "EmbedLiteModulesService.h"
 
+class EmbedLiteAppService;
+
 namespace mozilla {
 namespace embedlite {
 
 class EmbedLiteAppThreadParent;
+class EmbedLiteViewThreadChild;
 class EmbedLiteAppThreadChild : public PEmbedLiteAppChild
 {
     NS_INLINE_DECL_REFCOUNTING(EmbedLiteAppThreadChild)
@@ -21,10 +24,10 @@ public:
     virtual ~EmbedLiteAppThreadChild();
 
     void Init(EmbedLiteAppThreadParent*);
-
     static EmbedLiteAppThreadChild* GetInstance();
-
     EmbedLiteModulesService* ModulesService() { return mModulesService; }
+    EmbedLiteViewThreadChild* GetViewByID(uint32_t aId);
+    EmbedLiteAppService* AppService();
 
 protected:
     // Embed API ipdl interface
@@ -48,6 +51,8 @@ private:
     MessageLoop* mParentLoop;
     RefPtr<EmbedLiteAppThreadParent> mThreadParent;
     nsRefPtr<EmbedLiteModulesService> mModulesService;
+
+    std::map<uint32_t, EmbedLiteViewThreadChild*> mWeakViewMap;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteAppThreadChild);
 };

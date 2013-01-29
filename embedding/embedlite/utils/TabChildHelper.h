@@ -33,16 +33,6 @@ public:
     NS_DECL_NSIOBSERVER
 
     bool RecvUpdateFrame(const mozilla::layers::FrameMetrics& aFrameMetrics);
-    // Wrapper for nsIDOMWindowUtils.setCSSViewport(). This updates some state
-    // variables local to this class before setting it.
-    void SetCSSViewport(float aX, float aY);
-
-    // Recalculates the display state, including the CSS
-    // viewport. This should be called whenever we believe the
-    // viewport data on a document may have changed. If it didn't
-    // change, this function doesn't do anything.  However, it should
-    // not be called all the time as it is fairly expensive.
-    void HandlePossibleViewportChange();
 
     JSContext* GetJSContext() { return mCx; }
 
@@ -58,8 +48,8 @@ public:
                                     const mozilla::dom::StructuredCloneData& aData);
     virtual bool CheckPermission(const nsAString& aPermission);
 
-    bool RecvAsyncMessage(const nsString& aMessage,
-                          const nsString& aData);
+    bool RecvAsyncMessage(const nsAString& aMessage,
+                          const nsAString& aData);
     bool RecvHandleDoubleTap(const nsIntPoint& aPoint);
 
 protected:
