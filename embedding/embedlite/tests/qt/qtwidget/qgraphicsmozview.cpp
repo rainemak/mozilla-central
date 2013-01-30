@@ -23,6 +23,13 @@
 #include "mozilla/embedlite/EmbedLog.h"
 #include "mozilla/embedlite/EmbedLiteView.h"
 #include "mozilla/embedlite/EmbedLiteApp.h"
+
+#pragma GCC system_header
+#pragma GCC visibility push(default)
+#include_next <qjson/serializer.h>
+#include_next <qjson/parser.h>
+#pragma GCC visibility pop
+
 using namespace mozilla;
 using namespace mozilla::embedlite;
 
@@ -113,14 +120,36 @@ public:
     }
     virtual void RecvAsyncMessage(const char* aMessage, const char* aData) {
         LOGT();
+        if (!strncmp(aMessage, "embed:", 6)) {
+            QJson::Parser parser;
+            bool ok = false;
+            QVariant data = parser.parse(QByteArray(aData), &ok);
+            if (ok) {
+                if (!strcmp(aMessage, "embed:alert")) {
+                    Q_EMIT q->alert(data);
+                } else if (!strcmp(aMessage, "embed:confirm")) {
+                    Q_EMIT q->confirm(data);
+                } else if (!strcmp(aMessage, "embed:prompt")) {
+                    Q_EMIT q->prompt(data);
+                } else if (!strcmp(aMessage, "embed:auth")) {
+                    Q_EMIT q->authRequired(data);
+                }
+                return;
+            } else {
+                LOGT("parse: err:%s, errLine:%i", parser.errorString().toUtf8().data(), parser.errorLine());
+            }
+        }
         Q_EMIT q->recvAsyncMessage(aMessage, aData);
     }
     virtual char* RecvSyncMessage(const char* aMessage, const char* aData) {
         LOGT();
         QSyncMessageResponse response;
         Q_EMIT q->recvSyncMessage(aMessage, aData, &response);
-        LOGT("msg:%s, response:%s", aMessage, response.getMessage().toUtf8().data());
-        return strdup(response.getMessage().toUtf8().data());
+
+        QJson::Serializer serializer;
+        QByteArray array = serializer.serialize(response.getMessage());
+        LOGT("msg:%s, response:%s", aMessage, array.constData());
+        return strdup(array.constData());
     }
 
     virtual void OnLoadRedirect(void) {
@@ -140,35 +169,7 @@ public:
         LOGT();
         Q_EMIT q->contentLoaded(QString((QChar*)aDocURI));
     }
-    virtual void OnAlert(const nsString& aTitle, const nsString& aMessage,
-                         const nsString& checkMessage, const bool& checkValue,
-                         const uint64_t& winID) {
-        Q_EMIT q->alert(QString((QChar*)aTitle.get()), QString((QChar*)aMessage.get()),
-                        QString((QChar*)checkMessage.get()), checkValue, winID);
-    }
-    virtual void OnConfirm(const nsString& aTitle, const nsString& aMessage,
-                           const nsString& checkMessage, const bool& checkValue,
-                           const uint64_t& winID) {
-        Q_EMIT q->confirm(QString((QChar*)aTitle.get()), QString((QChar*)aMessage.get()),
-                          QString((QChar*)checkMessage.get()), checkValue, winID);
-    }
-    virtual void OnPrompt(const nsString& aTitle, const nsString& aMessage,
-                          const nsString& aDefaultValue,
-                          const nsString& checkMessage, const bool& checkValue,
-                          const uint64_t& winID) {
-        Q_EMIT q->prompt(QString((QChar*)aTitle.get()), QString((QChar*)aMessage.get()),
-                         QString((QChar*)aDefaultValue.get()),
-                         QString((QChar*)checkMessage.get()), checkValue, winID);
-    }
-    virtual void OnAuthentificationRequired(const nsCString& hostname,
-                                            const nsCString& httprealm,
-                                            const nsString& username,
-                                            const bool& isOnlyPassword,
-                                            const uint64_t& winID)
-    {
-        Q_EMIT q->authRequired(QString(hostname.get()), QString(httprealm.get()),
-                               QString((QChar*)username.get()), isOnlyPassword, winID);
-    }
+
     virtual void IMENotification(int aIstate, bool aOpen, int aCause, int aFocusChange)
     {
         LOGT("imeState:%i", aIstate);
@@ -363,20 +364,22 @@ void QGraphicsMozView::load(const QString& url)
     d->mView->LoadURL(QUrl::fromUserInput(url).toString().toUtf8().data());
 }
 
+void QGraphicsMozView::sendAsyncMessage(const QString& name, const QVariant& variant)
+{
+    if (!d->mViewInitialized)
+        return;
+
+    QJson::Serializer serializer;
+    QByteArray array = serializer.serialize(variant);
+    d->mView->SendAsyncMessage(name.toUtf8().data(), array.constData());
+}
+
 void
 QGraphicsMozView::sendAsyncMessage(const QString& name, const QString& message)
 {
     if (!d->mViewInitialized)
         return;
     d->mView->SendAsyncMessage(name.toUtf8().data(), message.toUtf8().data());
-}
-
-void
-QGraphicsMozView::unblockPrompt(qulonglong winid, const bool& checkVal, const bool& confirmVal, const QString& retVal, const QString& username, const QString& password)
-{
-    if (!d->mViewInitialized)
-        return;
-    d->mView->UnblockPrompt(winid, checkVal, confirmVal, retVal.toUtf8().data(), username.toUtf8().data(), password.toUtf8().data());
 }
 
 QString QGraphicsMozView::title() const

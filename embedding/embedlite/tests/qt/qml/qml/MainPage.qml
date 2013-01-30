@@ -210,53 +210,69 @@ FocusScope {
             }
             onRecvSyncMessage: {
                 print("onRecvSyncMessage:" + message + ", data:" + data);
-                if (message == "browser-element-api:get-fullscreen-allowed") {
-                    response.message = true
-                } else if (message == "browser-element-api:get-name") {
-                    response.message = true;
+                if (message == "embed:testsyncresponse") {
+                    response.message = { "val" : "response", "numval" : 0.04 };
                 }
             }
             onAlert: {
-                print("onAlert: title:" + title + ", msg:" + message + " winid:" + winid);
-                alertDlg.show(title, message, winid);
+                print("onAlert: title:" + data.title + ", msg:" + data.text + " winid:" + data.winid);
+                alertDlg.show(data.title, data.text, data.winid);
             }
             onConfirm: {
-                print("onConfirm: title:" + title + ", msg:" + message);
-                confirmDlg.show(title, message, winid);
+                print("onConfirm: title:" + data.title + ", data.text:" + data.text);
+                confirmDlg.show(data.title, data.text, data.winid);
             }
             onPrompt: {
-                print("onPrompt: title:" + title + ", msg:" + message);
-                promptDlg.show(title, message, defaultValue, winid);
+                print("onPrompt: title:" + data.title + ", msg:" + data.text);
+                promptDlg.show(data.title, data.text, data.defaultValue, data.winid);
             }
             onAuthRequired: {
-                print("onAuthRequired: title:" + title + ", msg:" + message + ", winid:" + winid);
-                authDlg.show(title, message, defaultUsername, winid);
+                print("onAuthRequired: title:" + data.title + ", msg:" + data.text + ", winid:" + data.winid);
+                authDlg.show(data.title, data.text, data.defaultValue, data.winid);
             }
 
         }
         AlertDialog {
             id: alertDlg
             onHandled: {
-                webViewport.child().unblockPrompt(winid, alertDlg.checkval, alertDlg.accepted, "", "", "");
+                webViewport.child().sendAsyncMessage("alertresponse", {
+                    "winid" : winid,
+                    "checkval" : alertDlg.checkval,
+                    "accepted" : alertDlg.accepted
+                });
             }
         }
         ConfirmDialog {
             id: confirmDlg
             onHandled: {
-                webViewport.child().unblockPrompt(winid, confirmDlg.checkval, confirmDlg.accepted,"", "", "");
+                webViewport.child().sendAsyncMessage("confirmresponse", {
+                    "winid" : winid,
+                    "checkval" : confirmDlg.checkval,
+                    "accepted" : confirmDlg.accepted
+                });
             }
         }
         PromptDialog {
             id: promptDlg
             onHandled: {
-                webViewport.child().unblockPrompt(winid, promptDlg.checkval, promptDlg.accepted, promptDlg.prompttext, "", "");
+                webViewport.child().sendAsyncMessage("promptresponse", {
+                    "winid" : winid,
+                    "checkval" : promptDlg.checkval,
+                    "accepted" : promptDlg.accepted,
+                    "promptvalue" : promptDlg.prompttext
+                });
             }
         }
         AuthenticationDialog {
             id: authDlg
             onHandled: {
-                print("AuthenticationDialog handled:" + authDlg.checkval + authDlg.accepted + authDlg.username + authDlg.password + ", winid:" + authDlg.winid);
-                webViewport.child().unblockPrompt(winid, authDlg.checkval, authDlg.accepted, "", authDlg.username, authDlg.password);
+                webViewport.child().sendAsyncMessage("authresponse", {
+                    "winid" : winid,
+                    "checkval" : authDlg.checkval,
+                    "accepted" : authDlg.accepted,
+                    "username" : authDlg.username,
+                    "password" : authDlg.password
+                });
             }
         }
     }

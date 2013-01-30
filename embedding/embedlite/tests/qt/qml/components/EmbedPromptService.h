@@ -16,39 +16,42 @@
 #include "nsICancelable.h"
 #include "nsIAuthInformation.h"
 #include "nsDataHashtable.h"
+#include "nsIEmbedAppService.h"
 #include <map>
 #include <string>
 
 namespace mozilla {
 namespace embedlite {
 
-class EmbedLiteViewThreadChild;
-
-class EmbedLiteViewPromptResponse
+class EmbedPromptResponse
 {
-    NS_INLINE_DECL_REFCOUNTING(EmbedLiteViewPromptResponse)
 public:
-    EmbedLiteViewPromptResponse(nsIDOMWindow* aWin);
-    virtual ~EmbedLiteViewPromptResponse();
-    nsIDOMWindow* mWin;
-    bool confirm;
+    EmbedPromptResponse()
+      : accepted(false), checkvalue(false)
+    {}
+    virtual ~EmbedPromptResponse() {}
+
+    bool accepted;
     bool checkvalue;
-    nsString retVal;
-    nsString username;
-    nsString password;
+    nsCString promptvalue;
+    nsCString username;
+    nsCString password;
 };
 
-class EmbedPromptService : public nsIPrompt
+class EmbedPromptService : public nsIPrompt, public nsIEmbedMessageListener
 {
 public:
-    EmbedPromptService(EmbedLiteViewThreadChild* aView, nsIDOMWindow* aWin);
+    EmbedPromptService(nsIDOMWindow* aWin);
     virtual ~EmbedPromptService();
 
     NS_DECL_ISUPPORTS
     NS_DECL_NSIPROMPT
+    NS_DECL_NSIEMBEDMESSAGELISTENER
 private:
-    RefPtr<EmbedLiteViewThreadChild> mView;
     nsCOMPtr<nsIDOMWindow> mWin;
+    int mModalDepth;
+    nsCOMPtr<nsIEmbedAppService> mService;
+    std::map<uint32_t, EmbedPromptResponse> mResponseMap;
 };
 
 class EmbedAuthPromptService;
@@ -57,12 +60,11 @@ class EmbedAsyncAuthPrompt
 public:
     EmbedAsyncAuthPrompt(nsICancelable* aCancelable, nsIChannel* aChannel,
                          nsIAuthInformation* aAuthInfo, uint32_t aLevel,
-                         bool aInProgress, EmbedLiteViewThreadChild* aView)
+                         bool aInProgress)
         : mChannel(aChannel)
         , mAuthInfo(aAuthInfo)
         , mLevel(aLevel)
         , mInProgress(aInProgress)
-        , mView(aView)
         , mService(NULL)
     {
         consumers.AppendElement(aCancelable);
@@ -75,19 +77,21 @@ public:
     nsCOMPtr<nsIAuthInformation> mAuthInfo;
     uint32_t mLevel;
     bool mInProgress;
-    EmbedLiteViewThreadChild* mView;
     nsCString mHashKey;
-    nsCOMPtr<EmbedAuthPromptService> mService;
+    RefPtr<EmbedAuthPromptService> mService;
 };
 
-class EmbedAuthPromptService : public nsIAuthPrompt2
+class EmbedAuthPromptService : public nsIAuthPrompt2, public nsIEmbedMessageListener
 {
 public:
-    EmbedAuthPromptService(EmbedLiteViewThreadChild* aView, nsIDOMWindow* aWin);
+    EmbedAuthPromptService(nsIDOMWindow* aWin);
     virtual ~EmbedAuthPromptService();
 
     NS_DECL_ISUPPORTS
     NS_DECL_NSIAUTHPROMPT2
+    NS_DECL_NSIEMBEDMESSAGELISTENER
+
+    nsresult DoSendAsyncPrompt(EmbedAsyncAuthPrompt* mPrompt);
 
     void DoResponseAsyncPrompt(EmbedAsyncAuthPrompt* aPrompt,
                                const bool& confirmed,
@@ -98,10 +102,12 @@ private:
     void DoAsyncPrompt();
 
 
-    RefPtr<EmbedLiteViewThreadChild> mView;
     nsCOMPtr<nsIDOMWindow> mWin;
     std::map<std::string, EmbedAsyncAuthPrompt*> asyncPrompts;
-    std::map<EmbedLiteViewThreadChild*, bool> asyncPromptInProgress;
+    std::map<void*, bool> asyncPromptInProgress;
+    nsCOMPtr<nsIEmbedAppService> mService;
+    int mModalDepth;
+    std::map<uint32_t, EmbedPromptResponse> mResponseMap;
 };
 
 class EmbedPromptFactory :  public nsIPromptFactory

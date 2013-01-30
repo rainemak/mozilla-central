@@ -19,8 +19,6 @@ namespace mozilla {
 namespace embedlite {
 
 class EmbedLiteViewScrolling;
-class EmbedLiteViewPromptResponse;
-class EmbedAsyncAuthPrompt;
 class EmbedLitePuppetWidget;
 class EmbedLiteAppThreadChild;
 
@@ -35,8 +33,6 @@ public:
     NS_DECL_NSIEMBEDBROWSERCHROMELISTENER
 
     uint64_t GetOuterID() { return mOuterId; }
-    void WaitForPromptResult(EmbedLiteViewPromptResponse*);
-    void PushPendingAuthRequest(EmbedAsyncAuthPrompt*);
     void ResetInputState();
 
     void RecvAsyncMessage(const nsAString& aMessage,
@@ -78,16 +74,6 @@ protected:
     virtual bool RecvAsyncMessage(const nsString& aMessage,
                                   const nsString& aData);
 
-    // prompt interface
-    virtual bool
-    RecvUnblockPrompt(
-            const uint64_t& winID,
-            const bool& checkValue,
-            const bool& confirm,
-            const nsString& retValue,
-            const nsString& username,
-            const nsString& password);
-
 private:
     void InitGeckoWindow();
     EmbedLiteAppThreadChild* AppChild();
@@ -104,17 +90,13 @@ private:
 
     RefPtr<EmbedLiteViewScrolling> mScrolling;
     friend class TabChildHelper;
-    friend class EmbedLiteModulesService;
-    friend class EmbedAuthPromptService;
     friend class EmbedLiteViewScrolling;
     friend class EmbedLiteAppService;
 
     nsCOMPtr<TabChildHelper> mHelper;
     bool mDispatchSynthMouseEvents;
     bool mHadResizeSinceLastFrameUpdate;
-    int mModalDepth;
     bool mIMEComposing;
-    std::map<uint64_t, EmbedLiteViewPromptResponse*> modalWinMap;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadChild);
 };

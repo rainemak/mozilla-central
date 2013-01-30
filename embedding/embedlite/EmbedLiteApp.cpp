@@ -213,15 +213,18 @@ EmbedLiteApp::CreateView()
 {
     LOGT();
     EmbedLiteView* view = new EmbedLiteView(this);
-    mViews[mViewCreateID] = view;
+    mViews[++mViewCreateID] = view;
     unused << STHREADAPP()->SendCreateView(mViewCreateID);
-    mViewCreateID++;
     return view;
 }
 
 EmbedLiteView* EmbedLiteApp::GetViewByID(uint32_t id)
 {
     std::map<uint32_t, EmbedLiteView*>::iterator it = mViews.find(id);
+    if (it == mViews.end()) {
+        NS_ERROR("View not found");
+        return nullptr;
+    }
     return it->second;
 }
 

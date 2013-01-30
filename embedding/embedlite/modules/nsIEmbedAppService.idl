@@ -35,4 +35,6 @@ interface nsIEmbedAppService : nsISupports
     void GetIDByWindow(in nsIDOMWindow aWin, out uint32_t aId);
     void addMessageListener(in string name, in nsIEmbedMessageListener listener);
     void removeMessageListener(in string name, in nsIEmbedMessageListener listener);
+    void enterSecureJSContext();
+    void leaveSecureJSContext();
 };

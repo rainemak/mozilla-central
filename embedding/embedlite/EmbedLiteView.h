@@ -57,21 +57,6 @@ public:
                                   float aDisplayResolution, bool aLayersUpdated,
                                   nsIntPoint& aScrollOffset, float& aScaleX, float& aScaleY) {}
     virtual void SetPageRect(const gfxRect& aCssPageRect) {}
-    virtual void OnAlert(const nsString& aTitle, const nsString& aMessage,
-                         const nsString& checkMessage, const bool& checkValue,
-                         const uint64_t& winID) { }
-    virtual void OnConfirm(const nsString& aTitle, const nsString& aMessage,
-                           const nsString& checkMessage, const bool& checkValue,
-                           const uint64_t& winID) { }
-    virtual void OnPrompt(const nsString& aTitle, const nsString& aMessage,
-                          const nsString& defaultValue,
-                          const nsString& checkMessage, const bool& checkValue,
-                          const uint64_t& winID) { }
-    virtual void OnAuthentificationRequired(const nsCString& hostname,
-                                            const nsCString& httprealm,
-                                            const nsString& username,
-                                            const bool& isOnlyPassword,
-                                            const uint64_t& winID) {}
     virtual void IMENotification(int aEnabled, bool aOpen, int aCause, int aFocusChange) {}
 };
 
@@ -143,11 +128,6 @@ public:
     //   https://wiki.mozilla.org/Content_Process_Event_Handlers
     virtual void LoadFrameScript(const char* aURI);
     virtual void SendAsyncMessage(const char* aMessageName, const char* aMessage);
-
-    // prompt Unblock Prompt
-    virtual void UnblockPrompt(uint64_t winid, bool checkValue, bool confirm,
-                               const char* retValue, const char* username,
-                               const char* password);
 
 private:
     friend class EmbedLiteViewThreadParent;

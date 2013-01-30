@@ -30,7 +30,6 @@
 #include "nsIScriptSecurityManager.h"
 #include "mozilla/Preferences.h"
 #include "EmbedLiteAppService.h"
-#include "EmbedPromptService.h"
 
 using namespace mozilla::layers;
 using namespace mozilla::widget;
@@ -45,7 +44,6 @@ EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(uint32_t aId)
   , mScrolling(new EmbedLiteViewScrolling(this))
   , mDispatchSynthMouseEvents(true)
   , mHadResizeSinceLastFrameUpdate(false)
-  , mModalDepth(0)
   , mIMEComposing(false)
 {
     LOGT();
@@ -77,7 +75,6 @@ EmbedLiteViewThreadChild::ActorDestroy(ActorDestroyReason aWhy)
 bool EmbedLiteViewThreadChild::RecvDestroy()
 {
     LOGT("destroy");
-//    AppChild()->ModulesService()->UnregisterView(this);
     AppChild()->AppService()->UnregisterView(mId);
     mHelper->Unload();
     mBChrome->RemoveEventHandler();
@@ -171,7 +168,6 @@ EmbedLiteViewThreadChild::InitGeckoWindow()
         NS_ERROR("SetVisibility failed.\n");
     }
 
-//    AppChild()->ModulesService()->RegisterView(this);
     AppChild()->AppService()->RegisterView(mId);
 
     mHelper = new TabChildHelper(this);
@@ -659,82 +655,6 @@ NS_IMETHODIMP EmbedLiteViewThreadChild::OnUpdateDisplayPort()
 {
     LOGNI();
     return NS_OK;
-}
-
-void
-EmbedLiteViewThreadChild::WaitForPromptResult(EmbedLiteViewPromptResponse* resp)
-{
-    nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(resp->mWin);
-    NS_ENSURE_TRUE(utils, );
-
-    uint64_t outerWindowID = 0, innerWindowID = 0;
-    utils->GetOuterWindowID(&outerWindowID);
-    utils->GetCurrentInnerWindowID(&innerWindowID);
-    if (innerWindowID == 0) {
-        // I have no idea what waiting for a result means when there's no inner
-        // window, so let's just bail.
-        NS_WARNING("_waitForResult: No inner window. Bailing.");
-        return;
-    }
-
-    modalWinMap[outerWindowID] = resp;
-
-    nsCOMPtr<nsIDOMWindow> modalStateWin;
-    nsresult rv = utils->EnterModalStateWithWindow(getter_AddRefs(modalStateWin));
-    // We'll decrement win.modalDepth when we receive a UnblockPrompt message
-    // for the window.
-    mModalDepth++;
-    int origModalDepth = mModalDepth;
-
-    // process events until we're finished.
-    nsIThread *thread = NS_GetCurrentThread();
-    while (mModalDepth == origModalDepth && NS_SUCCEEDED(rv)) {
-        bool processedEvent;
-        rv = thread->ProcessNextEvent(true, &processedEvent);
-        if (NS_SUCCEEDED(rv) && !processedEvent) {
-            rv = NS_ERROR_UNEXPECTED;
-        }
-        nsCOMPtr<nsIDOMWindowUtils> tutils = do_GetInterface(resp->mWin);
-        uint64_t innerWindowIDTemp = 0;
-        tutils->GetCurrentInnerWindowID(&innerWindowIDTemp);
-        if (innerWindowIDTemp != innerWindowID) {
-            NS_WARNING("_waitForResult: Inner window ID changed while in nested event loop.");
-            rv = NS_ERROR_UNEXPECTED;
-        }
-    }
-    utils->LeaveModalStateWithWindow(modalStateWin);
-}
-
-bool
-EmbedLiteViewThreadChild::RecvUnblockPrompt(const uint64_t& winID,
-                                            const bool& checkValue,
-                                            const bool& confirm,
-                                            const nsString& retValue,
-                                            const nsString& username,
-                                            const nsString& password)
-{
-    EmbedLiteViewPromptResponse* resp = modalWinMap[winID];
-
-    if (!resp) {
-        NS_ERROR("RecvUnblockPrompt, but winID is not registered\n");
-        return false;
-    }
-
-    modalWinMap.erase(winID);
-
-    if (!resp->mWin) {
-      NS_ERROR("RecvUnblockPrompt, but window is gone\n");
-      return false;
-    }
-
-    resp->checkvalue = checkValue;
-    resp->confirm = confirm;
-    resp->retVal = retValue;
-    resp->username = username;
-    resp->password = password;
-
-    mModalDepth--;
-    return true;
 }
 
 } // namespace embedlite

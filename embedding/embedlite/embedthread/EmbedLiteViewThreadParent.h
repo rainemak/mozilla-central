@@ -52,7 +52,6 @@ public:
     virtual void SendKeyRelease(int,int,int);
     virtual void ViewAPIDestroyed();
     mozilla::layers::AsyncPanZoomController* GetDefaultPanZoomController();
-    virtual void UnblockPrompt(uint64_t winid, const bool&, const bool&, const nsString&, const nsString&, const nsString&);
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
@@ -139,24 +138,6 @@ protected:
     virtual bool RecvCancelDefaultPanZoom() MOZ_OVERRIDE;
     virtual bool RecvContentReceivedTouch(const bool& aPreventDefault);
     virtual bool RecvDetectScrollableSubframe() MOZ_OVERRIDE;
-
-    // prompt API
-    virtual bool RecvAlert(const nsString&, const nsString&,
-                           const nsString& checkMessage,
-                           const bool& checkValue, const uint64_t& winID);
-    virtual bool RecvConfirm(const nsString&, const nsString&,
-                             const nsString& checkMessage,
-                             const bool& checkValue, const uint64_t& winID);
-
-    virtual bool RecvPrompt(const nsString&, const nsString&,
-                             const nsString& checkMessage, const nsString& defaultValue,
-                             const bool& checkValue, const uint64_t& winID);
-    virtual bool
-    RecvAuthentificationRequired(const uint64_t& requestID,
-            const nsCString& hostname,
-            const nsCString& httprealm,
-            const nsString& username,
-            const bool& isOnlyPassword);
 
     // IME
     virtual bool RecvGetInputContext(int32_t* aIMEEnabled,

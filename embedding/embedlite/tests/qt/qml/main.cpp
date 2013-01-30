@@ -46,6 +46,7 @@
 #if defined(Q_WS_X11)
 #include <X11/Xlib.h>
 #endif
+//#include <qjson/qjson.h>
 
 #ifdef HAS_BOOSTER
 Q_DECL_EXPORT
@@ -75,6 +76,8 @@ int main(int argc, char *argv[])
     stackView.setOrientation(QmlApplicationViewer::ScreenOrientationAuto);
 #endif
     application->setQuitOnLastWindowClosed(true);
+
+//    qmlRegisterType<QJson>("QJson", 1, 0, "QJson");
 
     QString path;
     QString urlstring;

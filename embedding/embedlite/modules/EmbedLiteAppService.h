@@ -33,6 +33,7 @@ private:
     std::map<uint64_t, uint32_t> mIDMap;
     nsClassHashtable<nsCStringHashKey,
                      nsTArray<nsCOMPtr<nsIEmbedMessageListener> > > mMessageListeners;
+    int mPushedSomething;
 };
 
 #define NS_EMBED_LITE_APP_CONTRACTID "@mozilla.org/embedlite-app-service;1"

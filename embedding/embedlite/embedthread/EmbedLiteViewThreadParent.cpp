@@ -125,7 +125,6 @@ EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id)
   , mLastIMEState(0)
 {
     MOZ_COUNT_CTOR(EmbedLiteViewThreadParent);
-    LOGT("id:%u", mId);
     NS_ASSERTION(mView, "View not found");
     mView->SetImpl(this);
     mGeckoController = new EmbedContentController(this);
@@ -764,79 +763,6 @@ EmbedLiteViewThreadParent::MouseMove(int x, int y, int mstime, unsigned int butt
                                  x, y, buttons, 1, modifiers,
                                  true);
     }
-}
-
-bool
-EmbedLiteViewThreadParent::RecvAlert(const nsString& title,
-                                     const nsString& message,
-                                     const nsString& checkMessage,
-                                     const bool& checkValue,
-                                     const uint64_t& winID)
-{
-    if (mViewAPIDestroyed)
-        return true;
-
-    NS_ENSURE_TRUE(mView, false);
-    mView->GetListener()->OnAlert(title, message, checkMessage, checkValue, winID);
-    return true;
-}
-
-bool
-EmbedLiteViewThreadParent::RecvConfirm(const nsString& title,
-                                       const nsString& message,
-                                       const nsString& checkMessage,
-                                       const bool& checkValue,
-                                       const uint64_t& winID)
-{
-    if (mViewAPIDestroyed)
-        return true;
-
-    NS_ENSURE_TRUE(mView, false);
-    mView->GetListener()->OnConfirm(title, message, checkMessage, checkValue, winID);
-    return true;
-}
-
-bool
-EmbedLiteViewThreadParent::RecvPrompt(const nsString& title,
-                                      const nsString& message,
-                                      const nsString& defaultValue,
-                                      const nsString& checkMessage,
-                                      const bool& checkValue,
-                                      const uint64_t& winID)
-{
-    if (mViewAPIDestroyed)
-        return true;
-
-    NS_ENSURE_TRUE(mView, false);
-    mView->GetListener()->OnPrompt(title, message, defaultValue, checkMessage, checkValue, winID);
-    return true;
-}
-
-bool
-EmbedLiteViewThreadParent::RecvAuthentificationRequired(const uint64_t& requestID,
-                                                        const nsCString& hostname,
-                                                        const nsCString& httprealm,
-                                                        const nsString& username,
-                                                        const bool& isOnlyPassword)
-{
-    LOGT("host:%s, realm:%s, user:%s, isPWDOnly:%i", hostname.get(), httprealm.get(), NS_ConvertUTF16toUTF8(username).get(), isOnlyPassword);
-    if (mViewAPIDestroyed)
-        return true;
-
-    NS_ENSURE_TRUE(mView, false);
-    mView->GetListener()->OnAuthentificationRequired(hostname, httprealm, username, isOnlyPassword, requestID);
-    return true;
-}
-
-void
-EmbedLiteViewThreadParent::UnblockPrompt(uint64_t winid,
-                                         const bool& checkValue,
-                                         const bool& confirm,
-                                         const nsString& retValue,
-                                         const nsString& username,
-                                         const nsString& password)
-{
-    unused << SendUnblockPrompt(winid, checkValue, confirm, retValue, username, password);
 }
 
 bool

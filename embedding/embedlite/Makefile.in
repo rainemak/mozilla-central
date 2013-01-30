@@ -64,7 +64,6 @@ CPPSRCS = \
     EmbedLog.cpp \
     EmbedLiteAppService.cpp \
     EmbedLiteModulesService.cpp \
-    EmbedPromptService.cpp \
     $(NULL)
 
 XPIDLSRCS = \

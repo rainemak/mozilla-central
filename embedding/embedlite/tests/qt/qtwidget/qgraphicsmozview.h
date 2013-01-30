@@ -16,18 +16,18 @@ class QGraphicsMozViewPrivate;
 
 class QSyncMessageResponse : public QObject {
     Q_OBJECT
-    Q_PROPERTY(QString message READ getMessage WRITE setMessage FINAL)
+    Q_PROPERTY(QVariant message READ getMessage WRITE setMessage FINAL)
 
 public:
     QSyncMessageResponse(QObject* parent = 0) : QObject(parent) {}
     QSyncMessageResponse(const QSyncMessageResponse& aMsg) { mMessage = aMsg.mMessage; }
     virtual ~QSyncMessageResponse() {}
 
-    QString getMessage() const { return mMessage; }
-    void setMessage(const QString msg) { mMessage = msg; }
+    QVariant getMessage() const { return mMessage; }
+    void setMessage(const QVariant& msg) { mMessage = msg; }
 
 private:
-    QString mMessage;
+    QVariant mMessage;
 };
 
 Q_DECLARE_METATYPE(QSyncMessageResponse)
@@ -64,7 +64,7 @@ public Q_SLOTS:
     void reload();
     void load(const QString&);
     void sendAsyncMessage(const QString& name, const QString& message);
-    void unblockPrompt(qulonglong winid, const bool& checkVal, const bool& confirmVal, const QString& retVal, const QString& username, const QString& password);
+    void sendAsyncMessage(const QString& name, const QVariant& variant);
 
 Q_SIGNALS:
     void viewInitialized();
@@ -81,10 +81,10 @@ Q_SIGNALS:
     void firstPaint(int32_t offx, int32_t offy);
     void contentLoaded(QString docuri);
     void observeNotification(QString topic, QString data);
-    void alert(QString title, QString message, QString checkMessage, bool checkValue, qulonglong winid);
-    void confirm(QString title, QString message, QString checkMessage, bool checkValue, qulonglong winid);
-    void prompt(QString title, QString message, QString defaultValue, QString checkMessage, bool checkValue, qulonglong winid);
-    void authRequired(QString title, QString message, QString defaultUsername, bool onlyPassword, qulonglong winid);
+    void alert(QVariant data);
+    void confirm(QVariant data);
+    void prompt(QVariant data);
+    void authRequired(QVariant data);
 
 protected:
     virtual void setGeometry(const QRectF& rect);

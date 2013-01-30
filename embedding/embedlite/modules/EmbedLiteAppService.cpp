@@ -12,6 +12,7 @@
 #include "nsIObserverService.h"
 #include "nsStringGlue.h"
 #include "nsIChannel.h"
+#include "nsContentUtils.h"
 
 #include "nsIComponentRegistrar.h"
 #include "nsIComponentManager.h"
@@ -23,10 +24,12 @@
 #include "nsComponentManagerUtils.h"
 #include "EmbedLiteAppThreadChild.h"
 #include "EmbedLiteViewThreadChild.h"
+#include "nsIJSContextStack.h"
 
 using namespace mozilla::embedlite;
 
 EmbedLiteAppService::EmbedLiteAppService()
+  : mPushedSomething(0)
 {
     mMessageListeners.Init();
 }
@@ -56,6 +59,7 @@ void EmbedLiteAppService::RegisterView(uint32_t aId)
 {
     EmbedLiteViewThreadChild* view = sGetViewById(aId);
     NS_ENSURE_TRUE(view, );
+    printf(">>>>>>Func:%s::%d OuterWindowID:%lu, id:%u\n", __FUNCTION__, __LINE__, view->GetOuterID(), aId);
     mIDMap[view->GetOuterID()] = aId;
 }
 
@@ -72,6 +76,8 @@ void EmbedLiteAppService::UnregisterView(uint32_t aId)
 NS_IMETHODIMP
 EmbedLiteAppService::GetIDByWindow(nsIDOMWindow* aWin, uint32_t* aId)
 {
+    nsCxPusher pusher;
+    pusher.PushNull();
     nsCOMPtr<nsIDOMWindow> window;
     nsCOMPtr<nsIWebNavigation> navNav(do_GetInterface(aWin));
     nsCOMPtr<nsIDocShellTreeItem> navItem(do_QueryInterface(navNav));
@@ -158,4 +164,34 @@ EmbedLiteAppService::HandleAsyncMessage(const char* aMessage, const nsString& aD
         nsCOMPtr<nsIEmbedMessageListener>& listener = array->ElementAt(i);
         listener->OnMessageReceived(aMessage, aData.get());
     }
+}
+
+NS_IMETHODIMP EmbedLiteAppService::EnterSecureJSContext()
+{
+    nsIThreadJSContextStack* stack = nsContentUtils::ThreadJSContextStack();
+    if (!stack) {
+        return NS_OK;
+    }
+
+    if (NS_FAILED(stack->Push(nullptr))) {
+        return NS_ERROR_FAILURE;
+    }
+
+    mPushedSomething++;
+    return NS_OK;
+}
+
+NS_IMETHODIMP EmbedLiteAppService::LeaveSecureJSContext()
+{
+    nsIThreadJSContextStack* stack = nsContentUtils::ThreadJSContextStack();
+    if (!mPushedSomething || !stack) {
+        mPushedSomething = 0;
+        return NS_ERROR_FAILURE;
+    }
+
+    JSContext *unused;
+    stack->Pop(&unused);
+
+    mPushedSomething--;
+    return NS_OK;
 }

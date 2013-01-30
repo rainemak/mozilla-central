@@ -27,9 +27,6 @@ public:
     NS_DECL_NSIOBSERVER
 
     nsresult Init();
-
-private:
-    std::map<uint64_t, EmbedLiteViewThreadChild*> mViewWeakMap;
 };
 
 }}
