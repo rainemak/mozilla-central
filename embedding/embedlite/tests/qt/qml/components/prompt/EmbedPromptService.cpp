@@ -25,9 +25,8 @@
 #include "nsIProtocolHandler.h"
 #include "nsIDOMWindow.h"
 
-#pragma GCC system_header
 #pragma GCC visibility push(default)
-#include "json.h"
+#include <json/json.h>
 #pragma GCC visibility pop
 
 // Prompt Factory Implementation

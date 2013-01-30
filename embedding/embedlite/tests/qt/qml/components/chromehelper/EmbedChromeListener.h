@@ -10,6 +10,7 @@
 #include "nsWeakReference.h"
 #include "nsIObserver.h"
 #include "nsIDOMEventListener.h"
+#include "nsIEmbedAppService.h"
 
 class EmbedChromeListener : public nsIObserver,
                             public nsIDOMEventListener,
@@ -24,6 +25,11 @@ public:
     NS_DECL_NSIDOMEVENTLISTENER
 
     nsresult Init();
+private:
+    void WindowCreated(nsIDOMWindow* aWin);
+    void WindowDestroyed(nsIDOMWindow* aWin);
+    nsCOMPtr<nsIEmbedAppService> mService;
+    int mWindowCounter;
 };
 
 #define NS_EMBED_CHROME_CONTRACTID "@mozilla.org/embed-chrome-component;1"

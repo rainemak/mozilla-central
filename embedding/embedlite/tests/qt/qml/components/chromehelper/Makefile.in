@@ -31,7 +31,7 @@ CPPSRCS += \
         EmbedChromeListener.cpp \
         $(NULL)
 
-LOCAL_INCLUDES	= -I$(srcdir) \
+LOCAL_INCLUDES = -I$(srcdir) \
     $(TK_CFLAGS) \
     $(NULL)
 

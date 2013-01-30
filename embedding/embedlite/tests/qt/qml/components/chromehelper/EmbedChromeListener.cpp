@@ -17,8 +17,12 @@
 #include "nsIDOMEvent.h"
 #include "nsPIDOMWindow.h"
 
+#pragma GCC visibility push(default)
+#include <json/json.h>
+#pragma GCC visibility pop
 
 EmbedChromeListener::EmbedChromeListener()
+  : mWindowCounter(0)
 {
     LOGT();
 }
@@ -61,21 +65,11 @@ EmbedChromeListener::Observe(nsISupports *aSubject,
     if (!strcmp(aTopic, "domwindowopened")) {
         nsCOMPtr<nsIDOMWindow> win = do_QueryInterface(aSubject, &rv);
         NS_ENSURE_SUCCESS(rv, NS_OK);
-        LOGT("WindowOpened: %p", win.get());
-        nsCOMPtr<nsPIDOMWindow> pidomWindow = do_GetInterface(win);
-        NS_ENSURE_TRUE(pidomWindow, NS_ERROR_FAILURE);
-        nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
-        NS_ENSURE_TRUE(target, NS_ERROR_FAILURE);
-        target->AddEventListener(NS_LITERAL_STRING("DOMTitleChanged"), this,  PR_FALSE);
+        WindowCreated(win);
     } else if (!strcmp(aTopic, "domwindclosed")) {
         nsCOMPtr<nsIDOMWindow> win = do_QueryInterface(aSubject, &rv);
         NS_ENSURE_SUCCESS(rv, NS_OK);
-        LOGT("WindowClosed: %p", win.get());
-        nsCOMPtr<nsPIDOMWindow> pidomWindow = do_GetInterface(win);
-        NS_ENSURE_TRUE(pidomWindow, NS_ERROR_FAILURE);
-        nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
-        NS_ENSURE_TRUE(target, NS_ERROR_FAILURE);
-        target->RemoveEventListener(NS_LITERAL_STRING("DOMTitleChanged"), this,  PR_FALSE);
+        WindowDestroyed(win);
     } else {
         LOGT("obj:%p, top:%s", aSubject, aTopic);
     }
@@ -83,13 +77,78 @@ EmbedChromeListener::Observe(nsISupports *aSubject,
     return NS_OK;
 }
 
+void
+EmbedChromeListener::WindowCreated(nsIDOMWindow* aWin)
+{
+    LOGT("WindowOpened: %p", aWin);
+    nsCOMPtr<nsPIDOMWindow> pidomWindow = do_GetInterface(aWin);
+    NS_ENSURE_TRUE(pidomWindow, );
+    nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
+    NS_ENSURE_TRUE(target, );
+    target->AddEventListener(NS_LITERAL_STRING("DOMTitleChanged"), this,  PR_FALSE);
+    mWindowCounter++;
+    if (!mService) {
+        mService = do_GetService("@mozilla.org/embedlite-app-service;1");
+    }
+}
+
+void
+EmbedChromeListener::WindowDestroyed(nsIDOMWindow* aWin)
+{
+    LOGT("WindowClosed: %p", aWin);
+    nsCOMPtr<nsPIDOMWindow> pidomWindow = do_GetInterface(aWin);
+    NS_ENSURE_TRUE(pidomWindow, );
+    nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
+    NS_ENSURE_TRUE(target, );
+    target->RemoveEventListener(NS_LITERAL_STRING("DOMTitleChanged"), this,  PR_FALSE);
+    mWindowCounter--;
+    if (!mWindowCounter) {
+        mService = nullptr;
+    }
+}
+
+nsresult
+GetDOMWindowByNode(nsIDOMNode *aNode, nsIDOMWindow **aDOMWindow)
+{
+    nsresult rv;
+    nsCOMPtr<nsIDOMDocument> ctDoc = do_QueryInterface(aNode, &rv);
+    NS_ENSURE_SUCCESS(rv , rv);
+    nsCOMPtr<nsIDOMWindow> targetWin;
+    rv = ctDoc->GetDefaultView(getter_AddRefs(targetWin));
+    NS_ENSURE_SUCCESS(rv , rv);
+    NS_ADDREF(*aDOMWindow = targetWin);
+    return rv;
+}
+
 NS_IMETHODIMP
 EmbedChromeListener::HandleEvent(nsIDOMEvent* aEvent)
 {
+    nsresult rv;
     nsString type;
     if (aEvent) {
         aEvent->GetType(type);
     }
     LOGT("Event:'%s'", NS_ConvertUTF16toUTF8(type).get());
+    if (type.EqualsLiteral("DOMTitleChanged")) {
+        nsCOMPtr<nsIDOMEventTarget> eventTarget;
+        rv = aEvent->GetTarget(getter_AddRefs(eventTarget));
+        nsCOMPtr<nsIDOMNode> eventNode = do_QueryInterface(eventTarget, &rv);
+        nsCOMPtr<nsIDOMWindow> window;
+        rv = GetDOMWindowByNode(eventNode, getter_AddRefs(window));
+
+        nsCOMPtr<nsIDOMDocument> ctDoc;
+        window->GetDocument(getter_AddRefs(ctDoc));
+        nsString title;
+        ctDoc->GetTitle(title);
+        uint32_t winid;
+        mService->GetIDByWindow(window, &winid);
+        NS_ENSURE_TRUE(winid , NS_ERROR_FAILURE);
+        json_object* my_object = json_object_new_object();
+        LOGT("title:'%s'", NS_ConvertUTF16toUTF8(title).get());
+        json_object_object_add(my_object, "title", json_object_new_string(NS_ConvertUTF16toUTF8(title).get()));
+        mService->SendAsyncMessage(winid, NS_LITERAL_STRING("chrome:title"), NS_ConvertUTF8toUTF16(json_object_to_json_string(my_object)));
+        free(my_object);
+    }
+
     return NS_OK;
 }

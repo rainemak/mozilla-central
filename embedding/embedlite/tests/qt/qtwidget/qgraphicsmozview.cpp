@@ -14,6 +14,7 @@
 #include <QtOpenGL/QGLContext>
 #include <QInputContext>
 #include <QApplication>
+#include <QVariantMap>
 #include "EmbedQtKeyUtils.h"
 
 #include "mozilla-config.h"
@@ -79,10 +80,6 @@ public:
         q->update();
         return true;
     }
-    virtual void OnTitleChanged(const PRUnichar* aTitle) {
-        mTitle = QString((const QChar*)aTitle);
-        Q_EMIT q->titleChanged();
-    }
     virtual void OnLocationChanged(const char* aLocation, bool aCanGoBack, bool aCanGoForward) {
         mLocation = QString(aLocation);
         if (mCanGoBack != aCanGoBack || mCanGoForward != aCanGoForward) {
@@ -119,26 +116,34 @@ public:
         Q_EMIT q->viewDestroyed();
     }
     virtual void RecvAsyncMessage(const char* aMessage, const char* aData) {
-        LOGT();
-        if (!strncmp(aMessage, "embed:", 6)) {
+        if (!strncmp(aMessage, "embed:", 6) || !strncmp(aMessage, "chrome:", 7)) {
             QJson::Parser parser;
             bool ok = false;
             QVariant data = parser.parse(QByteArray(aData), &ok);
             if (ok) {
                 if (!strcmp(aMessage, "embed:alert")) {
                     Q_EMIT q->alert(data);
+                    return;
                 } else if (!strcmp(aMessage, "embed:confirm")) {
                     Q_EMIT q->confirm(data);
+                    return;
                 } else if (!strcmp(aMessage, "embed:prompt")) {
                     Q_EMIT q->prompt(data);
+                    return;
                 } else if (!strcmp(aMessage, "embed:auth")) {
                     Q_EMIT q->authRequired(data);
+                    return;
+                } else if (!strcmp(aMessage, "chrome:title")) {
+                    QMap<QString, QVariant> map = data.toMap();
+                    mTitle = map["title"].toString();
+                    Q_EMIT q->titleChanged();
+                    return;
                 }
-                return;
             } else {
                 LOGT("parse: err:%s, errLine:%i", parser.errorString().toUtf8().data(), parser.errorLine());
             }
         }
+        LOGT("mesg:%s, data:%s", aMessage, aData);
         Q_EMIT q->recvAsyncMessage(aMessage, aData);
     }
     virtual char* RecvSyncMessage(const char* aMessage, const char* aData) {
