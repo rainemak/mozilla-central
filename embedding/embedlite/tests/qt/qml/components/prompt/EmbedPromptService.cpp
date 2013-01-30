@@ -16,7 +16,6 @@
 #include "nsIInterfaceRequestor.h"
 #include "nsIURI.h"
 #include "nsServiceManagerUtils.h"
-#include "nsIChannel.h"
 #include "nsILoadContext.h"
 #include "nsIAuthInformation.h"
 #include "nsICancelable.h"
@@ -26,7 +25,10 @@
 #include "nsIProtocolHandler.h"
 #include "nsIDOMWindow.h"
 
+#pragma GCC system_header
+#pragma GCC visibility push(default)
 #include "json.h"
+#pragma GCC visibility pop
 
 // Prompt Factory Implementation
 

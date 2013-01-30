@@ -17,6 +17,7 @@
 #include "nsIAuthInformation.h"
 #include "nsDataHashtable.h"
 #include "nsIEmbedAppService.h"
+#include "nsIChannel.h"
 #include <map>
 #include <string>
 
@@ -123,6 +124,6 @@ public:
 }}
 
 #define EMBED_LITE_PROMPT_SERVICE_CID \
- {0x6781a3b0, 0x5cfa, 0x11e2, {0x8c, 0x9c, 0x33, 0x95, 0x8b, 0xdf, 0x7a, 0xb6}}
+ {0x6781a4b0, 0x6cfa, 0x11e2, {0x8c, 0x9c, 0x33, 0x95, 0x8b, 0xdf, 0x7a, 0xb6}}
 
 #endif /* __EmbedPromptService_h */

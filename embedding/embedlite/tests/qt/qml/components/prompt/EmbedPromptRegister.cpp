@@ -4,16 +4,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "nsXPCOMGlue.h"
-#include "EmbedChildListener.h"
+#include "EmbedPromptRegister.h"
 
-#include "nsNetCID.h"
 #include "nsServiceManagerUtils.h"
 #include "nsIObserverService.h"
-#include "nsStringGlue.h"
-#include "nsIChannel.h"
 #include "EmbedPromptService.h"
-
 #include "nsIComponentRegistrar.h"
 #include "nsIComponentManager.h"
 #include "GenericFactory.h"
@@ -24,18 +19,18 @@ using namespace mozilla::embedlite;
 
 NS_GENERIC_FACTORY_CONSTRUCTOR(EmbedPromptFactory)
 
-EmbedChildListener::EmbedChildListener()
+EmbedPromptRegister::EmbedPromptRegister()
 {
 }
 
-EmbedChildListener::~EmbedChildListener()
+EmbedPromptRegister::~EmbedPromptRegister()
 {
 }
 
-NS_IMPL_ISUPPORTS2(EmbedChildListener, nsIObserver, nsSupportsWeakReference)
+NS_IMPL_ISUPPORTS2(EmbedPromptRegister, nsIObserver, nsSupportsWeakReference)
 
 nsresult
-EmbedChildListener::Init()
+EmbedPromptRegister::Init()
 {
     nsCOMPtr<nsIComponentRegistrar> cr;
     nsresult rv = NS_GetComponentRegistrar(getter_AddRefs(cr));
@@ -81,7 +76,7 @@ EmbedChildListener::Init()
 }
 
 NS_IMETHODIMP
-EmbedChildListener::Observe(nsISupports *aSubject,
+EmbedPromptRegister::Observe(nsISupports *aSubject,
                             const char *aTopic,
                             const PRUnichar *aData)
 {

@@ -4,18 +4,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef EmbedChildListener_H_
-#define EmbedChildListener_H_
+#ifndef EmbedPromptRegister_H_
+#define EmbedPromptRegister_H_
 
 #include "nsWeakReference.h"
 #include "nsIObserver.h"
 
-class EmbedChildListener : public nsIObserver,
+class EmbedPromptRegister : public nsIObserver,
                            public nsSupportsWeakReference
 {
 public:
-    EmbedChildListener();
-    virtual ~EmbedChildListener();
+    EmbedPromptRegister();
+    virtual ~EmbedPromptRegister();
 
     NS_DECL_ISUPPORTS
     NS_DECL_NSIOBSERVER
@@ -23,12 +23,12 @@ public:
     nsresult Init();
 };
 
-#define NS_EMBED_CHILD_CONTRACTID "@mozilla.org/embed-child-starter;1"
-#define NS_EMBED_CHILD_SERVICE_CLASSNAME "EmbedChild Component"
-#define NS_EMBED_CHILD_SERVICE_CID \
-{ 0xa1552da1, \
-  0x8122, \
-  0x48ad, \
-  { 0xa5, 0x9f, 0x4f, 0xcc, 0xae, 0x6e, 0x8e, 0xc6 }}
+#define NS_EMBED_PROMPT_CONTRACTID "@mozilla.org/embed-prompt-component;1"
+#define NS_EMBED_PROMPT_SERVICE_CLASSNAME "Embed Prompt Component"
+#define NS_EMBED_PROMPT_SERVICE_CID \
+{ 0x195eb924, \
+  0x3ab1, \
+  0x11e2, \
+  { 0xa5, 0x9f, 0x4f, 0xbc, 0xae, 0x3e, 0x4e, 0xc3 }}
 
-#endif /*EmbedChildListener_H_*/
+#endif /*EmbedPromptRegister_H_*/
