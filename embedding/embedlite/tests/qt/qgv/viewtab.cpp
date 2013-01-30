@@ -101,7 +101,7 @@ char*
 ViewTab::RecvSyncMessage(const char* aMessage, const char* aData)
 {
     printf(">>>>>>Func:%s::%d msg:%s, data:%s\n", __PRETTY_FUNCTION__, __LINE__, aMessage, aData);
-    return QString("{\"id\": \"test\", \"val\": \"5\"}").toUtf8().data();
+    return strdup(QString("{\"id\": \"test\", \"val\": \"5\"}").toUtf8().data());
 }
 
 void

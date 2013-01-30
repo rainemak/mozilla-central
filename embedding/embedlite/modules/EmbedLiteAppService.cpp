@@ -59,7 +59,6 @@ void EmbedLiteAppService::RegisterView(uint32_t aId)
 {
     EmbedLiteViewThreadChild* view = sGetViewById(aId);
     NS_ENSURE_TRUE(view, );
-    printf(">>>>>>Func:%s::%d OuterWindowID:%lu, id:%u\n", __FUNCTION__, __LINE__, view->GetOuterID(), aId);
     mIDMap[view->GetOuterID()] = aId;
 }
 

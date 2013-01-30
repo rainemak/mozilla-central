@@ -9,8 +9,10 @@
 
 #include "nsWeakReference.h"
 #include "nsIObserver.h"
+#include "nsIDOMEventListener.h"
 
 class EmbedChromeListener : public nsIObserver,
+                            public nsIDOMEventListener,
                             public nsSupportsWeakReference
 {
 public:
@@ -19,6 +21,7 @@ public:
 
     NS_DECL_ISUPPORTS
     NS_DECL_NSIOBSERVER
+    NS_DECL_NSIDOMEVENTLISTENER
 
     nsresult Init();
 };
