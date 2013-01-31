@@ -124,7 +124,7 @@ GetDOMWindowByNode(nsIDOMNode *aNode, nsIDOMWindow **aDOMWindow)
     nsCOMPtr<nsIDOMWindow> targetWin;
     rv = ctDoc->GetDefaultView(getter_AddRefs(targetWin));
     NS_ENSURE_SUCCESS(rv , rv);
-    NS_ADDREF(*aDOMWindow = targetWin);
+    *aDOMWindow = targetWin.forget().get();
     return rv;
 }
 
@@ -156,23 +156,13 @@ EmbedChromeListener::HandleEvent(nsIDOMEvent* aEvent)
         NS_ENSURE_TRUE(winid , NS_ERROR_FAILURE);
 
         nsString sendString;
-#if 0
-        // Switch to this implementation as soon nsIEmbedLiteJSON ready to use
+        // Just simple property bag support still
         nsCOMPtr<nsIEmbedLiteJSON> json = do_GetService("@mozilla.org/embedlite-json;1");
         nsCOMPtr<nsIWritablePropertyBag2> root;
         json->CreateObject(getter_AddRefs(root));
-        nsCOMPtr<nsIWritableVariant> value = do_CreateInstance("@mozilla.org/variant;1");
-        value->SetAsInt32(24);
         root->SetPropertyAsAString(NS_LITERAL_STRING("title"), title);
         nsString outStr;
-        json->CreateJSON(winid, root, sendString);
-#else
-        json_object* my_object = json_object_new_object();
-        LOGT("title:'%s'", NS_ConvertUTF16toUTF8(title).get());
-        json_object_object_add(my_object, "title", json_object_new_string(NS_ConvertUTF16toUTF8(title).get()));
-        sendString = NS_ConvertUTF8toUTF16(json_object_to_json_string(my_object));
-        free(my_object);
-#endif
+        json->CreateJSON(root, sendString);
         mService->SendAsyncMessage(winid, NS_LITERAL_STRING("chrome:title"), sendString);
     }
 

@@ -24,6 +24,7 @@
 #include "nsNetCID.h"
 #include "nsIProtocolHandler.h"
 #include "nsIDOMWindow.h"
+#include "nsIEmbedLiteJSON.h"
 
 #pragma GCC visibility push(default)
 #include <json/json.h>
@@ -49,13 +50,11 @@ EmbedPromptFactory::GetPrompt(nsIDOMWindow* aParent, const nsIID& iid, void **re
 {
     if (iid.Equals(NS_GET_IID(nsIAuthPrompt)) ||
         iid.Equals(NS_GET_IID(nsIAuthPrompt2))) {
-        EmbedAuthPromptService* service = new EmbedAuthPromptService(aParent);
-        *result = service;
-        NS_ADDREF(service);
+        nsRefPtr<EmbedAuthPromptService> service = new EmbedAuthPromptService(aParent);
+        *result = service.forget().get();
     } else if (iid.Equals(NS_GET_IID(nsIPrompt))) {
-        EmbedPromptService* service = new EmbedPromptService(aParent);
-        *result = service;
-        NS_ADDREF(service);
+        nsRefPtr<EmbedPromptService> service = new EmbedPromptService(aParent);
+        *result = service.forget().get();
     }
 
     return NS_OK;
@@ -131,21 +130,25 @@ EmbedPromptService::AlertCheck(const PRUnichar* aDialogTitle,
 {
     uint32_t winid;
     mService->GetIDByWindow(mWin, &winid);
-    json_object* my_object = json_object_new_object();
-    json_object_object_add(my_object, "title", json_object_new_string(NS_ConvertUTF16toUTF8(aDialogTitle).get()));
-    json_object_object_add(my_object, "text", json_object_new_string(NS_ConvertUTF16toUTF8(aDialogText).get()));
-    json_object_object_add(my_object, "winid", json_object_new_int(winid));
 
+    nsString sendString;
+    // Just simple property bag support still
+    nsCOMPtr<nsIEmbedLiteJSON> json = do_GetService("@mozilla.org/embedlite-json;1");
+    nsCOMPtr<nsIWritablePropertyBag2> root;
+    json->CreateObject(getter_AddRefs(root));
+    root->SetPropertyAsAString(NS_LITERAL_STRING("title"), nsDependentString(aDialogTitle));
+    root->SetPropertyAsAString(NS_LITERAL_STRING("text"), nsDependentString(aDialogText));
+    root->SetPropertyAsUint32(NS_LITERAL_STRING("winid"), winid);
     if (aCheckMsg && aCheckValue) {
-        json_object_object_add(my_object, "checkmsg", json_object_new_string(NS_ConvertUTF16toUTF8(aCheckMsg).get()));
-        json_object_object_add(my_object, "checkmsgval", json_object_new_boolean(*aCheckValue));
+        root->SetPropertyAsAString(NS_LITERAL_STRING("checkmsg"), nsDependentString(aCheckMsg));
+        root->SetPropertyAsBool(NS_LITERAL_STRING("checkmsgval"), *aCheckValue);
     }
+    json->CreateJSON(root, sendString);
 
     mResponseMap[winid] = EmbedPromptResponse();
 
-    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:alert"), NS_ConvertUTF8toUTF16(json_object_to_json_string(my_object)));
+    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:alert"), sendString);
     mService->AddMessageListener("alertresponse", this);
-    free(my_object);
 
     nsresult rv(NS_OK);
 
@@ -209,24 +212,29 @@ EmbedPromptService::ConfirmCheck(const PRUnichar* aDialogTitle,
 {
     uint32_t winid;
     mService->GetIDByWindow(mWin, &winid);
-    json_object* my_object = json_object_new_object();
-    json_object_object_add(my_object, "title", json_object_new_string(NS_ConvertUTF16toUTF8(aDialogTitle).get()));
-    json_object_object_add(my_object, "text", json_object_new_string(NS_ConvertUTF16toUTF8(aDialogText).get()));
-    json_object_object_add(my_object, "winid", json_object_new_int(winid));
 
+    nsString sendString;
+    // Just simple property bag support still
+    nsCOMPtr<nsIEmbedLiteJSON> json = do_GetService("@mozilla.org/embedlite-json;1");
+    nsCOMPtr<nsIWritablePropertyBag2> root;
+    json->CreateObject(getter_AddRefs(root));
+    root->SetPropertyAsAString(NS_LITERAL_STRING("title"), nsDependentString(aDialogTitle));
+    root->SetPropertyAsAString(NS_LITERAL_STRING("text"), nsDependentString(aDialogText));
+    root->SetPropertyAsUint32(NS_LITERAL_STRING("winid"), winid);
     if (aCheckMsg && aCheckValue) {
-        json_object_object_add(my_object, "checkmsg", json_object_new_string(NS_ConvertUTF16toUTF8(aCheckMsg).get()));
-        json_object_object_add(my_object, "checkmsgval", json_object_new_boolean(*aCheckValue));
+        root->SetPropertyAsAString(NS_LITERAL_STRING("checkmsg"), nsDependentString(aCheckMsg));
+        root->SetPropertyAsBool(NS_LITERAL_STRING("checkmsgval"), *aCheckValue);
     }
     if (aConfirm) {
-        json_object_object_add(my_object, "confirmval", json_object_new_boolean(*aConfirm));
+        root->SetPropertyAsBool(NS_LITERAL_STRING("confirmval"), *aConfirm);
     }
+
+    json->CreateJSON(root, sendString);
 
     mResponseMap[winid] = EmbedPromptResponse();
 
-    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:confirm"), NS_ConvertUTF8toUTF16(json_object_to_json_string(my_object)));
+    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:confirm"), sendString);
     mService->AddMessageListener("confirmresponse", this);
-    free(my_object);
 
     nsresult rv(NS_OK);
 
@@ -299,27 +307,31 @@ EmbedPromptService::Prompt(const PRUnichar* aDialogTitle,
 {
     uint32_t winid;
     mService->GetIDByWindow(mWin, &winid);
-    json_object* my_object = json_object_new_object();
-    json_object_object_add(my_object, "title", json_object_new_string(NS_ConvertUTF16toUTF8(aDialogTitle).get()));
-    json_object_object_add(my_object, "text", json_object_new_string(NS_ConvertUTF16toUTF8(aDialogText).get()));
-    json_object_object_add(my_object, "winid", json_object_new_int(winid));
 
+    nsString sendString;
+    // Just simple property bag support still
+    nsCOMPtr<nsIEmbedLiteJSON> json = do_GetService("@mozilla.org/embedlite-json;1");
+    nsCOMPtr<nsIWritablePropertyBag2> root;
+    json->CreateObject(getter_AddRefs(root));
+    root->SetPropertyAsAString(NS_LITERAL_STRING("title"), nsDependentString(aDialogTitle));
+    root->SetPropertyAsAString(NS_LITERAL_STRING("text"), nsDependentString(aDialogText));
+    root->SetPropertyAsUint32(NS_LITERAL_STRING("winid"), winid);
     if (aCheckMsg && aCheckValue) {
-        json_object_object_add(my_object, "checkmsg", json_object_new_string(NS_ConvertUTF16toUTF8(aCheckMsg).get()));
-        json_object_object_add(my_object, "checkmsgval", json_object_new_boolean(*aCheckValue));
+        root->SetPropertyAsAString(NS_LITERAL_STRING("checkmsg"), nsDependentString(aCheckMsg));
+        root->SetPropertyAsBool(NS_LITERAL_STRING("checkmsgval"), *aCheckValue);
     }
     if (aConfirm) {
-        json_object_object_add(my_object, "confirmval", json_object_new_boolean(*aConfirm));
+        root->SetPropertyAsBool(NS_LITERAL_STRING("confirmval"), *aConfirm);
     }
     if (aValue) {
-        json_object_object_add(my_object, "defaultValue", json_object_new_string(NS_ConvertUTF16toUTF8(*aValue).get()));
+        root->SetPropertyAsAString(NS_LITERAL_STRING("defaultValue"), nsDependentString(*aValue));
     }
+    json->CreateJSON(root, sendString);
 
     mResponseMap[winid] = EmbedPromptResponse();
 
-    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:prompt"), NS_ConvertUTF8toUTF16(json_object_to_json_string(my_object)));
+    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:prompt"), sendString);
     mService->AddMessageListener("promptresponse", this);
-    free(my_object);
 
     nsresult rv(NS_OK);
 
@@ -591,7 +603,7 @@ EmbedAuthPromptService::AsyncPromptAuth(nsIChannel* aChannel,
     EmbedAsyncAuthPrompt* asyncPrompt = asyncPrompts[hashKey.get()];
     if (asyncPrompt) {
         asyncPrompt->consumers.AppendElement(consumer);
-        NS_ADDREF(*_retval = consumer);
+        *_retval = consumer.forget().get();
         return NS_OK;
     }
     asyncPrompt = new EmbedAsyncAuthPrompt(consumer, aChannel, authInfo, level, false);
@@ -622,18 +634,23 @@ EmbedAuthPromptService::DoSendAsyncPrompt(EmbedAsyncAuthPrompt* mPrompt)
     uint32_t winid;
     mService->GetIDByWindow(mPrompt->mWin, &winid);
 
-    json_object* my_object = json_object_new_object();
-    json_object_object_add(my_object, "title", json_object_new_string(httpRealm.get()));
-    json_object_object_add(my_object, "text", json_object_new_string(hostname.get()));
-    json_object_object_add(my_object, "defaultValue", json_object_new_string(NS_ConvertUTF16toUTF8(username).get()));
-    json_object_object_add(my_object, "passwordOnly", json_object_new_int(isOnlyPassword));
-    json_object_object_add(my_object, "winid", json_object_new_int(winid));
+    nsString sendString;
+    // Just simple property bag support still
+    nsCOMPtr<nsIEmbedLiteJSON> json = do_GetService("@mozilla.org/embedlite-json;1");
+    nsCOMPtr<nsIWritablePropertyBag2> root;
+    json->CreateObject(getter_AddRefs(root));
+    root->SetPropertyAsACString(NS_LITERAL_STRING("title"), httpRealm);
+    root->SetPropertyAsACString(NS_LITERAL_STRING("text"), hostname);
+    root->SetPropertyAsUint32(NS_LITERAL_STRING("winid"), winid);
+    root->SetPropertyAsBool(NS_LITERAL_STRING("passwordOnly"), isOnlyPassword);
+    root->SetPropertyAsAString(NS_LITERAL_STRING("defaultValue"), username);
+
+    json->CreateJSON(root, sendString);
 
     mResponseMap[winid] = EmbedPromptResponse();
 
-    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:auth"), NS_ConvertUTF8toUTF16(json_object_to_json_string(my_object)));
+    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:auth"), sendString);
     mService->AddMessageListener("authresponse", this);
-    free(my_object);
 
     mModalDepth++;
     int origModalDepth = mModalDepth;

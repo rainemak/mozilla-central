@@ -9,6 +9,8 @@
 #include "EmbedLiteAppService.h"
 #include "nsServiceManagerUtils.h"
 #include "jsapi.h"
+#include "xpcprivate.h"
+#include "XPCQuickStubs.h"
 
 EmbedLiteJSON::EmbedLiteJSON()
 {
@@ -23,19 +25,16 @@ NS_IMPL_ISUPPORTS1(EmbedLiteJSON, nsIEmbedLiteJSON)
 NS_IMETHODIMP
 EmbedLiteJSON::CreateObject(nsIWritablePropertyBag2 * *aObject)
 {
-    nsHashPropertyBag *hpb = new nsHashPropertyBag();
+    nsRefPtr<nsHashPropertyBag> hpb = new nsHashPropertyBag();
     if (!hpb)
         return NS_ERROR_OUT_OF_MEMORY;
 
-    NS_ADDREF(hpb);
-
     nsresult rv = hpb->Init();
     if (NS_FAILED(rv)) {
-        NS_RELEASE(hpb);
         return rv;
     }
 
-    *aObject = hpb;
+    *aObject = hpb.forget().get();
     return NS_OK;
 }
 
@@ -49,11 +48,10 @@ JSONCreator(const jschar* aBuf, uint32_t aLen, void* aData)
 }
 
 NS_IMETHODIMP
-EmbedLiteJSON::ParseJSON(unsigned int aWinID, nsAString const& aJson, nsIPropertyBag** aRoot)
+EmbedLiteJSON::ParseJSON(nsAString const& aJson, nsIPropertyBag** aRoot)
 {
-    nsCOMPtr<nsIEmbedAppService> service = do_GetService("@mozilla.org/embedlite-app-service;1");
-    EmbedLiteAppService* intService = static_cast<EmbedLiteAppService*>(service.get());
-    JSContext* cx = intService->GetAnyJSContext(aWinID);
+    XPCJSContextStack* stack = XPCJSRuntime::Get()->GetJSContextStack();
+    JSContext*cx = stack->GetSafeJSContext();
     NS_ENSURE_TRUE(cx, NS_ERROR_FAILURE);
 
     JSAutoRequest ar(cx);
@@ -69,27 +67,62 @@ EmbedLiteJSON::ParseJSON(unsigned int aWinID, nsAString const& aJson, nsIPropert
     CreateObject(getter_AddRefs(bag));
     NS_WARNING("Not implemented conversion from jsval to PropertyBag");
 
-    NS_ADDREF(*aRoot = bag);
+    *aRoot = bag.forget().get();
     return NS_OK;
 }
 
-NS_IMETHODIMP
-EmbedLiteJSON::CreateJSON(uint32_t aWinID, nsIPropertyBag *aRoot, nsAString & outJson)
+static bool SetPropFromVariant(nsIProperty* aProp, JSContext* aCx, JSObject* aObj)
 {
-    nsCOMPtr<nsIEmbedAppService> service = do_GetService("@mozilla.org/embedlite-app-service;1");
-    EmbedLiteAppService* intService = static_cast<EmbedLiteAppService*>(service.get());
-    JSContext* cx = intService->GetAnyJSContext(aWinID);
+    jsval rval = JSVAL_NULL;
+    nsString name;
+    nsCOMPtr<nsIVariant> aVariant;
+    aProp->GetValue(getter_AddRefs(aVariant));
+    aProp->GetName(name);
+
+    XPCCallContext ccx(NATIVE_CALLER, aCx);
+    if (!ccx.IsValid())
+        return false;
+    XPCLazyCallContext lccx(ccx);
+    ccx.SetScopeForNewJSObjects(aObj);
+
+    if (!xpc_qsVariantToJsval(lccx, aVariant, &rval)) {
+        NS_ERROR("Failed to convert nsIVariant to jsval");
+        return false;
+    }
+
+    if (JS_SetProperty(aCx, aObj, NS_ConvertUTF16toUTF8(name).get(), &rval)) {
+        NS_ERROR("Failed to set js object property");
+        return false;
+    }
+    return true;
+}
+
+NS_IMETHODIMP
+EmbedLiteJSON::CreateJSON(nsIPropertyBag *aRoot, nsAString & outJson)
+{
+    XPCJSContextStack* stack = XPCJSRuntime::Get()->GetJSContextStack();
+    JSContext*cx = stack->GetSafeJSContext();
     NS_ENSURE_TRUE(cx, NS_ERROR_FAILURE);
+
     JSAutoRequest ar(cx);
     JSObject* obj = JS_NewObject(cx, NULL, NULL, NULL);
     if (!obj)
         return NS_ERROR_FAILURE;
 
     JSAutoCompartment ac(cx, obj);
-    jsval v0 = JSVAL_TRUE;
-    JS_SetProperty(cx, obj, "here", &v0);
-    jsval v1 = JSVAL_FALSE;
-    JS_SetProperty(cx, obj, "here2", &v1);
+
+    nsCOMPtr<nsISimpleEnumerator> windowEnumerator;
+    aRoot->GetEnumerator(getter_AddRefs(windowEnumerator));
+    bool more;
+    windowEnumerator->HasMoreElements(&more);
+    while (more) {
+        nsCOMPtr<nsIProperty> prop;
+        windowEnumerator->GetNext(getter_AddRefs(prop));
+        if (prop) {
+            SetPropFromVariant(prop, cx, obj);
+        }
+        windowEnumerator->HasMoreElements(&more);
+    }
     jsval vlt = OBJECT_TO_JSVAL(obj);
 
     NS_ENSURE_TRUE(JS_Stringify(cx, &vlt, nullptr, JSVAL_NULL, JSONCreator, &outJson), NS_ERROR_FAILURE);
