@@ -308,6 +308,7 @@ QGraphicsMozView::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, 
             if (d->mLastIsGoodRotation) {
                 // FIXME need to find proper rect using proper transform chain
                 QRect eraseRect = painter->transform().isRotating() ? affine.mapRect(r) : r;
+                painter->beginNativePainting();
                 EraseBackgroundGL(painter, eraseRect);
                 bool retval = d->mView->RenderGL();
                 painter->endNativePainting();
