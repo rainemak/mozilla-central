@@ -58,9 +58,6 @@ protected:
     virtual bool RecvInitialized();
 
     virtual bool
-    RecvOnTitleChanged(const nsString& aTitle);
-
-    virtual bool
     RecvOnLocationChanged(const nsCString& aLocation, const bool& aCanGoBack, const bool& aCanGoForward);
 
     virtual bool

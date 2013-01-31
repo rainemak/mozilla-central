@@ -33,7 +33,6 @@
 
 #define MOZ_AFTER_PAINT_LITERAL "MozAfterPaint"
 #define MOZ_DOMContentLoaded "DOMContentLoaded"
-#define MOZ_DOMTitleChanged "DOMTitleChanged"
 #define MOZ_DOMLinkAdded "DOMLinkAdded"
 #define MOZ_DOMWillOpenModalDialog "DOMWillOpenModalDialog"
 #define MOZ_DOMModalDialogClosed "DOMModalDialogClosed"
@@ -406,12 +405,6 @@ WebBrowserChrome::HandleEvent(nsIDOMEvent* aEvent)
             mListener->OnContentLoaded(docURI.get());
         }
         // Need send session history from here
-    } else if (type.EqualsLiteral(MOZ_DOMTitleChanged)) {
-        nsCOMPtr<nsIDOMDocument> ctDoc;
-        docWin->GetDocument(getter_AddRefs(ctDoc));
-        nsString title;
-        ctDoc->GetTitle(title);
-        mListener->OnTitleChanged(title.get());
     } else if (type.EqualsLiteral(MOZ_DOMLinkAdded)) {
         nsCOMPtr<nsIDOMEventTarget> origTarget;
         aEvent->GetOriginalTarget(getter_AddRefs(origTarget));
@@ -663,8 +656,7 @@ NS_IMETHODIMP WebBrowserChrome::GetTitle(PRUnichar ** /*aTitle*/)
 
 NS_IMETHODIMP WebBrowserChrome::SetTitle(const PRUnichar *aTitle)
 {
-    NS_ENSURE_TRUE(mListener, NS_ERROR_FAILURE);
-    mListener->OnTitleChanged(aTitle);
+    LOGNI();
     return NS_OK;
 }
 
@@ -724,7 +716,6 @@ void WebBrowserChrome::SetEventHandler()
     nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
     NS_ENSURE_TRUE(target, );
     target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMContentLoaded), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMTitleChanged), this,  PR_FALSE);
     target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMLinkAdded), this,  PR_FALSE);
     target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMWillOpenModalDialog), this,  PR_FALSE);
     target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMModalDialogClosed), this,  PR_FALSE);
@@ -751,7 +742,6 @@ void WebBrowserChrome::RemoveEventHandler()
     nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
     NS_ENSURE_TRUE(target, );
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMContentLoaded), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMTitleChanged), this,  PR_FALSE);
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMLinkAdded), this,  PR_FALSE);
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMWillOpenModalDialog), this,  PR_FALSE);
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMModalDialogClosed), this,  PR_FALSE);

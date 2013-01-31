@@ -201,18 +201,6 @@ EmbedLiteViewThreadParent::RecvInitialized()
 }
 
 bool
-EmbedLiteViewThreadParent::RecvOnTitleChanged(const nsString& aTitle)
-{
-    LOGNI();
-    if (mViewAPIDestroyed)
-        return true;
-
-    NS_ENSURE_TRUE(mView, false);
-    mView->GetListener()->OnTitleChanged(aTitle.get());
-    return true;
-}
-
-bool
 EmbedLiteViewThreadParent::RecvOnLocationChanged(const nsCString& aLocation,
                                                  const bool& aCanGoBack,
                                                  const bool& aCanGoForward)

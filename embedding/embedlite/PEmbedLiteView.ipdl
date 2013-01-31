@@ -56,7 +56,6 @@ parent:
     async Initialized();
     async __delete__();
 
-    async OnTitleChanged(nsString aTitle);
     async OnLocationChanged(nsCString aLocation, bool aCanGoBack, bool aCanGoForward);
     async OnLoadStarted(nsCString aLocation);
     async OnLoadFinished();

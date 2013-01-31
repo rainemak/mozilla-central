@@ -92,10 +92,6 @@ public:
             self->mApp->PostTask(&MyListener::DoDestroyApp, self, 100);
         }
     }
-    virtual void OnTitleChanged(const PRUnichar* aTitle)
-    {
-        printf("OnTitleChanged: title:%s\n", NS_ConvertUTF16toUTF8(aTitle).get());
-    }
     virtual void OnLocationChanged(const char* aLocation, bool aCanGoBack, bool aCanGoForward)
     {
         printf("OnLocationChanged: loc:%s, canBack:%i, canForw:%i\n", aLocation, aCanGoBack, aCanGoForward);

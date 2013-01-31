@@ -511,12 +511,6 @@ EmbedLiteViewThreadChild::RecvInputDataTouchMoveEvent(const mozilla::MultiTouchI
     return RecvInputDataTouchEvent(aData, res, diff);
 }
 
-/* void onTitleChanged (in wstring aTitle) */
-NS_IMETHODIMP EmbedLiteViewThreadChild::OnTitleChanged(const PRUnichar* aTitle)
-{
-    return SendOnTitleChanged(nsDependentString(aTitle)) ? NS_OK : NS_ERROR_FAILURE;
-}
-
 /* void onLocationChanged (in string aLocation) */
 NS_IMETHODIMP EmbedLiteViewThreadChild::OnLocationChanged(const char* aLocation, bool aCanGoBack, bool aCanGoForward)
 {

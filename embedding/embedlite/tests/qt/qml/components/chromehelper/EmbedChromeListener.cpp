@@ -17,6 +17,8 @@
 #include "nsIDOMEvent.h"
 #include "nsPIDOMWindow.h"
 
+#define MOZ_DOMTitleChanged "DOMTitleChanged"
+
 #pragma GCC visibility push(default)
 #include <json/json.h>
 #pragma GCC visibility pop
@@ -85,7 +87,7 @@ EmbedChromeListener::WindowCreated(nsIDOMWindow* aWin)
     NS_ENSURE_TRUE(pidomWindow, );
     nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
     NS_ENSURE_TRUE(target, );
-    target->AddEventListener(NS_LITERAL_STRING("DOMTitleChanged"), this,  PR_FALSE);
+    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMTitleChanged), this,  PR_FALSE);
     mWindowCounter++;
     if (!mService) {
         mService = do_GetService("@mozilla.org/embedlite-app-service;1");
@@ -100,7 +102,7 @@ EmbedChromeListener::WindowDestroyed(nsIDOMWindow* aWin)
     NS_ENSURE_TRUE(pidomWindow, );
     nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
     NS_ENSURE_TRUE(target, );
-    target->RemoveEventListener(NS_LITERAL_STRING("DOMTitleChanged"), this,  PR_FALSE);
+    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMTitleChanged), this,  PR_FALSE);
     mWindowCounter--;
     if (!mWindowCounter) {
         mService = nullptr;
@@ -129,7 +131,7 @@ EmbedChromeListener::HandleEvent(nsIDOMEvent* aEvent)
         aEvent->GetType(type);
     }
     LOGT("Event:'%s'", NS_ConvertUTF16toUTF8(type).get());
-    if (type.EqualsLiteral("DOMTitleChanged")) {
+    if (type.EqualsLiteral(MOZ_DOMTitleChanged)) {
         nsCOMPtr<nsIDOMEventTarget> eventTarget;
         rv = aEvent->GetTarget(getter_AddRefs(eventTarget));
         nsCOMPtr<nsIDOMNode> eventNode = do_QueryInterface(eventTarget, &rv);

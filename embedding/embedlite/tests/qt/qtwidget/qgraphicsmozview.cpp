@@ -291,7 +291,6 @@ QGraphicsMozView::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, 
             }
             if (d->mLastIsGoodRotation) {
                 painter->fillRect(r, d->mBgColor);
-                painter->beginNativePainting();
                 bool retval = d->mView->RenderGL();
                 painter->endNativePainting();
                 if (!retval) {

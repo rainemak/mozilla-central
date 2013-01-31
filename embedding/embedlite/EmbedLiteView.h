@@ -30,7 +30,6 @@ public:
     virtual void RecvAsyncMessage(const char* aMessage, const char* aData) {}
     virtual char* RecvSyncMessage(const char* aMessage, const char* aData) { return NULL; }
 
-    virtual void OnTitleChanged(const PRUnichar* aTitle) {}
     virtual void OnLocationChanged(const char* aLocation, bool aCanGoBack, bool aCanGoForward) {}
     virtual void OnLoadStarted(const char* aLocation) {}
     virtual void OnLoadFinished(void) {}
