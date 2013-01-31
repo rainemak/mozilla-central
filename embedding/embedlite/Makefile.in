@@ -63,11 +63,13 @@ CPPSRCS = \
     WindowCreator.cpp \
     EmbedLog.cpp \
     EmbedLiteAppService.cpp \
+    EmbedLiteJSON.cpp \
     EmbedLiteModulesService.cpp \
     $(NULL)
 
 XPIDLSRCS = \
     nsIEmbedAppService.idl \
+    nsIEmbedLiteJSON.idl \
     nsIEmbedBrowserChromeListener.idl \
     $(NULL)
 

@@ -194,3 +194,10 @@ NS_IMETHODIMP EmbedLiteAppService::LeaveSecureJSContext()
     mPushedSomething--;
     return NS_OK;
 }
+
+JSContext*
+EmbedLiteAppService::GetAnyJSContext(uint32_t aWinId)
+{
+    EmbedLiteViewThreadChild* view = sGetViewById(aWinId);
+    return view->GetJSContext();
+}

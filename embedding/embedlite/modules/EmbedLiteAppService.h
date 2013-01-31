@@ -14,6 +14,7 @@
 #include <string>
 #include <map>
 
+class JSContext;
 class EmbedLiteAppService : public nsIObserver,
                             public nsIEmbedAppService
 {
@@ -30,6 +31,8 @@ public:
     void HandleAsyncMessage(const char* aMessage, const nsString& aData);
 
 private:
+    friend class EmbedLiteJSON;
+    JSContext* GetAnyJSContext(uint32_t aWinID);
     std::map<uint64_t, uint32_t> mIDMap;
     nsClassHashtable<nsCStringHashKey,
                      nsTArray<nsCOMPtr<nsIEmbedMessageListener> > > mMessageListeners;
@@ -40,5 +43,5 @@ private:
 #define NS_EMBED_LITE_APP_SERVICE_CLASSNAME "EmbedLiteApp Component"
 #define NS_EMBED_LITE_APP_SERVICE_CID NS_IEMBEDAPPSERVICE_IID
 
-#endif /*EmbedLiteAppService_H_*/
+#endif /* EmbedLiteAppService_H_ */
 

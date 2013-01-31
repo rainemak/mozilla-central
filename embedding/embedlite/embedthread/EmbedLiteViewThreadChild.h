@@ -38,6 +38,8 @@ public:
     void RecvAsyncMessage(const nsAString& aMessage,
                           const nsAString& aData);
 
+    JSContext* GetJSContext() { return mHelper ? mHelper->GetJSContext() : nullptr; }
+
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
     virtual bool RecvDestroy();
