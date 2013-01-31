@@ -25,6 +25,6 @@
 interface nsIEmbedLiteJSON : nsISupports
 {
     void createObject(out nsIWritablePropertyBag2 aObject);
-    void getString(in nsIPropertyBag aRoot, out AString outJson);
-    void getStringW(in uint32_t aWinID, in nsIPropertyBag aRoot, out AString outJson);
+    void ParseJSON(in uint32_t aWinID, in AString aJSON, out nsIPropertyBag aRoot);
+    void CreateJSON(in uint32_t aWinID, in nsIPropertyBag aRoot, out AString outJson);
 };

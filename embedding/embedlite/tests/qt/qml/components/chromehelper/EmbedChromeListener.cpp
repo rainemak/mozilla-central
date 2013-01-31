@@ -165,7 +165,7 @@ EmbedChromeListener::HandleEvent(nsIDOMEvent* aEvent)
         value->SetAsInt32(24);
         root->SetPropertyAsAString(NS_LITERAL_STRING("title"), title);
         nsString outStr;
-        json->GetStringW(winid, root, sendString);
+        json->CreateJSON(winid, root, sendString);
 #else
         json_object* my_object = json_object_new_object();
         LOGT("title:'%s'", NS_ConvertUTF16toUTF8(title).get());

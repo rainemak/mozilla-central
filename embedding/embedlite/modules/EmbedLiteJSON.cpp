@@ -49,13 +49,32 @@ JSONCreator(const jschar* aBuf, uint32_t aLen, void* aData)
 }
 
 NS_IMETHODIMP
-EmbedLiteJSON::GetString(nsIPropertyBag *aRoot, nsAString & outJson)
+EmbedLiteJSON::ParseJSON(unsigned int aWinID, nsAString const& aJson, nsIPropertyBag** aRoot)
 {
-    return NS_ERROR_NOT_IMPLEMENTED;
+    nsCOMPtr<nsIEmbedAppService> service = do_GetService("@mozilla.org/embedlite-app-service;1");
+    EmbedLiteAppService* intService = static_cast<EmbedLiteAppService*>(service.get());
+    JSContext* cx = intService->GetAnyJSContext(aWinID);
+    NS_ENSURE_TRUE(cx, NS_ERROR_FAILURE);
+
+    JSAutoRequest ar(cx);
+    jsval json = JSVAL_NULL;
+    if (!JS_ParseJSON(cx,
+                      static_cast<const jschar*>(aJson.BeginReading()),
+                      aJson.Length(),
+                      &json)) {
+        NS_ERROR("Failed to parse json string");
+        return NS_ERROR_FAILURE;
+    }
+    nsCOMPtr<nsIWritablePropertyBag2> bag;
+    CreateObject(getter_AddRefs(bag));
+    NS_WARNING("Not implemented conversion from jsval to PropertyBag");
+
+    NS_ADDREF(*aRoot = bag);
+    return NS_OK;
 }
 
 NS_IMETHODIMP
-EmbedLiteJSON::GetStringW(uint32_t aWinID, nsIPropertyBag *aRoot, nsAString & outJson)
+EmbedLiteJSON::CreateJSON(uint32_t aWinID, nsIPropertyBag *aRoot, nsAString & outJson)
 {
     nsCOMPtr<nsIEmbedAppService> service = do_GetService("@mozilla.org/embedlite-app-service;1");
     EmbedLiteAppService* intService = static_cast<EmbedLiteAppService*>(service.get());
