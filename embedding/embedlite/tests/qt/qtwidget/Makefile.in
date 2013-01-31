@@ -54,6 +54,12 @@ LIBS += \
     $(TK_LIBS) \
     $(NULL)
 
+ifeq (EGL,$(MOZ_GL_PROVIDER))
+LIBS += \
+    -lGLESv2 \
+    $(NULL)
+endif
+
 include $(topsrcdir)/config/rules.mk
 
 GARBAGE += \
