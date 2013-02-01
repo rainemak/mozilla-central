@@ -490,7 +490,8 @@ static nsCString getFormattedHostname(nsIURI* uri)
             }
         }
         if (port != handlerPort) {
-            hostname += ":" + port;
+            hostname.AppendLiteral(":");
+            hostname.AppendInt(port);
         }
     }
     return hostname;
