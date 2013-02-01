@@ -63,11 +63,6 @@ parent:
     async OnLoadProgress(int32_t aProgress, int32_t aCurTotal, int32_t aMaxTotal);
     async OnSecurityChanged(nsCString aStatus, uint32_t aState);
     async OnFirstPaint(int32_t aX, int32_t aY);
-    async OnContentLoaded(nsString aDocURI);
-    async OnLinkAdded(nsString aHref, nsString aCharset, nsString aTitle, nsString aRel, nsString aSizes, nsString aType);
-    async OnWindowOpenClose(nsString aType);
-    async OnPopupBlocked(nsCString aSpec, nsCString aCharset, nsString aPopupFeatures, nsString aPopupWinName);
-    async OnPageShowHide(nsString aType, bool aPersisted);
     async OnScrolledAreaChanged(uint32_t aWidth, uint32_t aHeight);
     async OnScrollChanged(int32_t offSetX, int32_t offSetY);
     async OnObserve(nsCString aTopic, nsString aData);

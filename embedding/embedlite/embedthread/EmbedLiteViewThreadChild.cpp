@@ -573,53 +573,6 @@ NS_IMETHODIMP EmbedLiteViewThreadChild::OnFirstPaint(int32_t aX, int32_t aY)
     return SendOnFirstPaint(aX, aY) ? NS_OK : NS_ERROR_FAILURE;
 }
 
-/* void onContentLoaded (in wstring aDocURI) */
-NS_IMETHODIMP EmbedLiteViewThreadChild::OnContentLoaded(const PRUnichar* aDocURI)
-{
-    return SendOnContentLoaded(nsDependentString(aDocURI)) ? NS_OK : NS_ERROR_FAILURE;
-}
-
-/* void onLinkAdded (in wstring aHref, in wstring aCharset, in wstring aTitle, in wstring aRel, in wstring aSizes, in wstring aType) */
-NS_IMETHODIMP EmbedLiteViewThreadChild::OnLinkAdded(const PRUnichar* aHref,
-                                                    const PRUnichar* aCharset,
-                                                    const PRUnichar* aTitle,
-                                                    const PRUnichar* aRel,
-                                                    const PRUnichar* aSizes,
-                                                    const PRUnichar* aType)
-{
-    return SendOnLinkAdded(
-        nsDependentString(aHref),
-        nsDependentString(aCharset),
-        nsDependentString(aTitle),
-        nsDependentString(aRel),
-        nsDependentString(aSizes),
-        nsDependentString(aType)) ? NS_OK : NS_ERROR_FAILURE;
-}
-
-/* void onWindowOpenClose (in wstring aType) */
-NS_IMETHODIMP EmbedLiteViewThreadChild::OnWindowOpenClose(const PRUnichar* aType)
-{
-    return SendOnWindowOpenClose(nsDependentString(aType)) ? NS_OK : NS_ERROR_FAILURE;
-}
-
-/* void onPopupBlocked (in string aSpec, in string aCharset, in wstring aPopupFeatures, in wstring aPopupWinName) */
-NS_IMETHODIMP EmbedLiteViewThreadChild::OnPopupBlocked(const char* aSpec, const char* aCharset,
-                                                       const PRUnichar* aPopupFeatures,
-                                                       const PRUnichar* aPopupWinName)
-{
-    return SendOnPopupBlocked(
-        nsDependentCString(aSpec),
-        nsDependentCString(aCharset),
-        nsDependentString(aPopupFeatures),
-        nsDependentString(aPopupWinName)) ? NS_OK : NS_ERROR_FAILURE;
-}
-
-/* void onPageShowHide (in wstring aType, in boolean aPersisted) */
-NS_IMETHODIMP EmbedLiteViewThreadChild::OnPageShowHide(const PRUnichar* aType, bool aPersisted)
-{
-    return SendOnPageShowHide(nsDependentString(aType), aPersisted) ? NS_OK : NS_ERROR_FAILURE;
-}
-
 /* void onScrolledAreaChanged (in uint32_t aWidth, in uint32_t aHeight) */
 NS_IMETHODIMP EmbedLiteViewThreadChild::OnScrolledAreaChanged(uint32_t aWidth, uint32_t aHeight)
 {
@@ -637,12 +590,6 @@ NS_IMETHODIMP EmbedLiteViewThreadChild::OnObserve(const char* aTopic, const PRUn
 {
      return SendOnObserve(nsDependentCString(aTopic),
                           nsDependentString(aData)) ? NS_OK : NS_ERROR_FAILURE;
-}
-
-NS_IMETHODIMP EmbedLiteViewThreadChild::OnMetaAdded()
-{
-    LOGNI();
-    return NS_OK;
 }
 
 NS_IMETHODIMP EmbedLiteViewThreadChild::OnUpdateDisplayPort()

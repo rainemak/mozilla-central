@@ -289,84 +289,6 @@ EmbedLiteViewThreadParent::RecvOnFirstPaint(const int32_t& aX,
 }
 
 bool
-EmbedLiteViewThreadParent::RecvOnContentLoaded(const nsString& aDocURI)
-{
-    LOGNI();
-    if (mViewAPIDestroyed)
-        return true;
-
-    NS_ENSURE_TRUE(mView, false);
-    mView->GetListener()->OnContentLoaded(aDocURI.get());
-    return true;
-}
-
-bool
-EmbedLiteViewThreadParent::RecvOnLinkAdded(const nsString& aHref,
-                                           const nsString& aCharset,
-                                           const nsString& aTitle,
-                                           const nsString& aRel,
-                                           const nsString& aSizes,
-                                           const nsString& aType)
-{
-    LOGNI();
-    if (mViewAPIDestroyed)
-        return true;
-
-    NS_ENSURE_TRUE(mView, false);
-    mView->GetListener()->OnLinkAdded(aHref.get(),
-                                      aCharset.get(),
-                                      aTitle.get(),
-                                      aRel.get(),
-                                      aSizes.get(),
-                                      aType.get());
-    return true;
-}
-
-bool
-EmbedLiteViewThreadParent::RecvOnWindowOpenClose(const nsString& aType)
-{
-    LOGNI();
-    if (mViewAPIDestroyed)
-        return true;
-
-    NS_ENSURE_TRUE(mView, false);
-    mView->GetListener()->OnWindowOpenClose(aType.get());
-    return true;
-}
-
-bool
-EmbedLiteViewThreadParent::RecvOnPopupBlocked(const nsCString& aSpec,
-                                              const nsCString& aCharset,
-                                              const nsString& aPopupFeatures,
-                                              const nsString& aPopupWinName)
-{
-    LOGNI();
-    if (mViewAPIDestroyed)
-        return true;
-
-    NS_ENSURE_TRUE(mView, false);
-    mView->GetListener()->OnPopupBlocked(aSpec.get(),
-                                         aCharset.get(),
-                                         aPopupFeatures.get(),
-                                         aPopupWinName.get());
-    return true;
-}
-
-bool
-EmbedLiteViewThreadParent::RecvOnPageShowHide(const nsString& aType,
-                                              const bool& aPersisted)
-{
-    LOGNI();
-    if (mViewAPIDestroyed)
-        return true;
-
-    NS_ENSURE_TRUE(mView, false);
-    mView->GetListener()->OnPageShowHide(aType.get(),
-                                         aPersisted);
-    return true;
-}
-
-bool
 EmbedLiteViewThreadParent::RecvOnScrolledAreaChanged(const uint32_t& aWidth,
                                                      const uint32_t& aHeight)
 {
@@ -516,9 +438,10 @@ bool
 EmbedLiteViewThreadParent::RecvAsyncMessage(const nsString& aMessage,
                                             const nsString& aData)
 {
-    LOGT("msg:%s, data:%s", NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());
     if (mViewAPIDestroyed)
         return true;
+
+    LOGF("msg:%s, data:%s", NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());
 
     NS_ENSURE_TRUE(mView, false);
     mView->GetListener()->RecvAsyncMessage(NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());

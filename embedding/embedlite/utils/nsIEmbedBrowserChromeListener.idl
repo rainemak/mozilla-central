@@ -24,14 +24,8 @@ interface nsIEmbedBrowserChromeListener
     void onLoadProgress(in int32_t aProgress, in int32_t aCurTotal, in int32_t aMaxTotal);
     void onSecurityChanged(in string aStatus, in uint32_t aState);
     void onFirstPaint(in int32_t aX, in int32_t aY);
-    void onContentLoaded(in wstring aDocURI);
-    void onLinkAdded(in wstring aHref, in wstring aCharset, in wstring aTitle, in wstring aRel, in wstring aSizes, in wstring aType);
-    void onWindowOpenClose(in wstring aType);
-    void onPopupBlocked(in string aSpec, in string aCharset, in wstring aPopupFeatures, in wstring aPopupWinName);
-    void onPageShowHide(in wstring aType, in boolean aPersisted);
     void onScrolledAreaChanged(in uint32_t aWidth, in uint32_t aHeight);
     void onScrollChanged(in int32_t offSetX, in int32_t offSetY);
     void onObserve(in string aTopic, in wstring aData);
-    void onMetaAdded();
     void onUpdateDisplayPort();
 };

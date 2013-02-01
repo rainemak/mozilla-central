@@ -37,11 +37,6 @@ public:
     virtual void OnLoadProgress(int32_t aProgress, int32_t aCurTotal, int32_t aMaxTotal) {}
     virtual void OnSecurityChanged(const char* aStatus, unsigned int aState) {}
     virtual void OnFirstPaint(int32_t aX, int32_t aY) {}
-    virtual void OnContentLoaded(const PRUnichar* aDocURI) {}
-    virtual void OnLinkAdded(const PRUnichar* aHref, const PRUnichar* aCharset, const PRUnichar* aTitle, const PRUnichar* aRel, const PRUnichar* aSizes, const PRUnichar* aType) {}
-    virtual void OnWindowOpenClose(const PRUnichar* aType) {}
-    virtual void OnPopupBlocked(const char* aSpec, const char* aCharset, const PRUnichar* aPopupFeatures, const PRUnichar* aPopupWinName) {}
-    virtual void OnPageShowHide(const PRUnichar* aType, bool aPersisted) {}
     virtual void OnScrolledAreaChanged(unsigned int aWidth, unsigned int aHeight) {}
     virtual void OnScrollChanged(int32_t offSetX, int32_t offSetY) {}
     virtual void OnObserve(const char* aTopic, const PRUnichar* aData) {}

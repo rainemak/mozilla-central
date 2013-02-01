@@ -83,33 +83,6 @@ protected:
             const int32_t& aY);
 
     virtual bool
-    RecvOnContentLoaded(const nsString& aDocURI);
-
-    virtual bool
-    RecvOnLinkAdded(
-            const nsString& aHref,
-            const nsString& aCharset,
-            const nsString& aTitle,
-            const nsString& aRel,
-            const nsString& aSizes,
-            const nsString& aType);
-
-    virtual bool
-    RecvOnWindowOpenClose(const nsString& aType);
-
-    virtual bool
-    RecvOnPopupBlocked(
-            const nsCString& aSpec,
-            const nsCString& aCharset,
-            const nsString& aPopupFeatures,
-            const nsString& aPopupWinName);
-
-    virtual bool
-    RecvOnPageShowHide(
-            const nsString& aType,
-            const bool& aPersisted);
-
-    virtual bool
     RecvOnScrolledAreaChanged(
             const uint32_t& aWidth,
             const uint32_t& aHeight);

@@ -32,17 +32,9 @@
 #include <inttypes.h>
 
 #define MOZ_AFTER_PAINT_LITERAL "MozAfterPaint"
-#define MOZ_DOMContentLoaded "DOMContentLoaded"
-#define MOZ_DOMLinkAdded "DOMLinkAdded"
-#define MOZ_DOMWillOpenModalDialog "DOMWillOpenModalDialog"
-#define MOZ_DOMModalDialogClosed "DOMModalDialogClosed"
-#define MOZ_DOMWindowClose "DOMWindowClose"
-#define MOZ_DOMPopupBlocked "DOMPopupBlocked"
-#define MOZ_pageshow "pageshow"
-#define MOZ_pagehide "pagehide"
 #define MOZ_scroll "scroll"
 #define MOZ_MozScrolledAreaChanged "MozScrolledAreaChanged"
-#define MOZ_DOMMetaAdded "DOMMetaAdded"
+
 
 WebBrowserChrome::WebBrowserChrome(nsIEmbedBrowserChromeListener* aListener)
  : mChromeFlags(0)
@@ -377,120 +369,11 @@ WebBrowserChrome::HandleEvent(nsIDOMEvent* aEvent)
     }
 
     LOGT("Event:'%s'", NS_ConvertUTF16toUTF8(type).get());
-    if (type.EqualsLiteral(MOZ_DOMMetaAdded)) {
-        mListener->OnMetaAdded();
-        return NS_OK;
-    }
 
     nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(mWebBrowser);
     nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebBrowser);
     nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
-    if (type.EqualsLiteral(MOZ_AFTER_PAINT_LITERAL)) {
-        nsCOMPtr<nsPIDOMWindow> pidomWindow = do_QueryInterface(docWin);
-        nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
-        target->RemoveEventListener(NS_LITERAL_STRING(MOZ_AFTER_PAINT_LITERAL), this,  PR_FALSE);
-        if (mFirstPaint) {
-            mListener->OnUpdateDisplayPort();
-            return NS_OK;
-        }
-        mFirstPaint = true;
-        nsIntPoint offset = GetScrollOffset(docWin);
-        mListener->OnFirstPaint(offset.x, offset.y);
-    } else if (type.EqualsLiteral(MOZ_DOMContentLoaded)) {
-        nsCOMPtr<nsIDOMDocument> ctDoc;
-        docWin->GetDocument(getter_AddRefs(ctDoc));
-        nsString docURI;
-        ctDoc->GetDocumentURI(docURI);
-        if (!docURI.EqualsLiteral("about:blank")) {
-            mListener->OnContentLoaded(docURI.get());
-        }
-        // Need send session history from here
-    } else if (type.EqualsLiteral(MOZ_DOMLinkAdded)) {
-        nsCOMPtr<nsIDOMEventTarget> origTarget;
-        aEvent->GetOriginalTarget(getter_AddRefs(origTarget));
-        nsCOMPtr<nsIDOMHTMLLinkElement> disabledIface = do_QueryInterface(origTarget);
-        nsString href;
-        bool disabled = true;
-        disabledIface->GetDisabled(&disabled);
-        if (!disabledIface || disabled) {
-            return NS_OK;
-        }
-        disabledIface->GetHref(href);
-        uint64_t currentInnerWindowID = 0;
-        utils->GetCurrentInnerWindowID(&currentInnerWindowID);
-        nsCOMPtr<nsIDOMDocument> ctDoc;
-        docWin->GetDocument(getter_AddRefs(ctDoc));
-        nsString charset, title, rel, type;
-        ctDoc->GetCharacterSet(charset);
-        ctDoc->GetTitle(title);
-        disabledIface->GetRel(rel);
-        disabledIface->GetType(type);
-        nsString sizes;
-        nsCOMPtr<nsIDOMElement> element = do_QueryInterface(origTarget);
-        bool hasSizesAttr = false;
-        if (NS_SUCCEEDED(element->HasAttribute(NS_LITERAL_STRING("sizes"), &hasSizesAttr)) && hasSizesAttr) {
-            element->GetAttribute(NS_LITERAL_STRING("sizes"), sizes);
-        }
-        mListener->OnLinkAdded(href.get(),
-                               charset.get(),
-                               title.get(),
-                               rel.get(),
-                               sizes.get(),
-                               type.get());
-    } else if (type.EqualsLiteral(MOZ_DOMWillOpenModalDialog) ||
-               type.EqualsLiteral(MOZ_DOMModalDialogClosed) ||
-               type.EqualsLiteral(MOZ_DOMWindowClose)) {
-        mListener->OnWindowOpenClose(type.get());
-    } else if (type.EqualsLiteral(MOZ_DOMPopupBlocked)) {
-        uint64_t outerWindowID = 0;
-        utils->GetOuterWindowID(&outerWindowID);
-        nsCOMPtr<nsIDOMPopupBlockedEvent> popupEvent = do_QueryInterface(aEvent);
-        nsCOMPtr<nsIURI> popupUri;
-        popupEvent->GetPopupWindowURI(getter_AddRefs(popupUri));
-        nsString popupWinFeatures, popupWindowName;
-        nsCString spec, origCharset;
-        popupUri->GetSpec(spec);
-        popupUri->GetOriginCharset(origCharset);
-        popupEvent->GetPopupWindowFeatures(popupWinFeatures);
-        popupEvent->GetPopupWindowName(popupWindowName);
-        mListener->OnPopupBlocked(spec.get(), origCharset.get(), popupWinFeatures.get(), popupWindowName.get());
-    } else if (type.EqualsLiteral(MOZ_pageshow) ||
-               type.EqualsLiteral(MOZ_pagehide)) {
-        if (type.EqualsLiteral(MOZ_pagehide)) {
-            mScrollOffset = nsIntPoint();
-        }
-        nsCOMPtr<nsIDOMEventTarget> target;
-        aEvent->GetTarget(getter_AddRefs(target));
-        nsCOMPtr<nsIDOMDocument> ctDoc = do_QueryInterface(target);
-        nsCOMPtr<nsIDOMWindow> targetWin;
-        ctDoc->GetDefaultView(getter_AddRefs(targetWin));
-        nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(mWebBrowser);
-        if (targetWin != docWin) {
-            return NS_OK;
-        }
-        nsCOMPtr<nsIDOMWindowUtils> tutils = do_GetInterface(targetWin);
-        uint64_t outerWindowID = 0, tinnerID = 0;
-        tutils->GetOuterWindowID(&outerWindowID);
-        tutils->GetCurrentInnerWindowID(&tinnerID);
-        int32_t innerWidth, innerHeight;
-        docWin->GetInnerWidth(&innerWidth);
-        docWin->GetInnerHeight(&innerHeight);
-        nsCOMPtr<nsIDOMPageTransitionEvent> transEvent = do_QueryInterface(aEvent);
-        bool persisted = false;
-        transEvent->GetPersisted(&persisted);
-
-        uint64_t contentWindowID = 0;
-        utils->GetCurrentInnerWindowID(&contentWindowID);
-        // Clear onload focus to prevent the VKB to be shown unexpectingly
-        // but only if the location has really changed and not only the
-        // fragment identifier
-        if (mLocationHasChanged && contentWindowID == tinnerID) {
-            LOGT("Need clear focus");
-            nsCOMPtr<nsIFocusManager> focusMgr = do_GetService("@mozilla.org/focus-manager;1");
-            focusMgr->ClearFocus(docWin);
-        }
-        mListener->OnPageShowHide(type.get(), persisted);
-    } else if (type.EqualsLiteral(MOZ_MozScrolledAreaChanged)) {
+    if (type.EqualsLiteral(MOZ_MozScrolledAreaChanged)) {
         nsCOMPtr<nsIDOMEventTarget> origTarget;
         aEvent->GetOriginalTarget(getter_AddRefs(origTarget));
         nsCOMPtr<nsIDOMDocument> ctDoc = do_QueryInterface(origTarget);
@@ -519,7 +402,19 @@ WebBrowserChrome::HandleEvent(nsIDOMEvent* aEvent)
 
         nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(window->GetChromeEventHandler());
         target->AddEventListener(NS_LITERAL_STRING(MOZ_AFTER_PAINT_LITERAL), this,  PR_FALSE);
-
+    } else if (type.EqualsLiteral("pagehide")) {
+        mScrollOffset = nsIntPoint();
+    } else if (type.EqualsLiteral(MOZ_AFTER_PAINT_LITERAL)) {
+        nsCOMPtr<nsPIDOMWindow> pidomWindow = do_QueryInterface(docWin);
+        nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
+        target->RemoveEventListener(NS_LITERAL_STRING(MOZ_AFTER_PAINT_LITERAL), this,  PR_FALSE);
+        if (mFirstPaint) {
+            mListener->OnUpdateDisplayPort();
+            return NS_OK;
+        }
+        mFirstPaint = true;
+        nsIntPoint offset = GetScrollOffset(docWin);
+        mListener->OnFirstPaint(offset.x, offset.y);
     } else if (type.EqualsLiteral(MOZ_scroll)) {
         nsCOMPtr<nsIDOMEventTarget> target;
         aEvent->GetTarget(getter_AddRefs(target));
@@ -715,17 +610,9 @@ void WebBrowserChrome::SetEventHandler()
     NS_ENSURE_TRUE(pidomWindow, );
     nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
     NS_ENSURE_TRUE(target, );
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMContentLoaded), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMLinkAdded), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMWillOpenModalDialog), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMModalDialogClosed), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMWindowClose), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMPopupBlocked), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_pageshow), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_pagehide), this,  PR_FALSE);
     target->AddEventListener(NS_LITERAL_STRING(MOZ_MozScrolledAreaChanged), this,  PR_FALSE);
     target->AddEventListener(NS_LITERAL_STRING(MOZ_scroll), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMMetaAdded), this,  PR_FALSE);
+    target->AddEventListener(NS_LITERAL_STRING("pagehide"), this,  PR_FALSE);
 }
 
 void WebBrowserChrome::RemoveEventHandler()
@@ -741,17 +628,9 @@ void WebBrowserChrome::RemoveEventHandler()
     NS_ENSURE_TRUE(pidomWindow, );
     nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
     NS_ENSURE_TRUE(target, );
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMContentLoaded), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMLinkAdded), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMWillOpenModalDialog), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMModalDialogClosed), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMWindowClose), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMPopupBlocked), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_pageshow), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_pagehide), this,  PR_FALSE);
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_MozScrolledAreaChanged), this,  PR_FALSE);
+    target->RemoveEventListener(NS_LITERAL_STRING("pagehide"), this,  PR_FALSE);
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_scroll), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMMetaAdded), this,  PR_FALSE);
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_AFTER_PAINT_LITERAL), this,  PR_FALSE);
 }
 

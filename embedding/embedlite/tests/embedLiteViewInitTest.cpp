@@ -125,28 +125,6 @@ public:
     {
         printf("OnFirstPaint pos[%i,%i]\n", aX, aY);
     }
-    virtual void OnContentLoaded(const PRUnichar* aDocURI)
-    {
-        printf("OnContentLoaded: docURI:%s\n", NS_ConvertUTF16toUTF8(aDocURI).get());
-    }
-    virtual void OnLinkAdded(const PRUnichar* aHref, const PRUnichar* aCharset, const PRUnichar* aTitle, const PRUnichar* aRel, const PRUnichar* aSizes, const PRUnichar* aType)
-    {
-        printf("OnLinkAdded: href:%s, chars:%s, title:%s, rel:%s, sizes:%s, type:%s\n",
-               NS_ConvertUTF16toUTF8(aHref).get(), NS_ConvertUTF16toUTF8(aCharset).get(),
-               NS_ConvertUTF16toUTF8(aTitle).get(), NS_ConvertUTF16toUTF8(aRel).get(), NS_ConvertUTF16toUTF8(aSizes).get(), NS_ConvertUTF16toUTF8(aType).get());
-    }
-    virtual void OnWindowOpenClose(const PRUnichar* aType)
-    {
-        printf("OnWindowOpenClose: type:%s\n", NS_ConvertUTF16toUTF8(aType).get());
-    }
-    virtual void OnPopupBlocked(const char* aSpec, const char* aCharset, const PRUnichar* aPopupFeatures, const PRUnichar* aPopupWinName)
-    {
-        printf("OnPopupBlocked spec:%s, chars:%s, popFeat:%s, popWinName:%s\n", aSpec, aCharset, NS_ConvertUTF16toUTF8(aPopupFeatures).get(), NS_ConvertUTF16toUTF8(aPopupWinName).get());
-    }
-    virtual void OnPageShowHide(const PRUnichar* aType, bool aPersisted)
-    {
-        printf("OnPageShowHide: type:%s, pers:%i\n", NS_ConvertUTF16toUTF8(aType).get(), aPersisted);
-    }
     virtual void OnScrolledAreaChanged(unsigned int aWidth, unsigned int aHeight)
     {
         printf("OnScrolledAreaChanged: sz[%u,%u]\n", aWidth, aHeight);

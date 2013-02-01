@@ -170,10 +170,6 @@ public:
         LOGT();
         Q_EMIT q->firstPaint(aX, aY);
     }
-    virtual void OnContentLoaded(const PRUnichar* aDocURI) {
-        LOGT();
-        Q_EMIT q->contentLoaded(QString((QChar*)aDocURI));
-    }
 
     virtual void IMENotification(int aIstate, bool aOpen, int aCause, int aFocusChange)
     {
@@ -199,10 +195,6 @@ public:
         }
     }
 
-    virtual void OnLinkAdded(const PRUnichar* aHref, const PRUnichar* aCharset, const PRUnichar* aTitle, const PRUnichar* aRel, const PRUnichar* aSizes, const PRUnichar* aType) { LOGT(); }
-    virtual void OnWindowOpenClose(const PRUnichar* aType) { LOGT(); }
-    virtual void OnPopupBlocked(const char* aSpec, const char* aCharset, const PRUnichar* aPopupFeatures, const PRUnichar* aPopupWinName) { LOGT(); }
-    virtual void OnPageShowHide(const PRUnichar* aType, bool aPersisted) { LOGT(); }
     virtual void OnScrolledAreaChanged(unsigned int aWidth, unsigned int aHeight) { LOGT(); }
     virtual void OnScrollChanged(int32_t offSetX, int32_t offSetY) { }
     virtual void OnObserve(const char* aTopic, const PRUnichar* aData) {
