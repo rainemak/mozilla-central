@@ -15,6 +15,9 @@
 #include "mozilla/ModuleUtils.h"
 #include "nsComponentManagerUtils.h"
 
+#include "nsILoginManager.h"
+#include "nsIFormHistory.h"
+
 using namespace mozilla::embedlite;
 
 NS_GENERIC_FACTORY_CONSTRUCTOR(EmbedPromptFactory)
@@ -71,6 +74,11 @@ EmbedPromptRegister::Init()
                                      "outer-window-destroyed",
                                      true);
     }
+
+    // Init LoginManager
+    nsCOMPtr<nsILoginManager> pwdmgr = do_GetService("@mozilla.org/login-manager;1");
+    // Init FormHistory
+    nsCOMPtr<nsIFormHistory2> formHistory = do_GetService("@mozilla.org/satchel/form-history");
 
     return NS_OK;
 }

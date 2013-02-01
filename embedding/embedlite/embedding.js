@@ -64,4 +64,4 @@ pref("embedlite.dispatch_mouse_events", false); // Will dispatch mouse events if
 pref("media.gstreamer.enabled", true);
 // Disable X backend on GTK
 pref("gfx.xrender.enabled", false);
-
+pref("signon.debug", true);

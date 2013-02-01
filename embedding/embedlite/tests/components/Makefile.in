@@ -15,6 +15,16 @@ include $(DEPTH)/config/autoconf.mk
 
 MODULE = mozembedcomponents
 
+EXTRA_COMPONENTS = \
+    AlertsService.js \
+    $(NULL)
+
+EXTRA_PP_COMPONENTS = \
+    EmbedLiteComponents.manifest \
+    AboutRedirector.js \
+    LoginManagerPrompter.js \
+    $(NULL)
+
 PARALLEL_DIRS += prompt chromehelper history
 
 include $(topsrcdir)/config/rules.mk
