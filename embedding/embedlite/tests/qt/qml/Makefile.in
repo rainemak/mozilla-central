@@ -63,7 +63,7 @@ ifeq (1 ,$(MOZ_X11))
 endif
 
 NSDISTMODE = copy
-PARALLEL_DIRS += components
+
 include $(topsrcdir)/config/rules.mk
 
 GARBAGE += \
