@@ -4,13 +4,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#define LOG_COMPONENT "QMozContext"
+#include "mozilla/embedlite/EmbedLog.h"
+
 #include <QTimer>
 #include <QApplication>
 
 #include "qmozcontext.h"
 
 #include "nsDebug.h"
-#include "mozilla/embedlite/EmbedLog.h"
 #include "mozilla/embedlite/EmbedLiteApp.h"
 #include "mozilla/embedlite/EmbedInitGlue.h"
 
@@ -80,6 +82,10 @@ public:
     // App Destroyed, and ready to delete and program exit
     virtual void Destroyed() {
         LOGT();
+    }
+    virtual void RecvAsyncMessage(const char* aMessage, const char* aData)
+    {
+        LOGT("msg:%s, data:%s", aMessage, aData);
     }
 
     void setDefaultPrefs()

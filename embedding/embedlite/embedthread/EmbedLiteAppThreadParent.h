@@ -30,6 +30,9 @@ public:
     virtual bool
     RecvReadyToShutdown();
 
+    virtual bool
+    RecvAsyncMessage(const nsString&, const nsString&);
+
     static EmbedLiteAppThreadParent* GetInstance();
 
 protected:

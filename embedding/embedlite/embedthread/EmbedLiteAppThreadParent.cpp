@@ -103,6 +103,14 @@ void EmbedLiteAppThreadParent::SetIntPref(const char* aName, int aValue)
     unused << SendSetIntPref(nsCString(aName), aValue);
 }
 
+bool
+EmbedLiteAppThreadParent::RecvAsyncMessage(const nsString& message, const nsString& messageName)
+{
+    LOGT();
+    mApp->GetListener()->RecvAsyncMessage(NS_ConvertUTF16toUTF8(message).get(), NS_ConvertUTF16toUTF8(messageName).get());
+    return true;
+}
+
 } // namespace embedlite
 } // namespace mozilla
 

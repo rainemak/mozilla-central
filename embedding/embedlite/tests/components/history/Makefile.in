@@ -17,11 +17,10 @@ IS_COMPONENT = 1
 GRE_MODULE = 1
 FORCE_SHARED_LIB = 1
 
-DEFINES += -DXPCOM_GLUE
-STL_FLAGS=
+# Example of component linking with libxul.so
 
 EXTRA_DSO_LDOPTS = \
-        $(XPCOM_STANDALONE_GLUE_LDOPTS) \
+        $(XPCOM_GLUE_LDOPTS) \
         $(NSPR_LIBS) \
         $(NULL)
 

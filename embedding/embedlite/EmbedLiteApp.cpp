@@ -208,6 +208,12 @@ EmbedLiteApp::LoadGlobalStyleSheet(const char* aUri, bool aEnable)
     unused << STHREADAPP()->SendLoadGlobalStyleSheet(nsDependentCString(aUri), aEnable);
 }
 
+void
+EmbedLiteApp::SendAsyncMessage(const char* aMessageName, const char* aMessage)
+{
+    LOGNI();
+}
+
 EmbedLiteView*
 EmbedLiteApp::CreateView()
 {

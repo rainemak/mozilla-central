@@ -30,6 +30,8 @@ public:
     virtual void Initialized() {}
     // App Destroyed, and ready to delete and program exit
     virtual void Destroyed() {}
+    // Messaging interface, allow to receive json messages from content child scripts
+    virtual void RecvAsyncMessage(const char* aMessage, const char* aData) {}
 };
 
 class EmbedLiteApp
@@ -83,6 +85,9 @@ public:
     virtual void SetIntPref(const char* aName, int aValue);
 
     virtual void LoadGlobalStyleSheet(const char* aUri, bool aEnable);
+
+    // Messaging interface
+    virtual void SendAsyncMessage(const char* aMessageName, const char* aMessage);
 
     // Internal
     EmbedLiteAppListener* GetListener() { return mListener; }

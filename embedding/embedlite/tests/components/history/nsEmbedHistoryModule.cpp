@@ -35,7 +35,7 @@ static nsresult
 EmbedHistory_Initialize()
 {
     printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
-    XPCOMGlueStartup(getenv("XRE_LIBXPCOM_PATH"));
+//    XPCOMGlueStartup(getenv("XRE_LIBXPCOM_PATH"));
     return NS_OK;
 }
 

@@ -22,6 +22,8 @@ child:
     async SetCharPref(nsCString name, nsCString value);
     async SetIntPref(nsCString name, int value);
     async LoadGlobalStyleSheet(nsCString uri, bool aEnable);
+both:
+    AsyncMessage(nsString aMessage, nsString aData);
 };
 
 }}

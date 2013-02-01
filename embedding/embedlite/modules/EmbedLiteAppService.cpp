@@ -103,6 +103,14 @@ EmbedLiteAppService::SendAsyncMessage(uint32_t aId, const nsAString& messageName
 }
 
 NS_IMETHODIMP
+EmbedLiteAppService::SendGlobalAsyncMessage(const nsAString& messageName, const nsAString& message)
+{
+    EmbedLiteAppThreadChild::GetInstance()->SendAsyncMessage(nsString(messageName), nsString(message));
+    return NS_OK;
+}
+
+
+NS_IMETHODIMP
 EmbedLiteAppService::SendSyncMessage(uint32_t aId, const nsAString& messageName, const nsAString& message, nsAString& retval)
 {
     EmbedLiteViewThreadChild* view = sGetViewById(aId);

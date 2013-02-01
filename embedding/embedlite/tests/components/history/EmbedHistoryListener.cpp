@@ -4,8 +4,8 @@
 
 #include "EmbedHistoryListener.h"
 #include "nsIURI.h"
-//#include "EmbedliteBridge.h"
-//#include "Link.h"
+#include "Link.h"
+#include "nsIEmbedLiteJSON.h"
 
 using namespace mozilla;
 using mozilla::dom::Link;
@@ -42,9 +42,6 @@ EmbedHistoryListener::RegisterVisitedCallback(nsIURI *aURI, Link *aContent)
     nsresult rv = aURI->GetSpec(uri);
     if (NS_FAILED(rv)) return rv;
 
-    printf(">>>>>>Func:%s::%d uri:%s\n", __PRETTY_FUNCTION__, __LINE__, uri.get());
-
-/*
     NS_ConvertUTF8toUTF16 uriString(uri);
 
     nsTArray<Link*>* list = mListeners.Get(uriString);
@@ -53,11 +50,16 @@ EmbedHistoryListener::RegisterVisitedCallback(nsIURI *aURI, Link *aContent)
         mListeners.Put(uriString, list);
     }
     list->AppendElement(aContent);
-    EmbedliteBridge *bridge = EmbedliteBridge::Bridge();
-    if (bridge) {
-        bridge->CheckURIVisited(uriString);
-    }
-*/
+
+    nsString message;
+    // Just simple property bag support still
+    nsCOMPtr<nsIEmbedLiteJSON> json = do_GetService("@mozilla.org/embedlite-json;1");
+    nsCOMPtr<nsIWritablePropertyBag2> root;
+    json->CreateObject(getter_AddRefs(root));
+    root->SetPropertyAsACString(NS_LITERAL_STRING("uri"), uri);
+
+    json->CreateJSON(root, message);
+    GetService()->SendGlobalAsyncMessage(NS_LITERAL_STRING("history:checkurivisited"), message);
 
     return NS_OK;
 }
@@ -66,26 +68,24 @@ NS_IMETHODIMP
 EmbedHistoryListener::UnregisterVisitedCallback(nsIURI *aURI, Link *aContent)
 {
     printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
-  if (!aContent || !aURI)
+    if (!aContent || !aURI)
+        return NS_OK;
+
+    nsAutoCString uri;
+    nsresult rv = aURI->GetSpec(uri);
+    if (NS_FAILED(rv)) return rv;
+    NS_ConvertUTF8toUTF16 uriString(uri);
+
+    nsTArray<Link*>* list = mListeners.Get(uriString);
+    if (! list)
+        return NS_OK;
+
+    list->RemoveElement(aContent);
+    if (list->IsEmpty()) {
+        mListeners.Remove(uriString);
+        delete list;
+    }
     return NS_OK;
-
-/*
-  nsAutoCString uri;
-  nsresult rv = aURI->GetSpec(uri);
-  if (NS_FAILED(rv)) return rv;
-  NS_ConvertUTF8toUTF16 uriString(uri);
-
-  nsTArray<Link*>* list = mListeners.Get(uriString);
-  if (! list)
-    return NS_OK;
-
-  list->RemoveElement(aContent);
-  if (list->IsEmpty()) {
-    mListeners.Remove(uriString);
-    delete list;
-  }
-*/
-  return NS_OK;
 }
 
 NS_IMETHODIMP
@@ -103,11 +103,31 @@ EmbedHistoryListener::VisitURI(nsIURI *aURI, nsIURI *aLastVisitedURI, uint32_t a
     if (aFlags & VisitFlags::UNRECOVERABLE_ERROR)
         return NS_OK;
 
+
     nsAutoCString uri;
     nsresult rv = aURI->GetSpec(uri);
     if (NS_FAILED(rv)) return rv;
-    printf(">>>>>>Func:%s::%d uri:%s\n", __PRETTY_FUNCTION__, __LINE__, uri.get());
+
+    nsString message;
+    // Just simple property bag support still
+    nsCOMPtr<nsIEmbedLiteJSON> json = do_GetService("@mozilla.org/embedlite-json;1");
+    nsCOMPtr<nsIWritablePropertyBag2> root;
+    json->CreateObject(getter_AddRefs(root));
+    root->SetPropertyAsACString(NS_LITERAL_STRING("uri"), uri);
+
+    json->CreateJSON(root, message);
+    GetService()->SendGlobalAsyncMessage(NS_LITERAL_STRING("history:markurivisited"), message);
+    
     return NS_OK;
+}
+
+nsIEmbedAppService*
+EmbedHistoryListener::GetService()
+{
+    if (!mService) {
+        mService = do_GetService("@mozilla.org/embedlite-app-service;1");
+    }
+    return mService.get();
 }
 
 NS_IMETHODIMP
@@ -117,30 +137,44 @@ EmbedHistoryListener::SetURITitle(nsIURI *aURI, const nsAString& aTitle)
         return NS_OK;
 
     // we don't do anything with this right now
+#if 0
     nsAutoCString uri;
     nsresult rv = aURI->GetSpec(uri);
     if (NS_FAILED(rv)) return rv;
+#endif
 
-    printf(">>>>>>Func:%s::%d uri:%s, title:%s\n", __PRETTY_FUNCTION__, __LINE__, uri.get(), NS_ConvertUTF16toUTF8(aTitle).get());
     return NS_OK;
 }
 
 NS_IMETHODIMP
 EmbedHistoryListener::NotifyVisited(nsIURI *aURI)
 {
-    if (!aURI)
-        return NS_OK;
+    if (aURI && sHistory) {
+        nsAutoCString spec;
+        (void)aURI->GetSpec(spec);
+        sHistory->mPendingURIs.Push(NS_ConvertUTF8toUTF16(spec));
+        NS_DispatchToMainThread(sHistory);
+    }
 
-    nsAutoCString uri;
-    nsresult rv = aURI->GetSpec(uri);
-    if (NS_FAILED(rv)) return rv;
-    printf(">>>>>>Func:%s::%d uri:%s\n", __PRETTY_FUNCTION__, __LINE__, uri.get());
     return NS_OK;
 }
 
 NS_IMETHODIMP
 EmbedHistoryListener::Run()
 {
-    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
+    while (! mPendingURIs.IsEmpty()) {
+        nsString uriString = mPendingURIs.Pop();
+        nsTArray<Link*>* list = sHistory->mListeners.Get(uriString);
+        if (list) {
+            for (unsigned int i = 0; i < list->Length(); i++) {
+                list->ElementAt(i)->SetLinkState(eLinkState_Visited);
+            }
+            // as per the IHistory interface contract, remove the
+            // Link pointers once they have been notified
+            mListeners.Remove(uriString);
+            delete list;
+        }
+    }
+
     return NS_OK;
 }

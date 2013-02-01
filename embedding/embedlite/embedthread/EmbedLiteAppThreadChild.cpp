@@ -204,6 +204,13 @@ EmbedLiteAppThreadChild::RecvLoadGlobalStyleSheet(const nsCString& uri, const bo
     return true;
 }
 
+bool
+EmbedLiteAppThreadChild::RecvAsyncMessage(const nsString& message, const nsString& messageName)
+{
+    LOGT();
+    return true;
+}
+
 } // namespace embedlite
 } // namespace mozilla
 
