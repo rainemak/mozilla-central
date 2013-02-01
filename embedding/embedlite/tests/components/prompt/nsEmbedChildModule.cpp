@@ -39,7 +39,9 @@ static const mozilla::Module::CategoryEntry kEMBEDPROMPTCategories[] = {
 static nsresult
 EmbedPrompt_Initialize()
 {
+#ifdef XPCOM_GLUE
     XPCOMGlueStartup(getenv("XRE_LIBXPCOM_PATH"));
+#endif
     return NS_OK;
 }
 

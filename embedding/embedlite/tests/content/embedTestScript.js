@@ -8,6 +8,12 @@ Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/Geometry.jsm");
 
+XPCOMUtils.defineLazyServiceGetter(this, "ppmm",
+   "@mozilla.org/parentprocessmessagemanager;1", "nsIMessageBroadcaster");
+
+XPCOMUtils.defineLazyServiceGetter(this, "gpmm",
+   "@mozilla.org/globalmessagemanager;1", "nsIMessageBroadcaster");
+
 dump("###################################### embedTestScript.js loaded\n");
 
 var globalObject;
@@ -24,14 +30,23 @@ EmbedChildScript.prototype = {
   {
     dump("Init Called:" + this + "\n");
     Services.obs.addObserver(this, "domwindowopened", true);
+    ppmm.addMessageListener("EmbedMsg:BroadCastMessageSuper1", this);
+    gpmm.addMessageListener("EmbedMsg:BroadCastMessageSuper2", this);
     addMessageListener("EmbedMsg::HelloChildScript", this);
+    addMessageListener("EmbedMsg::HelloChildScriptFromGlobal", this);
     addMessageListener("EmbedMsg::SetDisplayPort", this);
     sendAsyncMessage("EmbedMsg::ChildScriptInitialized", {});
     addEventListener("DOMTitleChanged",
       function(e) {
         dump("DOMTitleChanged:" + e.target.title + "\n");
         let retJSON = sendSyncMessage("EmbedMsg::GetSomeData", { "val": "1" })[0];
-        dump("return value: id:" + retJSON.id + ", val:" + retJSON.val + "\n");
+//        dump("return value: id:" + retJSON.id + ", val:" + retJSON.val + "\n");
+
+
+        dump(">>>>>>>>>>>>> SEND ppmm.broadcastAsyncMessage\n");
+        ppmm.broadcastAsyncMessage("EmbedMsg:BroadCastMessageSuper1", { dx: 1, dy: 2 });
+        dump(">>>>>>>>>>>>> SEND gpmm.broadcastAsyncMessage\n");
+        gpmm.broadcastAsyncMessage("EmbedMsg:BroadCastMessageSuper2", { dx: 1, dy: 3 });
       },
     true);
   },

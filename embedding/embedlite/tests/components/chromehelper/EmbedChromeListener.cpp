@@ -86,7 +86,10 @@ EmbedChromeListener::HandleEvent(nsIDOMEvent* aEvent)
     nsString messageName;
     nsString message;
     // Just simple property bag support still
-    nsCOMPtr<nsIEmbedLiteJSON> json = do_GetService("@mozilla.org/embedlite-json;1");
+    nsCOMPtr<nsIEmbedLiteJSON> json = do_GetService("@mozilla.org/embedlite-json;1", &rv);
+    if (!json) {
+        LOGT("Failed to create json component");
+    }
     nsCOMPtr<nsIWritablePropertyBag2> root;
     json->CreateObject(getter_AddRefs(root));
 

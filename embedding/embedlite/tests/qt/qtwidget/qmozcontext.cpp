@@ -86,6 +86,7 @@ public:
     virtual void RecvAsyncMessage(const char* aMessage, const char* aData)
     {
         LOGT("msg:%s, data:%s", aMessage, aData);
+        mApp->SendAsyncMessage(aMessage, aData);
     }
 
     void setDefaultPrefs()

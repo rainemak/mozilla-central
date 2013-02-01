@@ -207,7 +207,7 @@ EmbedLiteAppThreadChild::RecvLoadGlobalStyleSheet(const nsCString& uri, const bo
 bool
 EmbedLiteAppThreadChild::RecvAsyncMessage(const nsString& message, const nsString& messageName)
 {
-    LOGT();
+    LOGNI("msg:%s, data:%s", NS_ConvertUTF16toUTF8(message).get(), NS_ConvertUTF16toUTF8(messageName).get());
     return true;
 }
 

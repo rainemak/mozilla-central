@@ -211,7 +211,7 @@ EmbedLiteApp::LoadGlobalStyleSheet(const char* aUri, bool aEnable)
 void
 EmbedLiteApp::SendAsyncMessage(const char* aMessageName, const char* aMessage)
 {
-    LOGNI();
+    unused << STHREADAPP()->SendAsyncMessage(NS_ConvertUTF8toUTF16(aMessageName), NS_ConvertUTF8toUTF16(aMessage));
 }
 
 EmbedLiteView*

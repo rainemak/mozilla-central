@@ -67,7 +67,6 @@ EmbedHistoryListener::RegisterVisitedCallback(nsIURI *aURI, Link *aContent)
 NS_IMETHODIMP
 EmbedHistoryListener::UnregisterVisitedCallback(nsIURI *aURI, Link *aContent)
 {
-    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
     if (!aContent || !aURI)
         return NS_OK;
 

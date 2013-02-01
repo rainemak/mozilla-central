@@ -34,15 +34,15 @@ static const mozilla::Module::ContractIDEntry kEMBEDHISTORYContracts[] = {
 static nsresult
 EmbedHistory_Initialize()
 {
-    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
-//    XPCOMGlueStartup(getenv("XRE_LIBXPCOM_PATH"));
+#ifdef XPCOM_GLUE
+    XPCOMGlueStartup(getenv("XRE_LIBXPCOM_PATH"));
+#endif
     return NS_OK;
 }
 
 static void
 EmbedHistory_Shutdown()
 {
-    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
 }
 
 static const mozilla::Module kEMBEDHISTORYModule = {
