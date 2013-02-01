@@ -23,10 +23,6 @@
 
 #define MOZ_DOMTitleChanged "DOMTitleChanged"
 
-#pragma GCC visibility push(default)
-#include <json/json.h>
-#pragma GCC visibility pop
-
 EmbedChromeListener::EmbedChromeListener()
   : mWindowCounter(0)
 {

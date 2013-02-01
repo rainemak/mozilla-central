@@ -4,7 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
  
 #include "nsISupports.idl"
-#include "nsIPropertyBag.idl"
+#include "nsIPropertyBag2.idl"
 #include "nsIWritablePropertyBag2.idl"
 
 %{ C++
@@ -25,6 +25,6 @@
 interface nsIEmbedLiteJSON : nsISupports
 {
     void createObject(out nsIWritablePropertyBag2 aObject);
-    void ParseJSON(in AString aJSON, out nsIPropertyBag aRoot);
+    void ParseJSON(in AString aJSON, out nsIPropertyBag2 aRoot);
     void CreateJSON(in nsIPropertyBag aRoot, out AString outJson);
 };

@@ -23,7 +23,6 @@ STL_FLAGS=
 EXTRA_DSO_LDOPTS = \
         $(XPCOM_STANDALONE_GLUE_LDOPTS) \
         $(NSPR_LIBS) \
-        $(shell pkg-config --libs json) \
         $(NULL)
 
 CPPSRCS += \
@@ -35,7 +34,6 @@ CPPSRCS += \
 
 LOCAL_INCLUDES	= -I$(srcdir) \
     $(TK_CFLAGS) \
-    $(shell pkg-config --cflags json) \
     $(NULL)
 
 include $(topsrcdir)/config/rules.mk

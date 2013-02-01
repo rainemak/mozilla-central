@@ -26,10 +26,6 @@
 #include "nsIDOMWindow.h"
 #include "nsIEmbedLiteJSON.h"
 
-#pragma GCC visibility push(default)
-#include <json/json.h>
-#pragma GCC visibility pop
-
 // Prompt Factory Implementation
 
 using namespace mozilla::embedlite;
@@ -86,37 +82,23 @@ EmbedPromptService::Alert(const PRUnichar* aDialogTitle,
 NS_IMETHODIMP
 EmbedPromptService::OnMessageReceived(const char* messageName, const PRUnichar* message)
 {
-    json_object* new_obj = json_tokener_parse(NS_ConvertUTF16toUTF8(message).get());
-    if (!new_obj) {
-        NS_ERROR("Wrong json response");
-        return NS_ERROR_FAILURE;
-    }
-    json_object* winid = json_object_object_get(new_obj, "winid");
-    if (!winid)
-        return NS_ERROR_FAILURE;
+    nsCOMPtr<nsIEmbedLiteJSON> json = do_GetService("@mozilla.org/embedlite-json;1");
+    nsCOMPtr<nsIPropertyBag2> root;
+    NS_ENSURE_SUCCESS(json->ParseJSON(nsDependentString(message), getter_AddRefs(root)), NS_ERROR_FAILURE);
+
+    uint32_t winid = 0;
+    root->GetPropertyAsUint32(NS_LITERAL_STRING("winid"), &winid);
+
     std::map<uint32_t, EmbedPromptResponse>::iterator it =
-        mResponseMap.find(json_object_get_int(winid));
+        mResponseMap.find(winid);
     if (it == mResponseMap.end())
         return NS_ERROR_FAILURE;
     EmbedPromptResponse& response = it->second;
 
-    json_object* accepted = json_object_object_get(new_obj, "accepted");
-    json_object* checkvalue = json_object_object_get(new_obj, "checkvalue");
-    json_object* promptvalue = json_object_object_get(new_obj, "promptvalue");
-
-    if (accepted)
-        response.accepted = json_object_get_boolean(accepted);
-
-    if (checkvalue)
-        response.checkvalue = json_object_get_boolean(checkvalue);
-
-    if (promptvalue)
-        response.promptvalue = json_object_get_string(promptvalue);
-
-    free(promptvalue);
-    free(winid);
-    free(accepted);
-    free(new_obj);
+    nsString promptValue;
+    root->GetPropertyAsAString(NS_LITERAL_STRING("promptvalue"), response.promptvalue);
+    root->GetPropertyAsBool(NS_LITERAL_STRING("accepted"), &response.accepted);
+    root->GetPropertyAsBool(NS_LITERAL_STRING("checkvalue"), &response.checkvalue);
 
     mModalDepth--;
 
@@ -372,7 +354,7 @@ EmbedPromptService::Prompt(const PRUnichar* aDialogTitle,
     if (aValue) {
         if (*aValue)
             NS_Free(*aValue);
-       *aValue = ToNewUnicode(NS_ConvertUTF8toUTF16(it->second.promptvalue));
+       *aValue = ToNewUnicode(it->second.promptvalue);
     }
 
     if (aConfirm) {
@@ -684,44 +666,24 @@ EmbedAuthPromptService::DoSendAsyncPrompt(EmbedAsyncAuthPrompt* mPrompt)
 NS_IMETHODIMP
 EmbedAuthPromptService::OnMessageReceived(const char* messageName, const PRUnichar* message)
 {
-    json_object* new_obj = json_tokener_parse(NS_ConvertUTF16toUTF8(message).get());
-    if (!new_obj) {
-        NS_ERROR("Wrong json response");
-        return NS_ERROR_FAILURE;
-    }
+    nsCOMPtr<nsIEmbedLiteJSON> json = do_GetService("@mozilla.org/embedlite-json;1");
+    nsCOMPtr<nsIPropertyBag2> root;
+    NS_ENSURE_SUCCESS(json->ParseJSON(nsDependentString(message), getter_AddRefs(root)), NS_ERROR_FAILURE);
 
-    json_object* winid = json_object_object_get(new_obj, "winid");
-    if (!winid)
-        return NS_ERROR_FAILURE;
+    uint32_t winid = 0;
+    root->GetPropertyAsUint32(NS_LITERAL_STRING("winid"), &winid);
+
     std::map<uint32_t, EmbedPromptResponse>::iterator it =
-        mResponseMap.find(json_object_get_int(winid));
-
+        mResponseMap.find(winid);
     if (it == mResponseMap.end())
         return NS_ERROR_FAILURE;
     EmbedPromptResponse& response = it->second;
 
-    json_object* accepted = json_object_object_get(new_obj, "accepted");
-    json_object* checkvalue = json_object_object_get(new_obj, "checkvalue");
-
-    json_object* password = json_object_object_get(new_obj, "password");
-    json_object* username = json_object_object_get(new_obj, "username");
-
-    if (accepted)
-        response.accepted = json_object_get_boolean(accepted);
-
-    if (checkvalue)
-        response.checkvalue = json_object_get_boolean(checkvalue);
-
-    if (password)
-        response.password = json_object_get_string(password);
-    if (username)
-        response.username = json_object_get_string(username);
-
-    free(password);
-    free(username);
-    free(winid);
-    free(accepted);
-    free(new_obj);
+    nsString promptValue;
+    root->GetPropertyAsBool(NS_LITERAL_STRING("accepted"), &response.accepted);
+    root->GetPropertyAsBool(NS_LITERAL_STRING("checkvalue"), &response.checkvalue);
+    root->GetPropertyAsAString(NS_LITERAL_STRING("username"), response.username);
+    root->GetPropertyAsAString(NS_LITERAL_STRING("password"), response.password);
 
     mModalDepth--;
 
@@ -767,8 +729,8 @@ EmbedAuthPromptService::DoAsyncPrompt()
 void
 EmbedAuthPromptService::DoResponseAsyncPrompt(EmbedAsyncAuthPrompt* prompt,
                                               const bool& confirmed,
-                                              const nsCString& username,
-                                              const nsCString& password)
+                                              const nsString& username,
+                                              const nsString& password)
 {
     nsresult rv;
     asyncPrompts.erase(prompt->mHashKey.get());
@@ -786,18 +748,18 @@ EmbedAuthPromptService::DoResponseAsyncPrompt(EmbedAsyncAuthPrompt* prompt,
             // Domain is separated from username by a backslash
             int idx = username.Find("\\");
             if (idx == -1) {
-                prompt->mAuthInfo->SetUsername(NS_ConvertUTF8toUTF16(username));
+                prompt->mAuthInfo->SetUsername(username);
             } else {
-                prompt->mAuthInfo->SetDomain(NS_ConvertUTF8toUTF16(nsDependentCSubstring(username, 0, idx)));
-                prompt->mAuthInfo->SetUsername(NS_ConvertUTF8toUTF16(nsDependentCSubstring(username, idx + 1)));
+                prompt->mAuthInfo->SetDomain(nsDependentSubstring(username, 0, idx));
+                prompt->mAuthInfo->SetUsername(nsDependentSubstring(username, idx + 1));
             }
         } else {
-            prompt->mAuthInfo->SetUsername(NS_ConvertUTF8toUTF16(username));
+            prompt->mAuthInfo->SetUsername(username);
         }
     }
 
     if (!password.IsEmpty()) {
-        prompt->mAuthInfo->SetPassword(NS_ConvertUTF8toUTF16(password));
+        prompt->mAuthInfo->SetPassword(password);
     }
 
     for (unsigned int i = 0; i < prompt->consumers.Length(); i++) {

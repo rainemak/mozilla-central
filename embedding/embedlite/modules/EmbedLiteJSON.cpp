@@ -11,6 +11,7 @@
 #include "jsapi.h"
 #include "xpcprivate.h"
 #include "XPCQuickStubs.h"
+#include "nsJSUtils.h"
 
 EmbedLiteJSON::EmbedLiteJSON()
 {
@@ -48,7 +49,7 @@ JSONCreator(const jschar* aBuf, uint32_t aLen, void* aData)
 }
 
 NS_IMETHODIMP
-EmbedLiteJSON::ParseJSON(nsAString const& aJson, nsIPropertyBag** aRoot)
+EmbedLiteJSON::ParseJSON(nsAString const& aJson, nsIPropertyBag2** aRoot)
 {
     XPCJSContextStack* stack = XPCJSRuntime::Get()->GetJSContextStack();
     JSContext*cx = stack->GetSafeJSContext();
@@ -63,11 +64,44 @@ EmbedLiteJSON::ParseJSON(nsAString const& aJson, nsIPropertyBag** aRoot)
         NS_ERROR("Failed to parse json string");
         return NS_ERROR_FAILURE;
     }
-    nsCOMPtr<nsIWritablePropertyBag2> bag;
-    CreateObject(getter_AddRefs(bag));
-    NS_WARNING("Not implemented conversion from jsval to PropertyBag");
 
-    *aRoot = bag.forget().get();
+    nsCOMPtr<nsIWritablePropertyBag2> contextProps;
+    CreateObject(getter_AddRefs(contextProps));
+
+    JSObject& opts = json.toObject();
+    JS::AutoIdArray props(cx, JS_Enumerate(cx, &opts));
+    for (size_t i = 0; !!props && i < props.length(); ++i) {
+        jsid propid = props[i];
+        jsval propname, propval;
+        if (!JS_IdToValue(cx, propid, &propname) ||
+            !JS_GetPropertyById(cx, &opts, propid, &propval)) {
+            return NS_ERROR_FAILURE;
+        }
+
+        JSString *propnameString = JS_ValueToString(cx, propname);
+        nsDependentJSString pstr;
+        if (!propnameString || !pstr.init(cx, propnameString)) {
+            return NS_ERROR_FAILURE;
+        }
+
+        if (JSVAL_IS_BOOLEAN(propval)) {
+            contextProps->SetPropertyAsBool(pstr, JSVAL_TO_BOOLEAN(propval));
+        } else if (JSVAL_IS_INT(propval)) {
+            contextProps->SetPropertyAsInt32(pstr, JSVAL_TO_INT(propval));
+        } else if (JSVAL_IS_DOUBLE(propval)) {
+            contextProps->SetPropertyAsDouble(pstr, JSVAL_TO_DOUBLE(propval));
+        } else if (JSVAL_IS_STRING(propval)) {
+            JSString *propvalString = JS_ValueToString(cx, propval);
+            nsDependentJSString vstr;
+            if (!propvalString || !vstr.init(cx, propvalString)) {
+                return NS_ERROR_FAILURE;
+            }
+
+            contextProps->SetPropertyAsAString(pstr, vstr);
+        }
+    }
+
+    *aRoot = contextProps.forget().get();
     return NS_OK;
 }
 
@@ -90,7 +124,7 @@ static bool SetPropFromVariant(nsIProperty* aProp, JSContext* aCx, JSObject* aOb
         return false;
     }
 
-    if (JS_SetProperty(aCx, aObj, NS_ConvertUTF16toUTF8(name).get(), &rval)) {
+    if (!JS_SetProperty(aCx, aObj, NS_ConvertUTF16toUTF8(name).get(), &rval)) {
         NS_ERROR("Failed to set js object property");
         return false;
     }
@@ -104,12 +138,13 @@ EmbedLiteJSON::CreateJSON(nsIPropertyBag *aRoot, nsAString & outJson)
     JSContext*cx = stack->GetSafeJSContext();
     NS_ENSURE_TRUE(cx, NS_ERROR_FAILURE);
 
+    JSObject* global = JS_GetGlobalObject(cx);
+    JSAutoCompartment ac(cx, global);
+
     JSAutoRequest ar(cx);
     JSObject* obj = JS_NewObject(cx, NULL, NULL, NULL);
     if (!obj)
         return NS_ERROR_FAILURE;
-
-    JSAutoCompartment ac(cx, obj);
 
     nsCOMPtr<nsISimpleEnumerator> windowEnumerator;
     aRoot->GetEnumerator(getter_AddRefs(windowEnumerator));

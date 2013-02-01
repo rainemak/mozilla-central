@@ -23,7 +23,6 @@ STL_FLAGS=
 EXTRA_DSO_LDOPTS = \
         $(XPCOM_STANDALONE_GLUE_LDOPTS) \
         $(NSPR_LIBS) \
-        $(shell pkg-config --libs json) \
         $(NULL)
 
 CPPSRCS += \

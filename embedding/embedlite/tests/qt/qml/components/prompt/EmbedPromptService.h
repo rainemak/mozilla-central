@@ -34,9 +34,9 @@ public:
 
     bool accepted;
     bool checkvalue;
-    nsCString promptvalue;
-    nsCString username;
-    nsCString password;
+    nsString promptvalue;
+    nsString username;
+    nsString password;
 };
 
 class EmbedPromptService : public nsIPrompt, public nsIEmbedMessageListener
@@ -96,8 +96,8 @@ public:
 
     void DoResponseAsyncPrompt(EmbedAsyncAuthPrompt* aPrompt,
                                const bool& confirmed,
-                               const nsCString& username,
-                               const nsCString& password);
+                               const nsString& username,
+                               const nsString& password);
 
 private:
     void DoAsyncPrompt();
