@@ -8,7 +8,7 @@
 #include "nsICategoryManager.h"
 #include "mozilla/ModuleUtils.h"
 #include "nsIAppStartupNotifier.h"
-#include "EmbedChromeListener.h"
+#include "EmbedChromeManager.h"
 #include "nsNetCID.h"
 #include <iostream>
 
@@ -17,12 +17,12 @@
 
 /* ===== XPCOM registration stuff ======== */
 
-NS_GENERIC_FACTORY_CONSTRUCTOR_INIT(EmbedChromeListener, Init)
+NS_GENERIC_FACTORY_CONSTRUCTOR_INIT(EmbedChromeManager, Init)
 
 NS_DEFINE_NAMED_CID(NS_EMBED_CHROME_SERVICE_CID);
 
 static const mozilla::Module::CIDEntry kEMBEDCHROMECIDs[] = {
-    { &kNS_EMBED_CHROME_SERVICE_CID, false, NULL, EmbedChromeListenerConstructor },
+    { &kNS_EMBED_CHROME_SERVICE_CID, false, NULL, EmbedChromeManagerConstructor },
     { NULL }
 };
 

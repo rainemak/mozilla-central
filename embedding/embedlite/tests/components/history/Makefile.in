@@ -11,8 +11,8 @@ relativesrcdir = @relativesrcdir@
 
 include $(DEPTH)/config/autoconf.mk
 
-MODULE = embedchromeComponent
-LIBRARY_NAME = embedchromeComponent
+MODULE = embedhistoryComponent
+LIBRARY_NAME = embedhistoryComponent
 IS_COMPONENT = 1
 GRE_MODULE = 1
 FORCE_SHARED_LIB = 1
@@ -21,18 +21,22 @@ DEFINES += -DXPCOM_GLUE
 STL_FLAGS=
 
 EXTRA_DSO_LDOPTS = \
-    $(XPCOM_STANDALONE_GLUE_LDOPTS) \
-    $(NSPR_LIBS) \
-    $(NULL)
+        $(XPCOM_STANDALONE_GLUE_LDOPTS) \
+        $(NSPR_LIBS) \
+        $(NULL)
 
 CPPSRCS += \
-    EmbedChromeManager.cpp \
-    nsEmbedChromeModule.cpp \
-    EmbedChromeListener.cpp \
-    $(NULL)
+        nsEmbedHistoryModule.cpp \
+        EmbedHistoryListener.cpp \
+        $(NULL)
 
-LOCAL_INCLUDES = -I$(srcdir) \
+XPIDLSRCS = nsIEmbedLiteHistory.idl
+
+LOCAL_INCLUDES = \
+    -I$(srcdir) \
     $(TK_CFLAGS) \
+    -I$(topsrcdir)/docshell/base \
+    -I$(topsrcdir)/content/base/src \
     $(NULL)
 
 include $(topsrcdir)/config/rules.mk

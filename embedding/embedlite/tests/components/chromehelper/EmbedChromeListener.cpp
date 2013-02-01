@@ -28,122 +28,20 @@
 #include "nsIDocShellTreeItem.h"
 #include "nsIWebNavigation.h"
 
-#define MOZ_DOMTitleChanged "DOMTitleChanged"
-#define MOZ_DOMContentLoaded "DOMContentLoaded"
-#define MOZ_DOMLinkAdded "DOMLinkAdded"
-#define MOZ_DOMWillOpenModalDialog "DOMWillOpenModalDialog"
-#define MOZ_DOMModalDialogClosed "DOMModalDialogClosed"
-#define MOZ_DOMWindowClose "DOMWindowClose"
-#define MOZ_DOMPopupBlocked "DOMPopupBlocked"
-#define MOZ_pageshow "pageshow"
-#define MOZ_pagehide "pagehide"
-#define MOZ_DOMMetaAdded "DOMMetaAdded"
-
-EmbedChromeListener::EmbedChromeListener()
-  : mWindowCounter(0)
+EmbedChromeListener::EmbedChromeListener(nsIDOMWindow* aWin)
+  :  DOMWindow(aWin)
+  ,  mWindowCounter(0)
 {
-    LOGT();
-}
-
-EmbedChromeListener::~EmbedChromeListener()
-{
-    LOGT();
-}
-
-NS_IMPL_ISUPPORTS3(EmbedChromeListener, nsIObserver, nsIDOMEventListener, nsSupportsWeakReference)
-
-nsresult
-EmbedChromeListener::Init()
-{
-    nsresult rv;
-    nsCOMPtr<nsIObserverService> observerService =
-        do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
-
-    if (observerService) {
-        rv = observerService->AddObserver(this,
-                                          "domwindowopened",
-                                          true);
-        NS_ENSURE_SUCCESS(rv, rv);
-        rv = observerService->AddObserver(this,
-                                          "domwindowclosed",
-                                          true);
-        NS_ENSURE_SUCCESS(rv, rv);
-        rv = observerService->AddObserver(this, NS_XPCOM_SHUTDOWN_OBSERVER_ID,
-                                          false);
-        NS_ENSURE_SUCCESS(rv, rv);
-    }
-
-    return rv;
-}
-
-NS_IMETHODIMP
-EmbedChromeListener::Observe(nsISupports *aSubject,
-                             const char *aTopic,
-                             const PRUnichar *aData)
-{
-    nsresult rv;
-    if (!strcmp(aTopic, "domwindowopened")) {
-        nsCOMPtr<nsIDOMWindow> win = do_QueryInterface(aSubject, &rv);
-        NS_ENSURE_SUCCESS(rv, NS_OK);
-        WindowCreated(win);
-    } else if (!strcmp(aTopic, "domwindclosed")) {
-        nsCOMPtr<nsIDOMWindow> win = do_QueryInterface(aSubject, &rv);
-        NS_ENSURE_SUCCESS(rv, NS_OK);
-        WindowDestroyed(win);
-    } else {
-        LOGT("obj:%p, top:%s", aSubject, aTopic);
-    }
-
-    return NS_OK;
-}
-
-void
-EmbedChromeListener::WindowCreated(nsIDOMWindow* aWin)
-{
-    LOGT("WindowOpened: %p", aWin);
-    nsCOMPtr<nsPIDOMWindow> pidomWindow = do_GetInterface(aWin);
-    NS_ENSURE_TRUE(pidomWindow, );
-    nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
-    NS_ENSURE_TRUE(target, );
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMTitleChanged), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMContentLoaded), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMLinkAdded), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMWillOpenModalDialog), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMModalDialogClosed), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMWindowClose), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMPopupBlocked), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_pageshow), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_pagehide), this,  PR_FALSE);
-    target->AddEventListener(NS_LITERAL_STRING(MOZ_DOMMetaAdded), this,  PR_FALSE);
-    mWindowCounter++;
     if (!mService) {
         mService = do_GetService("@mozilla.org/embedlite-app-service;1");
     }
 }
 
-void
-EmbedChromeListener::WindowDestroyed(nsIDOMWindow* aWin)
+EmbedChromeListener::~EmbedChromeListener()
 {
-    LOGT("WindowClosed: %p", aWin);
-    nsCOMPtr<nsPIDOMWindow> pidomWindow = do_GetInterface(aWin);
-    NS_ENSURE_TRUE(pidomWindow, );
-    nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
-    NS_ENSURE_TRUE(target, );
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMTitleChanged), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMContentLoaded), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMLinkAdded), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMWillOpenModalDialog), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMModalDialogClosed), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMWindowClose), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMPopupBlocked), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_pageshow), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_pagehide), this,  PR_FALSE);
-    target->RemoveEventListener(NS_LITERAL_STRING(MOZ_DOMMetaAdded), this,  PR_FALSE);
-    mWindowCounter--;
-    if (!mWindowCounter) {
-        mService = nullptr;
-    }
 }
+
+NS_IMPL_ISUPPORTS1(EmbedChromeListener, nsIDOMEventListener)
 
 nsresult
 GetDOMWindowByNode(nsIDOMNode *aNode, nsIDOMWindow **aDOMWindow)
@@ -183,7 +81,7 @@ EmbedChromeListener::HandleEvent(nsIDOMEvent* aEvent)
     if (aEvent) {
         aEvent->GetType(type);
     }
-    LOGT("Event:'%s'", NS_ConvertUTF16toUTF8(type).get());
+    // LOGT("Event:'%s'", NS_ConvertUTF16toUTF8(type).get());
 
     nsString messageName;
     nsString message;
@@ -192,14 +90,8 @@ EmbedChromeListener::HandleEvent(nsIDOMEvent* aEvent)
     nsCOMPtr<nsIWritablePropertyBag2> root;
     json->CreateObject(getter_AddRefs(root));
 
-    nsCOMPtr<nsIDOMEventTarget> eventTarget;
-    rv = aEvent->GetTarget(getter_AddRefs(eventTarget));
-    NS_ENSURE_SUCCESS(rv , rv);
-    nsCOMPtr<nsIDOMNode> eventNode = do_QueryInterface(eventTarget, &rv);
-    NS_ENSURE_SUCCESS(rv , rv);
-    nsCOMPtr<nsIDOMWindow> window;
-    rv = GetDOMWindowByNode(eventNode, getter_AddRefs(window));
-    nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(window);
+    nsCOMPtr<nsIDOMWindow> docWin = do_GetInterface(DOMWindow);
+    nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(DOMWindow);
 
     uint32_t winid;
     mService->GetIDByWindow(window, &winid);
@@ -217,7 +109,7 @@ EmbedChromeListener::HandleEvent(nsIDOMEvent* aEvent)
         root->SetPropertyAsAString(NS_LITERAL_STRING("title"), title);
     } else if (type.EqualsLiteral(MOZ_DOMContentLoaded)) {
         nsCOMPtr<nsIDOMDocument> ctDoc;
-        docWin->GetDocument(getter_AddRefs(ctDoc));
+        window->GetDocument(getter_AddRefs(ctDoc));
         nsString docURI;
         ctDoc->GetDocumentURI(docURI);
         if (!docURI.EqualsLiteral("about:blank")) {
@@ -236,10 +128,8 @@ EmbedChromeListener::HandleEvent(nsIDOMEvent* aEvent)
             return NS_OK;
         }
         disabledIface->GetHref(href);
-        uint64_t currentInnerWindowID = 0;
-        utils->GetCurrentInnerWindowID(&currentInnerWindowID);
         nsCOMPtr<nsIDOMDocument> ctDoc;
-        docWin->GetDocument(getter_AddRefs(ctDoc));
+        window->GetDocument(getter_AddRefs(ctDoc));
         nsString charset, title, rel, type;
         ctDoc->GetCharacterSet(charset);
         ctDoc->GetTitle(title);
@@ -288,8 +178,6 @@ EmbedChromeListener::HandleEvent(nsIDOMEvent* aEvent)
         nsCOMPtr<nsIDOMDocument> ctDoc = do_QueryInterface(target);
         nsCOMPtr<nsIDOMWindow> targetWin;
         ctDoc->GetDefaultView(getter_AddRefs(targetWin));
-        nsCOMPtr<nsIDOMWindow> docWin;
-        GetTopWindow(targetWin, getter_AddRefs(docWin));
         if (targetWin != docWin) {
             return NS_OK;
         }

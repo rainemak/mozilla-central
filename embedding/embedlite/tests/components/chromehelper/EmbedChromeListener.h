@@ -11,33 +11,32 @@
 #include "nsIObserver.h"
 #include "nsIDOMEventListener.h"
 #include "nsIEmbedAppService.h"
+#include "nsIDOMWindow.h"
 
-class EmbedChromeListener : public nsIObserver,
-                            public nsIDOMEventListener,
-                            public nsSupportsWeakReference
+#define MOZ_DOMTitleChanged "DOMTitleChanged"
+#define MOZ_DOMContentLoaded "DOMContentLoaded"
+#define MOZ_DOMLinkAdded "DOMLinkAdded"
+#define MOZ_DOMWillOpenModalDialog "DOMWillOpenModalDialog"
+#define MOZ_DOMModalDialogClosed "DOMModalDialogClosed"
+#define MOZ_DOMWindowClose "DOMWindowClose"
+#define MOZ_DOMPopupBlocked "DOMPopupBlocked"
+#define MOZ_pageshow "pageshow"
+#define MOZ_pagehide "pagehide"
+#define MOZ_DOMMetaAdded "DOMMetaAdded"
+
+class EmbedChromeListener : public nsIDOMEventListener
 {
 public:
-    EmbedChromeListener();
+    EmbedChromeListener(nsIDOMWindow* aWin);
     virtual ~EmbedChromeListener();
 
     NS_DECL_ISUPPORTS
-    NS_DECL_NSIOBSERVER
     NS_DECL_NSIDOMEVENTLISTENER
 
-    nsresult Init();
+    nsCOMPtr<nsIDOMWindow> DOMWindow;
 private:
-    void WindowCreated(nsIDOMWindow* aWin);
-    void WindowDestroyed(nsIDOMWindow* aWin);
     nsCOMPtr<nsIEmbedAppService> mService;
     int mWindowCounter;
 };
-
-#define NS_EMBED_CHROME_CONTRACTID "@mozilla.org/embed-chrome-component;1"
-#define NS_EMBED_CHROME_SERVICE_CLASSNAME "Embed Chrome Listener Component"
-#define NS_EMBED_CHROME_SERVICE_CID \
-{ 0xab157a4c, \
-  0x6aaf, \
-  0x12e2, \
-  { 0xa6, 0x9f, 0x4f, 0xcc, 0xae, 0x4e, 0x8e, 0xc6 }}
 
 #endif /*EmbedChromeListener_H_*/
