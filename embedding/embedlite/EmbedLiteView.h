@@ -51,6 +51,14 @@ public:
                                   nsIntPoint& aScrollOffset, float& aScaleX, float& aScaleY) {}
     virtual void SetPageRect(const gfxRect& aCssPageRect) {}
     virtual void IMENotification(int aEnabled, bool aOpen, int aCause, int aFocusChange) {}
+
+    // AZPC Interface, return true in order to prevent default behavior
+    virtual bool RequestContentRepaint() { return false; }
+    virtual bool HandleDoubleTap(const nsIntPoint& aPoint) { return false; }
+    virtual bool HandleSingleTap(const nsIntPoint& aPoint) { return false; }
+    virtual bool HandleLongTap(const nsIntPoint& aPoint) { return false; }
+    virtual bool SendAsyncScrollDOMEvent(const gfxRect &aContentRect,
+                                         const gfxSize &aScrollableSize) { return false; }
 };
 
 class EmbedLiteApp;

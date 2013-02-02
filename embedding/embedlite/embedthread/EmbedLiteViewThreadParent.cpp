@@ -50,7 +50,8 @@ public:
                                   aPoint));
             return;
         }
-        if (mRenderFrame) {
+        EmbedLiteViewListener* listener = GetListener();
+        if (listener && !listener->HandleDoubleTap(aPoint)) {
             unused << mRenderFrame->SendHandleDoubleTap(aPoint);
         }
     }
@@ -66,7 +67,8 @@ public:
                                   aPoint));
             return;
         }
-        if (mRenderFrame) {
+        EmbedLiteViewListener* listener = GetListener();
+        if (listener && !listener->HandleSingleTap(aPoint)) {
             unused << mRenderFrame->SendHandleSingleTap(aPoint);
         }
     }
@@ -82,7 +84,8 @@ public:
                                   aPoint));
             return;
         }
-        if (mRenderFrame) {
+        EmbedLiteViewListener* listener = GetListener();
+        if (listener && !listener->HandleLongTap(aPoint)) {
             unused << mRenderFrame->SendHandleLongTap(aPoint);
         }
     }
@@ -95,16 +98,30 @@ public:
     virtual void SendAsyncScrollDOMEvent(const gfx::Rect &aContentRect,
                                          const gfx::Size &aScrollableSize)
     {
-        LOGNI("contentR[%g,%g,%g,%g], scrSize[%g,%g]", aContentRect.x, aContentRect.y, aContentRect.width, aContentRect.height, aScrollableSize.width, aScrollableSize.height);
-        unused << mRenderFrame->SendAsyncScrollDOMEvent(gfxRect(aContentRect.x, aContentRect.y, aContentRect.width, aContentRect.height), gfxSize(aScrollableSize.width, aScrollableSize.height));
+        LOGNI("contentR[%g,%g,%g,%g], scrSize[%g,%g]",
+              aContentRect.x, aContentRect.y, aContentRect.width, aContentRect.height,
+              aScrollableSize.width, aScrollableSize.height);
+        gfxRect rect(aContentRect.x, aContentRect.y, aContentRect.width, aContentRect.height);
+        gfxSize size(aScrollableSize.width, aScrollableSize.height);
+        EmbedLiteViewListener* listener = GetListener();
+        if (listener && !listener->SendAsyncScrollDOMEvent(rect, size)) {
+            unused << mRenderFrame->SendAsyncScrollDOMEvent(rect, size);
+        }
     }
 
     void ClearRenderFrame() { mRenderFrame = nullptr; }
 
 private:
+    EmbedLiteViewListener* GetListener()
+    {
+        return mRenderFrame && mRenderFrame->mView ?
+            mRenderFrame->mView->GetListener() : nullptr;
+    }
+
     void DoRequestContentRepaint(const FrameMetrics& aFrameMetrics)
     {
-        if (mRenderFrame) {
+        EmbedLiteViewListener* listener = GetListener();
+        if (listener && !listener->RequestContentRepaint()) {
             unused << mRenderFrame->SendUpdateFrame(aFrameMetrics);
         }
     }

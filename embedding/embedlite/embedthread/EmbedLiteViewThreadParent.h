@@ -124,6 +124,7 @@ protected:
                                      const int32_t& aFocusChange);
 
 private:
+    friend class EmbedContentController;
     friend class EmbedLiteCompositorParent;
     void SetCompositor(EmbedLiteCompositorParent* aCompositor);
     uint32_t mId;
