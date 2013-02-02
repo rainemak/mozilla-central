@@ -49,9 +49,19 @@ public:
       , mIsLoading(false)
       , mLastIsGoodRotation(true)
       , mIsPasswordField(false)
+      , mPainted(false)
     {
     }
     virtual ~QGraphicsMozViewPrivate() {}
+
+    QGraphicsView* GetViewWidget()
+    {
+        if (!q->scene())
+            return nullptr;
+
+        NS_ASSERTION(q->scene()->views().size() == 1, "Not exactly one view for our scene!");
+        return q->scene()->views()[0];
+    }
 
     void ReceiveInputEvent(const mozilla::InputData& event);
     void touchEvent(QTouchEvent* event);
@@ -168,11 +178,6 @@ public:
     }
     virtual void OnFirstPaint(int32_t aX, int32_t aY) {
         LOGT();
-        QGraphicsView* view = q->GetViewWidget();
-        if (view) {
-            q->connect(view, SIGNAL(displayEntered()), q, SLOT(onDisplayEntered()));
-            q->connect(view, SIGNAL(displayExited()), q, SLOT(onDisplayExited()));
-        }
         Q_EMIT q->firstPaint(aX, aY);
     }
 
@@ -231,6 +236,7 @@ public:
     bool mIsLoading;
     bool mLastIsGoodRotation;
     bool mIsPasswordField;
+    bool mPainted;
 };
 
 QGraphicsMozView::QGraphicsMozView(QGraphicsItem* parent)
@@ -264,16 +270,6 @@ QGraphicsMozView::~QGraphicsMozView()
     delete d;
 }
 
-QGraphicsView*
-QGraphicsMozView::GetViewWidget()
-{
-    if (!scene())
-      return nullptr;
-
-    NS_ASSERTION(scene()->views().size() == 1, "Not exactly one view for our scene!");
-    return scene()->views()[0];
-}
-
 void
 QGraphicsMozView::onInitialized()
 {
@@ -301,6 +297,15 @@ void QGraphicsMozView::EraseBackgroundGL(QPainter* painter, const QRect& r)
 void
 QGraphicsMozView::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, QWidget*)
 {
+    if (!d->mPainted) {
+        d->mPainted = true;
+        QGraphicsView* view = d->GetViewWidget();
+        if (view) {
+            connect(view, SIGNAL(displayEntered()), this, SLOT(onDisplayEntered()));
+            connect(view, SIGNAL(displayExited()), this, SLOT(onDisplayExited()));
+        }
+    }
+
     QRect r = opt ? opt->exposedRect.toRect() : boundingRect().toRect();
     if (d->mViewInitialized) {
         QMatrix affine = painter->transform().toAffine();

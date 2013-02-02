@@ -110,7 +110,6 @@ private Q_SLOTS:
 
 private:
     void forceActiveFocus();
-    QGraphicsView* GetViewWidget();
 
     QGraphicsMozViewPrivate* d;
     friend class QGraphicsMozViewPrivate;
