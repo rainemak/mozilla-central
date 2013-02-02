@@ -68,11 +68,13 @@ public:
     void UpdateViewSize()
     {
         if (mViewInitialized) {
-            const QGLContext* ctx = QGLContext::currentContext();
-            if (ctx && ctx->device()) {
-                QRectF r(0, 0, ctx->device()->width(), ctx->device()->height());
-                r = q->mapRectToScene(r);
-                mView->SetGLViewPortSize(r.width(), r.height());
+            if (mContext->GetApp()->IsAccelerated()) {
+                const QGLContext* ctx = QGLContext::currentContext();
+                if (ctx && ctx->device()) {
+                    QRectF r(0, 0, ctx->device()->width(), ctx->device()->height());
+                    r = q->mapRectToScene(r);
+                    mView->SetGLViewPortSize(r.width(), r.height());
+                }
             }
             mView->SetViewSize(mSize.width(), mSize.height());
         }
@@ -82,6 +84,14 @@ public:
         UpdateViewSize();
         Q_EMIT q->viewInitialized();
         Q_EMIT q->navigationHistoryChanged();
+        if (getenv("LOAD_BR_CHILD")) {
+            mView->LoadFrameScript("chrome://global/content/BrowserElementChild.js");
+            mView->SendAsyncMessage((const PRUnichar*)QString("DocShell:SetAsyncZoomPanEnabled").constData(), (const PRUnichar*)QString("true").constData());
+        }
+        mView->AddMessageListener("embed:alert");
+        mView->AddMessageListener("embed:prompt");
+        mView->AddMessageListener("embed:confirm");
+        mView->AddMessageListener("embed:auth");
     }
     virtual void SetBackgroundColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
         mBgColor = QColor(r, g, b, a);
@@ -125,26 +135,29 @@ public:
         LOGT();
         Q_EMIT q->viewDestroyed();
     }
-    virtual void RecvAsyncMessage(const char* aMessage, const char* aData) {
-        if (!strncmp(aMessage, "embed:", 6) || !strncmp(aMessage, "chrome:", 7)) {
+    virtual void RecvAsyncMessage(const PRUnichar* aMessage, const PRUnichar* aData) {
+        NS_ConvertUTF16toUTF8 message(aMessage);
+        NS_ConvertUTF16toUTF8 data(aData);
+
+        if (!strncmp(message.get(), "embed:", 6) || !strncmp(message.get(), "chrome:", 7)) {
             QJson::Parser parser;
             bool ok = false;
-            QVariant data = parser.parse(QByteArray(aData), &ok);
+            QVariant vdata = parser.parse(QByteArray(data.get()), &ok);
             if (ok) {
-                if (!strcmp(aMessage, "embed:alert")) {
-                    Q_EMIT q->alert(data);
+                if (!strcmp(message.get(), "embed:alert")) {
+                    Q_EMIT q->alert(vdata);
                     return;
-                } else if (!strcmp(aMessage, "embed:confirm")) {
-                    Q_EMIT q->confirm(data);
+                } else if (!strcmp(message.get(), "embed:confirm")) {
+                    Q_EMIT q->confirm(vdata);
                     return;
-                } else if (!strcmp(aMessage, "embed:prompt")) {
-                    Q_EMIT q->prompt(data);
+                } else if (!strcmp(message.get(), "embed:prompt")) {
+                    Q_EMIT q->prompt(vdata);
                     return;
-                } else if (!strcmp(aMessage, "embed:auth")) {
-                    Q_EMIT q->authRequired(data);
+                } else if (!strcmp(message.get(), "embed:auth")) {
+                    Q_EMIT q->authRequired(vdata);
                     return;
-                } else if (!strcmp(aMessage, "chrome:title")) {
-                    QMap<QString, QVariant> map = data.toMap();
+                } else if (!strcmp(message.get(), "chrome:title")) {
+                    QMap<QString, QVariant> map = vdata.toMap();
                     mTitle = map["title"].toString();
                     Q_EMIT q->titleChanged();
                     return;
@@ -153,17 +166,18 @@ public:
                 LOGT("parse: err:%s, errLine:%i", parser.errorString().toUtf8().data(), parser.errorLine());
             }
         }
-        LOGT("mesg:%s, data:%s", aMessage, aData);
-        Q_EMIT q->recvAsyncMessage(aMessage, aData);
+        LOGT("mesg:%s, data:%s", message.get(), data.get());
+        Q_EMIT q->recvAsyncMessage(message.get(), data.get());
     }
-    virtual char* RecvSyncMessage(const char* aMessage, const char* aData) {
-        LOGT();
+    virtual char* RecvSyncMessage(const PRUnichar* aMessage, const PRUnichar*  aData) {
         QSyncMessageResponse response;
-        Q_EMIT q->recvSyncMessage(aMessage, aData, &response);
+        NS_ConvertUTF16toUTF8 message(aMessage);
+        NS_ConvertUTF16toUTF8 data(aData);
+        Q_EMIT q->recvSyncMessage(message.get(), data.get(), &response);
 
         QJson::Serializer serializer;
         QByteArray array = serializer.serialize(response.getMessage());
-        LOGT("msg:%s, response:%s", aMessage, array.constData());
+        LOGT("msg:%s, response:%s", message.get(), array.constData());
         return strdup(array.constData());
     }
 
@@ -207,10 +221,6 @@ public:
 
     virtual void OnScrolledAreaChanged(unsigned int aWidth, unsigned int aHeight) { LOGT(); }
     virtual void OnScrollChanged(int32_t offSetX, int32_t offSetY) { }
-    virtual void OnObserve(const char* aTopic, const PRUnichar* aData) {
-        LOGT();
-        Q_EMIT q->observeNotification(aTopic, QString((QChar*)aData));
-    }
     virtual void SetFirstPaintViewport(const nsIntPoint& aOffset, float aZoom,
                                        const nsIntRect& aPageRect, const gfxRect& aCssPageRect) { LOGT(); }
     virtual void SyncViewportInfo(const nsIntRect& aDisplayPort,
@@ -403,7 +413,7 @@ void QGraphicsMozView::sendAsyncMessage(const QString& name, const QVariant& var
 
     QJson::Serializer serializer;
     QByteArray array = serializer.serialize(variant);
-    d->mView->SendAsyncMessage(name.toUtf8().data(), array.constData());
+    d->mView->SendAsyncMessage((const PRUnichar*)name.constData(), NS_ConvertUTF8toUTF16(array.constData()).get());
 }
 
 void
@@ -411,7 +421,7 @@ QGraphicsMozView::sendAsyncMessage(const QString& name, const QString& message)
 {
     if (!d->mViewInitialized)
         return;
-    d->mView->SendAsyncMessage(name.toUtf8().data(), message.toUtf8().data());
+    d->mView->SendAsyncMessage((const PRUnichar*)name.constData(), (const PRUnichar*)message.constData());
 }
 
 QString QGraphicsMozView::title() const

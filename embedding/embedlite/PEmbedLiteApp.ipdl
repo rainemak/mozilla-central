@@ -12,7 +12,6 @@ rpc protocol PEmbedLiteApp {
 parent:
     async Initialized();
     async ReadyToShutdown();
-
     sync PEmbedLiteView(uint32_t id);
 
 child:
@@ -22,8 +21,10 @@ child:
     async SetCharPref(nsCString name, nsCString value);
     async SetIntPref(nsCString name, int value);
     async LoadGlobalStyleSheet(nsCString uri, bool aEnable);
+    async AddObserver(nsCString topic);
+    async RemoveObserver(nsCString topic);
 both:
-    AsyncMessage(nsString aMessage, nsString aData);
+    async Observe(nsCString topic, nsString data);
 };
 
 }}

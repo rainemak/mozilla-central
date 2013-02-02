@@ -75,13 +75,12 @@ Q_SIGNALS:
     void navigationHistoryChanged();
     void loadingChanged();
     void viewDestroyed();
-    void recvAsyncMessage(QString message, QString data);
-    bool recvSyncMessage(QString message, QString data, QSyncMessageResponse* response);
+    void recvAsyncMessage(const QString message, const QString data);
+    bool recvSyncMessage(const QString message, const QString data, QSyncMessageResponse* response);
     void loadRedirect();
     void securityChanged(QString status, uint32_t state);
     void firstPaint(int32_t offx, int32_t offy);
     void contentLoaded(QString docuri);
-    void observeNotification(QString topic, QString data);
     void alert(QVariant data);
     void confirm(QVariant data);
     void prompt(QVariant data);

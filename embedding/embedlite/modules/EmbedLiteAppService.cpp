@@ -94,29 +94,21 @@ EmbedLiteAppService::GetIDByWindow(nsIDOMWindow* aWin, uint32_t* aId)
 }
 
 NS_IMETHODIMP
-EmbedLiteAppService::SendAsyncMessage(uint32_t aId, const nsAString& messageName, const nsAString& message)
+EmbedLiteAppService::SendAsyncMessage(uint32_t aId, const PRUnichar* messageName, const PRUnichar* message)
 {
     EmbedLiteViewThreadChild* view = sGetViewById(aId);
     NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
-    view->SendAsyncMessage(nsString(messageName), nsString(message));
+    view->DoSendAsyncMessage(messageName, message);
     return NS_OK;
 }
 
 NS_IMETHODIMP
-EmbedLiteAppService::SendGlobalAsyncMessage(const nsAString& messageName, const nsAString& message)
-{
-    EmbedLiteAppThreadChild::GetInstance()->SendAsyncMessage(nsString(messageName), nsString(message));
-    return NS_OK;
-}
-
-
-NS_IMETHODIMP
-EmbedLiteAppService::SendSyncMessage(uint32_t aId, const nsAString& messageName, const nsAString& message, nsAString& retval)
+EmbedLiteAppService::SendSyncMessage(uint32_t aId, const PRUnichar* messageName, const PRUnichar* message, nsAString& retval)
 {
     EmbedLiteViewThreadChild* view = sGetViewById(aId);
     NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
     InfallibleTArray<nsString> retvalArray;
-    view->SendSyncMessage(nsString(messageName), nsString(message), &retvalArray);
+    view->DoSendSyncMessage(messageName, message, &retvalArray);
     retval = retvalArray[0];
     return NS_OK;
 }

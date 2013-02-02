@@ -35,7 +35,7 @@ public:
     virtual void SuspendTimeouts();
     virtual void ResumeTimeouts();
     virtual void LoadFrameScript(const char* aURI);
-    virtual void DoSendAsyncMessage(const char* aMessageName, const char* aMessage);
+    virtual void DoSendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage);
     virtual bool RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);
     virtual bool RenderGL();
     virtual void SetViewSize(int width, int height);
@@ -53,6 +53,10 @@ public:
     virtual void SendKeyPress(int,int,int);
     virtual void SendKeyRelease(int,int,int);
     virtual void ViewAPIDestroyed();
+    virtual uint32_t GetUniqueID();
+    virtual void AddMessageListener(const char* aMessageName);
+    virtual void RemoveMessageListener(const char* aMessageName);
+
     mozilla::layers::AsyncPanZoomController* GetDefaultPanZoomController();
 
 protected:
@@ -94,10 +98,6 @@ protected:
             const int32_t& offSetX,
             const int32_t& offSetY);
 
-    virtual bool
-    RecvOnObserve(
-            const nsCString& aTopic,
-            const nsString& aData);
     virtual bool RecvAsyncMessage(const nsString& aMessage,
                                   const nsString& aData);
     virtual bool RecvSyncMessage(const nsString& aMessage,

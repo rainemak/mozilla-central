@@ -26,18 +26,11 @@ interface nsIEmbedMessageListener : nsISupports
     void onMessageReceived(in string messageName, in wstring message);
 };
 
-[scriptable, uuid(f2a32eaa-6c40-11e2-9104-c3c58852b659)]
-interface nsIEmbedMessageGlobalListener : nsISupports
-{
-    void onMessageReceived(in string messageName, in wstring message);
-};
-
 [scriptable, uuid(7c5f3fc6-6903-11e2-a9ab-b7e20093f445)]
 interface nsIEmbedAppService : nsISupports
 {
-    void sendGlobalAsyncMessage(in AString messageName, in AString message);
-    void sendAsyncMessage(in uint32_t aId, in AString messageName, in AString message);
-    void sendSyncMessage(in uint32_t aId, in AString messageName, in AString message,
+    void sendAsyncMessage(in uint32_t aId, in wstring messageName, in wstring message);
+    void sendSyncMessage(in uint32_t aId, in wstring messageName, in wstring message,
                          out AString retval);
     void GetIDByWindow(in nsIDOMWindow aWin, out uint32_t aId);
     void addMessageListener(in string name, in nsIEmbedMessageListener listener);

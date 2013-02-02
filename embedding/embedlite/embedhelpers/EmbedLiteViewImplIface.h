@@ -24,7 +24,9 @@ public:
     virtual void StopLoad() {}
     virtual void Reload(bool hardReload) {}
     virtual void LoadFrameScript(const char* aURI) {}
-    virtual void DoSendAsyncMessage(const char* aMessageName, const char* aMessage) {}
+    virtual void DoSendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage) {}
+    virtual void AddMessageListener(const char* aMessageName) {}
+    virtual void RemoveMessageListener(const char* aMessageName) {}
     virtual bool RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth) { return false; }
     virtual bool RenderGL() { return false; }
     virtual void SetIsActive(bool) {}
@@ -46,6 +48,7 @@ public:
     virtual void MouseMove(int x, int y, int mstime, unsigned int buttons, unsigned int modifiers) {}
     virtual void UpdateScrollController() {}
     virtual void ViewAPIDestroyed() {}
+    virtual uint32_t GetUniqueID() { return 0; }
 };
 
 } // namespace embedlite

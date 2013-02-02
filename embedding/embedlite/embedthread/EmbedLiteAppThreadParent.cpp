@@ -90,24 +90,25 @@ EmbedLiteAppThreadParent::DeallocPEmbedLiteView(PEmbedLiteViewParent* actor)
 
 void EmbedLiteAppThreadParent::SetBoolPref(const char* aName, bool aValue)
 {
-    unused << SendSetBoolPref(nsCString(aName), aValue);
+    unused << SendSetBoolPref(nsDependentCString(aName), aValue);
 }
 
 void EmbedLiteAppThreadParent::SetCharPref(const char* aName, const char* aValue)
 {
-    unused << SendSetCharPref(nsCString(aName), nsCString(aValue));
+    unused << SendSetCharPref(nsDependentCString(aName), nsDependentCString(aValue));
 }
 
 void EmbedLiteAppThreadParent::SetIntPref(const char* aName, int aValue)
 {
-    unused << SendSetIntPref(nsCString(aName), aValue);
+    unused << SendSetIntPref(nsDependentCString(aName), aValue);
 }
 
 bool
-EmbedLiteAppThreadParent::RecvAsyncMessage(const nsString& message, const nsString& messageName)
+EmbedLiteAppThreadParent::RecvObserve(const nsCString& topic,
+                                      const nsString& data)
 {
-    LOGT();
-    mApp->GetListener()->RecvAsyncMessage(NS_ConvertUTF16toUTF8(message).get(), NS_ConvertUTF16toUTF8(messageName).get());
+    LOGT("topic:%s", topic.get());
+    mApp->GetListener()->OnObserve(topic.get(), data.get());
     return true;
 }
 

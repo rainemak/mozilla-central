@@ -29,7 +29,6 @@ class WebBrowserChrome : public nsIWebBrowserChrome,
                          public nsIWebBrowserChromeFocus,
                          public nsIEmbeddingSiteWindow,
                          public nsIInterfaceRequestor,
-                         public nsIObserver,
                          public nsIDOMEventListener,
                          public nsSupportsWeakReference
 {
@@ -40,7 +39,6 @@ public:
     NS_DECL_NSIWEBBROWSERCHROMEFOCUS
     NS_DECL_NSIEMBEDDINGSITEWINDOW
     NS_DECL_NSIINTERFACEREQUESTOR
-    NS_DECL_NSIOBSERVER
     NS_DECL_NSIDOMEVENTLISTENER
 
     WebBrowserChrome(nsIEmbedBrowserChromeListener* aListener);
@@ -49,7 +47,6 @@ public:
 
     void SetEventHandler();
     void RemoveEventHandler();
-    void AddObserver(const char* topic);
 
 private:
     nsIntPoint GetScrollOffset(nsIDOMWindow* aWindow);

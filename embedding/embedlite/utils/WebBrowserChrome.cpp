@@ -56,13 +56,12 @@ WebBrowserChrome::~WebBrowserChrome()
     LOGT();
 }
 
-NS_IMPL_ISUPPORTS7(WebBrowserChrome,
+NS_IMPL_ISUPPORTS6(WebBrowserChrome,
                    nsIWebBrowserChrome,
                    nsIWebBrowserChromeFocus,
                    nsIInterfaceRequestor,
                    nsIEmbeddingSiteWindow,
                    nsIWebProgressListener,
-                   nsIObserver,
                    nsSupportsWeakReference)
 
 NS_IMETHODIMP WebBrowserChrome::GetInterface(const nsIID &aIID, void** aInstancePtr)
@@ -146,16 +145,6 @@ NS_IMETHODIMP WebBrowserChrome::ExitModalEventLoop(nsresult aStatus)
 }
 
 // ----- Progress Listener -----
-
-//*****************************************************************************
-// WebBrowserChrome::nsIObserver
-//*****************************************************************************
-
-NS_IMETHODIMP
-WebBrowserChrome::Observe(nsISupports *aSubject, const char *aTopic, const PRUnichar *someData)
-{
-    return mListener ? mListener->OnObserve(aTopic, someData) : NS_ERROR_FAILURE;
-}
 
 //*****************************************************************************
 // WebBrowserChrome::nsIWebProgressListener
@@ -632,9 +621,4 @@ void WebBrowserChrome::RemoveEventHandler()
     target->RemoveEventListener(NS_LITERAL_STRING("pagehide"), this,  PR_FALSE);
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_scroll), this,  PR_FALSE);
     target->RemoveEventListener(NS_LITERAL_STRING(MOZ_AFTER_PAINT_LITERAL), this,  PR_FALSE);
-}
-
-void WebBrowserChrome::AddObserver(const char* topic)
-{
-  mObserverService->AddObserver(this, topic, true);
 }

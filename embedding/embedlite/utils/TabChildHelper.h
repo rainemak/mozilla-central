@@ -12,6 +12,7 @@
 #include "nsIWebNavigation.h"
 #include "nsIWidget.h"
 #include "InputData.h"
+#include "nsDataHashtable.h"
 
 class CancelableTask;
 class nsPresContext;

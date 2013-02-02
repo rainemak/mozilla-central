@@ -83,6 +83,7 @@ NS_IMETHODIMP
 EmbedPromptService::OnMessageReceived(const char* messageName, const PRUnichar* message)
 {
     nsCOMPtr<nsIEmbedLiteJSON> json = do_GetService("@mozilla.org/embedlite-json;1");
+    printf(">>>>>>Func:%s::%d name:%s, msg:%s\n", __PRETTY_FUNCTION__, __LINE__, messageName, NS_ConvertUTF16toUTF8(message).get());
     nsCOMPtr<nsIPropertyBag2> root;
     NS_ENSURE_SUCCESS(json->ParseJSON(nsDependentString(message), getter_AddRefs(root)), NS_ERROR_FAILURE);
 
@@ -129,7 +130,7 @@ EmbedPromptService::AlertCheck(const PRUnichar* aDialogTitle,
 
     mResponseMap[winid] = EmbedPromptResponse();
 
-    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:alert"), sendString);
+    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:alert").get(), sendString.get());
     mService->AddMessageListener("alertresponse", this);
 
     nsresult rv(NS_OK);
@@ -215,7 +216,7 @@ EmbedPromptService::ConfirmCheck(const PRUnichar* aDialogTitle,
 
     mResponseMap[winid] = EmbedPromptResponse();
 
-    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:confirm"), sendString);
+    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:confirm").get(), sendString.get());
     mService->AddMessageListener("confirmresponse", this);
 
     nsresult rv(NS_OK);
@@ -312,7 +313,7 @@ EmbedPromptService::Prompt(const PRUnichar* aDialogTitle,
 
     mResponseMap[winid] = EmbedPromptResponse();
 
-    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:prompt"), sendString);
+    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:prompt").get(), sendString.get());
     mService->AddMessageListener("promptresponse", this);
 
     nsresult rv(NS_OK);
@@ -632,7 +633,7 @@ EmbedAuthPromptService::DoSendAsyncPrompt(EmbedAsyncAuthPrompt* mPrompt)
 
     mResponseMap[winid] = EmbedPromptResponse();
 
-    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:auth"), sendString);
+    mService->SendAsyncMessage(winid, NS_LITERAL_STRING("embed:auth").get(), sendString.get());
     mService->AddMessageListener("authresponse", this);
 
     mModalDepth++;

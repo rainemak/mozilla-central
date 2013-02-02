@@ -57,7 +57,10 @@ bool EmbedLiteCompositorParent::RenderToContext(gfxContext* aContext)
     LOGF();
     LayerManager* mgr = GetLayerManager();
     NS_ENSURE_TRUE(mgr, false);
-    NS_ENSURE_TRUE(mgr->GetRoot(), false);
+    if (!mgr->GetRoot()) {
+        // Nothing to paint yet, just return silently
+        return false;
+    }
     ComposeToTarget(aContext);
     return true;
 }

@@ -134,7 +134,23 @@ EmbedLiteView::LoadFrameScript(const char* aURI)
 }
 
 void
-EmbedLiteView::SendAsyncMessage(const char* aMessageName, const char* aMessage)
+EmbedLiteView::AddMessageListener(const char* aName)
+{
+    LOGT("name:%s", aName);
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->AddMessageListener(aName);
+}
+
+void
+EmbedLiteView::RemoveMessageListener(const char* aName)
+{
+    LOGT("name:%s", aName);
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->RemoveMessageListener(aName);
+}
+
+void
+EmbedLiteView::SendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage)
 {
     NS_ENSURE_TRUE(mViewImpl, );
     mViewImpl->DoSendAsyncMessage(aMessageName, aMessage);
@@ -343,6 +359,13 @@ EmbedLiteView::PinchEnd(int x, int y, float scale)
 {
     NS_ENSURE_TRUE(mViewImpl, );
     LOGT();
+}
+
+uint32_t
+EmbedLiteView::GetUniqueID()
+{
+    NS_ENSURE_TRUE(mViewImpl, 0);
+    return mViewImpl->GetUniqueID();
 }
 
 } // namespace embedlite

@@ -45,10 +45,22 @@ EmbedLiteAppThreadChild::EmbedLiteAppThreadChild(MessageLoop* aParentLoop)
     sAppThreadChild = this;
 }
 
+NS_IMPL_ISUPPORTS1(EmbedLiteAppThreadChild, nsIObserver)
+
 EmbedLiteAppThreadChild::~EmbedLiteAppThreadChild()
 {
     LOGT();
     sAppThreadChild = nullptr;
+}
+
+NS_IMETHODIMP
+EmbedLiteAppThreadChild::Observe(nsISupports *aSubject,
+                                 const char *aTopic,
+                                 const PRUnichar *aData)
+{
+    LOGF("topic:%s", aTopic);
+    unused << SendObserve(nsDependentCString(aTopic), nsDependentString(aData));
+    return NS_OK;
 }
 
 void
@@ -59,7 +71,7 @@ EmbedLiteAppThreadChild::Init(EmbedLiteAppThreadParent* aParent)
     AsyncChannel *parentChannel = aParent->GetIPCChannel();
     AsyncChannel::Side childSide = mozilla::ipc::AsyncChannel::Child;
     Open(parentChannel, mParentLoop, childSide);
-    RecvSetBoolPref(nsCString("layers.offmainthreadcomposition.enabled"), true);
+    RecvSetBoolPref(nsDependentCString("layers.offmainthreadcomposition.enabled"), true);
     mModulesService = new EmbedLiteModulesService();
     mModulesService->Init();
     SendInitialized();
@@ -205,9 +217,45 @@ EmbedLiteAppThreadChild::RecvLoadGlobalStyleSheet(const nsCString& uri, const bo
 }
 
 bool
-EmbedLiteAppThreadChild::RecvAsyncMessage(const nsString& message, const nsString& messageName)
+EmbedLiteAppThreadChild::RecvObserve(const nsCString& topic,
+                                     const nsString& data)
 {
-    LOGNI("msg:%s, data:%s", NS_ConvertUTF16toUTF8(message).get(), NS_ConvertUTF16toUTF8(messageName).get());
+    LOGT("topic:%s", topic.get());
+    nsCOMPtr<nsIObserverService> observerService =
+        do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
+    if (observerService)
+        observerService->NotifyObservers(nullptr, topic.get(), data.get());
+    return true;
+}
+
+bool
+EmbedLiteAppThreadChild::RecvAddObserver(const nsCString& topic)
+{
+    LOGT("topic:%s", topic.get());
+    nsCOMPtr<nsIObserverService> observerService =
+        do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
+
+    if (observerService) {
+        observerService->AddObserver(this,
+                                     topic.get(),
+                                     false);
+    }
+
+    return true;
+}
+
+bool
+EmbedLiteAppThreadChild::RecvRemoveObserver(const nsCString& topic)
+{
+    LOGT("topic:%s", topic.get());
+    nsCOMPtr<nsIObserverService> observerService =
+        do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
+
+    if (observerService) {
+        observerService->RemoveObserver(this,
+                                        topic.get());
+    }
+
     return true;
 }
 

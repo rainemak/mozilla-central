@@ -52,6 +52,7 @@ EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(uint32_t aId)
         PostTask(FROM_HERE,
                  NewRunnableMethod(this,
                                    &EmbedLiteViewThreadChild::InitGeckoWindow));
+    mRegisteredMessages.Init();
 }
 
 EmbedLiteViewThreadChild::~EmbedLiteViewThreadChild()
@@ -169,7 +170,6 @@ EmbedLiteViewThreadChild::InitGeckoWindow()
     }
 
     AppChild()->AppService()->RegisterView(mId);
-
     mHelper = new TabChildHelper(this);
     unused << SendInitialized();
 }
@@ -299,12 +299,57 @@ EmbedLiteViewThreadChild::RecvAsyncMessage(const nsString& aMessage,
     return true;
 }
 
+bool
+EmbedLiteViewThreadChild::HasMessageListener(const nsAString& aMessageName)
+{
+    if (mRegisteredMessages.Get(aMessageName)) {
+        return true;
+    }
+    return false;
+}
+
+bool
+EmbedLiteViewThreadChild::DoSendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage)
+{
+    LOGT("msg:%s, data:%s", NS_ConvertUTF16toUTF8(aMessageName).get(), NS_ConvertUTF16toUTF8(aMessage).get());
+    if (mRegisteredMessages.Get(nsDependentString(aMessageName))) {
+        return SendAsyncMessage(nsDependentString(aMessageName), nsDependentString(aMessage));
+    }
+    return true;
+}
+
+bool
+EmbedLiteViewThreadChild::DoSendSyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage, InfallibleTArray<nsString>* aJSONRetVal)
+{
+    LOGT("msg:%s, data:%s", NS_ConvertUTF16toUTF8(aMessageName).get(), NS_ConvertUTF16toUTF8(aMessage).get());
+    if (mRegisteredMessages.Get(nsDependentString(aMessageName))) {
+        return SendSyncMessage(nsDependentString(aMessageName), nsDependentString(aMessage), aJSONRetVal);
+    }
+    return true;
+}
+
 void
 EmbedLiteViewThreadChild::RecvAsyncMessage(const nsAString& aMessage,
                                            const nsAString& aData)
 {
     LOGT("msg:%s, data:%s", NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());
     mHelper->RecvAsyncMessage(aMessage, aData);
+}
+
+bool
+EmbedLiteViewThreadChild::RecvAddMessageListener(const nsCString& name)
+{
+    LOGT("name:%s", name.get());
+    mRegisteredMessages.Put(NS_ConvertUTF8toUTF16(name), 1);
+    return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvRemoveMessageListener(const nsCString& name)
+{
+    LOGT("name:%s", name.get());
+    mRegisteredMessages.Remove(NS_ConvertUTF8toUTF16(name));
+    return true;
 }
 
 bool
@@ -614,13 +659,6 @@ NS_IMETHODIMP EmbedLiteViewThreadChild::OnScrolledAreaChanged(uint32_t aWidth, u
 NS_IMETHODIMP EmbedLiteViewThreadChild::OnScrollChanged(int32_t offSetX, int32_t offSetY)
 {
     return SendOnScrollChanged(offSetX, offSetY) ? NS_OK : NS_ERROR_FAILURE;
-}
-
-/* void onObserve (in string aTopic, in wstring aData) */
-NS_IMETHODIMP EmbedLiteViewThreadChild::OnObserve(const char* aTopic, const PRUnichar* aData)
-{
-     return SendOnObserve(nsDependentCString(aTopic),
-                          nsDependentString(aData)) ? NS_OK : NS_ERROR_FAILURE;
 }
 
 NS_IMETHODIMP EmbedLiteViewThreadChild::OnUpdateDisplayPort()

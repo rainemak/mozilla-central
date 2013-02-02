@@ -51,6 +51,8 @@ child:
     // We use a separate message for touchmove events only to apply
     // compression to them.
     InputDataTouchMoveEvent(MultiTouchInput event, gfxSize res, gfxPoint diff) compress;
+    AddMessageListener(nsCString name);
+    RemoveMessageListener(nsCString name);
 
     async Destroy();
 
@@ -67,7 +69,6 @@ parent:
     async OnFirstPaint(int32_t aX, int32_t aY);
     async OnScrolledAreaChanged(uint32_t aWidth, uint32_t aHeight);
     async OnScrollChanged(int32_t offSetX, int32_t offSetY);
-    async OnObserve(nsCString aTopic, nsString aData);
     UpdateZoomConstraints(bool aAllowZoom, float aMinZoom, float aMaxZoom);
     ZoomToRect(gfxRect aRect);
     async SetBackgroundColor(nscolor color);

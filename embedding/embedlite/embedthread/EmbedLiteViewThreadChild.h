@@ -35,10 +35,12 @@ public:
     uint64_t GetOuterID() { return mOuterId; }
     void ResetInputState();
 
-    void RecvAsyncMessage(const nsAString& aMessage,
-                          const nsAString& aData);
 
     JSContext* GetJSContext() { return mHelper ? mHelper->GetJSContext() : nullptr; }
+
+    virtual bool DoSendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage);
+    virtual bool DoSendSyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage, InfallibleTArray<nsString>* aJSONRetVal);
+    bool HasMessageListener(const nsAString& aMessageName);
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
@@ -77,6 +79,12 @@ protected:
 
     virtual bool RecvAsyncMessage(const nsString& aMessage,
                                   const nsString& aData);
+    virtual bool
+    RecvAddMessageListener(const nsCString&);
+    virtual bool
+    RecvRemoveMessageListener(const nsCString&);
+    void RecvAsyncMessage(const nsAString& aMessage,
+                          const nsAString& aData);
 
 private:
     void InitGeckoWindow();
@@ -101,6 +109,8 @@ private:
     bool mDispatchSynthMouseEvents;
     bool mHadResizeSinceLastFrameUpdate;
     bool mIMEComposing;
+
+    nsDataHashtable<nsStringHashKey, bool/*start with key*/> mRegisteredMessages;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadChild);
 };

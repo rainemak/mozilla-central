@@ -186,19 +186,19 @@ EmbedLiteApp::Stop()
 void
 EmbedLiteApp::SetBoolPref(const char* aName, bool aValue)
 {
-    unused << STHREADAPP()->SendSetBoolPref(nsCString(aName), aValue);
+    unused << STHREADAPP()->SendSetBoolPref(nsDependentCString(aName), aValue);
 }
 
 void
 EmbedLiteApp::SetCharPref(const char* aName, const char* aValue)
 {
-    unused << STHREADAPP()->SendSetCharPref(nsCString(aName), nsCString(aValue));
+    unused << STHREADAPP()->SendSetCharPref(nsDependentCString(aName), nsDependentCString(aValue));
 }
 
 void
 EmbedLiteApp::SetIntPref(const char* aName, int aValue)
 {
-    unused << STHREADAPP()->SendSetIntPref(nsCString(aName), aValue);
+    unused << STHREADAPP()->SendSetIntPref(nsDependentCString(aName), aValue);
 }
 
 void
@@ -209,9 +209,24 @@ EmbedLiteApp::LoadGlobalStyleSheet(const char* aUri, bool aEnable)
 }
 
 void
-EmbedLiteApp::SendAsyncMessage(const char* aMessageName, const char* aMessage)
+EmbedLiteApp::SendObserve(const char* aMessageName, const PRUnichar* aMessage)
 {
-    unused << STHREADAPP()->SendAsyncMessage(NS_ConvertUTF8toUTF16(aMessageName), NS_ConvertUTF8toUTF16(aMessage));
+    LOGT("topic:%s", aMessageName);
+    unused << STHREADAPP()->SendObserve(nsDependentCString(aMessageName), nsDependentString(aMessage));
+}
+
+void
+EmbedLiteApp::AddObserver(const char* aMessageName)
+{
+    LOGT("topic:%s", aMessageName);
+    unused << STHREADAPP()->SendAddObserver(nsDependentCString(aMessageName));
+}
+
+void
+EmbedLiteApp::RemoveObserver(const char* aMessageName)
+{
+    LOGT("topic:%s", aMessageName);
+    unused << STHREADAPP()->SendRemoveObserver(nsDependentCString(aMessageName));
 }
 
 EmbedLiteView*

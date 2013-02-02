@@ -54,8 +54,8 @@ private:
     void ViewInitialized();
     void ViewDestroyed();
     bool Invalidate();
-    void RecvAsyncMessage(const char* aMessage, const char* aData);
-    char* RecvSyncMessage(const char* aMessage, const char* aData);
+    void RecvAsyncMessage(const PRUnichar* aMessage, const PRUnichar* aData);
+    char* RecvSyncMessage(const PRUnichar* aMessage, const PRUnichar* aData);
     void SetBackgroundColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
     void SetupGLViewPort();

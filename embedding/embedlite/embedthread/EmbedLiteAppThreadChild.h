@@ -16,10 +16,12 @@ namespace embedlite {
 
 class EmbedLiteAppThreadParent;
 class EmbedLiteViewThreadChild;
-class EmbedLiteAppThreadChild : public PEmbedLiteAppChild
+class EmbedLiteAppThreadChild : public PEmbedLiteAppChild, public nsIObserver
 {
-    NS_INLINE_DECL_REFCOUNTING(EmbedLiteAppThreadChild)
 public:
+    NS_DECL_ISUPPORTS
+    NS_DECL_NSIOBSERVER
+
     EmbedLiteAppThreadChild(MessageLoop* aParentLoop);
     virtual ~EmbedLiteAppThreadChild();
 
@@ -35,13 +37,17 @@ protected:
     virtual bool RecvSetCharPref(const nsCString&, const nsCString&);
     virtual bool RecvSetIntPref(const nsCString&, const int&);
     virtual bool RecvLoadGlobalStyleSheet(const nsCString&, const bool&);
-    virtual bool RecvAsyncMessage(const nsString&, const nsString&);
 
     // IPDL protocol impl
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
 
     virtual bool RecvCreateView(const uint32_t&);
     virtual bool RecvPreDestroy();
+    virtual bool RecvObserve(const nsCString& topic,
+                             const nsString& data);
+    virtual bool RecvAddObserver(const nsCString&);
+    virtual bool RecvRemoveObserver(const nsCString&);
+
     virtual PEmbedLiteViewChild* AllocPEmbedLiteView(const uint32_t&);
     virtual bool DeallocPEmbedLiteView(PEmbedLiteViewChild*);
 

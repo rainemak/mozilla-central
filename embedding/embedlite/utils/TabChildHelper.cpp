@@ -304,6 +304,11 @@ TabChildHelper::DoSendSyncMessage(const nsAString& aMessage,
                                   const mozilla::dom::StructuredCloneData& aData,
                                   InfallibleTArray<nsString>* aJSONRetVal)
 {
+    if (!mView->HasMessageListener(aMessage)) {
+        printf(">>>>>>Func:%s::%d Message not registered msg:%s\n", __PRETTY_FUNCTION__, __LINE__, NS_ConvertUTF16toUTF8(aMessage).get());
+        return false;
+    }
+
     NS_ENSURE_TRUE(InitTabChildGlobal(), false);
     JSAutoRequest ar(mCx);
 
@@ -319,13 +324,18 @@ TabChildHelper::DoSendSyncMessage(const nsAString& aMessage,
     NS_ENSURE_TRUE(JS_Stringify(mCx, &jv, nullptr, JSVAL_NULL, JSONCreator, &json), false);
     NS_ENSURE_TRUE(!json.IsEmpty(), false);
 
-    return mView->SendSyncMessage(nsString(aMessage), json, aJSONRetVal);
+    return mView->DoSendSyncMessage(nsString(aMessage).get(), json.get(), aJSONRetVal);
 }
 
 bool
 TabChildHelper::DoSendAsyncMessage(const nsAString& aMessage,
                                    const mozilla::dom::StructuredCloneData& aData)
 {
+    if (!mView->HasMessageListener(aMessage)) {
+        printf(">>>>>>Func:%s::%d Message not registered msg:%s\n", __PRETTY_FUNCTION__, __LINE__, NS_ConvertUTF16toUTF8(aMessage).get());
+        return false;
+    }
+
     NS_ENSURE_TRUE(InitTabChildGlobal(), false);
     JSAutoRequest ar(mCx);
 
@@ -341,9 +351,7 @@ TabChildHelper::DoSendAsyncMessage(const nsAString& aMessage,
     NS_ENSURE_TRUE(JS_Stringify(mCx, &jv, nullptr, JSVAL_NULL, JSONCreator, &json), false);
     NS_ENSURE_TRUE(!json.IsEmpty(), false);
 
-    mView->SendAsyncMessage(nsString(aMessage), json);
-
-    return true;
+    return mView->DoSendAsyncMessage(nsString(aMessage).get(), json.get());
 }
 
 bool

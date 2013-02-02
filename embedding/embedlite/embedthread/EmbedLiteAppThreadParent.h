@@ -30,8 +30,8 @@ public:
     virtual bool
     RecvReadyToShutdown();
 
-    virtual bool
-    RecvAsyncMessage(const nsString&, const nsString&);
+    virtual bool RecvObserve(const nsCString& topic,
+                             const nsString& data);
 
     static EmbedLiteAppThreadParent* GetInstance();
 

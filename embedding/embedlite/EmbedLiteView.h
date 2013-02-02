@@ -27,8 +27,8 @@ public:
     virtual void ViewDestroyed() {}
 
     // Messaging interface, allow to receive json messages from content child scripts
-    virtual void RecvAsyncMessage(const char* aMessage, const char* aData) {}
-    virtual char* RecvSyncMessage(const char* aMessage, const char* aData) { return NULL; }
+    virtual void RecvAsyncMessage(const PRUnichar* aMessage, const PRUnichar* aData) {}
+    virtual char* RecvSyncMessage(const PRUnichar* aMessage, const PRUnichar* aData) { return NULL; }
 
     virtual void OnLocationChanged(const char* aLocation, bool aCanGoBack, bool aCanGoForward) {}
     virtual void OnLoadStarted(const char* aLocation) {}
@@ -39,7 +39,6 @@ public:
     virtual void OnFirstPaint(int32_t aX, int32_t aY) {}
     virtual void OnScrolledAreaChanged(unsigned int aWidth, unsigned int aHeight) {}
     virtual void OnScrollChanged(int32_t offSetX, int32_t offSetY) {}
-    virtual void OnObserve(const char* aTopic, const PRUnichar* aData) {}
     virtual void SetBackgroundColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {}
 
     // Compositor Interface
@@ -123,7 +122,12 @@ public:
     // For more detailed info see https://developer.mozilla.org/en-US/docs/The_message_manager
     //   https://wiki.mozilla.org/Content_Process_Event_Handlers
     virtual void LoadFrameScript(const char* aURI);
-    virtual void SendAsyncMessage(const char* aMessageName, const char* aMessage);
+
+    virtual void AddMessageListener(const char* aMessageName);
+    virtual void RemoveMessageListener(const char* aMessageName);
+    virtual void SendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage);
+
+    virtual uint32_t GetUniqueID();
 
 private:
     friend class EmbedLiteViewThreadParent;

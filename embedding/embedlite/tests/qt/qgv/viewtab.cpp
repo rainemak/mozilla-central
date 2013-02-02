@@ -88,20 +88,22 @@ void ViewTab::ViewInitialized()
         LoadURL(pendingUrl);
     }
     mView->LoadFrameScript("chrome://global/content/embedTestScript.js");
-    mView->SendAsyncMessage("EmbedMsg::HelloChildScript", "{}");
+    mView->SendAsyncMessage((const PRUnichar*)L"EmbedMsg::HelloChildScript", (const PRUnichar*)L"{}");
 }
 
 void
-ViewTab::RecvAsyncMessage(const char* aMessage, const char* aData)
+ViewTab::RecvAsyncMessage(const PRUnichar* aMessage, const PRUnichar* aData)
 {
-    printf(">>>>>>Func:%s::%d msg:%s, data:%s\n", __PRETTY_FUNCTION__, __LINE__, aMessage, aData);
+    printf(">>>>>>Func:%s::%d msg:%s, data:%s\n", __PRETTY_FUNCTION__, __LINE__,
+            NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());
 }
 
 char*
-ViewTab::RecvSyncMessage(const char* aMessage, const char* aData)
+ViewTab::RecvSyncMessage(const PRUnichar* aMessage, const PRUnichar* aData)
 {
-    printf(">>>>>>Func:%s::%d msg:%s, data:%s\n", __PRETTY_FUNCTION__, __LINE__, aMessage, aData);
-    return strdup(QString("{\"id\": \"test\", \"val\": \"5\"}").toUtf8().data());
+    printf(">>>>>>Func:%s::%d msg:%s, data:%s\n", __PRETTY_FUNCTION__, __LINE__,
+            NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());
+    return strdup("{\"id\": \"test\", \"val\": \"5\"}");
 }
 
 void

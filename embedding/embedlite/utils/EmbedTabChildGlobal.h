@@ -75,7 +75,7 @@ public:
   virtual nsIPrincipal* GetPrincipal();
 
   TabChildHelper* mTabChild;
-    nsRefPtr<nsFrameMessageManager> mMessageManager;
+  nsRefPtr<nsFrameMessageManager> mMessageManager;
 };
 
 }}

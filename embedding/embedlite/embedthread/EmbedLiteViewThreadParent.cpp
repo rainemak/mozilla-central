@@ -315,19 +315,6 @@ EmbedLiteViewThreadParent::RecvOnScrollChanged(const int32_t& offSetX,
 }
 
 bool
-EmbedLiteViewThreadParent::RecvOnObserve(const nsCString& aTopic,
-                                         const nsString& aData)
-{
-    LOGNI("data:%p, top:%s\n", NS_ConvertUTF16toUTF8(aData).get(), aTopic.get());
-    if (mViewAPIDestroyed)
-        return true;
-
-    NS_ENSURE_TRUE(mView, false);
-    mView->GetListener()->OnObserve(aTopic.get(), aData.get());
-    return true;
-}
-
-bool
 EmbedLiteViewThreadParent::RecvUpdateZoomConstraints(const bool& val, const float& min, const float& max)
 {
     if (mController) {
@@ -441,11 +428,27 @@ EmbedLiteViewThreadParent::LoadFrameScript(const char* aURI)
 }
 
 void
-EmbedLiteViewThreadParent::DoSendAsyncMessage(const char* aMessageName, const char* aMessage)
+EmbedLiteViewThreadParent::DoSendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage)
 {
-    LOGT("msgName:%s, msg:%s", aMessageName, aMessage);
-    unused << SendAsyncMessage(NS_ConvertUTF8toUTF16(nsDependentCString(aMessageName)),
-                               NS_ConvertUTF8toUTF16(nsDependentCString(aMessage)));
+    LOGT("msgName:%ls, msg:%ls", aMessageName, aMessage);
+    const nsDependentString msgname(aMessageName);
+    const nsDependentString msg(aMessage);
+    unused << SendAsyncMessage(msgname,
+                               msg);
+}
+
+void
+EmbedLiteViewThreadParent::AddMessageListener(const char* aMessageName)
+{
+    LOGT("msgName:%s", aMessageName);
+    unused << SendAddMessageListener(nsDependentCString(aMessageName));
+}
+
+void
+EmbedLiteViewThreadParent::RemoveMessageListener(const char* aMessageName)
+{
+    LOGT("msgName:%s", aMessageName);
+    unused << SendRemoveMessageListener(nsDependentCString(aMessageName));
 }
 
 bool
@@ -458,7 +461,7 @@ EmbedLiteViewThreadParent::RecvAsyncMessage(const nsString& aMessage,
     LOGF("msg:%s, data:%s", NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());
 
     NS_ENSURE_TRUE(mView, false);
-    mView->GetListener()->RecvAsyncMessage(NS_ConvertUTF16toUTF8(aMessage).get(), NS_ConvertUTF16toUTF8(aData).get());
+    mView->GetListener()->RecvAsyncMessage(aMessage.get(), aData.get());
     return true;
 }
 
@@ -474,8 +477,7 @@ EmbedLiteViewThreadParent::RecvSyncMessage(const nsString& aMessage,
     NS_ENSURE_TRUE(mView, false);
     char* retval =
         mView->GetListener()->
-            RecvSyncMessage(NS_ConvertUTF16toUTF8(aMessage).get(),
-                            NS_ConvertUTF16toUTF8(aJSON).get());
+            RecvSyncMessage(aMessage.get(), aJSON.get());
     if (retval) {
         aJSONRetVal->AppendElement(NS_ConvertUTF8toUTF16(nsDependentCString(retval)));
         delete retval;
@@ -723,6 +725,11 @@ EmbedLiteViewThreadParent::RecvSetInputContext(const int32_t& aIMEEnabled,
     return true;
 }
 
+uint32_t
+EmbedLiteViewThreadParent::GetUniqueID()
+{
+    return mId;
+}
 
 } // namespace embedlite
 } // namespace mozilla

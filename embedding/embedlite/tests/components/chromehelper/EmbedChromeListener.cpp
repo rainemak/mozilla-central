@@ -203,7 +203,7 @@ EmbedChromeListener::HandleEvent(nsIDOMEvent* aEvent)
 
     nsString outStr;
     json->CreateJSON(root, message);
-    mService->SendAsyncMessage(winid, messageName, message);
+    mService->SendAsyncMessage(winid, messageName.get(), message.get());
 
     return NS_OK;
 }

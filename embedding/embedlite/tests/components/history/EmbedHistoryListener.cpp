@@ -6,6 +6,7 @@
 #include "nsIURI.h"
 #include "Link.h"
 #include "nsIEmbedLiteJSON.h"
+#include "nsIObserverService.h"
 
 using namespace mozilla;
 using mozilla::dom::Link;
@@ -59,7 +60,10 @@ EmbedHistoryListener::RegisterVisitedCallback(nsIURI *aURI, Link *aContent)
     root->SetPropertyAsACString(NS_LITERAL_STRING("uri"), uri);
 
     json->CreateJSON(root, message);
-    GetService()->SendGlobalAsyncMessage(NS_LITERAL_STRING("history:checkurivisited"), message);
+    nsCOMPtr<nsIObserverService> observerService =
+        do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
+    if (observerService)
+        observerService->NotifyObservers(nullptr, "history:checkurivisited", message.get());
 
     return NS_OK;
 }
@@ -115,7 +119,10 @@ EmbedHistoryListener::VisitURI(nsIURI *aURI, nsIURI *aLastVisitedURI, uint32_t a
     root->SetPropertyAsACString(NS_LITERAL_STRING("uri"), uri);
 
     json->CreateJSON(root, message);
-    GetService()->SendGlobalAsyncMessage(NS_LITERAL_STRING("history:markurivisited"), message);
+    nsCOMPtr<nsIObserverService> observerService =
+        do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
+    if (observerService)
+        observerService->NotifyObservers(nullptr, "history:markurivisited", message.get());
     
     return NS_OK;
 }
@@ -161,7 +168,7 @@ EmbedHistoryListener::NotifyVisited(nsIURI *aURI)
 NS_IMETHODIMP
 EmbedHistoryListener::Run()
 {
-    while (! mPendingURIs.IsEmpty()) {
+    while (!mPendingURIs.IsEmpty()) {
         nsString uriString = mPendingURIs.Pop();
         nsTArray<Link*>* list = sHistory->mListeners.Get(uriString);
         if (list) {

@@ -26,6 +26,5 @@ interface nsIEmbedBrowserChromeListener
     void onFirstPaint(in int32_t aX, in int32_t aY);
     void onScrolledAreaChanged(in uint32_t aWidth, in uint32_t aHeight);
     void onScrollChanged(in int32_t offSetX, in int32_t offSetY);
-    void onObserve(in string aTopic, in wstring aData);
     void onUpdateDisplayPort();
 };
