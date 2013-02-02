@@ -68,6 +68,8 @@ public:
     // Embed Interface
     virtual void LoadURL(const char* aUrl);
     virtual void SetIsActive(bool);
+    virtual void SuspendTimeouts();
+    virtual void ResumeTimeouts();
     virtual void GoBack();
     virtual void GoForward();
     virtual void StopLoad();

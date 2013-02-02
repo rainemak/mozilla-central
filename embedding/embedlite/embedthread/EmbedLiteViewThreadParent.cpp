@@ -420,6 +420,20 @@ EmbedLiteViewThreadParent::SetIsActive(bool aIsActive)
 }
 
 void
+EmbedLiteViewThreadParent::SuspendTimeouts()
+{
+    LOGF();
+    unused << SendSuspendTimeouts();
+}
+
+void
+EmbedLiteViewThreadParent::ResumeTimeouts()
+{
+    LOGF();
+    unused << SendResumeTimeouts();
+}
+
+void
 EmbedLiteViewThreadParent::LoadFrameScript(const char* aURI)
 {
     LOGT("uri:%s", aURI);

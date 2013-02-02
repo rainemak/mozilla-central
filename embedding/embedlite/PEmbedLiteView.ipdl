@@ -32,6 +32,8 @@ child:
     async LoadFrameScript(nsString uri);
     async SetViewSize(gfxSize aSize);
     async SetIsActive(bool aIsActive);
+    async SuspendTimeouts();
+    async ResumeTimeouts();
     async AsyncScrollDOMEvent(gfxRect contentRect, gfxSize scrollSize);
 
     UpdateFrame(FrameMetrics frame) compress;

@@ -28,6 +28,8 @@ public:
     virtual bool RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth) { return false; }
     virtual bool RenderGL() { return false; }
     virtual void SetIsActive(bool) {}
+    virtual void SuspendTimeouts() {}
+    virtual void ResumeTimeouts() {}
     virtual void SetViewSize(int width, int height) {}
     virtual void SetGLViewPortSize(int width, int height) {}
     virtual void SetGLViewTransform(gfxMatrix matrix) {}

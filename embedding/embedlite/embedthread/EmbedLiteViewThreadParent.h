@@ -32,6 +32,8 @@ public:
     virtual void StopLoad();
     virtual void Reload(bool hardReload);
     virtual void SetIsActive(bool);
+    virtual void SuspendTimeouts();
+    virtual void ResumeTimeouts();
     virtual void LoadFrameScript(const char* aURI);
     virtual void DoSendAsyncMessage(const char* aMessageName, const char* aMessage);
     virtual bool RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth);

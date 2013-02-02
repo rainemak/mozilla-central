@@ -17,6 +17,7 @@
 #include <QtDeclarative/QDeclarativeContext>
 #include <QtGui/QApplication>
 #include <QGraphicsObject>
+#include <QWindowStateChangeEvent>
 
 #ifdef HARMATTAN_BOOSTER
 #include <qplatformdefs.h> // MEEGO_EDITION_HARMATTAN
@@ -94,7 +95,11 @@ private:
 
 class QmlApplicationViewerPrivate
 {
-    QmlApplicationViewerPrivate(QDeclarativeView *view_) : view(view_) {}
+    QmlApplicationViewerPrivate(QDeclarativeView *view_)
+      : view(view_)
+    {
+        view->grabGesture(Qt::TapAndHoldGesture);
+    }
 
     QString mainQmlFile;
     QDeclarativeView *view;
@@ -252,6 +257,20 @@ QmlApplicationViewer::paintEvent(QPaintEvent* ev)
     static MozFPSCounter counter("SHOW_FPS", "QGVFPS", 30);
     counter.Count();
     QDeclarativeView::paintEvent(ev);
+}
+
+bool
+QmlApplicationViewer::event(QEvent* event)
+{
+    if (event->type() == QEvent::WindowStateChange) {
+        QWindowStateChangeEvent* change = static_cast<QWindowStateChangeEvent*>(event);
+        if (!(change->oldState() & Qt::WindowMinimized) && isMinimized())
+            Q_EMIT(d->view, displayExited());
+        if ((change->oldState() & Qt::WindowMinimized) && !isMinimized())
+            Q_EMIT(d->view, displayEntered());
+    }
+
+    return QDeclarativeView::event(event);
 }
 
 QApplication *createApplication(int &argc, char **argv)

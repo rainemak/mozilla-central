@@ -38,7 +38,13 @@ public:
     void showExpanded();
     QDeclarativeView* getView();
 
+Q_SIGNALS:
+    void displayEntered();
+    void displayExited();
+
+protected:
     virtual void paintEvent(QPaintEvent*);
+    virtual bool event(QEvent*);
 
 private:
     explicit QmlApplicationViewer(QDeclarativeView *view, QWidget *parent);

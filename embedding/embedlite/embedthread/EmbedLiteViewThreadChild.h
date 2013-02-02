@@ -50,6 +50,8 @@ protected:
     virtual bool RecvReload(const bool&);
 
     virtual bool RecvSetIsActive(const bool&);
+    virtual bool RecvSuspendTimeouts();
+    virtual bool RecvResumeTimeouts();
     virtual bool RecvLoadFrameScript(const nsString&);
     virtual bool RecvSetViewSize(const gfxSize&);
     virtual bool RecvAsyncScrollDOMEvent(

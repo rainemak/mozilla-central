@@ -250,6 +250,37 @@ EmbedLiteViewThreadChild::RecvSetIsActive(const bool& aIsActive)
 }
 
 bool
+EmbedLiteViewThreadChild::RecvSuspendTimeouts()
+{
+    if (!mDOMWindow)
+        return false;
+
+    nsresult rv;
+    nsCOMPtr<nsPIDOMWindow> pwindow(do_QueryInterface(mDOMWindow, &rv));
+    NS_ENSURE_SUCCESS(rv, false);
+    if (!pwindow->TimeoutSuspendCount())
+        pwindow->SuspendTimeouts();
+
+    return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvResumeTimeouts()
+{
+    if (!mDOMWindow)
+        return false;
+
+    nsresult rv;
+    nsCOMPtr<nsPIDOMWindow> pwindow(do_QueryInterface(mDOMWindow, &rv));
+    NS_ENSURE_SUCCESS(rv, false);
+
+    rv = pwindow->ResumeTimeouts();
+    NS_ENSURE_SUCCESS(rv, false);
+
+    return true;
+}
+
+bool
 EmbedLiteViewThreadChild::RecvLoadFrameScript(const nsString& uri)
 {
     if (mHelper) {

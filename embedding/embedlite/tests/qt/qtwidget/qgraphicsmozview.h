@@ -7,6 +7,7 @@
 #ifndef qgraphicsmozview_h
 #define qgraphicsmozview_h
 
+#include <QGraphicsView>
 #include <QGraphicsWidget>
 #include <QUrl>
 
@@ -104,9 +105,12 @@ protected:
 
 private Q_SLOTS:
     void onInitialized();
+    void onDisplayEntered();
+    void onDisplayExited();
 
 private:
     void forceActiveFocus();
+    QGraphicsView* GetViewWidget();
 
     QGraphicsMozViewPrivate* d;
     friend class QGraphicsMozViewPrivate;

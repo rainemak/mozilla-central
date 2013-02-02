@@ -168,6 +168,11 @@ public:
     }
     virtual void OnFirstPaint(int32_t aX, int32_t aY) {
         LOGT();
+        QGraphicsView* view = q->GetViewWidget();
+        if (view) {
+            q->connect(view, SIGNAL(displayEntered()), q, SLOT(onDisplayEntered()));
+            q->connect(view, SIGNAL(displayExited()), q, SLOT(onDisplayExited()));
+        }
         Q_EMIT q->firstPaint(aX, aY);
     }
 
@@ -257,6 +262,16 @@ QGraphicsMozView::QGraphicsMozView(QGraphicsItem* parent)
 QGraphicsMozView::~QGraphicsMozView()
 {
     delete d;
+}
+
+QGraphicsView*
+QGraphicsMozView::GetViewWidget()
+{
+    if (!scene())
+      return nullptr;
+
+    NS_ASSERTION(scene()->views().size() == 1, "Not exactly one view for our scene!");
+    return scene()->views()[0];
 }
 
 void
@@ -482,6 +497,18 @@ bool QGraphicsMozView::event(QEvent* event)
 
     // Here so that it can be reimplemented without breaking ABI.
     return QGraphicsWidget::event(event);
+}
+
+void QGraphicsMozView::onDisplayEntered()
+{
+    d->mView->SetIsActive(true);
+    d->mView->ResumeTimeouts();
+}
+
+void QGraphicsMozView::onDisplayExited()
+{
+    d->mView->SetIsActive(false);
+    d->mView->SuspendTimeouts();
 }
 
 void QGraphicsMozViewPrivate::touchEvent(QTouchEvent* event)

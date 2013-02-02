@@ -85,6 +85,22 @@ EmbedLiteView::SetIsActive(bool aIsActive)
     mViewImpl->SetIsActive(aIsActive);
 }
 
+void
+EmbedLiteView::SuspendTimeouts()
+{
+    LOGT();
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->SuspendTimeouts();
+}
+
+void
+EmbedLiteView::ResumeTimeouts()
+{
+    LOGT();
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->ResumeTimeouts();
+}
+
 void EmbedLiteView::GoBack()
 {
     NS_ENSURE_TRUE(mViewImpl, );
