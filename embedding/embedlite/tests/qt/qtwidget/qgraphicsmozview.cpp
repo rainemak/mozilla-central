@@ -49,7 +49,7 @@ public:
       , mIsLoading(false)
       , mLastIsGoodRotation(true)
       , mIsPasswordField(false)
-      , mPainted(false)
+      , mGraphicsViewAssigned(false)
     {
     }
     virtual ~QGraphicsMozViewPrivate() {}
@@ -236,7 +236,7 @@ public:
     bool mIsLoading;
     bool mLastIsGoodRotation;
     bool mIsPasswordField;
-    bool mPainted;
+    bool mGraphicsViewAssigned;
 };
 
 QGraphicsMozView::QGraphicsMozView(QGraphicsItem* parent)
@@ -297,8 +297,8 @@ void QGraphicsMozView::EraseBackgroundGL(QPainter* painter, const QRect& r)
 void
 QGraphicsMozView::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt, QWidget*)
 {
-    if (!d->mPainted) {
-        d->mPainted = true;
+    if (!d->mGraphicsViewAssigned) {
+        d->mGraphicsViewAssigned = true;
         QGraphicsView* view = d->GetViewWidget();
         if (view) {
             connect(view, SIGNAL(displayEntered()), this, SLOT(onDisplayEntered()));

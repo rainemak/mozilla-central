@@ -95,11 +95,7 @@ private:
 
 class QmlApplicationViewerPrivate
 {
-    QmlApplicationViewerPrivate(QDeclarativeView *view_)
-      : view(view_)
-    {
-        view->grabGesture(Qt::TapAndHoldGesture);
-    }
+    QmlApplicationViewerPrivate(QDeclarativeView *view_) : view(view_) {}
 
     QString mainQmlFile;
     QDeclarativeView *view;
