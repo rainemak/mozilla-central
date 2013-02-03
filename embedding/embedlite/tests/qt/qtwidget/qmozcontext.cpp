@@ -79,15 +79,15 @@ public:
         mApp->LoadGlobalStyleSheet("chrome://global/content/embedScrollStyles.css", true);
         Q_EMIT q->onInitialized();
         // Listen history notifications
-        mApp->AddObserver("history:checkurivisited");
-        mApp->AddObserver("history:markurivisited");
+        // mApp->AddObserver("history:checkurivisited");
+        // mApp->AddObserver("history:markurivisited");
     }
     // App Destroyed, and ready to delete and program exit
     virtual void Destroyed() {
         LOGT();
     }
     virtual void OnObserve(const char* aTopic, const PRUnichar* aData) {
-        LOGT("aTopic:%s, data:%s", aTopic, NS_ConvertUTF16toUTF8(aData).get());
+        LOGT("aTopic: %s, data: %s", aTopic, NS_ConvertUTF16toUTF8(aData).get());
     }
     void setDefaultPrefs()
     {
