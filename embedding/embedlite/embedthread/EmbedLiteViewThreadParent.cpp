@@ -154,6 +154,9 @@ EmbedLiteViewThreadParent::~EmbedLiteViewThreadParent()
     if (mGeckoController) {
         mGeckoController->ClearRenderFrame();
     }
+    if (mController) {
+        mController->Destroy();
+    }
     if (mView) {
         mView->SetImpl(NULL);
     }
@@ -165,6 +168,9 @@ EmbedLiteViewThreadParent::ActorDestroy(ActorDestroyReason aWhy)
     LOGT("reason:%i", aWhy);
     if (mGeckoController) {
         mGeckoController->ClearRenderFrame();
+    }
+    if (mController) {
+        mController->Destroy();
     }
 }
 
