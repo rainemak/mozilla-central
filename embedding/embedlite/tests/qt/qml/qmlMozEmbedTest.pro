@@ -10,15 +10,18 @@ RESOURCES += qmlMozEmbedTest.qrc
 
 TEMPLATE = app
 CONFIG -= app_bundle
+CONFIG += link_pkgconfig
 TARGET = $$PROJECT_NAME
 
 PREFIX = /usr
-#OBJ_PATH=/home/romaxa/build/mozilla-central/obj-xr-qt-opt
-OBJ_PATH=/home/romaxa/build/mozilla-central/obj-build-n9-qt
+OBJ_PATH=/home/romaxa/build/mozilla-central/obj-xr-qt
+#OBJ_PATH=/home/romaxa/build/mozilla-central/obj-build-n9-qt
 
 INCLUDEPATH += $$OBJ_PATH/dist/include
 INCLUDEPATH += $$OBJ_PATH/dist/include/nspr
 INCLUDEPATH += ../qtwidget
+
+PKGCONFIG += QJson
 
 OBJECTS_DIR += release
 DESTDIR = ./release

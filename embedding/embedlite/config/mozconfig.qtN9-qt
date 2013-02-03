@@ -1,6 +1,5 @@
 export ac_cv_have_usable_wchar_option_v2="no"
-#ac_add_options --enable-application=xulrunner
-ac_add_options --enable-application=mobile/xul
+ac_add_options --enable-application=xulrunner
 ac_add_options --enable-update-channel=nightly
 ac_add_options --enable-update-packaging
 ac_add_options --enable-tests

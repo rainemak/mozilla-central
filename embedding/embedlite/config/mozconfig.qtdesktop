@@ -1,6 +1,6 @@
 export ac_cv_have_usable_wchar_option_v2="no"
 
-ac_add_options --enable-application=mobile/xul
+ac_add_options --enable-application=xulrunner
 ac_add_options --enable-default-toolkit=cairo-qt
 ac_add_options --enable-debug
 ac_add_options --enable-logging

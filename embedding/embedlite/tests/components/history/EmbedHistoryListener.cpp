@@ -19,18 +19,18 @@ EmbedHistoryListener* EmbedHistoryListener::sHistory = NULL;
 EmbedHistoryListener*
 EmbedHistoryListener::GetSingleton()
 {
-  if (!sHistory) {
-    sHistory = new EmbedHistoryListener();
-    NS_ENSURE_TRUE(sHistory, nullptr);
-  }
+    if (!sHistory) {
+        sHistory = new EmbedHistoryListener();
+        NS_ENSURE_TRUE(sHistory, nullptr);
+    }
 
-  NS_ADDREF(sHistory);
-  return sHistory;
+    NS_ADDREF(sHistory);
+    return sHistory;
 }
 
 EmbedHistoryListener::EmbedHistoryListener()
 {
-  mListeners.Init();
+    mListeners.Init();
 }
 
 NS_IMETHODIMP

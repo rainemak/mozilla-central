@@ -20,14 +20,14 @@ FORCE_SHARED_LIB = 1
 # Example of component linking with libxul.so
 
 EXTRA_DSO_LDOPTS = \
-        $(XPCOM_GLUE_LDOPTS) \
-        $(NSPR_LIBS) \
-        $(NULL)
+    $(XPCOM_GLUE_LDOPTS) \
+    $(NSPR_LIBS) \
+    $(NULL)
 
 CPPSRCS += \
-        nsEmbedHistoryModule.cpp \
-        EmbedHistoryListener.cpp \
-        $(NULL)
+    nsEmbedHistoryModule.cpp \
+    EmbedHistoryListener.cpp \
+    $(NULL)
 
 XPIDLSRCS = nsIEmbedLiteHistory.idl
 
