@@ -26,9 +26,9 @@ function prepare()
     strto=$2;
     strdest=$3;
     fname="${str##*/}";
-    mkdir -p $PREFIX/usr/$strto;
-    rm $PREFIX/usr/$strto/$strdest;
-    ln -s $(pwd)/$str $PREFIX/usr/$strto/$strdest;
+    mkdir -p $PREFIX/$strto;
+    rm $PREFIX/$strto/$strdest;
+    ln -s $(pwd)/$str $PREFIX/$strto/$strdest;
 }
 
 
