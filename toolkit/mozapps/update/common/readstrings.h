@@ -9,6 +9,8 @@
 
 #define MAX_TEXT_LEN 600
 
+#include <unistd.h>
+
 #ifdef XP_WIN
 # include <windows.h>
   typedef WCHAR NS_tchar;
