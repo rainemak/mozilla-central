@@ -20,6 +20,7 @@
 #include "EmbedLiteAppThread.h"
 #include "EmbedLiteAppThreadParent.h"
 #include "EmbedLiteView.h"
+#include "nsXULAppAPI.h"
 
 #define STHREADAPP EmbedLiteAppThreadParent::GetInstance
 
@@ -27,6 +28,7 @@ namespace mozilla {
 namespace embedlite {
 
 EmbedLiteApp* EmbedLiteApp::sSingleton = nullptr;
+static nsTArray<nsCString> sComponentDirs;
 
 EmbedLiteApp*
 EmbedLiteApp::GetInstance()
@@ -128,6 +130,12 @@ EmbedLiteApp::Start(EmbedType aEmbedType)
     return true;
 }
 
+void
+EmbedLiteApp::AddManifestLocation(const char* manifest)
+{
+    sComponentDirs.AppendElement(nsCString(manifest));
+}
+
 bool
 EmbedLiteApp::StartChildThread()
 {
@@ -135,6 +143,12 @@ EmbedLiteApp::StartChildThread()
     LOGT("mUILoop:%p, current:%p", mUILoop, MessageLoop::current());
     NS_ASSERTION(MessageLoop::current() != mUILoop,
                  "Current message loop must be null and not equals to mUILoop");
+    for (int i = 0; i < sComponentDirs.Length(); i++) {
+        nsCOMPtr<nsIFile> f;
+        NS_NewNativeLocalFile(sComponentDirs[i], true,
+                              getter_AddRefs(f));
+        XRE_AddManifestLocation(NS_COMPONENT_LOCATION, f);
+    }
     GeckoLoader::InitEmbedding("mozembed");
     mAppThread = new EmbedLiteAppThread(mUILoop);
     return true;

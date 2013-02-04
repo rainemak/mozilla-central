@@ -68,6 +68,9 @@ public:
     // Exit from UI embedding loop started with Start()
     virtual void Stop();
 
+    // Specify path to Gecko components manifest location
+    virtual void AddManifestLocation(const char* manifest);
+
     // This must be called in native toolkit child thread, only after ExecuteChildThread call
     virtual bool StartChildThread();
     // Must be called from same thread as StartChildThread, and before Stop()
