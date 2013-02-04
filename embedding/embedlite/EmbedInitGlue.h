@@ -87,7 +87,7 @@ bool LoadEmbedLite(int argc = 0, char** argv = 0)
     // find xpcom shared lib (uses GRE_HOME env var if set, current DIR, or executable binary path)
     std::string xpcomPath;
     char temp[MAX_PATH];
-    const char* greHome = getenv("GRE_HOME");
+    char* greHome = getenv("GRE_HOME");
     if (!greHome) {
         greHome = getenv("PWD");
         if (greHome) {
@@ -100,18 +100,26 @@ bool LoadEmbedLite(int argc = 0, char** argv = 0)
         printf("GRE_HOME is not defined\n");
         return _NSR_TO_BOOL(NS_ERROR_FAILURE);
     }
-    if (!IsLibXulInThePath(greHome, xpcomPath) && argv && argc) {
-        printf("libxul.so not in gre home or PWD:%s, check in executable path\n", greHome);
-        char *lastslash = strrchr(argv[0], '/');
-        size_t path_size = &lastslash[0] - argv[0];
-        strncpy(temp, argv[0], path_size);
-        temp[path_size] = 0;
-        greHome = &temp[0];
-        if (!IsLibXulInThePath(temp, xpcomPath)) {
-            printf("libxul.so is not found, in %s return fail\n", xpcomPath.c_str());
-            return false;
+    if (!IsLibXulInThePath(greHome, xpcomPath)) {
+        if (argv && argc) {
+            printf("libxul.so not in gre home or PWD:%s, check in executable path\n", greHome);
+            char *lastslash = strrchr(argv[0], '/');
+            size_t path_size = &lastslash[0] - argv[0];
+            strncpy(temp, argv[0], path_size);
+            temp[path_size] = 0;
+            greHome = &temp[0];
         }
     }
+    if (!IsLibXulInThePath(greHome, xpcomPath)) {
+        printf("libxpcom.so is not found, in %s\n", xpcomPath.c_str());
+        greHome = getenv("BUILD_GRE_HOME");
+    }
+
+    if (!IsLibXulInThePath(greHome, xpcomPath)) {
+        printf("libxpcom.so is not found, in %s return fail\n", xpcomPath.c_str());
+        return false;
+    }
+
     setenv("GRE_HOME", greHome, 1);
     setenv("MOZILLA_FIVE_HOME", greHome, 1);
     setenv("XRE_LIBXPCOM_PATH", xpcomPath.c_str(), 1);
@@ -141,7 +149,7 @@ bool LoadEmbedLite(int argc = 0, char** argv = 0)
     // start the glue, i.e. load and link against xpcom shared lib
     rv = XPCOMGlueStartup(xpcomPath.c_str());
     if (NS_FAILED(rv)) {
-        printf("Could not start XPCOM glue.\n");
+        printf("Could not start XPCOM glue:%s.\n", xpcomPath.c_str());
         return _NSR_TO_BOOL(NS_ERROR_FAILURE);
     }
 
