@@ -41,7 +41,12 @@ private:
 
 #define NS_EMBED_LITE_APP_CONTRACTID "@mozilla.org/embedlite-app-service;1"
 #define NS_EMBED_LITE_APP_SERVICE_CLASSNAME "EmbedLiteApp Component"
-#define NS_EMBED_LITE_APP_SERVICE_CID NS_IEMBEDAPPSERVICE_IID
+#define NS_EMBED_LITE_APP_SERVICE_CID \
+{ 0x3960150c, \
+  0x6e89, \
+  0x11e2, \
+  { 0x90, 0xb3, 0x63, 0x18, 0x13, 0xf0, 0x21 }}
+
 
 #endif /* EmbedLiteAppService_H_ */
 
