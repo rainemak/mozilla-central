@@ -44,7 +44,10 @@ prepare $DISTBINDIR/xulrunner/installer/mozilla-plugin.pc lib/pkgconfig mozilla-
 prepare $DISTBINDIR/dist/idl lib/$DIST_DEV_NAME idl
 prepare $DISTBINDIR/dist/bin lib/$DIST_DEV_NAME bin
 prepare $DISTBINDIR/dist/include lib/$DIST_DEV_NAME include
-prepare $DISTBINDIR/dist/sdk lib/$DIST_DEV_NAME sdk
 prepare $DISTBINDIR/dist/sdk/lib lib/$DIST_DEV_NAME lib
+prepare $DISTBINDIR/dist/sdk/lib lib/$DIST_DEV_NAME/sdk lib
+mkdir -p $PREFIX/lib/$DIST_DEV_NAME/sdk/bin
+rm -rf $PREFIX/lib/$DIST_DEV_NAME/sdk/bin
+cp -rfL $(pwd)/$DISTBINDIR/dist/sdk/bin $PREFIX/lib/$DIST_DEV_NAME/sdk/bin
 
 
