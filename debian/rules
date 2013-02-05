@@ -25,15 +25,16 @@ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	INSTALL_PROGRAM += -s
 endif
 
+NJOBS:=-j4
 ifneq (,$(findstring parallel,$(DEB_BUILD_OPTIONS)))
-    PARALLEL_JOBS := $(shell echo $(DEB_BUILD_OPTIONS) | \
-    sed -e 's/.*parallel=\([0-9]\+\).*/\1/')
-    ifeq ($(DEB_BUILD_OPTIONS),$(PARALLEL_JOBS))
+	PARALLEL_JOBS := $(shell echo $(DEB_BUILD_OPTIONS) | \
+	sed -e 's/.*parallel=\([0-9]\+\).*/\1/')
+ifeq ($(DEB_BUILD_OPTIONS),$(PARALLEL_JOBS))
 	PARALLEL_JOBS := $(shell if [ -f /proc/cpuinfo ]; \
-		then echo `cat /proc/cpuinfo | grep 'processor' | wc -l`; \
-		else echo 1; fi)
-    endif
-    NJOBS := -j$(PARALLEL_JOBS)
+	then echo `cat /proc/cpuinfo | grep '^processor.*:' | wc -l`; \
+	else echo 1; fi)
+endif
+NJOBS:=-j$(PARALLEL_JOBS)
 endif
 
 MAKEFLAGS += $(NJOBS)
@@ -48,7 +49,7 @@ configure-stamp:
 	echo "ac_add_options --prefix=/$(prefix)" >> $(CURDIR)/$(MOZCONFIG_FILE)
 	echo "ac_add_options --disable-tests" >> $(CURDIR)/$(MOZCONFIG_FILE)
 	echo "mk_add_options MOZ_OBJDIR=\"$(DEST_OBJ_DIR)\"" >> $(CURDIR)/$(MOZCONFIG_FILE)
-	echo "mk_add_options MOZ_MAKE_FLAGS=\"-j$(NJOBS)\"" >> $(CURDIR)/$(MOZCONFIG_FILE)
+	echo "mk_add_options MOZ_MAKE_FLAGS=\"$(NJOBS)\"" >> $(CURDIR)/$(MOZCONFIG_FILE)
 	MOZCONFIG=$(CURDIR)/$(MOZCONFIG_FILE) $(MAKE) -f client.mk configure
 
 	touch configure-stamp
