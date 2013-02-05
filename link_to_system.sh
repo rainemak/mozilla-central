@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 DISTBINDIR=$1
 if [ "$DISTBINDIR" = "" ]; then
@@ -20,7 +20,7 @@ PREFIX=$TOPREFIX
 DIST_NAME=xulrunner-$GREVERSION
 DIST_DEV_NAME=xulrunner-devel-$GREVERSION
 
-function prepare()
+prepare()
 {
     str=$1;
     strto=$2;
