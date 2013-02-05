@@ -37,15 +37,32 @@ endif
 NJOBS:=-j$(PARALLEL_JOBS)
 endif
 
+ifneq (,$(findstring CodeSourcery,$(shell gcc --version)))
+GCCENV:=.cs
+endif
+
 MAKEFLAGS += $(NJOBS)
 DEST_OBJ_DIR=objdir-$(DEB_HOST_ARCH)
+ifneq (,$(findstring cs2009q3-hard-67-sb16,$(shell gcc --version)))
+MOZCONFIG_FILE=mozconfig.qtN9-qt
+else
 MOZCONFIG_FILE=mozconfig.qtdesktop
+endif
 GREVERSION=$(shell cat $(CURDIR)/config/milestone.txt | sed '/^\#/d' | sed '/^$$/d')
 
 configure: configure-stamp
 configure-stamp:
 	dh_testdir
 	cp $(CURDIR)/embedding/embedlite/config/$(MOZCONFIG_FILE) $(CURDIR)/$(MOZCONFIG_FILE)
+ifneq (,$(findstring cs2009q3-hard-67-sb16,$(shell gcc --version)))
+endif
+ifneq (,$(findstring $(DEB_HOST_ARCH),arm armel))
+	echo "ac_add_options --with-gl-provider=EGL" >> $(CURDIR)/$(MOZCONFIG_FILE)
+	echo "ac_add_options --disable-webrtc" >> $(CURDIR)/$(MOZCONFIG_FILE)
+	echo "ac_add_options --with-arm-kuser" >> $(CURDIR)/$(MOZCONFIG_FILE)
+	echo "ac_add_options --with-thumb=toolchain-default" >> $(CURDIR)/$(MOZCONFIG_FILE)
+	echo "ac_add_options --with-float-abi=toolchain-default" >> $(CURDIR)/$(MOZCONFIG_FILE)
+endif
 	echo "ac_add_options --prefix=/$(prefix)" >> $(CURDIR)/$(MOZCONFIG_FILE)
 	echo "ac_add_options --disable-tests" >> $(CURDIR)/$(MOZCONFIG_FILE)
 	echo "mk_add_options MOZ_OBJDIR=\"$(DEST_OBJ_DIR)\"" >> $(CURDIR)/$(MOZCONFIG_FILE)
