@@ -50,8 +50,8 @@ MOZCONFIG_FILE=mozconfig.qtdesktop
 endif
 GREVERSION=$(shell cat $(CURDIR)/config/milestone.txt | sed '/^\#/d' | sed '/^$$/d')
 
-configure: configure-stamp
-configure-stamp:
+configure: configure-$(DEB_HOST_ARCH)-stamp
+configure-$(DEB_HOST_ARCH)-stamp:
 	dh_testdir
 	cp $(CURDIR)/embedding/embedlite/config/$(MOZCONFIG_FILE) $(CURDIR)/$(MOZCONFIG_FILE)
 ifneq (,$(findstring cs2009q3-hard-67-sb16,$(shell gcc --version)))
@@ -69,14 +69,14 @@ endif
 	echo "mk_add_options MOZ_MAKE_FLAGS=\"$(NJOBS)\"" >> $(CURDIR)/$(MOZCONFIG_FILE)
 	MOZCONFIG=$(CURDIR)/$(MOZCONFIG_FILE) $(MAKE) -f client.mk configure
 
-	touch configure-stamp
+	touch configure-$(DEB_HOST_ARCH)-stamp
 
-build: build-stamp
-build-stamp: configure-stamp
+build: build-$(DEB_HOST_ARCH)-stamp
+build-$(DEB_HOST_ARCH)-stamp: configure-$(DEB_HOST_ARCH)-stamp
 	dh_testdir
 	MOZCONFIG=$(CURDIR)/$(MOZCONFIG_FILE) $(MAKE) -f client.mk build_all
 
-	touch build-stamp
+	touch build-$(DEB_HOST_ARCH)-stamp
 
 clean:
 	dh_testdir
@@ -95,6 +95,7 @@ install: build
         # Add here commands to install the package into debian/tmp
 	cat $(CURDIR)/debian/xulrunner.install.in | sed 's/%GRE_VERSION%/$(GREVERSION)/g' > $(CURDIR)/debian/xulrunner.install
 	cat $(CURDIR)/debian/xulrunner-dev.install.in | sed 's/%GRE_VERSION%/$(GREVERSION)/g' > $(CURDIR)/debian/xulrunner-dev.install
+#       make -C $(CURDIR)/$(DEST_OBJ_DIR) install/package does not work on some environments due to missing recent python, let's do it manually
 	$(MAKE) -C $(CURDIR)/$(DEST_OBJ_DIR)/xulrunner/installer libxul.pc libxul-embedding.pc mozilla-nspr.pc mozilla-js.pc mozilla-nss.pc mozilla-plugin.pc
 	install -d $(CURDIR)/debian/tmp/$(prefix)/bin
 	install -d $(CURDIR)/debian/tmp/$(prefix)/include
@@ -114,9 +115,6 @@ install: build
 	ln -s sdk/lib $(CURDIR)/debian/tmp/$(prefix)/lib/xulrunner-devel-$(GREVERSION)/lib
 	ln -s /$(prefix)/lib/xulrunner-$(GREVERSION)/libxul.so $(CURDIR)/debian/tmp/$(prefix)/lib/xulrunner-devel-$(GREVERSION)/sdk/lib/libxul.so
 	
-
-#	cp -rfL $(CURDIR)/$(DEST_OBJ_DIR)/dist/bin DESTDIR=$(CURDIR)/debian/tmp/xulrunner
-#	$(MAKE) -C $(CURDIR)/obj-xr-qt package
 #	MOZCONFIG=$(CURDIR)/$(MOZCONFIG_FILE) $(MAKE) -f client.mk install DESTDIR=$(CURDIR)/debian/tmp
 	
 	dh_install --sourcedir=debian/tmp
