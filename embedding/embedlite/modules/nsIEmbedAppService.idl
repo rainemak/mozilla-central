@@ -16,9 +16,12 @@
  * @see nsIEmbedAppService
  */
 
-%{ C++
+%{C++
 #include "nsStringGlue.h" // needed for AString -> nsAString, unfortunately
+#include "mozilla/layers/GeckoContentController.h"
 %}
+
+[ptr] native GeckoContentController(mozilla::layers::GeckoContentController);
 
 [scriptable, uuid(41dc842c-6934-11e2-9124-933bf9a3f6a9)]
 interface nsIEmbedMessageListener : nsISupports
@@ -26,7 +29,7 @@ interface nsIEmbedMessageListener : nsISupports
     void onMessageReceived(in string messageName, in wstring message);
 };
 
-[scriptable, uuid(7c5f3fc6-6903-11e2-a9ab-b7e20093f445)]
+[scriptable, uuid(3c61976a-710b-11e2-a4a0-1354c757920d)]
 interface nsIEmbedAppService : nsISupports
 {
     void sendAsyncMessage(in uint32_t aId, in wstring messageName, in wstring message);
@@ -37,4 +40,6 @@ interface nsIEmbedAppService : nsISupports
     void removeMessageListener(in string name, in nsIEmbedMessageListener listener);
     void enterSecureJSContext();
     void leaveSecureJSContext();
+    [noscript] void addContentListener(in uint32_t aId, in GeckoContentController listener);
+    [noscript] void removeContentListener(in uint32_t aId, in GeckoContentController listener);
 };

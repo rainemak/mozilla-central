@@ -16,6 +16,9 @@
 #include "TabChildHelper.h"
 
 namespace mozilla {
+namespace layers {
+class GeckoContentController;
+}
 namespace embedlite {
 
 class EmbedLiteViewScrolling;
@@ -41,6 +44,8 @@ public:
     virtual bool DoSendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage);
     virtual bool DoSendSyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage, InfallibleTArray<nsString>* aJSONRetVal);
     bool HasMessageListener(const nsAString& aMessageName);
+    void AddGeckoContentListener(mozilla::layers::GeckoContentController *listener);
+    void RemoveGeckoContentListener(mozilla::layers::GeckoContentController *listener);
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
@@ -111,6 +116,7 @@ private:
     bool mIMEComposing;
 
     nsDataHashtable<nsStringHashKey, bool/*start with key*/> mRegisteredMessages;
+    nsTArray<RefPtr<mozilla::layers::GeckoContentController>> mControllerListeners;
 
     DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadChild);
 };

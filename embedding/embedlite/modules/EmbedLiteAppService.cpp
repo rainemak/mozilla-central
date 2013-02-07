@@ -199,5 +199,24 @@ JSContext*
 EmbedLiteAppService::GetAnyJSContext(uint32_t aWinId)
 {
     EmbedLiteViewThreadChild* view = sGetViewById(aWinId);
+    NS_ENSURE_TRUE(view, nullptr);
     return view->GetJSContext();
+}
+
+NS_IMETHODIMP
+EmbedLiteAppService::AddContentListener(uint32_t aWinId, mozilla::layers::GeckoContentController *listener)
+{
+    EmbedLiteViewThreadChild* view = sGetViewById(aWinId);
+    NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
+    view->AddGeckoContentListener(listener);
+    return NS_OK;
+}
+
+NS_IMETHODIMP
+EmbedLiteAppService::RemoveContentListener(uint32_t aWinId, mozilla::layers::GeckoContentController *listener)
+{
+    EmbedLiteViewThreadChild* view = sGetViewById(aWinId);
+    NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
+    view->RemoveGeckoContentListener(listener);
+    return NS_OK;
 }

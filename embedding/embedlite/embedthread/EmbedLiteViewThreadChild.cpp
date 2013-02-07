@@ -58,6 +58,7 @@ EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(uint32_t aId)
 EmbedLiteViewThreadChild::~EmbedLiteViewThreadChild()
 {
     LOGT();
+    NS_ASSERTION(mControllerListeners.IsEmpty(), "Controller listeners list is not empty...");
 }
 
 EmbedLiteAppThreadChild*
@@ -71,11 +72,13 @@ EmbedLiteViewThreadChild::ActorDestroy(ActorDestroyReason aWhy)
 {
     LOGT("reason:%i", aWhy);
     mHelper->Disconnect();
+    mControllerListeners.Clear();
 }
 
 bool EmbedLiteViewThreadChild::RecvDestroy()
 {
     LOGT("destroy");
+    mControllerListeners.Clear();
     AppChild()->AppService()->UnregisterView(mId);
     mHelper->Unload();
     mBChrome->RemoveEventHandler();
@@ -369,10 +372,28 @@ EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
     return true;
 }
 
+void
+EmbedLiteViewThreadChild::AddGeckoContentListener(mozilla::layers::GeckoContentController *listener)
+{
+    mControllerListeners.AppendElement(listener);
+}
+
+void
+EmbedLiteViewThreadChild::RemoveGeckoContentListener(mozilla::layers::GeckoContentController *listener)
+{
+    mControllerListeners.RemoveElement(listener);
+}
+
 bool
 EmbedLiteViewThreadChild::RecvAsyncScrollDOMEvent(const gfxRect& contentRect,
                                                   const gfxSize& scrollSize)
 {
+    gfx::Rect rect(contentRect.x, contentRect.y, contentRect.width, contentRect.height);
+    gfx::Size size(scrollSize.width, scrollSize.height);
+    for (unsigned int i = 0; i < mControllerListeners.Length(); i++) {
+        mControllerListeners[i]->SendAsyncScrollDOMEvent(rect, size);
+    }
+
     mScrolling->AsyncScrollDOMEvent(contentRect, scrollSize);
     return true;
 }
@@ -382,6 +403,10 @@ EmbedLiteViewThreadChild::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
 {
     if (!mWebBrowser)
         return true;
+
+    for (unsigned int i = 0; i < mControllerListeners.Length(); i++) {
+        mControllerListeners[i]->RequestContentRepaint(aFrameMetrics);
+    }
 
     bool ret = mHelper->RecvUpdateFrame(aFrameMetrics);
     const InputContext& ctx = mWidget->GetInputContext();
@@ -404,6 +429,10 @@ EmbedLiteViewThreadChild::RecvHandleDoubleTap(const nsIntPoint& aPoint)
     data.AppendPrintf(", \"y\" : %d", aPoint.y);
     data.AppendPrintf(" }");
 
+    for (unsigned int i = 0; i < mControllerListeners.Length(); i++) {
+        mControllerListeners[i]->HandleDoubleTap(aPoint);
+    }
+
     if (getenv("LOAD_BR_CHILD"))
         mHelper->RecvAsyncMessage(NS_LITERAL_STRING("Gesture:DoubleTap"), data);
     else
@@ -415,6 +444,10 @@ EmbedLiteViewThreadChild::RecvHandleDoubleTap(const nsIntPoint& aPoint)
 bool
 EmbedLiteViewThreadChild::RecvHandleSingleTap(const nsIntPoint& aPoint)
 {
+    for (unsigned int i = 0; i < mControllerListeners.Length(); i++) {
+        mControllerListeners[i]->HandleSingleTap(aPoint);
+    }
+
     RecvMouseEvent(NS_LITERAL_STRING("mousemove"), aPoint.x, aPoint.y, 0, 1, 0, false);
     RecvMouseEvent(NS_LITERAL_STRING("mousedown"), aPoint.x, aPoint.y, 0, 1, 0, false);
     RecvMouseEvent(NS_LITERAL_STRING("mouseup"), aPoint.x, aPoint.y, 0, 1, 0, false);
@@ -425,6 +458,10 @@ EmbedLiteViewThreadChild::RecvHandleSingleTap(const nsIntPoint& aPoint)
 bool
 EmbedLiteViewThreadChild::RecvHandleLongTap(const nsIntPoint& aPoint)
 {
+    for (unsigned int i = 0; i < mControllerListeners.Length(); i++) {
+        mControllerListeners[i]->HandleLongTap(aPoint);
+    }
+
     RecvMouseEvent(NS_LITERAL_STRING("contextmenu"), aPoint.x, aPoint.y,
                   2 /* Right button */,
                   1 /* Click count */,
