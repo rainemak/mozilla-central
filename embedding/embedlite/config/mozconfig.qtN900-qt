@@ -7,9 +7,6 @@ ac_add_options --enable-logging
 ac_add_options --enable-default-toolkit=cairo-qt
 ac_add_options --enable-mobile-optimize
 
-# required for meegotouch
-#ac_add_options --enable-cpp-rtti
-
 export MOZ_DEBUG_SYMBOLS=1
 ac_add_options --enable-debug-symbols="-ggdb"
 export MOZILLA_OFFICIAL=1
