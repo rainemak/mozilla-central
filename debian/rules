@@ -46,7 +46,11 @@ DEST_OBJ_DIR=objdir-$(DEB_HOST_ARCH)
 ifneq (,$(findstring cs2009q3-hard-67-sb16,$(shell gcc --version)))
 MOZCONFIG_FILE=mozconfig.qtN9-qt
 else
+ifneq (,$(findstring Maemo 5,$(shell cat /etc/issue)))
+MOZCONFIG_FILE=mozconfig.qtN900-qt
+else
 MOZCONFIG_FILE=mozconfig.qtdesktop
+endif
 endif
 GREVERSION=$(shell cat $(CURDIR)/config/milestone.txt | sed '/^\#/d' | sed '/^$$/d')
 
@@ -60,7 +64,11 @@ ifneq (,$(findstring $(DEB_HOST_ARCH),arm armel))
 	echo "ac_add_options --with-gl-provider=EGL" >> $(CURDIR)/$(MOZCONFIG_FILE)
 	echo "ac_add_options --disable-webrtc" >> $(CURDIR)/$(MOZCONFIG_FILE)
 	echo "ac_add_options --with-arm-kuser" >> $(CURDIR)/$(MOZCONFIG_FILE)
+ifeq (,$(findstring thumb,$(DEB_BUILD_OPTIONS)))
+	echo "ac_add_options --with-thumb=yes" >> $(CURDIR)/$(MOZCONFIG_FILE)
+else
 	echo "ac_add_options --with-thumb=toolchain-default" >> $(CURDIR)/$(MOZCONFIG_FILE)
+endif
 	echo "ac_add_options --with-float-abi=toolchain-default" >> $(CURDIR)/$(MOZCONFIG_FILE)
 endif
 	echo "ac_add_options --prefix=/$(prefix)" >> $(CURDIR)/$(MOZCONFIG_FILE)
