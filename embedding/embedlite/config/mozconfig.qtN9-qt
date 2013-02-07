@@ -8,6 +8,8 @@ ac_add_options --enable-default-toolkit=cairo-qt
 ac_add_options --enable-mobile-optimize
 ac_add_options --enable-gstreamer
 
+ac_add_options --enable-cpp-rtti
+
 export MOZ_DEBUG_SYMBOLS=1
 ac_add_options --enable-debug-symbols="-gdwarf-2"
 export MOZILLA_OFFICIAL=1
