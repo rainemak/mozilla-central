@@ -305,7 +305,7 @@ TabChildHelper::DoSendSyncMessage(const nsAString& aMessage,
                                   InfallibleTArray<nsString>* aJSONRetVal)
 {
     if (!mView->HasMessageListener(aMessage)) {
-        printf(">>>>>>Func:%s::%d Message not registered msg:%s\n", __PRETTY_FUNCTION__, __LINE__, NS_ConvertUTF16toUTF8(aMessage).get());
+        LOGE("Message not registered msg:%s\n", NS_ConvertUTF16toUTF8(aMessage).get());
         return false;
     }
 
@@ -332,7 +332,7 @@ TabChildHelper::DoSendAsyncMessage(const nsAString& aMessage,
                                    const mozilla::dom::StructuredCloneData& aData)
 {
     if (!mView->HasMessageListener(aMessage)) {
-        printf(">>>>>>Func:%s::%d Message not registered msg:%s\n", __PRETTY_FUNCTION__, __LINE__, NS_ConvertUTF16toUTF8(aMessage).get());
+        LOGE("Message not registered msg:%s\n", NS_ConvertUTF16toUTF8(aMessage).get());
         return false;
     }
 

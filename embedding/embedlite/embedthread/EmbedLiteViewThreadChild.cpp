@@ -158,6 +158,13 @@ EmbedLiteViewThreadChild::InitGeckoWindow()
     nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(mDOMWindow);
     utils->GetOuterWindowID(&mOuterId);
 
+    AppChild()->AppService()->RegisterView(mId);
+
+    nsCOMPtr<nsIObserverService> observerService =
+        do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
+    if (observerService)
+        observerService->NotifyObservers(mDOMWindow, "embedliteviewcreated", nullptr);
+
     mWebNavigation = do_QueryInterface(baseWindow);
     if (!mWebNavigation) {
         NS_ERROR("Failed to get the web navigation interface.");
@@ -172,7 +179,6 @@ EmbedLiteViewThreadChild::InitGeckoWindow()
         NS_ERROR("SetVisibility failed.\n");
     }
 
-    AppChild()->AppService()->RegisterView(mId);
     mHelper = new TabChildHelper(this);
     unused << SendInitialized();
 }
@@ -478,7 +484,7 @@ EmbedLiteViewThreadChild::RecvHandleTextEvent(const nsString& commit, const nsSt
     nsCOMPtr<nsIWidget> widget = mHelper->GetWidget(&offset);
     const InputContext& ctx = mWidget->GetInputContext();
 
-    printf(">>>>>>Func:%s::%d ctx.mIMEState.mEnabled:%i, com:%s, pre:%s\n", __FUNCTION__, __LINE__, ctx.mIMEState.mEnabled, NS_ConvertUTF16toUTF8(commit).get(), NS_ConvertUTF16toUTF8(preEdit).get());
+    LOGF("ctx.mIMEState.mEnabled:%i, com:%s, pre:%s\n", ctx.mIMEState.mEnabled, NS_ConvertUTF16toUTF8(commit).get(), NS_ConvertUTF16toUTF8(preEdit).get());
     if (!widget || !ctx.mIMEState.mEnabled)
         return false;
 

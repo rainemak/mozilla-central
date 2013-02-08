@@ -35,11 +35,17 @@ interface nsIEmbedAppService : nsISupports
     void sendAsyncMessage(in uint32_t aId, in wstring messageName, in wstring message);
     void sendSyncMessage(in uint32_t aId, in wstring messageName, in wstring message,
                          out AString retval);
-    void GetIDByWindow(in nsIDOMWindow aWin, out uint32_t aId);
+    void getIDByWindow(in nsIDOMWindow aWin, out uint32_t aId);
     void addMessageListener(in string name, in nsIEmbedMessageListener listener);
     void removeMessageListener(in string name, in nsIEmbedMessageListener listener);
     void enterSecureJSContext();
     void leaveSecureJSContext();
     [noscript] void addContentListener(in uint32_t aId, in GeckoContentController listener);
     [noscript] void removeContentListener(in uint32_t aId, in GeckoContentController listener);
+
+    // AZPC Interface
+    void zoomToRect(in uint32_t aId, in float aX, in float aY, in float aWidth, in float aHeight);
+    void contentReceivedTouch(in uint32_t aId, in boolean aPreventDefault);
+    void detectScrollableSubframe(in uint32_t aId);
+    void cancelDefaultPanZoom(in uint32_t aId);
 };

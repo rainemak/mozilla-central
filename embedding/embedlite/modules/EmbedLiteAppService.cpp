@@ -52,7 +52,8 @@ static EmbedLiteViewThreadChild* sGetViewById(uint32_t aId)
 {
     EmbedLiteAppThreadChild* app = EmbedLiteAppThreadChild::GetInstance();
     NS_ENSURE_TRUE(app, nullptr);
-    return app->GetViewByID(aId);
+    EmbedLiteViewThreadChild* view = app->GetViewByID(aId);
+    return view;
 }
 
 void EmbedLiteAppService::RegisterView(uint32_t aId)
@@ -218,5 +219,41 @@ EmbedLiteAppService::RemoveContentListener(uint32_t aWinId, mozilla::layers::Gec
     EmbedLiteViewThreadChild* view = sGetViewById(aWinId);
     NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
     view->RemoveGeckoContentListener(listener);
+    return NS_OK;
+}
+
+NS_IMETHODIMP
+EmbedLiteAppService::ZoomToRect(uint32_t aWinId, float aX, float aY, float aWidth, float aHeight)
+{
+    EmbedLiteViewThreadChild* view = sGetViewById(aWinId);
+    NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
+    view->SendZoomToRect(gfxRect(aX, aY, aWidth, aHeight));
+    return NS_OK;
+}
+
+NS_IMETHODIMP
+EmbedLiteAppService::ContentReceivedTouch(uint32_t aWinId, bool aPreventDefault)
+{
+    EmbedLiteViewThreadChild* view = sGetViewById(aWinId);
+    NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
+    view->SendContentReceivedTouch(aPreventDefault);
+    return NS_OK;
+}
+
+NS_IMETHODIMP
+EmbedLiteAppService::DetectScrollableSubframe(uint32_t aWinId)
+{
+    EmbedLiteViewThreadChild* view = sGetViewById(aWinId);
+    NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
+    view->SendDetectScrollableSubframe();
+    return NS_OK;
+}
+
+NS_IMETHODIMP
+EmbedLiteAppService::CancelDefaultPanZoom(uint32_t aWinId)
+{
+    EmbedLiteViewThreadChild* view = sGetViewById(aWinId);
+    NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
+    view->SendCancelDefaultPanZoom();
     return NS_OK;
 }
