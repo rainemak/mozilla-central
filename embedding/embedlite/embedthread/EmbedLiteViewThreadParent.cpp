@@ -180,6 +180,7 @@ EmbedLiteViewThreadParent::SetCompositor(EmbedLiteCompositorParent* aCompositor)
     LOGT();
     mCompositor = aCompositor;
     UpdateScrollController();
+    SetGLViewPortSize(mGLViewPortSize.width, mGLViewPortSize.height);
 }
 
 void
@@ -201,6 +202,7 @@ EmbedLiteViewThreadParent::UpdateScrollController()
         }
         mController = new AsyncPanZoomController(mGeckoController, type);
         mController->SetCompositorParent(mCompositor);
+        mController->UpdateCompositionBounds(nsIntRect(0, 0, mViewSize.width, mViewSize.height));
     }
 }
 
@@ -574,6 +576,7 @@ EmbedLiteViewThreadParent::SetViewSize(int width, int height)
 void
 EmbedLiteViewThreadParent::SetGLViewPortSize(int width, int height)
 {
+    mGLViewPortSize = gfxSize(width, height);
     if (mCompositor) {
         mCompositor->SetSurfaceSize(width, height);
     }

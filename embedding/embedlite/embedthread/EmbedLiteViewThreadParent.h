@@ -138,6 +138,7 @@ private:
     RefPtr<EmbedContentController> mGeckoController;
 
     gfxSize mViewSize;
+    gfxSize mGLViewPortSize;
     bool mInTouchProcess;
     MessageLoop* mUILoop;
     int mLastIMEState;
