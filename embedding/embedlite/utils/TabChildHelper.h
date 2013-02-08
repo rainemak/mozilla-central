@@ -51,7 +51,6 @@ public:
 
     bool RecvAsyncMessage(const nsAString& aMessage,
                           const nsAString& aData);
-    bool RecvHandleDoubleTap(const nsIntPoint& aPoint);
 
 protected:
     nsIWidget* GetWidget(nsPoint* aOffset);

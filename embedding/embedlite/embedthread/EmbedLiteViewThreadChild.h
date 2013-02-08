@@ -21,7 +21,6 @@ class GeckoContentController;
 }
 namespace embedlite {
 
-class EmbedLiteViewScrolling;
 class EmbedLitePuppetWidget;
 class EmbedLiteAppThreadChild;
 
@@ -38,7 +37,6 @@ public:
     uint64_t GetOuterID() { return mOuterId; }
     void ResetInputState();
 
-
     JSContext* GetJSContext() { return mHelper ? mHelper->GetJSContext() : nullptr; }
 
     virtual bool DoSendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage);
@@ -46,6 +44,8 @@ public:
     bool HasMessageListener(const nsAString& aMessageName);
     void AddGeckoContentListener(mozilla::layers::GeckoContentController *listener);
     void RemoveGeckoContentListener(mozilla::layers::GeckoContentController *listener);
+
+    void GetBrowser(nsIWebBrowser** outBrowser);
 
 protected:
     virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
@@ -92,6 +92,9 @@ protected:
                           const nsAString& aData);
 
 private:
+    friend class TabChildHelper;
+    friend class EmbedLiteAppService;
+
     void InitGeckoWindow();
     EmbedLiteAppThreadChild* AppChild();
 
@@ -105,14 +108,8 @@ private:
     WebBrowserChrome* mBChrome;
     gfxSize mViewSize;
 
-    RefPtr<EmbedLiteViewScrolling> mScrolling;
-    friend class TabChildHelper;
-    friend class EmbedLiteViewScrolling;
-    friend class EmbedLiteAppService;
-
     nsCOMPtr<TabChildHelper> mHelper;
     bool mDispatchSynthMouseEvents;
-    bool mHadResizeSinceLastFrameUpdate;
     bool mIMEComposing;
 
     nsDataHashtable<nsStringHashKey, bool/*start with key*/> mRegisteredMessages;

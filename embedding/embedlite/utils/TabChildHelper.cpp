@@ -11,7 +11,6 @@
 
 #include "EmbedTabChildGlobal.h"
 #include "EmbedLiteViewThreadChild.h"
-#include "EmbedLiteViewScrolling.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
 
 #include "nsNetUtil.h"
@@ -209,7 +208,7 @@ TabChildHelper::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
       AsyncPanZoomController::CalculateCompositedRectInCssPixels(aFrameMetrics);
     // The BrowserElementScrolling helper must know about these updated metrics
     // for other functions it performs, such as double tap handling.
-    mView->mScrolling->ViewportChange(aFrameMetrics, cssCompositedRect);
+//    mView->mScrolling->ViewportChange(aFrameMetrics, cssCompositedRect);
 
     nsString data;
     data.AppendPrintf("{ \"x\" : %d", NS_lround(aFrameMetrics.mScrollOffset.x));
@@ -596,11 +595,4 @@ TabChildHelper::DispatchSynthesizedMouseEvent(uint32_t aMsg, uint64_t aTime,
     }
 
     DispatchWidgetEvent(event);
-}
-
-bool
-TabChildHelper::RecvHandleDoubleTap(const nsIntPoint& aPoint)
-{
-    mView->mScrolling->GestureDoubleTap(aPoint);
-    return true;
 }

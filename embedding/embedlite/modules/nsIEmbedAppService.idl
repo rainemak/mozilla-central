@@ -5,6 +5,8 @@
  
 #include "nsISupports.idl"
 #include "nsIDOMWindow.idl"
+#include "nsIBaseWindow.idl"
+#include "nsIWebBrowser.idl"
 
 /**
  * An optional interface for embedding clients wishing to receive
@@ -19,8 +21,10 @@
 %{C++
 #include "nsStringGlue.h" // needed for AString -> nsAString, unfortunately
 #include "mozilla/layers/GeckoContentController.h"
+#include "FrameMetrics.h"
 %}
 
+[ref] native nsConstFrameMetrics(const mozilla::layers::FrameMetrics);
 [ptr] native GeckoContentController(mozilla::layers::GeckoContentController);
 
 [scriptable, uuid(41dc842c-6934-11e2-9124-933bf9a3f6a9)]
@@ -42,8 +46,10 @@ interface nsIEmbedAppService : nsISupports
     void leaveSecureJSContext();
     [noscript] void addContentListener(in uint32_t aId, in GeckoContentController listener);
     [noscript] void removeContentListener(in uint32_t aId, in GeckoContentController listener);
+    void getBrowserByID(in uint32_t aId, out nsIWebBrowser outBrowser);
 
     // AZPC Interface
+    void getCompositedRectInCSS(in nsConstFrameMetrics aMetrics, out float aX, out float aY, out float aWidth, out float aHeight);
     void zoomToRect(in uint32_t aId, in float aX, in float aY, in float aWidth, in float aHeight);
     void contentReceivedTouch(in uint32_t aId, in boolean aPreventDefault);
     void detectScrollableSubframe(in uint32_t aId);

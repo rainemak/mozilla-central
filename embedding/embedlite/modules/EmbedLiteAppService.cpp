@@ -25,7 +25,11 @@
 #include "EmbedLiteAppThreadChild.h"
 #include "EmbedLiteViewThreadChild.h"
 #include "nsIJSContextStack.h"
+#include "nsIBaseWindow.h"
+#include "nsIWebBrowser.h"
+#include "mozilla/layers/AsyncPanZoomController.h"
 
+using namespace mozilla;
 using namespace mozilla::embedlite;
 
 EmbedLiteAppService::EmbedLiteAppService()
@@ -255,5 +259,31 @@ EmbedLiteAppService::CancelDefaultPanZoom(uint32_t aWinId)
     EmbedLiteViewThreadChild* view = sGetViewById(aWinId);
     NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
     view->SendCancelDefaultPanZoom();
+    return NS_OK;
+}
+
+NS_IMETHODIMP
+EmbedLiteAppService::GetBrowserByID(uint32_t aId, nsIWebBrowser * *outWindow)
+{
+    EmbedLiteViewThreadChild* view = sGetViewById(aId);
+    NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
+    nsresult rv;
+    nsCOMPtr<nsIWebBrowser> br;
+    view->GetBrowser(getter_AddRefs(br));
+    *outWindow = br.forget().get();
+    return rv;
+}
+
+NS_IMETHODIMP
+EmbedLiteAppService::GetCompositedRectInCSS(const mozilla::layers::FrameMetrics& aFrameMetrics,
+                                            float *aX, float *aY, float *aWidth, float *aHeight)
+{
+    mozilla::gfx::Rect cssCompositedRect =
+        mozilla::layers::AsyncPanZoomController::CalculateCompositedRectInCssPixels(aFrameMetrics);
+    *aX = cssCompositedRect.x;
+    *aY = cssCompositedRect.y;
+    *aWidth = cssCompositedRect.width;
+    *aHeight = cssCompositedRect.height;
+
     return NS_OK;
 }

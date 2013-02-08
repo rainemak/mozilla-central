@@ -54,7 +54,6 @@ CPPSRCS = \
     EmbedLiteViewThreadChild.cpp \
     EmbedLitePuppetWidget.cpp \
     EmbedLiteCompositorParent.cpp \
-    EmbedLiteViewScrolling.cpp \
     TabChildHelper.cpp \
     EmbedTabChildGlobal.cpp \
     WebBrowserChrome.cpp \

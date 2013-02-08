@@ -8,7 +8,6 @@
 
 #include "EmbedLiteViewThreadChild.h"
 #include "EmbedLiteAppThreadChild.h"
-#include "EmbedLiteViewScrolling.h"
 
 #include "mozilla/unused.h"
 
@@ -41,9 +40,7 @@ EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(uint32_t aId)
   : mId(aId)
   , mOuterId(0)
   , mViewSize(0, 0)
-  , mScrolling(new EmbedLiteViewScrolling(this))
   , mDispatchSynthMouseEvents(true)
-  , mHadResizeSinceLastFrameUpdate(false)
   , mIMEComposing(false)
 {
     LOGT();
@@ -183,6 +180,12 @@ EmbedLiteViewThreadChild::InitGeckoWindow()
     unused << SendInitialized();
 }
 
+void
+EmbedLiteViewThreadChild::GetBrowser(nsIWebBrowser** outBrowser)
+{
+    NS_ADDREF(*outBrowser = mWebBrowser.get());
+}
+
 bool
 EmbedLiteViewThreadChild::RecvLoadURL(const nsString& url)
 {
@@ -245,6 +248,7 @@ EmbedLiteViewThreadChild::RecvSetIsActive(const bool& aIsActive)
 {
     if (!mWebBrowser || !mDOMWindow)
         return false;
+
     nsCOMPtr<nsIFocusManager> fm = do_GetService(FOCUSMANAGER_CONTRACTID);
     NS_ENSURE_TRUE(fm, false);
     if (aIsActive) {
@@ -373,7 +377,6 @@ EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
     nsCOMPtr<nsIBaseWindow> baseWindow = do_QueryInterface(mWebBrowser);
     baseWindow->SetPositionAndSize(0, 0, mViewSize.width, mViewSize.height, true);
     baseWindow->SetVisibility(true);
-    mHadResizeSinceLastFrameUpdate = true;
 
     return true;
 }
@@ -400,7 +403,6 @@ EmbedLiteViewThreadChild::RecvAsyncScrollDOMEvent(const gfxRect& contentRect,
         mControllerListeners[i]->SendAsyncScrollDOMEvent(rect, size);
     }
 
-    mScrolling->AsyncScrollDOMEvent(contentRect, scrollSize);
     return true;
 }
 
@@ -415,11 +417,6 @@ EmbedLiteViewThreadChild::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
     }
 
     bool ret = mHelper->RecvUpdateFrame(aFrameMetrics);
-    const InputContext& ctx = mWidget->GetInputContext();
-    if (ctx.mIMEState.mEnabled && mHadResizeSinceLastFrameUpdate) {
-        mScrolling->ScrollToFocusedInput(false);
-    }
-    mHadResizeSinceLastFrameUpdate = false;
 
     return ret;
 }
@@ -441,8 +438,6 @@ EmbedLiteViewThreadChild::RecvHandleDoubleTap(const nsIntPoint& aPoint)
 
     if (getenv("LOAD_BR_CHILD"))
         mHelper->RecvAsyncMessage(NS_LITERAL_STRING("Gesture:DoubleTap"), data);
-    else
-        mHelper->RecvHandleDoubleTap(aPoint);
 
     return true;
 }
