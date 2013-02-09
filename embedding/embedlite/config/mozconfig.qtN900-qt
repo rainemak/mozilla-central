@@ -22,18 +22,13 @@ ac_add_options --enable-gstreamer
 
 mk_add_options MOZ_MAKE_FLAGS="-j4"
 mk_add_options MOZ_OBJDIR="@TOPSRCDIR@/obj-build-n900-qt"
-ac_add_options --with-arm-kuser
-ac_add_options --with-thumb=yes
 ac_add_options --with-fpu=neon
-ac_add_options --with-float-abi=toolchain-default
 
 ac_add_options --with-system-zlib
 ac_add_options --with-system-bz2
 
 ac_add_options --disable-elf-hack
-ac_add_options --disable-webrtc
 
-ac_add_options --with-gl-provider=EGL
 ac_add_options --enable-libjpeg-turbo
 
 ac_add_options --enable-profile-guided-optimization
