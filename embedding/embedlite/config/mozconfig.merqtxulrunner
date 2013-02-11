@@ -29,6 +29,7 @@ ac_add_options --with-branding=mobile/xul/branding/nightly
 
 # disabling for now, since the build fails...
 ac_add_options --disable-webrtc
+ac_add_options --enable-libjpeg-turbo
 ac_add_options --enable-profiling
 ac_add_options --enable-gstreamer
 
