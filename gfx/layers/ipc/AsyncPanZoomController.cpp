@@ -85,7 +85,7 @@ static int gTouchListenerTimeout = 300;
  * Number of samples to store of how long it took to paint after the previous
  * requests.
  */
-static uint32_t gNumPaintDurationSamples = 3;
+static int gNumPaintDurationSamples = 3;
 
 /** The multiplier we apply to a dimension's length if it is skating. That is,
  * if it's going above sMinSkateSpeed. We prefer to increase the size of the
@@ -110,7 +110,7 @@ static void ReadAZPCPrefs()
   Preferences::AddIntVarCache(&gFlingRepaintInterval, "gfx.azpc.fling_repaint_interval", gFlingRepaintInterval);
   Preferences::AddFloatVarCache(&gMinSkateSpeed, "gfx.azpc.min_skate_speed", gMinSkateSpeed);
   Preferences::AddIntVarCache(&gTouchListenerTimeout, "gfx.azpc.touch_listener_timeout", gTouchListenerTimeout);
-  Preferences::AddUintVarCache(&gNumPaintDurationSamples, "gfx.azpc.num_paint_duration_samples", gNumPaintDurationSamples);
+  Preferences::AddIntVarCache(&gNumPaintDurationSamples, "gfx.azpc.num_paint_duration_samples", gNumPaintDurationSamples);
   Preferences::AddFloatVarCache(&gTouchStartTolerance, "gfx.azpc.touch_start_tolerance", gTouchStartTolerance);
   Preferences::AddFloatVarCache(&gXSkateSizeMultiplier, "gfx.azpc.x_skate_size_multiplier", gXSkateSizeMultiplier);
   Preferences::AddFloatVarCache(&gYSkateSizeMultiplier, "gfx.azpc.y_skate_size_multiplier", gYSkateSizeMultiplier);
@@ -413,7 +413,6 @@ nsEventStatus AsyncPanZoomController::OnTouchStart(const MultiTouchInput& aEvent
     case NOTHING:
       mX.StartTouch(xPos);
       mY.StartTouch(yPos);
-      mDisableNextTouchBatch = false;
       SetState(TOUCHING);
       break;
     case TOUCHING:
@@ -476,7 +475,6 @@ nsEventStatus AsyncPanZoomController::OnTouchMove(const MultiTouchInput& aEvent)
 nsEventStatus AsyncPanZoomController::OnTouchEnd(const MultiTouchInput& aEvent) {
   if (mDisableNextTouchBatch) {
     mDisableNextTouchBatch = false;
-    SetState(NOTHING);
     return nsEventStatus_eIgnore;
   }
 
@@ -504,7 +502,7 @@ nsEventStatus AsyncPanZoomController::OnTouchEnd(const MultiTouchInput& aEvent) 
     {
       MonitorAutoLock monitor(mMonitor);
       ScheduleComposite();
-      RequestContentRepaint(true);
+      RequestContentRepaint();
     }
     mX.EndTouch();
     mY.EndTouch();
@@ -766,7 +764,6 @@ void AsyncPanZoomController::TrackTouch(const MultiTouchInput& aEvent) {
     // larger swipe should move you a shorter distance.
     gfxFloat inverseResolution = 1 / CalculateResolution(mFrameMetrics).width;
 
-    timeDelta = TimeDuration().FromMilliseconds(0);
     float xDisplacement = mX.GetDisplacementForDuration(inverseResolution,
                                                         timeDelta);
     float yDisplacement = mY.GetDisplacementForDuration(inverseResolution,
@@ -774,6 +771,7 @@ void AsyncPanZoomController::TrackTouch(const MultiTouchInput& aEvent) {
     if (fabs(xDisplacement) <= EPSILON && fabs(yDisplacement) <= EPSILON) {
       return;
     }
+
     ScrollBy(gfx::Point(xDisplacement, yDisplacement));
     ScheduleComposite();
 
@@ -801,7 +799,7 @@ bool AsyncPanZoomController::DoFling(const TimeDuration& aDelta) {
     // the zoom while accelerating.
     SetZoomAndResolution(mFrameMetrics.mZoom.width);
     SendAsyncScrollEvent();
-    RequestContentRepaint(true);
+    RequestContentRepaint();
     mState = NOTHING;
     return false;
   }
@@ -1053,7 +1051,7 @@ void AsyncPanZoomController::ScheduleComposite() {
   }
 }
 
-void AsyncPanZoomController::RequestContentRepaint(bool aForce) {
+void AsyncPanZoomController::RequestContentRepaint() {
   mPreviousPaintStartTime = TimeStamp::Now();
 
   double estimatedPaintSum = 0.0;
@@ -1088,9 +1086,7 @@ void AsyncPanZoomController::RequestContentRepaint(bool aForce) {
       fabsf(oldDisplayPort.width - newDisplayPort.width) < EPSILON &&
       fabsf(oldDisplayPort.height - newDisplayPort.height) < EPSILON &&
       mFrameMetrics.mResolution.width == mLastPaintRequestMetrics.mResolution.width) {
-    if (!aForce) {
-        return;
-    }
+    return;
   }
 
   SendAsyncScrollEvent();
@@ -1158,7 +1154,7 @@ bool AsyncPanZoomController::SampleContentTransformForFrame(const TimeStamp& aSa
     case FLING:
       // If a fling is currently happening, apply it now. We can pull
       // the updated metrics afterwards.
-      requestAnimationFrame |= DoFling(TimeDuration().FromMilliseconds(16));
+      requestAnimationFrame |= DoFling(aSampleTime - mLastSampleTime);
       break;
     case ANIMATING_ZOOM: {
       double animPosition = (aSampleTime - mAnimationStartTime) / ZOOM_TO_DURATION;
@@ -1274,9 +1270,6 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aViewportFr
 
     mPreviousPaintDurations.AppendElement(
       TimeStamp::Now() - mPreviousPaintStartTime);
-    if (mState == NOTHING) {
-      mFrameMetrics.mScrollOffset = aViewportFrame.mScrollOffset;
-    }
   } else {
     // No paint was requested, but we got one anyways. One possible cause of this
     // is that content could have fired a scrollTo(). In this case, we should take
@@ -1286,9 +1279,9 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aViewportFr
     // updating our local copy of it anyways just in case.
     switch (mState) {
     case NOTHING:
-//    case FLING:
-//    case TOUCHING:
-//    case WAITING_LISTENERS:
+    case FLING:
+    case TOUCHING:
+    case WAITING_LISTENERS:
       mFrameMetrics.mScrollOffset = aViewportFrame.mScrollOffset;
       break;
     // Don't clobber if we're in other states.
@@ -1323,7 +1316,6 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aViewportFr
   } else if (!mFrameMetrics.mScrollableRect.IsEqualEdges(aViewportFrame.mScrollableRect)) {
     mFrameMetrics.mScrollableRect = aViewportFrame.mScrollableRect;
     SetPageRect(mFrameMetrics.mScrollableRect);
-    needContentRepaint = true;
   }
 
   if (needContentRepaint) {
@@ -1351,7 +1343,7 @@ void AsyncPanZoomController::UpdateCompositionBounds(const nsIntRect& aCompositi
     SetZoomAndResolution(mFrameMetrics.mZoom.width);
 
     // Repaint on a rotation so that our new resolution gets properly updated.
-    RequestContentRepaint(true);
+    RequestContentRepaint();
   }
 }
 

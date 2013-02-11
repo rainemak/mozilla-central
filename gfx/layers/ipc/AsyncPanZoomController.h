@@ -435,7 +435,7 @@ protected:
    * a new paint request arrives before a paint is completed, the old request
    * gets discarded.
    */
-  void RequestContentRepaint(bool aForce = false);
+  void RequestContentRepaint();
 
   /**
    * Advances a fling by an interpolated amount based on the passed in |aDelta|.

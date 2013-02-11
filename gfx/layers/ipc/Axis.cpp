@@ -88,8 +88,7 @@ Axis::Axis(AsyncPanZoomController* aAsyncPanZoomController)
   : mPos(0.0f),
     mVelocity(0.0f),
     mAcceleration(0),
-    mAsyncPanZoomController(aAsyncPanZoomController),
-    mLastPos(0)
+    mAsyncPanZoomController(aAsyncPanZoomController)
 {
   InitAxisPrefs();
 }
@@ -109,20 +108,20 @@ void Axis::UpdateWithTouchAtDevicePoint(int32_t aPos, const TimeDuration& aTimeD
 
   // If a direction change has happened, or the current velocity due to this new
   // touch is relatively low, then just apply it. If not, throttle it.
-  if (!(curVelocityIsLow || (directionChange && fabs(newVelocity) - EPSILON <= 0.0f))) {
-    newVelocity = std::min(std::max(newVelocity, -gMaxEventAcceleration), gMaxEventAcceleration);
+  if (curVelocityIsLow || (directionChange && fabs(newVelocity) - EPSILON <= 0.0f)) {
+    mVelocity = newVelocity;
+  } else {
+    float maxChange = fabsf(mVelocity * aTimeDelta.ToMilliseconds() * gMaxEventAcceleration);
+    mVelocity = std::min(mVelocity + maxChange, std::max(mVelocity - maxChange, newVelocity));
   }
-  mVelocity += newVelocity;
-  mVelocity /= 2;
 
-  mLastPos = mPos;
+  mVelocity = newVelocity;
   mPos = aPos;
 }
 
 void Axis::StartTouch(int32_t aPos) {
   mStartPos = aPos;
   mPos = aPos;
-  mLastPos = aPos;
 }
 
 float Axis::GetDisplacementForDuration(float aScale, const TimeDuration& aDelta) {
@@ -130,14 +129,8 @@ float Axis::GetDisplacementForDuration(float aScale, const TimeDuration& aDelta)
     mAcceleration = 0;
   }
 
-  
-  float displacement;
-  if (aDelta.ToMilliseconds()) {
-    float accelerationFactor = GetAccelerationFactor();
-    displacement = mVelocity * aScale * aDelta.ToMilliseconds() * accelerationFactor;
-  } else {
-    displacement = (mLastPos - mPos) * aScale;
-  }
+  float accelerationFactor = GetAccelerationFactor();
+  float displacement = mVelocity * aScale * aDelta.ToMilliseconds() * accelerationFactor;
   // If this displacement will cause an overscroll, throttle it. Can potentially
   // bring it to 0 even if the velocity is high.
   if (DisplacementWillOverscroll(displacement) != OVERSCROLL_NONE) {
