@@ -51,6 +51,11 @@ static float gAccelerationMultiplier = 1.125f;
  */
 static float gFlingStoppedThreshold = 0.01f;
 
+/**
+ * Maximum size of velocity queue
+ */
+static int gMaxVelocityQueueSize = 5;
+
 static void ReadAxisPrefs()
 {
   Preferences::AddFloatVarCache(&gMaxEventAcceleration, "gfx.axis.max_event_acceleration", gMaxEventAcceleration);
@@ -58,6 +63,7 @@ static void ReadAxisPrefs()
   Preferences::AddFloatVarCache(&gVelocityThreshold, "gfx.axis.velocity_threshold", gVelocityThreshold);
   Preferences::AddFloatVarCache(&gAccelerationMultiplier, "gfx.axis.acceleration_multiplier", gAccelerationMultiplier);
   Preferences::AddFloatVarCache(&gFlingStoppedThreshold, "gfx.axis.fling_stopped_threshold", gFlingStoppedThreshold);
+  Preferences::AddIntVarCache(&gMaxVelocityQueueSize, "gfx.max_velocity_queue", gMaxVelocityQueueSize);
 }
 
 class ReadAxisPref MOZ_FINAL : public nsRunnable {
@@ -94,9 +100,13 @@ Axis::Axis(AsyncPanZoomController* aAsyncPanZoomController)
 }
 
 void Axis::UpdateWithTouchAtDevicePoint(int32_t aPos, const TimeDuration& aTimeDelta) {
+  if (mPos == aPos) {
+    // Does not make sense to calculate velocity when distance is 0
+    return;
+  }
+
   float newVelocity = (mPos - aPos) / aTimeDelta.ToMilliseconds();
 
-  bool curVelocityIsLow = fabsf(newVelocity) < 0.01f;
   bool curVelocityBelowThreshold = fabsf(newVelocity) < gVelocityThreshold;
   bool directionChange = (mVelocity > 0) != (newVelocity > 0);
 
@@ -106,16 +116,11 @@ void Axis::UpdateWithTouchAtDevicePoint(int32_t aPos, const TimeDuration& aTimeD
     mAcceleration = 0;
   }
 
-  // If a direction change has happened, or the current velocity due to this new
-  // touch is relatively low, then just apply it. If not, throttle it.
-  if (curVelocityIsLow || (directionChange && fabs(newVelocity) - EPSILON <= 0.0f)) {
-    mVelocity = newVelocity;
-  } else {
-    float maxChange = fabsf(mVelocity * aTimeDelta.ToMilliseconds() * gMaxEventAcceleration);
-    mVelocity = std::min(mVelocity + maxChange, std::max(mVelocity - maxChange, newVelocity));
-  }
-
   mVelocity = newVelocity;
+  mVelocityQueue.push(mVelocity);
+  if (mVelocityQueue.size() > gMaxVelocityQueueSize) {
+    mVelocityQueue.pop();
+  }
   mPos = aPos;
 }
 
@@ -149,6 +154,13 @@ float Axis::PanDistance() {
 
 void Axis::EndTouch() {
   mAcceleration++;
+  mVelocity = 0;
+  int count = mVelocityQueue.size();
+  while (!mVelocityQueue.empty()) {
+    mVelocity += mVelocityQueue.front();
+    mVelocityQueue.pop();
+  }
+  mVelocity /= count;
 }
 
 void Axis::CancelTouch() {
