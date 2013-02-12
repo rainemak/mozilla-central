@@ -10,7 +10,6 @@
 #include "nsGUIEvent.h"
 #include "mozilla/TimeStamp.h"
 #include "mozilla/gfx/2D.h"
-#include <queue>
 
 namespace mozilla {
 namespace layers {
@@ -184,9 +183,7 @@ protected:
   // they are flinging multiple times in a row very quickly, probably trying to
   // reach one of the extremes of the page.
   int32_t mAcceleration;
-  int32_t mLastPos;
   AsyncPanZoomController* mAsyncPanZoomController;
-  std::queue<float> mVelocityQueue;
 };
 
 class AxisX : public Axis {

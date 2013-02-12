@@ -87,11 +87,6 @@ static int gTouchListenerTimeout = 300;
  */
 static int gNumPaintDurationSamples = 3;
 
-/**
- * Enable kinetic velocity amortization depends on content repaint speed
- */
-static bool gEnableKineticSpeedAmortization = true;
-
 /** The multiplier we apply to a dimension's length if it is skating. That is,
  * if it's going above sMinSkateSpeed. We prefer to increase the size of the
  * Y axis because it is more natural in the case that a user is reading a page
@@ -121,7 +116,6 @@ static void ReadAZPCPrefs()
   Preferences::AddFloatVarCache(&gYSkateSizeMultiplier, "gfx.azpc.y_skate_size_multiplier", gYSkateSizeMultiplier);
   Preferences::AddFloatVarCache(&gXStationarySizeMultiplier, "gfx.azpc.x_stationary_size_multiplier", gXStationarySizeMultiplier);
   Preferences::AddFloatVarCache(&gYStationarySizeMultiplier, "gfx.azpc.y_stationary_size_multiplier", gYStationarySizeMultiplier);
-  Preferences::AddBoolVarCache(&gEnableKineticSpeedAmortization, "gfx.azpc.tweak_fling_velocity", gEnableKineticSpeedAmortization);
 }
 
 class ReadAZPCPref MOZ_FINAL : public nsRunnable {
@@ -770,9 +764,6 @@ void AsyncPanZoomController::TrackTouch(const MultiTouchInput& aEvent) {
     // larger swipe should move you a shorter distance.
     gfxFloat inverseResolution = 1 / CalculateResolution(mFrameMetrics).width;
 
-    if (!gEnableKineticSpeedAmortization) {
-      timeDelta = TimeDuration().FromMilliseconds(0);
-    }
     float xDisplacement = mX.GetDisplacementForDuration(inverseResolution,
                                                         timeDelta);
     float yDisplacement = mY.GetDisplacementForDuration(inverseResolution,
@@ -1160,16 +1151,11 @@ bool AsyncPanZoomController::SampleContentTransformForFrame(const TimeStamp& aSa
     MonitorAutoLock mon(mMonitor);
 
     switch (mState) {
-    case FLING: {
+    case FLING:
       // If a fling is currently happening, apply it now. We can pull
       // the updated metrics afterwards.
-      if (gEnableKineticSpeedAmortization) {
-        requestAnimationFrame |= DoFling(aSampleTime - mLastSampleTime);
-      } else {
-        requestAnimationFrame |= DoFling(TimeDuration().FromMilliseconds(16));
-      }
+      requestAnimationFrame |= DoFling(aSampleTime - mLastSampleTime);
       break;
-    }
     case ANIMATING_ZOOM: {
       double animPosition = (aSampleTime - mAnimationStartTime) / ZOOM_TO_DURATION;
       if (animPosition > 1.0) {
