@@ -97,7 +97,7 @@ void EmbedLiteCompositorParent::SetWorldTransform(gfxMatrix aMatrix)
     mWorldTransform = aMatrix;
 }
 
-void EmbedLiteCompositorParent::SetClipping(gfxRect aClipRect)
+void EmbedLiteCompositorParent::SetClipping(const gfxRect& aClipRect)
 {
     gfxUtils::GfxRectToIntRect(aClipRect, &mActiveClipping);
 }

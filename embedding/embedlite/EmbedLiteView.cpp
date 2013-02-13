@@ -272,6 +272,13 @@ EmbedLiteView::SetGLViewTransform(gfxMatrix matrix)
 }
 
 void
+EmbedLiteView::SetViewClipping(float aX, float aY, float aWidth, float aHeight)
+{
+    NS_ENSURE_TRUE(mViewImpl, );
+    mViewImpl->SetViewClipping(gfxRect(aX, aY, aWidth, aHeight));
+}
+
+void
 EmbedLiteView::SetTransformation(float aScale, nsIntPoint aScrollOffset)
 {
     NS_ENSURE_TRUE(mViewImpl, );

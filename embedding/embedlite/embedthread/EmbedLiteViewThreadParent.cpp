@@ -587,7 +587,14 @@ EmbedLiteViewThreadParent::SetGLViewTransform(gfxMatrix matrix)
 {
     if (mCompositor) {
         mCompositor->SetWorldTransform(matrix);
-        mCompositor->SetClipping(gfxRect(gfxPoint(0, 0), mViewSize));
+    }
+}
+
+void
+EmbedLiteViewThreadParent::SetViewClipping(const gfxRect& aClipRect)
+{
+    if (mCompositor) {
+        mCompositor->SetClipping(aClipRect);
     }
 }
 

@@ -118,6 +118,8 @@ public:
     virtual void SetGLViewPortSize(int width, int height);
     //   GL world transform offset and simple rotation are allowed (orientation change)
     virtual void SetGLViewTransform(gfxMatrix matrix);
+    //   Setup Clipping on view area, required if view gl area need to be particulary clipped withing target widget area
+    virtual void SetViewClipping(float aX, float aY, float aWidth, float aHeight);
 
     // Set Custom transform for compositor layers tree, Fast Scroll/Zoom
     virtual void SetTransformation(float aScale, nsIntPoint aScrollOffset);

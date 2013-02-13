@@ -30,7 +30,7 @@ public:
     bool RenderGL();
     void SetSurfaceSize(int width, int height);
     void SetWorldTransform(gfxMatrix);
-    void SetClipping(gfxRect aClipRect);
+    void SetClipping(const gfxRect& aClipRect);
 
     virtual bool RecvStop() MOZ_OVERRIDE;
     virtual void ShadowLayersUpdated(mozilla::layers::ShadowLayersParent* aLayerTree,
