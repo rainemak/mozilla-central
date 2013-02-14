@@ -29,6 +29,10 @@ IS_COMPONENT = 1
 
 LIBRARY_NAME = embedlite
 
+ifndef _MSC_VER
+FAIL_ON_WARNINGS := 1
+endif # !_MSC_VER
+
 EXPORTS_NAMESPACES = mozilla/embedlite IPC
 EXPORTS_mozilla/embedlite = \
     EmbedInitGlue.h \

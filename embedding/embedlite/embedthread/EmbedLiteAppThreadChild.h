@@ -29,7 +29,7 @@ public:
     static EmbedLiteAppThreadChild* GetInstance();
     EmbedLiteModulesService* ModulesService() { return mModulesService; }
     EmbedLiteViewThreadChild* GetViewByID(uint32_t aId);
-    EmbedLiteAppService* AppService();
+    ::EmbedLiteAppService* AppService();
 
 protected:
     // Embed API ipdl interface

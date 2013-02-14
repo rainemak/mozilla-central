@@ -69,9 +69,17 @@ XRE_GetBinaryPathType XRE_GetBinaryPath = 0;
 static inline bool IsLibXulInThePath(const char* path, std::string& xpcomPath)
 {
     xpcomPath = path;
-    xpcomPath += "/libxpcom.so";
+#ifdef XP_UNIX
+    xpcomPath += "/libxpcom";
+    xpcomPath += MOZ_DLL_SUFFIX;
     struct stat buf;
     return !stat(xpcomPath.c_str(), &buf);
+#else
+    xpcomPath += "/xpcom";
+    xpcomPath += MOZ_DLL_SUFFIX;
+    NS_ERROR("Not implemented file detection for windows");
+    return true;
+#endif
 }
 
 bool LoadEmbedLite(int argc = 0, char** argv = 0)
@@ -88,11 +96,15 @@ bool LoadEmbedLite(int argc = 0, char** argv = 0)
     std::string xpcomPath;
     char temp[MAX_PATH];
     char* greHome = getenv("GRE_HOME");
+
     if (!greHome) {
         greHome = getenv("PWD");
+#ifdef XP_WIN
+#else
         if (greHome) {
             printf("greHome from PWD:%s\n", greHome);
         }
+#endif
     } else {
         printf("greHome from GRE_HOME:%s\n", greHome);
     }
@@ -120,9 +132,24 @@ bool LoadEmbedLite(int argc = 0, char** argv = 0)
         return false;
     }
 
-    setenv("GRE_HOME", greHome, 1);
-    setenv("MOZILLA_FIVE_HOME", greHome, 1);
-    setenv("XRE_LIBXPCOM_PATH", xpcomPath.c_str(), 1);
+#ifdef XP_UNIX
+    char* greHomeLeak = strdup(greHome);
+    setenv("GRE_HOME", greHomeLeak, 1);
+    setenv("MOZILLA_FIVE_HOME", greHomeLeak, 1);
+    setenv("XRE_LIBXPCOM_PATH", strdup(xpcomPath.c_str()), 1);
+#elif defined XP_WIN
+    std::string homeStr("GRE_HOME=");
+    homeStr += greHome;
+    putenv(strdup(homeStr.c_str()));
+
+    homeStr = "MOZILLA_FIVE_HOME=";
+    homeStr += greHome;
+    putenv(strdup(homeStr.c_str()));
+
+    homeStr = "XRE_LIBXPCOM_PATH=";
+    homeStr += xpcomPath.c_str();
+    putenv(strdup(homeStr.c_str()));
+#endif
 
 #ifdef XP_MACOSX
     TriggerQuirks();

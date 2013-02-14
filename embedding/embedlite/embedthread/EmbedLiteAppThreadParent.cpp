@@ -52,7 +52,7 @@ EmbedLiteAppThreadParent::RecvInitialized()
     SetBoolPref("gfx.use_tiled_thebes", mApp->IsAccelerated() && getenv("DISABLE_TILED") == 0);
     SetBoolPref("egl.use_backing_surface", mApp->IsAccelerated() && getenv("DISABLE_BACKING") == 0);
     SetBoolPref("layers.reuse-invalid-tiles", getenv("DISABLE_REUSE_TILES") != 0);
-    setenv("MOZ_USE_OMTC", "1", 1);
+    PR_SetEnv("MOZ_USE_OMTC=1");
     mozilla::layers::CompositorParent::StartUpWithExistingThread(MessageLoop::current(), PlatformThread::CurrentId());
     mApp->GetListener()->Initialized();
     return true;

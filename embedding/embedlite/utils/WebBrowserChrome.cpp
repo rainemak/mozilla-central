@@ -29,8 +29,6 @@
 #include "nsISerializable.h"
 #include "nsIEmbedBrowserChromeListener.h"
 
-#include <inttypes.h>
-
 #define MOZ_AFTER_PAINT_LITERAL "MozAfterPaint"
 #define MOZ_scroll "scroll"
 #define MOZ_MozScrolledAreaChanged "MozScrolledAreaChanged"

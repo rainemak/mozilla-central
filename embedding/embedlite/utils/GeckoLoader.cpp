@@ -16,9 +16,6 @@
 #include <stdlib.h>
 #include <iostream>
 
-// Possibly only UNIX
-#include <unistd.h>
-
 // XRE_ Functions
 #include "nsXULAppAPI.h"
 
@@ -26,11 +23,14 @@
 #include <windows.h>
 #include <stdlib.h>
 #elif defined(XP_UNIX)
+#include <unistd.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #endif
+
+#include "nsDirectoryServiceDefs.h"
 
 #ifdef XP_MACOSX
 #include "MacQuirks.h"
@@ -62,11 +62,11 @@ GeckoLoader::InitEmbedding(const char* aProfilePath)
     }
     sInitialized = true;
     nsresult rv;
-    
+
     static const char* sleepBeforeGeckoInit = getenv("SLEEP_BEFORE_EMBEDDING");
     if (sleepBeforeGeckoInit) {
         LOGF("Sleep for: %ss\n", sleepBeforeGeckoInit);
-        sleep(atoi(sleepBeforeGeckoInit));
+        PR_Sleep(atoi(sleepBeforeGeckoInit));
         printf("Start XRE Init Embedding\n");
     }
 
@@ -114,9 +114,11 @@ GeckoLoader::InitEmbedding(const char* aProfilePath)
         nsCString pr(aProfilePath);
         if (!pr.IsEmpty()) {
             if (pr.First() != '/') {
+#ifdef XP_WIN
+                pr.Assign("c:");
+#else
                 pr.Assign(getenv("HOME"));
-                pr.AppendLiteral("/.mozilla/");
-                pr.Append(aProfilePath);
+#endif
             }
             LOGF("Creating profile in:%s\n", pr.get());
             rv = NS_NewNativeLocalFile(pr, PR_FALSE,
@@ -125,6 +127,8 @@ GeckoLoader::InitEmbedding(const char* aProfilePath)
                 LOGE("NS_NewNativeLocalFile failed.");
                 return false;
             }
+            kDirectoryProvider.sProfileDir->AppendNative(NS_LITERAL_CSTRING(".mozilla"));
+            kDirectoryProvider.sProfileDir->AppendNative(nsDependentCString(aProfilePath));
         } else {
             // for now use a subdir under appdir
             nsCOMPtr<nsIFile> profFile;
@@ -156,9 +160,11 @@ GeckoLoader::InitEmbedding(const char* aProfilePath)
     }
 
     nsCString greHomeCSTR(getenv("GRE_HOME"));
+#ifdef XP_WIN
+    greHomeCSTR.ReplaceChar('/', '\\');
+#endif
     rv = NS_NewNativeLocalFile(greHomeCSTR, PR_FALSE,
                                getter_AddRefs(kDirectoryProvider.sGREDir));
-
     // init embedding
     rv = XRE_InitEmbedding2(xuldir, appdir,
                             aProfilePath ? const_cast<DirProvider*>(&kDirectoryProvider) : nullptr);

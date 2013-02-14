@@ -6,6 +6,7 @@
 #ifndef EMBED_LITE_APP_THREAD_H
 #define EMBED_LITE_APP_THREAD_H
 
+#include "nsISupportsImpl.h"
 #include "mozilla/RefPtr.h"
 #include "base/message_loop.h"
 
@@ -18,10 +19,11 @@ class EmbedLiteApp;
 
 class EmbedLiteAppThread
 {
-    NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EmbedLiteAppThread)
 public:
+    NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EmbedLiteAppThread)
+
     EmbedLiteAppThread(MessageLoop* aParentLoop);
-    virtual ~EmbedLiteAppThread(); 
+    virtual ~EmbedLiteAppThread();
 
     void Init();
     void Destroy();
