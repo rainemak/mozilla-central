@@ -24,30 +24,30 @@ EmbedLiteSubThread::EmbedLiteSubThread(EmbedLiteApp* aApp)
   , mParentLoop(MessageLoop::current())
   , mApp(aApp)
 {
-    LOGT();
+  LOGT();
 }
 
 EmbedLiteSubThread::~EmbedLiteSubThread()
 {
-    LOGT();
+  LOGT();
 }
 
 void EmbedLiteSubThread::Init()
 {
-    LOGT();
-    mApp->StartChildThread();
+  LOGT();
+  mApp->StartChildThread();
 }
 
 void EmbedLiteSubThread::CleanUp()
 {
-    LOGT();
-    mApp->StopChildThread();
+  LOGT();
+  mApp->StopChildThread();
 }
 
 bool EmbedLiteSubThread::StartEmbedThread()
 {
-    LOGT();
-    return StartWithOptions(Thread::Options(MessageLoop::TYPE_MOZILLA_CHILD, 0));
+  LOGT();
+  return StartWithOptions(Thread::Options(MessageLoop::TYPE_MOZILLA_CHILD, 0));
 }
 
 } // namespace embedlite

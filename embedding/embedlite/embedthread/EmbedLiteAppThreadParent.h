@@ -14,37 +14,37 @@ namespace embedlite {
 class EmbedLiteApp;
 class EmbedLiteAppThreadParent : public PEmbedLiteAppParent
 {
-    NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EmbedLiteAppThreadParent)
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EmbedLiteAppThreadParent)
 public:
-    EmbedLiteAppThreadParent();
-    virtual ~EmbedLiteAppThreadParent();
+  EmbedLiteAppThreadParent();
+  virtual ~EmbedLiteAppThreadParent();
 
-    virtual void SetBoolPref(const char* aName, bool aValue);
-    virtual void SetCharPref(const char* aName, const char* aValue);
-    virtual void SetIntPref(const char* aName, int aValue);
+  virtual void SetBoolPref(const char* aName, bool aValue);
+  virtual void SetCharPref(const char* aName, const char* aValue);
+  virtual void SetIntPref(const char* aName, int aValue);
 
-    // IPDL
-    virtual bool
-    RecvInitialized();
+  // IPDL
+  virtual bool
+  RecvInitialized();
 
-    virtual bool
-    RecvReadyToShutdown();
+  virtual bool
+  RecvReadyToShutdown();
 
-    virtual bool RecvObserve(const nsCString& topic,
-                             const nsString& data);
+  virtual bool RecvObserve(const nsCString& topic,
+                           const nsString& data);
 
-    static EmbedLiteAppThreadParent* GetInstance();
+  static EmbedLiteAppThreadParent* GetInstance();
 
 protected:
-    virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
-    virtual PEmbedLiteViewParent* AllocPEmbedLiteView(const uint32_t&);
-    virtual bool DeallocPEmbedLiteView(PEmbedLiteViewParent*);
+  virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
+  virtual PEmbedLiteViewParent* AllocPEmbedLiteView(const uint32_t&);
+  virtual bool DeallocPEmbedLiteView(PEmbedLiteViewParent*);
 
 private:
-    EmbedLiteApp* mApp;
+  EmbedLiteApp* mApp;
 
 private:
-    DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteAppThreadParent);
+  DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteAppThreadParent);
 };
 
 } // namespace embedlite

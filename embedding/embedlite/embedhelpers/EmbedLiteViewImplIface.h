@@ -12,12 +12,13 @@
 #include "mozilla/RefPtr.h"
 
 namespace mozilla {
+
 class InputData;
 namespace embedlite {
 
 class EmbedLiteViewImplIface
 {
-public:
+  public:
     virtual void LoadURL(const char*) {}
     virtual void GoBack() {}
     virtual void GoForward() {}
@@ -27,7 +28,7 @@ public:
     virtual void DoSendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage) {}
     virtual void AddMessageListener(const char* aMessageName) {}
     virtual void RemoveMessageListener(const char* aMessageName) {}
-    virtual bool RenderToImage(unsigned char *aData, int imgW, int imgH, int stride, int depth) { return false; }
+    virtual bool RenderToImage(unsigned char* aData, int imgW, int imgH, int stride, int depth) { return false; }
     virtual bool RenderGL() { return false; }
     virtual void SetIsActive(bool) {}
     virtual void SuspendTimeouts() {}

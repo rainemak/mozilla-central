@@ -10,8 +10,9 @@
 
 namespace mozilla {
 namespace embedlite {
-    class EmbedLiteApp;
-}}
+class EmbedLiteApp;
+}
+}
 
 XRE_API(mozilla::embedlite::EmbedLiteApp*,
         XRE_GetEmbedLite, ())

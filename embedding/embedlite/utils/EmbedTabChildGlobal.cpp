@@ -36,23 +36,23 @@ EmbedTabChildGlobal::Init()
 
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN_INHERITED(EmbedTabChildGlobal,
                                                 nsDOMEventTargetHelper)
-  NS_IMPL_CYCLE_COLLECTION_UNLINK(mMessageManager)
+NS_IMPL_CYCLE_COLLECTION_UNLINK(mMessageManager)
 NS_IMPL_CYCLE_COLLECTION_UNLINK_END
 
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INHERITED(EmbedTabChildGlobal,
                                                   nsDOMEventTargetHelper)
-  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mMessageManager)
+NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mMessageManager)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
 
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION_INHERITED(EmbedTabChildGlobal)
-  NS_INTERFACE_MAP_ENTRY(nsIMessageListenerManager)
-  NS_INTERFACE_MAP_ENTRY(nsIMessageSender)
-  NS_INTERFACE_MAP_ENTRY(nsISyncMessageSender)
-  NS_INTERFACE_MAP_ENTRY(nsIContentFrameMessageManager)
-  NS_INTERFACE_MAP_ENTRY(nsIScriptContextPrincipal)
-  NS_INTERFACE_MAP_ENTRY(nsIScriptObjectPrincipal)
-  NS_INTERFACE_MAP_ENTRY(nsITabChild)
-  NS_DOM_INTERFACE_MAP_ENTRY_CLASSINFO(ContentFrameMessageManager)
+NS_INTERFACE_MAP_ENTRY(nsIMessageListenerManager)
+NS_INTERFACE_MAP_ENTRY(nsIMessageSender)
+NS_INTERFACE_MAP_ENTRY(nsISyncMessageSender)
+NS_INTERFACE_MAP_ENTRY(nsIContentFrameMessageManager)
+NS_INTERFACE_MAP_ENTRY(nsIScriptContextPrincipal)
+NS_INTERFACE_MAP_ENTRY(nsIScriptObjectPrincipal)
+NS_INTERFACE_MAP_ENTRY(nsITabChild)
+NS_DOM_INTERFACE_MAP_ENTRY_CLASSINFO(ContentFrameMessageManager)
 NS_INTERFACE_MAP_END_INHERITING(nsDOMEventTargetHelper)
 
 NS_IMPL_ADDREF_INHERITED(EmbedTabChildGlobal, nsDOMEventTargetHelper)
@@ -64,36 +64,38 @@ NS_IMPL_RELEASE_INHERITED(EmbedTabChildGlobal, nsDOMEventTargetHelper)
 NS_IMETHODIMP_(bool)
 EmbedTabChildGlobal::MarkForCC()
 {
-    return mMessageManager ? mMessageManager->MarkForCC() : false;
+  return mMessageManager ? mMessageManager->MarkForCC() : false;
 }
 
 NS_IMETHODIMP
 EmbedTabChildGlobal::GetContent(nsIDOMWindow** aContent)
 {
-    *aContent = nullptr;
-    if (!mTabChild)
-        return NS_ERROR_NULL_POINTER;
-    nsCOMPtr<nsIDOMWindow> window = do_GetInterface(mTabChild->WebNavigation());
-    window.swap(*aContent);
-    return NS_OK;
+  *aContent = nullptr;
+  if (!mTabChild) {
+    return NS_ERROR_NULL_POINTER;
+  }
+  nsCOMPtr<nsIDOMWindow> window = do_GetInterface(mTabChild->WebNavigation());
+  window.swap(*aContent);
+  return NS_OK;
 }
 
 NS_IMETHODIMP
 EmbedTabChildGlobal::PrivateNoteIntentionalCrash()
 {
-//    mozilla::NoteIntentionalCrash("tab");
-    return NS_OK;
+  //    mozilla::NoteIntentionalCrash("tab");
+  return NS_OK;
 }
 
 NS_IMETHODIMP
 EmbedTabChildGlobal::GetDocShell(nsIDocShell** aDocShell)
 {
-    *aDocShell = nullptr;
-    if (!mTabChild)
-        return NS_ERROR_NULL_POINTER;
-    nsCOMPtr<nsIDocShell> docShell = do_GetInterface(mTabChild->WebNavigation());
-    docShell.swap(*aDocShell);
-    return NS_OK;
+  *aDocShell = nullptr;
+  if (!mTabChild) {
+    return NS_ERROR_NULL_POINTER;
+  }
+  nsCOMPtr<nsIDocShell> docShell = do_GetInterface(mTabChild->WebNavigation());
+  docShell.swap(*aDocShell);
+  return NS_OK;
 }
 
 NS_IMETHODIMP
@@ -113,22 +115,24 @@ EmbedTabChildGlobal::Atob(const nsAString& aAsciiString,
 JSContext*
 EmbedTabChildGlobal::GetJSContextForEventHandlers()
 {
-    if (!mTabChild)
-        return nullptr;
-    return mTabChild->GetJSContext();
+  if (!mTabChild) {
+    return nullptr;
+  }
+  return mTabChild->GetJSContext();
 }
 
 nsIPrincipal*
 EmbedTabChildGlobal::GetPrincipal()
 {
-    if (!mTabChild)
-        return nullptr;
-    return mTabChild->GetPrincipal();
+  if (!mTabChild) {
+    return nullptr;
+  }
+  return mTabChild->GetPrincipal();
 }
 
 NS_IMETHODIMP
 EmbedTabChildGlobal::GetMessageManager(nsIContentFrameMessageManager** aResult)
 {
-    NS_ADDREF(*aResult = this);
-    return NS_OK;
+  NS_ADDREF(*aResult = this);
+  return NS_OK;
 }

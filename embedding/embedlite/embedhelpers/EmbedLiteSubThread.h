@@ -17,19 +17,19 @@ class EmbedLiteApp;
 
 // Copied from browser_process_impl.cc, modified slightly.
 class EmbedLiteSubThread : public base::Thread,
-                           public base::RefCounted<EmbedLiteSubThread>
+  public base::RefCounted<EmbedLiteSubThread>
 {
-public:
+  public:
     explicit EmbedLiteSubThread(EmbedLiteApp*);
     ~EmbedLiteSubThread();
 
     bool StartEmbedThread();
 
-protected:
+  protected:
     virtual void Init();
     virtual void CleanUp();
 
-private:
+  private:
     MessageLoop* mParentLoop;
     EmbedLiteApp* mApp;
 };

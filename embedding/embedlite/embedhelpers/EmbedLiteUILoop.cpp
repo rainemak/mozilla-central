@@ -14,29 +14,27 @@ namespace embedlite {
 EmbedLiteUILoop::EmbedLiteUILoop()
   : MessageLoopForUI(MessageLoop::TYPE_UI)
 {
-    LOGT();
+  LOGT();
 }
 
 EmbedLiteUILoop::~EmbedLiteUILoop()
 {
-    LOGT();
+  LOGT();
 }
 
 void EmbedLiteUILoop::StartLoop()
 {
-    LOGT();
-    // Run the UI event loop on the main thread.
-    {
-        MessageLoop::Run();
-    }
-    LOGF("Loop Stopped, exit");
+  LOGT();
+  // Run the UI event loop on the main thread.
+  MessageLoop::Run();
+  LOGF("Loop Stopped, exit");
 }
 
 void EmbedLiteUILoop::DoQuit()
 {
-    LOGT();
-    Quit();
-    DoIdleWork();
+  LOGT();
+  Quit();
+  DoIdleWork();
 }
 
 } // namespace embedlite

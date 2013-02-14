@@ -14,34 +14,34 @@ namespace mozilla {
 namespace embedlite {
 
 EmbedLiteAppThread::EmbedLiteAppThread(MessageLoop* aParentLoop)
-    : mParentLoop(aParentLoop)
+  : mParentLoop(aParentLoop)
 {
-    LOGT();
-    MessageLoop::current()->PostTask(FROM_HERE,
-                                     NewRunnableMethod(this, &EmbedLiteAppThread::Init));
+  LOGT();
+  MessageLoop::current()->PostTask(FROM_HERE,
+                                   NewRunnableMethod(this, &EmbedLiteAppThread::Init));
 }
 
 EmbedLiteAppThread::~EmbedLiteAppThread()
 {
-    LOGT();
+  LOGT();
 }
 
 void
 EmbedLiteAppThread::Init()
 {
-    LOGT();
-    mParentThread = new EmbedLiteAppThreadParent();
-    mChildThread = new EmbedLiteAppThreadChild(mParentLoop);
-    mChildThread->Init(mParentThread);
+  LOGT();
+  mParentThread = new EmbedLiteAppThreadParent();
+  mChildThread = new EmbedLiteAppThreadChild(mParentLoop);
+  mChildThread->Init(mParentThread);
 }
 
 void
 EmbedLiteAppThread::Destroy()
 {
-    LOGT();
-    mChildThread->Close();
-    mParentThread = nullptr;
-    mChildThread = nullptr;
+  LOGT();
+  mChildThread->Close();
+  mParentThread = nullptr;
+  mChildThread = nullptr;
 }
 
 } // namespace embedlite

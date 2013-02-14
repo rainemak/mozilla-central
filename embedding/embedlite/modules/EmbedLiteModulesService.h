@@ -20,15 +20,16 @@ class EmbedLiteModulesService : public nsIObserver,
                                 public nsSupportsWeakReference
 {
 public:
-    EmbedLiteModulesService();
-    virtual ~EmbedLiteModulesService();
+  EmbedLiteModulesService();
+  virtual ~EmbedLiteModulesService();
 
-    NS_DECL_ISUPPORTS
-    NS_DECL_NSIOBSERVER
+  NS_DECL_ISUPPORTS
+  NS_DECL_NSIOBSERVER
 
-    nsresult Init();
+  nsresult Init();
 };
 
-}}
+}
+}
 
 #endif /*EmbedLiteModulesService_H_*/

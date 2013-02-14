@@ -20,18 +20,18 @@ class EmbedLiteApp;
 class EmbedLiteAppThread
 {
 public:
-    NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EmbedLiteAppThread)
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EmbedLiteAppThread)
 
-    EmbedLiteAppThread(MessageLoop* aParentLoop);
-    virtual ~EmbedLiteAppThread();
+  EmbedLiteAppThread(MessageLoop* aParentLoop);
+  virtual ~EmbedLiteAppThread();
 
-    void Init();
-    void Destroy();
+  void Init();
+  void Destroy();
 
 private:
-    RefPtr<EmbedLiteAppThreadParent> mParentThread;
-    RefPtr<EmbedLiteAppThreadChild> mChildThread;
-    MessageLoop* mParentLoop;
+  RefPtr<EmbedLiteAppThreadParent> mParentThread;
+  RefPtr<EmbedLiteAppThreadChild> mChildThread;
+  MessageLoop* mParentLoop;
 };
 
 } // namespace embedlite

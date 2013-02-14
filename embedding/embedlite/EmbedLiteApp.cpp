@@ -33,11 +33,11 @@ static nsTArray<nsCString> sComponentDirs;
 EmbedLiteApp*
 EmbedLiteApp::GetInstance()
 {
-    if (!sSingleton) {
-        sSingleton = new EmbedLiteApp();
-        NS_ASSERTION(sSingleton, "not initialized");
-    }
-    return sSingleton;
+  if (!sSingleton) {
+    sSingleton = new EmbedLiteApp();
+    NS_ASSERTION(sSingleton, "not initialized");
+  }
+  return sSingleton;
 }
 
 class FakeListener : public EmbedLiteAppListener {};
@@ -51,264 +51,265 @@ EmbedLiteApp::EmbedLiteApp()
   , mDestroying(false)
   , mRenderType(RENDER_AUTO)
 {
-    LOGT();
-    sSingleton = this;
+  LOGT();
+  sSingleton = this;
 }
 
 EmbedLiteApp::~EmbedLiteApp()
 {
-    LOGT();
-    NS_ASSERTION(!mUILoop, "Main Loop not stopped before destroy");
-    NS_ASSERTION(!mSubThread, "Thread not stopped/destroyed before destroy");
-    sSingleton = NULL;
+  LOGT();
+  NS_ASSERTION(!mUILoop, "Main Loop not stopped before destroy");
+  NS_ASSERTION(!mSubThread, "Thread not stopped/destroyed before destroy");
+  sSingleton = NULL;
 }
 
 void
 EmbedLiteApp::SetListener(EmbedLiteAppListener* aListener)
 {
-    LOGT();
-    mListener = aListener;
+  LOGT();
+  mListener = aListener;
 }
 
 void*
 EmbedLiteApp::PostTask(EMBEDTaskCallback callback, void* userData, int timeout)
 {
-    CancelableTask* newTask = NewRunnableFunction(callback, userData);
-    if (timeout) {
-        mUILoop->PostDelayedTask(FROM_HERE, newTask, timeout);
-    } else {
-        mUILoop->PostTask(FROM_HERE, newTask);
-    }
+  CancelableTask* newTask = NewRunnableFunction(callback, userData);
+  if (timeout) {
+    mUILoop->PostDelayedTask(FROM_HERE, newTask, timeout);
+  } else {
+    mUILoop->PostTask(FROM_HERE, newTask);
+  }
 
-    return (void*)newTask;
+  return (void*)newTask;
 }
 
 void
 EmbedLiteApp::CancelTask(void* aTask)
 {
-    if (aTask) {
-        static_cast<CancelableTask*>(aTask)->Cancel();
-    }
+  if (aTask) {
+    static_cast<CancelableTask*>(aTask)->Cancel();
+  }
 }
 
 void
 EmbedLiteApp::StartChild(EmbedLiteApp* aApp)
 {
-    LOGT();
-    if (aApp->mEmbedType == EMBED_THREAD) {
-        if (!aApp->GetListener() ||
-            !aApp->GetListener()->ExecuteChildThread()) {
-            aApp->mSubThread = new EmbedLiteSubThread(aApp);
-            if (!aApp->mSubThread->StartEmbedThread()) {
-                LOGE("Failed to start child thread");
-            }
-        }
+  LOGT();
+  if (aApp->mEmbedType == EMBED_THREAD) {
+    if (!aApp->GetListener() ||
+        !aApp->GetListener()->ExecuteChildThread()) {
+      aApp->mSubThread = new EmbedLiteSubThread(aApp);
+      if (!aApp->mSubThread->StartEmbedThread()) {
+        LOGE("Failed to start child thread");
+      }
     }
+  }
 }
 
 bool
 EmbedLiteApp::Start(EmbedType aEmbedType)
 {
-    LOGT("Type: %s", aEmbedType == EMBED_THREAD ? "Thread" : "Process");
-    NS_ASSERTION(!mUILoop, "Start called twice");
-    mEmbedType = aEmbedType;
-    base::AtExitManager exitManager;
-    mUILoop = new EmbedLiteUILoop();
-    mUILoop->PostTask(FROM_HERE,
-                      NewRunnableFunction(&EmbedLiteApp::StartChild, this));
-    mUILoop->StartLoop();
-    if (mSubThread) {
-        mSubThread->Stop();
-        mSubThread = NULL;
-    } else {
-        NS_ABORT_IF_FALSE(mListener->StopChildThread(),
-                          "StopChildThread must be implemented when ExecuteChildThread defined");
-    }
-    delete mUILoop;
-    mUILoop = NULL;
-    mListener->Destroyed();
-    return true;
+  LOGT("Type: %s", aEmbedType == EMBED_THREAD ? "Thread" : "Process");
+  NS_ASSERTION(!mUILoop, "Start called twice");
+  mEmbedType = aEmbedType;
+  base::AtExitManager exitManager;
+  mUILoop = new EmbedLiteUILoop();
+  mUILoop->PostTask(FROM_HERE,
+                    NewRunnableFunction(&EmbedLiteApp::StartChild, this));
+  mUILoop->StartLoop();
+  if (mSubThread) {
+    mSubThread->Stop();
+    mSubThread = NULL;
+  } else {
+    NS_ABORT_IF_FALSE(mListener->StopChildThread(),
+                      "StopChildThread must be implemented when ExecuteChildThread defined");
+  }
+  delete mUILoop;
+  mUILoop = NULL;
+  mListener->Destroyed();
+  return true;
 }
 
 void
 EmbedLiteApp::AddManifestLocation(const char* manifest)
 {
-    sComponentDirs.AppendElement(nsCString(manifest));
+  sComponentDirs.AppendElement(nsCString(manifest));
 }
 
 bool
 EmbedLiteApp::StartChildThread()
 {
-    NS_ENSURE_TRUE(mEmbedType == EMBED_THREAD, false);
-    LOGT("mUILoop:%p, current:%p", mUILoop, MessageLoop::current());
-    NS_ASSERTION(MessageLoop::current() != mUILoop,
-                 "Current message loop must be null and not equals to mUILoop");
-    for (int i = 0; i < sComponentDirs.Length(); i++) {
-        nsCOMPtr<nsIFile> f;
-        NS_NewNativeLocalFile(sComponentDirs[i], true,
-                              getter_AddRefs(f));
-        XRE_AddManifestLocation(NS_COMPONENT_LOCATION, f);
-    }
-    GeckoLoader::InitEmbedding("mozembed");
-    mAppThread = new EmbedLiteAppThread(mUILoop);
-    return true;
+  NS_ENSURE_TRUE(mEmbedType == EMBED_THREAD, false);
+  LOGT("mUILoop:%p, current:%p", mUILoop, MessageLoop::current());
+  NS_ASSERTION(MessageLoop::current() != mUILoop,
+               "Current message loop must be null and not equals to mUILoop");
+  for (int i = 0; i < sComponentDirs.Length(); i++) {
+    nsCOMPtr<nsIFile> f;
+    NS_NewNativeLocalFile(sComponentDirs[i], true,
+                          getter_AddRefs(f));
+    XRE_AddManifestLocation(NS_COMPONENT_LOCATION, f);
+  }
+  GeckoLoader::InitEmbedding("mozembed");
+  mAppThread = new EmbedLiteAppThread(mUILoop);
+  return true;
 }
 
 bool
 EmbedLiteApp::StopChildThread()
 {
-    NS_ENSURE_TRUE(mEmbedType == EMBED_THREAD, false);
-    LOGT("mUILoop:%p, current:%p", mUILoop, MessageLoop::current());
-    if (!mUILoop || !MessageLoop::current() ||
-        mUILoop == MessageLoop::current()) {
-        NS_ERROR("Wrong thread? StartChildThread called? Stop() already called?");
-        return false;
-    }
-    mAppThread->Destroy();
-    mAppThread = nullptr;
-    GeckoLoader::TermEmbedding();
-    return true;
+  NS_ENSURE_TRUE(mEmbedType == EMBED_THREAD, false);
+  LOGT("mUILoop:%p, current:%p", mUILoop, MessageLoop::current());
+  if (!mUILoop || !MessageLoop::current() ||
+      mUILoop == MessageLoop::current()) {
+    NS_ERROR("Wrong thread? StartChildThread called? Stop() already called?");
+    return false;
+  }
+  mAppThread->Destroy();
+  mAppThread = nullptr;
+  GeckoLoader::TermEmbedding();
+  return true;
 }
 
 void _FinalStop(EmbedLiteApp* app)
 {
-    app->Stop();
+  app->Stop();
 }
 
 void
 EmbedLiteApp::Stop()
 {
-    LOGT();
-    if (!mViews.empty()) {
-        std::map<uint32_t, EmbedLiteView*>::iterator it;
-        for (it = mViews.begin(); it != mViews.end(); it++) {
-            EmbedLiteView* view = it->second;
-            delete view;
-            it->second = nullptr;
-        }
-        mDestroying = true;
-    } else if (!mDestroying) {
-        mDestroying = true;
-        mUILoop->PostTask(FROM_HERE,
-                          NewRunnableMethod(STHREADAPP(), &EmbedLiteAppThreadParent::SendPreDestroy));
-    } else {
-        NS_ASSERTION(mUILoop, "Start was not called before stop");
-        mUILoop->DoQuit();
+  LOGT();
+  if (!mViews.empty()) {
+    std::map<uint32_t, EmbedLiteView*>::iterator it;
+    for (it = mViews.begin(); it != mViews.end(); it++) {
+      EmbedLiteView* view = it->second;
+      delete view;
+      it->second = nullptr;
     }
+    mDestroying = true;
+  } else if (!mDestroying) {
+    mDestroying = true;
+    mUILoop->PostTask(FROM_HERE,
+                      NewRunnableMethod(STHREADAPP(), &EmbedLiteAppThreadParent::SendPreDestroy));
+  } else {
+    NS_ASSERTION(mUILoop, "Start was not called before stop");
+    mUILoop->DoQuit();
+  }
 }
 
 void
 EmbedLiteApp::SetBoolPref(const char* aName, bool aValue)
 {
-    unused << STHREADAPP()->SendSetBoolPref(nsDependentCString(aName), aValue);
+  unused << STHREADAPP()->SendSetBoolPref(nsDependentCString(aName), aValue);
 }
 
 void
 EmbedLiteApp::SetCharPref(const char* aName, const char* aValue)
 {
-    unused << STHREADAPP()->SendSetCharPref(nsDependentCString(aName), nsDependentCString(aValue));
+  unused << STHREADAPP()->SendSetCharPref(nsDependentCString(aName), nsDependentCString(aValue));
 }
 
 void
 EmbedLiteApp::SetIntPref(const char* aName, int aValue)
 {
-    unused << STHREADAPP()->SendSetIntPref(nsDependentCString(aName), aValue);
+  unused << STHREADAPP()->SendSetIntPref(nsDependentCString(aName), aValue);
 }
 
 void
 EmbedLiteApp::LoadGlobalStyleSheet(const char* aUri, bool aEnable)
 {
-    LOGT();
-    unused << STHREADAPP()->SendLoadGlobalStyleSheet(nsDependentCString(aUri), aEnable);
+  LOGT();
+  unused << STHREADAPP()->SendLoadGlobalStyleSheet(nsDependentCString(aUri), aEnable);
 }
 
 void
 EmbedLiteApp::SendObserve(const char* aMessageName, const PRUnichar* aMessage)
 {
-    LOGT("topic:%s", aMessageName);
-    unused << STHREADAPP()->SendObserve(nsDependentCString(aMessageName), nsDependentString(aMessage));
+  LOGT("topic:%s", aMessageName);
+  unused << STHREADAPP()->SendObserve(nsDependentCString(aMessageName), nsDependentString(aMessage));
 }
 
 void
 EmbedLiteApp::AddObserver(const char* aMessageName)
 {
-    LOGT("topic:%s", aMessageName);
-    unused << STHREADAPP()->SendAddObserver(nsDependentCString(aMessageName));
+  LOGT("topic:%s", aMessageName);
+  unused << STHREADAPP()->SendAddObserver(nsDependentCString(aMessageName));
 }
 
 void
 EmbedLiteApp::RemoveObserver(const char* aMessageName)
 {
-    LOGT("topic:%s", aMessageName);
-    unused << STHREADAPP()->SendRemoveObserver(nsDependentCString(aMessageName));
+  LOGT("topic:%s", aMessageName);
+  unused << STHREADAPP()->SendRemoveObserver(nsDependentCString(aMessageName));
 }
 
 EmbedLiteView*
 EmbedLiteApp::CreateView()
 {
-    LOGT();
-    EmbedLiteView* view = new EmbedLiteView(this);
-    mViews[++mViewCreateID] = view;
-    unused << STHREADAPP()->SendCreateView(mViewCreateID);
-    return view;
+  LOGT();
+  EmbedLiteView* view = new EmbedLiteView(this);
+  mViews[++mViewCreateID] = view;
+  unused << STHREADAPP()->SendCreateView(mViewCreateID);
+  return view;
 }
 
 EmbedLiteView* EmbedLiteApp::GetViewByID(uint32_t id)
 {
-    std::map<uint32_t, EmbedLiteView*>::iterator it = mViews.find(id);
-    if (it == mViews.end()) {
-        NS_ERROR("View not found");
-        return nullptr;
-    }
-    return it->second;
+  std::map<uint32_t, EmbedLiteView*>::iterator it = mViews.find(id);
+  if (it == mViews.end()) {
+    NS_ERROR("View not found");
+    return nullptr;
+  }
+  return it->second;
 }
 
 void
 EmbedLiteApp::ChildReadyToDestroy()
 {
-    LOGT();
-    if (mDestroying) {
-        mUILoop->PostTask(FROM_HERE,
-                          NewRunnableFunction(&_FinalStop, this));
-    }
+  LOGT();
+  if (mDestroying) {
+    mUILoop->PostTask(FROM_HERE,
+                      NewRunnableFunction(&_FinalStop, this));
+  }
 }
 
 void
 EmbedLiteApp::ViewDestroyed(uint32_t id)
 {
-    LOGT("id:%i", id);
-    std::map<uint32_t, EmbedLiteView*>::iterator it = mViews.find(id);
-    mViews.erase(it);
-    if (mDestroying && mViews.empty()) {
-        mUILoop->PostTask(FROM_HERE,
-                          NewRunnableMethod(STHREADAPP(), &EmbedLiteAppThreadParent::SendPreDestroy));
-    }
+  LOGT("id:%i", id);
+  std::map<uint32_t, EmbedLiteView*>::iterator it = mViews.find(id);
+  mViews.erase(it);
+  if (mDestroying && mViews.empty()) {
+    mUILoop->PostTask(FROM_HERE,
+                      NewRunnableMethod(STHREADAPP(), &EmbedLiteAppThreadParent::SendPreDestroy));
+  }
 }
 
 void EmbedLiteApp::DestroyView(EmbedLiteView* aView)
 {
-    LOGT();
-    std::map<uint32_t, EmbedLiteView*>::iterator it;
-    for (it = mViews.begin(); it != mViews.end(); it++) {
-        if (it->second == aView)
-            break;
+  LOGT();
+  std::map<uint32_t, EmbedLiteView*>::iterator it;
+  for (it = mViews.begin(); it != mViews.end(); it++) {
+    if (it->second == aView) {
+      break;
     }
-    EmbedLiteView* view = it->second;
-    delete view;
-    it->second = nullptr;
+  }
+  EmbedLiteView* view = it->second;
+  delete view;
+  it->second = nullptr;
 }
 
 void
 EmbedLiteApp::SetIsAccelerated(bool aIsAccelerated)
 {
 #ifdef GL_PROVIDER_EGL
-    if (aIsAccelerated) {
-        mRenderType = RENDER_HW;
-    } else
+  if (aIsAccelerated) {
+    mRenderType = RENDER_HW;
+  } else
 #endif
-    {
-        mRenderType = RENDER_SW;
-    }
+  {
+    mRenderType = RENDER_SW;
+  }
 }
 
 } // namespace embedlite
@@ -317,5 +318,5 @@ EmbedLiteApp::SetIsAccelerated(bool aIsAccelerated)
 mozilla::embedlite::EmbedLiteApp*
 XRE_GetEmbedLite()
 {
-    return mozilla::embedlite::EmbedLiteApp::GetInstance();
+  return mozilla::embedlite::EmbedLiteApp::GetInstance();
 }

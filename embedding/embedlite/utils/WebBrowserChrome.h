@@ -33,41 +33,41 @@ class WebBrowserChrome : public nsIWebBrowserChrome,
                          public nsSupportsWeakReference
 {
 public:
-    NS_DECL_ISUPPORTS
-    NS_DECL_NSIWEBBROWSERCHROME
-    NS_DECL_NSIWEBPROGRESSLISTENER
-    NS_DECL_NSIWEBBROWSERCHROMEFOCUS
-    NS_DECL_NSIEMBEDDINGSITEWINDOW
-    NS_DECL_NSIINTERFACEREQUESTOR
-    NS_DECL_NSIDOMEVENTLISTENER
+  NS_DECL_ISUPPORTS
+  NS_DECL_NSIWEBBROWSERCHROME
+  NS_DECL_NSIWEBPROGRESSLISTENER
+  NS_DECL_NSIWEBBROWSERCHROMEFOCUS
+  NS_DECL_NSIEMBEDDINGSITEWINDOW
+  NS_DECL_NSIINTERFACEREQUESTOR
+  NS_DECL_NSIDOMEVENTLISTENER
 
-    WebBrowserChrome(nsIEmbedBrowserChromeListener* aListener);
+  WebBrowserChrome(nsIEmbedBrowserChromeListener* aListener);
 
-    virtual ~WebBrowserChrome();
+  virtual ~WebBrowserChrome();
 
-    void SetEventHandler();
-    void RemoveEventHandler();
+  void SetEventHandler();
+  void RemoveEventHandler();
 
 private:
-    nsIntPoint GetScrollOffset(nsIDOMWindow* aWindow);
-    nsIntPoint GetScrollOffsetForElement(nsIDOMElement* aElement);
-    void SetScrollOffsetForElement(nsIDOMElement* aElement, int32_t aLeft, int32_t aTop);
-    void SendScroll();
+  nsIntPoint GetScrollOffset(nsIDOMWindow* aWindow);
+  nsIntPoint GetScrollOffsetForElement(nsIDOMElement* aElement);
+  void SetScrollOffsetForElement(nsIDOMElement* aElement, int32_t aLeft, int32_t aTop);
+  void SendScroll();
 
-    /* additional members */
-    nsCOMPtr<nsIWebBrowser> mWebBrowser;
-    uint32_t mChromeFlags;
-    bool mIsModal;
-    bool mIsVisible;
-    bool mHandlerAdded;
-    int mTotalRequests;
-    int mFinishedRequests;
-    bool mLocationHasChanged;
-    nsCString mLastLocation;
-    bool mFirstPaint;
-    nsIntPoint mScrollOffset;
-    nsCOMPtr<nsIObserverService> mObserverService;
-    nsIEmbedBrowserChromeListener* mListener;
+  /* additional members */
+  nsCOMPtr<nsIWebBrowser> mWebBrowser;
+  uint32_t mChromeFlags;
+  bool mIsModal;
+  bool mIsVisible;
+  bool mHandlerAdded;
+  int mTotalRequests;
+  int mFinishedRequests;
+  bool mLocationHasChanged;
+  nsCString mLastLocation;
+  bool mFirstPaint;
+  nsIntPoint mScrollOffset;
+  nsCOMPtr<nsIObserverService> mObserverService;
+  nsIEmbedBrowserChromeListener* mListener;
 };
 
 #endif /* Header guard */

@@ -13,7 +13,7 @@ namespace embedlite {
 
 class EmbedLiteUILoop : public MessageLoopForUI
 {
-public:
+  public:
     explicit EmbedLiteUILoop();
     ~EmbedLiteUILoop();
 

@@ -24,92 +24,92 @@ static EmbedLiteAppThreadParent* sAppThreadParent = nullptr;
 EmbedLiteAppThreadParent*
 EmbedLiteAppThreadParent::GetInstance()
 {
-    return sAppThreadParent;
+  return sAppThreadParent;
 }
 
 EmbedLiteAppThreadParent::EmbedLiteAppThreadParent()
   : mApp(EmbedLiteApp::GetInstance())
 {
-    LOGT();
-    MOZ_COUNT_CTOR(EmbedLiteAppThreadParent);
-    sAppThreadParent = this;
+  LOGT();
+  MOZ_COUNT_CTOR(EmbedLiteAppThreadParent);
+  sAppThreadParent = this;
 }
 
 EmbedLiteAppThreadParent::~EmbedLiteAppThreadParent()
 {
-    LOGT();
-    MOZ_COUNT_DTOR(EmbedLiteAppThreadParent);
-    sAppThreadParent = nullptr;
+  LOGT();
+  MOZ_COUNT_DTOR(EmbedLiteAppThreadParent);
+  sAppThreadParent = nullptr;
 }
 
 bool
 EmbedLiteAppThreadParent::RecvInitialized()
 {
-    LOGT();
-    SetBoolPref("layers.acceleration.disabled", !mApp->IsAccelerated());
-    SetBoolPref("layers.acceleration.force-enabled", mApp->IsAccelerated());
-    SetBoolPref("layers.async-video.enabled", mApp->IsAccelerated() && getenv("DISABLE_ASYNC_VIDEO") == 0);
-    SetBoolPref("gfx.use_tiled_thebes", mApp->IsAccelerated() && getenv("DISABLE_TILED") == 0);
-    SetBoolPref("egl.use_backing_surface", mApp->IsAccelerated() && getenv("DISABLE_BACKING") == 0);
-    SetBoolPref("layers.reuse-invalid-tiles", getenv("DISABLE_REUSE_TILES") != 0);
-    PR_SetEnv("MOZ_USE_OMTC=1");
-    mozilla::layers::CompositorParent::StartUpWithExistingThread(MessageLoop::current(), PlatformThread::CurrentId());
-    mApp->GetListener()->Initialized();
-    return true;
+  LOGT();
+  SetBoolPref("layers.acceleration.disabled", !mApp->IsAccelerated());
+  SetBoolPref("layers.acceleration.force-enabled", mApp->IsAccelerated());
+  SetBoolPref("layers.async-video.enabled", mApp->IsAccelerated() && getenv("DISABLE_ASYNC_VIDEO") == 0);
+  SetBoolPref("gfx.use_tiled_thebes", mApp->IsAccelerated() && getenv("DISABLE_TILED") == 0);
+  SetBoolPref("egl.use_backing_surface", mApp->IsAccelerated() && getenv("DISABLE_BACKING") == 0);
+  SetBoolPref("layers.reuse-invalid-tiles", getenv("DISABLE_REUSE_TILES") != 0);
+  PR_SetEnv("MOZ_USE_OMTC=1");
+  mozilla::layers::CompositorParent::StartUpWithExistingThread(MessageLoop::current(), PlatformThread::CurrentId());
+  mApp->GetListener()->Initialized();
+  return true;
 }
 
 bool
 EmbedLiteAppThreadParent::RecvReadyToShutdown()
 {
-    LOGT();
-    mApp->ChildReadyToDestroy();
-    return true;
+  LOGT();
+  mApp->ChildReadyToDestroy();
+  return true;
 }
 
 void
 EmbedLiteAppThreadParent::ActorDestroy(ActorDestroyReason aWhy)
 {
-    LOGT("reason:%i", aWhy);
+  LOGT("reason:%i", aWhy);
 }
 
 PEmbedLiteViewParent*
 EmbedLiteAppThreadParent::AllocPEmbedLiteView(const uint32_t& id)
 {
-    LOGT();
-    EmbedLiteViewThreadParent* tview = new EmbedLiteViewThreadParent(id);
-    return tview;
+  LOGT();
+  EmbedLiteViewThreadParent* tview = new EmbedLiteViewThreadParent(id);
+  return tview;
 }
 
 bool
 EmbedLiteAppThreadParent::DeallocPEmbedLiteView(PEmbedLiteViewParent* actor)
 {
-    LOGT();
-    delete actor;
-    return true;
+  LOGT();
+  delete actor;
+  return true;
 }
 
 void EmbedLiteAppThreadParent::SetBoolPref(const char* aName, bool aValue)
 {
-    unused << SendSetBoolPref(nsDependentCString(aName), aValue);
+  unused << SendSetBoolPref(nsDependentCString(aName), aValue);
 }
 
 void EmbedLiteAppThreadParent::SetCharPref(const char* aName, const char* aValue)
 {
-    unused << SendSetCharPref(nsDependentCString(aName), nsDependentCString(aValue));
+  unused << SendSetCharPref(nsDependentCString(aName), nsDependentCString(aValue));
 }
 
 void EmbedLiteAppThreadParent::SetIntPref(const char* aName, int aValue)
 {
-    unused << SendSetIntPref(nsDependentCString(aName), aValue);
+  unused << SendSetIntPref(nsDependentCString(aName), aValue);
 }
 
 bool
 EmbedLiteAppThreadParent::RecvObserve(const nsCString& topic,
                                       const nsString& data)
 {
-    LOGT("topic:%s", topic.get());
-    mApp->GetListener()->OnObserve(topic.get(), data.get());
-    return true;
+  LOGT("topic:%s", topic.get());
+  mApp->GetListener()->OnObserve(topic.get(), data.get());
+  return true;
 }
 
 } // namespace embedlite

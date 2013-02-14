@@ -24,78 +24,79 @@ NS_IMPL_QUERY_INTERFACE2(DirProvider,
 NS_IMETHODIMP_(nsrefcnt)
 DirProvider::AddRef()
 {
-    return 1;
+  return 1;
 }
 
 NS_IMETHODIMP_(nsrefcnt)
 DirProvider::Release()
 {
-    return 1;
+  return 1;
 }
 
 NS_IMETHODIMP
 DirProvider::GetFile(const char* aKey, bool* aPersist,
                      nsIFile* *aResult)
 {
-    if (sAppFileLocProvider) {
-        nsresult rv = sAppFileLocProvider->GetFile(aKey, aPersist, aResult);
-        if (NS_SUCCEEDED(rv))
-            return rv;
+  if (sAppFileLocProvider) {
+    nsresult rv = sAppFileLocProvider->GetFile(aKey, aPersist, aResult);
+    if (NS_SUCCEEDED(rv)) {
+      return rv;
     }
+  }
 
-    if (sGREDir && !strcmp(aKey, NS_GRE_DIR)) {
-        *aPersist = true;
-        return sGREDir->Clone(aResult);
+  if (sGREDir && !strcmp(aKey, NS_GRE_DIR)) {
+    *aPersist = true;
+    return sGREDir->Clone(aResult);
+  }
+
+  if (sProfileDir && !strcmp(aKey, NS_APP_USER_PROFILE_50_DIR)) {
+    *aPersist = true;
+    return sProfileDir->Clone(aResult);
+  }
+
+  if (sProfileDir && !strcmp(aKey, NS_APP_USER_PROFILE_LOCAL_50_DIR)) {
+    *aPersist = true;
+    return sProfileDir->Clone(aResult);
+  }
+
+  if (sProfileDir && !strcmp(aKey, NS_APP_PROFILE_DIR_STARTUP)) {
+    *aPersist = true;
+    return sProfileDir->Clone(aResult);
+  }
+
+  if (sProfileDir && !strcmp(aKey, NS_APP_CACHE_PARENT_DIR)) {
+    *aPersist = true;
+    return sProfileDir->Clone(aResult);
+  }
+
+  if (sProfileDir && !strcmp(aKey, NS_APP_PREF_DEFAULTS_50_DIR)) {
+    nsCOMPtr<nsIFile> file;
+    nsresult rv = sGREDir->Clone(getter_AddRefs(file));
+    if (NS_SUCCEEDED(rv)) {
+      rv = file->AppendNative(NS_LITERAL_CSTRING("defaults"));
+      if (NS_SUCCEEDED(rv)) {
+        rv = file->AppendNative(NS_LITERAL_CSTRING("pref"));
+        NS_ADDREF(*aResult = file);
+        return rv;
+      }
     }
+  }
 
-    if (sProfileDir && !strcmp(aKey, NS_APP_USER_PROFILE_50_DIR)) {
-        *aPersist = true;
-        return sProfileDir->Clone(aResult);
-    }
-
-    if (sProfileDir && !strcmp(aKey, NS_APP_USER_PROFILE_LOCAL_50_DIR)) {
-        *aPersist = true;
-        return sProfileDir->Clone(aResult);
-    }
-
-    if (sProfileDir && !strcmp(aKey, NS_APP_PROFILE_DIR_STARTUP)) {
-        *aPersist = true;
-        return sProfileDir->Clone(aResult);
-    }
-
-    if (sProfileDir && !strcmp(aKey, NS_APP_CACHE_PARENT_DIR)) {
-        *aPersist = true;
-        return sProfileDir->Clone(aResult);
-    }
-
-    if (sProfileDir && !strcmp(aKey, NS_APP_PREF_DEFAULTS_50_DIR)) {
-        nsCOMPtr<nsIFile> file;
-        nsresult rv = sGREDir->Clone(getter_AddRefs(file));
-        if (NS_SUCCEEDED(rv)) {
-            rv = file->AppendNative(NS_LITERAL_CSTRING("defaults"));
-            if (NS_SUCCEEDED(rv)) {
-                rv = file->AppendNative(NS_LITERAL_CSTRING("pref"));
-                NS_ADDREF(*aResult = file);
-                return rv;
-            }
-        }
-    }
-
-    LOGT("Failed to GetFile: key:%s\n", aKey);
-    return NS_ERROR_FAILURE;
+  LOGT("Failed to GetFile: key:%s\n", aKey);
+  return NS_ERROR_FAILURE;
 }
 
 NS_IMETHODIMP
 DirProvider::GetFiles(const char* aKey,
                       nsISimpleEnumerator* *aResult)
 {
-    nsCOMPtr<nsIDirectoryServiceProvider2>
-        dp2(do_QueryInterface(sAppFileLocProvider));
+  nsCOMPtr<nsIDirectoryServiceProvider2>
+  dp2(do_QueryInterface(sAppFileLocProvider));
 
-    if (!dp2) {
-        LOGT("Failed to GetFiles: key:%s\n", aKey);
-        return NS_ERROR_FAILURE;
-    }
+  if (!dp2) {
+    LOGT("Failed to GetFiles: key:%s\n", aKey);
+    return NS_ERROR_FAILURE;
+  }
 
-    return dp2->GetFiles(aKey, aResult);
+  return dp2->GetFiles(aKey, aResult);
 }

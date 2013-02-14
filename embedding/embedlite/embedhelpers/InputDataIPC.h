@@ -9,8 +9,7 @@
 #include "ipc/IPCMessageUtils.h"
 #include "InputData.h"
 
-namespace IPC
-{
+namespace IPC {
 
 template<>
 struct ParamTraits<mozilla::InputData>
@@ -45,12 +44,12 @@ struct ParamTraits<mozilla::MultiTouchInput>
     WriteParam(aMsg, aParam.mTouches.Length());
 
     for (uint32_t i = 0; i < aParam.mTouches.Length(); ++i) {
-        const mozilla::SingleTouchData& data = aParam.mTouches[i];
-        WriteParam(aMsg, data.mIdentifier);
-        WriteParam(aMsg, data.mScreenPoint);
-        WriteParam(aMsg, data.mRadius);
-        WriteParam(aMsg, data.mRotationAngle);
-        WriteParam(aMsg, data.mForce);
+      const mozilla::SingleTouchData& data = aParam.mTouches[i];
+      WriteParam(aMsg, data.mIdentifier);
+      WriteParam(aMsg, data.mScreenPoint);
+      WriteParam(aMsg, data.mRadius);
+      WriteParam(aMsg, data.mRotationAngle);
+      WriteParam(aMsg, data.mForce);
     }
   }
 
@@ -65,24 +64,24 @@ struct ParamTraits<mozilla::MultiTouchInput>
     }
     aResult->mType = static_cast<mozilla::MultiTouchInput::MultiTouchType>(inputType);
     for (uint32_t i = 0; i < numTouches; ++i) {
-        int32_t identifier;
-        nsIntPoint refPoint;
-        nsIntPoint radius;
-        float rotationAngle;
-        float force;
-        if (!ReadParam(aMsg, aIter, &identifier) ||
-            !ReadParam(aMsg, aIter, &refPoint) ||
-            !ReadParam(aMsg, aIter, &radius) ||
-            !ReadParam(aMsg, aIter, &rotationAngle) ||
-            !ReadParam(aMsg, aIter, &force)) {
-          return false;
-        }
-        aResult->mTouches.AppendElement(
-            mozilla::SingleTouchData(identifier,
-                                     refPoint,
-                                     radius,
-                                     rotationAngle,
-                                     force));
+      int32_t identifier;
+      nsIntPoint refPoint;
+      nsIntPoint radius;
+      float rotationAngle;
+      float force;
+      if (!ReadParam(aMsg, aIter, &identifier) ||
+          !ReadParam(aMsg, aIter, &refPoint) ||
+          !ReadParam(aMsg, aIter, &radius) ||
+          !ReadParam(aMsg, aIter, &rotationAngle) ||
+          !ReadParam(aMsg, aIter, &force)) {
+        return false;
+      }
+      aResult->mTouches.AppendElement(
+        mozilla::SingleTouchData(identifier,
+                                 refPoint,
+                                 radius,
+                                 rotationAngle,
+                                 force));
     }
 
     return true;

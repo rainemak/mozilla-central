@@ -33,17 +33,15 @@ public:
                              const jsval& aObject,
                              JSContext* aCx,
                              uint8_t aArgc,
-                             jsval* aRetval)
-  {
-      return mMessageManager
-          ? mMessageManager->SendSyncMessage(aMessageName, aObject, aCx, aArgc, aRetval)
-          : NS_ERROR_NULL_POINTER;
+                             jsval* aRetval) {
+    return mMessageManager
+           ? mMessageManager->SendSyncMessage(aMessageName, aObject, aCx, aArgc, aRetval)
+           : NS_ERROR_NULL_POINTER;
   }
   NS_IMETHOD GetContent(nsIDOMWindow** aContent);
   NS_IMETHOD GetDocShell(nsIDocShell** aDocShell);
-  NS_IMETHOD Dump(const nsAString& aStr)
-  {
-      return mMessageManager ? mMessageManager->Dump(aStr) : NS_OK;
+  NS_IMETHOD Dump(const nsAString& aStr) {
+    return mMessageManager ? mMessageManager->Dump(aStr) : NS_OK;
   }
   NS_IMETHOD PrivateNoteIntentionalCrash();
   NS_IMETHOD Btoa(const nsAString& aBinaryData,
@@ -53,24 +51,24 @@ public:
 
   NS_IMETHOD AddEventListener(const nsAString& aType,
                               nsIDOMEventListener* aListener,
-                              bool aUseCapture)
-  {
-      // By default add listeners only for trusted events!
-      return nsDOMEventTargetHelper::AddEventListener(aType, aListener,
-                                                      aUseCapture, false, 2);
+                              bool aUseCapture) {
+    // By default add listeners only for trusted events!
+    return nsDOMEventTargetHelper::AddEventListener(aType, aListener,
+                                                    aUseCapture, false, 2);
   }
   NS_IMETHOD AddEventListener(const nsAString& aType,
                               nsIDOMEventListener* aListener,
                               bool aUseCapture, bool aWantsUntrusted,
-                              uint8_t optional_argc)
-  {
-      return nsDOMEventTargetHelper::AddEventListener(aType, aListener,
-                                                      aUseCapture,
-                                                      aWantsUntrusted,
-                                                      optional_argc);
+                              uint8_t optional_argc) {
+    return nsDOMEventTargetHelper::AddEventListener(aType, aListener,
+                                                    aUseCapture,
+                                                    aWantsUntrusted,
+                                                    optional_argc);
   }
 
-  virtual nsIScriptObjectPrincipal* GetObjectPrincipal() { return this; }
+  virtual nsIScriptObjectPrincipal* GetObjectPrincipal() {
+    return this;
+  }
   virtual JSContext* GetJSContextForEventHandlers();
   virtual nsIPrincipal* GetPrincipal();
 
@@ -78,7 +76,8 @@ public:
   nsRefPtr<nsFrameMessageManager> mMessageManager;
 };
 
-}}
+}
+}
 
 #endif
 

@@ -11,14 +11,14 @@
 class DirProvider : public nsIDirectoryServiceProvider2
 {
 public:
-    NS_DECL_ISUPPORTS_INHERITED
-    NS_DECL_NSIDIRECTORYSERVICEPROVIDER
-    NS_DECL_NSIDIRECTORYSERVICEPROVIDER2
+  NS_DECL_ISUPPORTS_INHERITED
+  NS_DECL_NSIDIRECTORYSERVICEPROVIDER
+  NS_DECL_NSIDIRECTORYSERVICEPROVIDER2
 
-    static nsIDirectoryServiceProvider* sAppFileLocProvider;
-    static nsCOMPtr<nsIFile> sProfileDir;
-    static nsCOMPtr<nsIFile> sGREDir;
-    static nsISupports* sProfileLock;
+  static nsIDirectoryServiceProvider* sAppFileLocProvider;
+  static nsCOMPtr<nsIFile> sProfileDir;
+  static nsCOMPtr<nsIFile> sGREDir;
+  static nsISupports* sProfileLock;
 };
 
 #endif

@@ -52,45 +52,45 @@ NS_IMPL_ISUPPORTS2(EmbedLiteModulesService, nsIObserver, nsSupportsWeakReference
 nsresult
 EmbedLiteModulesService::Init()
 {
-    nsCOMPtr<nsIComponentRegistrar> cr;
-    nsresult rv = NS_GetComponentRegistrar(getter_AddRefs(cr));
-    NS_ENSURE_SUCCESS(rv, NS_ERROR_FAILURE);
+  nsCOMPtr<nsIComponentRegistrar> cr;
+  nsresult rv = NS_GetComponentRegistrar(getter_AddRefs(cr));
+  NS_ENSURE_SUCCESS(rv, NS_ERROR_FAILURE);
 
-    nsCOMPtr<nsIComponentManager> cm;
-    rv = NS_GetComponentManager (getter_AddRefs (cm));
-    NS_ENSURE_SUCCESS(rv, NS_ERROR_FAILURE);
+  nsCOMPtr<nsIComponentManager> cm;
+  rv = NS_GetComponentManager (getter_AddRefs (cm));
+  NS_ENSURE_SUCCESS(rv, NS_ERROR_FAILURE);
 
-    {
-        nsCOMPtr<nsIFactory> f = new mozilla::GenericFactory(EmbedLiteAppServiceConstructor);
-        if (!f) {
-            NS_WARNING("Unable to create factory for component");
-            return NS_ERROR_FAILURE;
-        }
-
-        nsCID appCID = NS_EMBED_LITE_APP_SERVICE_CID;
-        rv = cr->RegisterFactory(appCID, NS_EMBED_LITE_APP_SERVICE_CLASSNAME,
-                                 NS_EMBED_LITE_APP_CONTRACTID, f);
+  {
+    nsCOMPtr<nsIFactory> f = new mozilla::GenericFactory(EmbedLiteAppServiceConstructor);
+    if (!f) {
+      NS_WARNING("Unable to create factory for component");
+      return NS_ERROR_FAILURE;
     }
 
-    {
-        nsCOMPtr<nsIFactory> f = new mozilla::GenericFactory(EmbedLiteJSONConstructor);
-        if (!f) {
-            NS_WARNING("Unable to create factory for component");
-            return NS_ERROR_FAILURE;
-        }
+    nsCID appCID = NS_EMBED_LITE_APP_SERVICE_CID;
+    rv = cr->RegisterFactory(appCID, NS_EMBED_LITE_APP_SERVICE_CLASSNAME,
+                             NS_EMBED_LITE_APP_CONTRACTID, f);
+  }
 
-        nsCID appCID = NS_IEMBEDLITEJSON_IID;
-        rv = cr->RegisterFactory(appCID, NS_EMBED_LITE_JSON_SERVICE_CLASSNAME,
-                                 NS_EMBED_LITE_JSON_CONTRACTID, f);
+  {
+    nsCOMPtr<nsIFactory> f = new mozilla::GenericFactory(EmbedLiteJSONConstructor);
+    if (!f) {
+      NS_WARNING("Unable to create factory for component");
+      return NS_ERROR_FAILURE;
     }
 
-    return NS_OK;
+    nsCID appCID = NS_IEMBEDLITEJSON_IID;
+    rv = cr->RegisterFactory(appCID, NS_EMBED_LITE_JSON_SERVICE_CLASSNAME,
+                             NS_EMBED_LITE_JSON_CONTRACTID, f);
+  }
+
+  return NS_OK;
 }
 
 NS_IMETHODIMP
-EmbedLiteModulesService::Observe(nsISupports *aSubject,
-                                 const char *aTopic,
-                                 const PRUnichar *aData)
+EmbedLiteModulesService::Observe(nsISupports* aSubject,
+                                 const char* aTopic,
+                                 const PRUnichar* aData)
 {
-    return NS_OK;
+  return NS_OK;
 }

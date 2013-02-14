@@ -13,12 +13,12 @@
 WindowCreator::WindowCreator()
   : mOpenBlock(false)
 {
-    LOGT();
+  LOGT();
 }
 
 WindowCreator::~WindowCreator()
 {
-    LOGT();
+  LOGT();
 }
 
 NS_IMPL_ISUPPORTS2(WindowCreator, nsIWindowCreator, nsIWindowCreator2)
@@ -31,32 +31,32 @@ WindowCreator::CreateChromeWindow2(nsIWebBrowserChrome* aParent,
                                    bool* aCancel,
                                    nsIWebBrowserChrome* *_retval)
 {
-    NS_ENSURE_ARG_POINTER(aCancel);
-    NS_ENSURE_ARG_POINTER(_retval);
-    *aCancel = false;
-    *_retval = 0;
-  
-    LOGNI();
-/*
-    See bug 80707
-    Desktop FF allow to create popup window if aChromeFlags == 1670, aContextFlags == 0
-*/
+  NS_ENSURE_ARG_POINTER(aCancel);
+  NS_ENSURE_ARG_POINTER(_retval);
+  *aCancel = false;
+  *_retval = 0;
 
-    if (mOpenBlock) {
-        mOpenBlock = PR_FALSE;
-        return NS_ERROR_FAILURE;
-    }
-/*
-    // No parent?  Ask via the singleton object instead.
-    *_retval = static_cast<nsIWebBrowserChrome*>(mContext->RequestNewWindow(aParent, aChromeFlags));
-    if (*_retval) {
-        NS_ADDREF(*_retval);
-        return NS_OK;
-    }
-*/
-    *_retval = nullptr;
-    // check to make sure that we made a new window
-    return NS_ERROR_NOT_IMPLEMENTED;
+  LOGNI();
+  /*
+      See bug 80707
+      Desktop FF allow to create popup window if aChromeFlags == 1670, aContextFlags == 0
+  */
+
+  if (mOpenBlock) {
+    mOpenBlock = PR_FALSE;
+    return NS_ERROR_FAILURE;
+  }
+  /*
+      // No parent?  Ask via the singleton object instead.
+      *_retval = static_cast<nsIWebBrowserChrome*>(mContext->RequestNewWindow(aParent, aChromeFlags));
+      if (*_retval) {
+          NS_ADDREF(*_retval);
+          return NS_OK;
+      }
+  */
+  *_retval = nullptr;
+  // check to make sure that we made a new window
+  return NS_ERROR_NOT_IMPLEMENTED;
 }
 
 NS_IMETHODIMP
@@ -64,7 +64,7 @@ WindowCreator::CreateChromeWindow(nsIWebBrowserChrome* aParent,
                                   uint32_t aChromeFlags,
                                   nsIWebBrowserChrome* *_retval)
 {
-    LOGNI();
-    bool cancel;
-    return CreateChromeWindow2(aParent, aChromeFlags, 0, 0, &cancel, _retval);
+  LOGNI();
+  bool cancel;
+  return CreateChromeWindow2(aParent, aChromeFlags, 0, 0, &cancel, _retval);
 }

@@ -16,52 +16,55 @@ namespace embedlite {
 
 class EmbedLiteAppThreadParent;
 class EmbedLiteViewThreadChild;
-class EmbedLiteAppThreadChild : public PEmbedLiteAppChild, public nsIObserver
+class EmbedLiteAppThreadChild : public PEmbedLiteAppChild,
+                                public nsIObserver
 {
 public:
-    NS_DECL_ISUPPORTS
-    NS_DECL_NSIOBSERVER
+  NS_DECL_ISUPPORTS
+  NS_DECL_NSIOBSERVER
 
-    EmbedLiteAppThreadChild(MessageLoop* aParentLoop);
-    virtual ~EmbedLiteAppThreadChild();
+  EmbedLiteAppThreadChild(MessageLoop* aParentLoop);
+  virtual ~EmbedLiteAppThreadChild();
 
-    void Init(EmbedLiteAppThreadParent*);
-    static EmbedLiteAppThreadChild* GetInstance();
-    EmbedLiteModulesService* ModulesService() { return mModulesService; }
-    EmbedLiteViewThreadChild* GetViewByID(uint32_t aId);
-    ::EmbedLiteAppService* AppService();
+  void Init(EmbedLiteAppThreadParent*);
+  static EmbedLiteAppThreadChild* GetInstance();
+  EmbedLiteModulesService* ModulesService() {
+    return mModulesService;
+  }
+  EmbedLiteViewThreadChild* GetViewByID(uint32_t aId);
+  ::EmbedLiteAppService* AppService();
 
 protected:
-    // Embed API ipdl interface
-    virtual bool RecvSetBoolPref(const nsCString&, const bool&);
-    virtual bool RecvSetCharPref(const nsCString&, const nsCString&);
-    virtual bool RecvSetIntPref(const nsCString&, const int&);
-    virtual bool RecvLoadGlobalStyleSheet(const nsCString&, const bool&);
+  // Embed API ipdl interface
+  virtual bool RecvSetBoolPref(const nsCString&, const bool&);
+  virtual bool RecvSetCharPref(const nsCString&, const nsCString&);
+  virtual bool RecvSetIntPref(const nsCString&, const int&);
+  virtual bool RecvLoadGlobalStyleSheet(const nsCString&, const bool&);
 
-    // IPDL protocol impl
-    virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
+  // IPDL protocol impl
+  virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
 
-    virtual bool RecvCreateView(const uint32_t&);
-    virtual bool RecvPreDestroy();
-    virtual bool RecvObserve(const nsCString& topic,
-                             const nsString& data);
-    virtual bool RecvAddObserver(const nsCString&);
-    virtual bool RecvRemoveObserver(const nsCString&);
+  virtual bool RecvCreateView(const uint32_t&);
+  virtual bool RecvPreDestroy();
+  virtual bool RecvObserve(const nsCString& topic,
+                           const nsString& data);
+  virtual bool RecvAddObserver(const nsCString&);
+  virtual bool RecvRemoveObserver(const nsCString&);
 
-    virtual PEmbedLiteViewChild* AllocPEmbedLiteView(const uint32_t&);
-    virtual bool DeallocPEmbedLiteView(PEmbedLiteViewChild*);
+  virtual PEmbedLiteViewChild* AllocPEmbedLiteView(const uint32_t&);
+  virtual bool DeallocPEmbedLiteView(PEmbedLiteViewChild*);
 
 private:
-    void InitWindowWatcher();
-    friend class EmbedLiteViewThreadChild;
+  void InitWindowWatcher();
+  friend class EmbedLiteViewThreadChild;
 
-    MessageLoop* mParentLoop;
-    RefPtr<EmbedLiteAppThreadParent> mThreadParent;
-    nsRefPtr<EmbedLiteModulesService> mModulesService;
+  MessageLoop* mParentLoop;
+  RefPtr<EmbedLiteAppThreadParent> mThreadParent;
+  nsRefPtr<EmbedLiteModulesService> mModulesService;
 
-    std::map<uint32_t, EmbedLiteViewThreadChild*> mWeakViewMap;
+  std::map<uint32_t, EmbedLiteViewThreadChild*> mWeakViewMap;
 
-    DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteAppThreadChild);
+  DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteAppThreadChild);
 };
 
 } // namespace embedlite

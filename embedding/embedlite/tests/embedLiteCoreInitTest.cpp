@@ -19,41 +19,38 @@ static bool sDoExit = getenv("NORMAL_EXIT");
 class MyListener : public EmbedLiteAppListener
 {
 public:
-    MyListener(EmbedLiteApp* aApp) : mApp(aApp) {}
-    virtual ~MyListener()
-    {
-    }
-    virtual void Initialized()
-    {
-        printf("Embedding initialized, let's make view");
-        mApp->Stop();
-    }
+  MyListener(EmbedLiteApp* aApp) : mApp(aApp) {}
+  virtual ~MyListener() { }
+  virtual void Initialized() {
+    printf("Embedding initialized, let's make view");
+    mApp->Stop();
+  }
 
 private:
-    EmbedLiteApp* mApp;
+  EmbedLiteApp* mApp;
 };
 
 int main(int argc, char** argv)
 {
 #ifdef MOZ_WIDGET_QT
-    QApplication app(argc, argv);
+  QApplication app(argc, argv);
 #elif defined(MOZ_WIDGET_GTK2)
-    g_type_init();
-    g_thread_init(NULL);
+  g_type_init();
+  g_thread_init(NULL);
 #endif
 
-    printf("Load XUL Symbols\n");
-    if (LoadEmbedLite(argc, argv)) {
-        printf("XUL Symbols loaded\n");
-        EmbedLiteApp* mapp = XRE_GetEmbedLite();
-        MyListener* listener = new MyListener(mapp);
-        mapp->SetListener(listener);
-        bool res = mapp->Start(EmbedLiteApp::EMBED_THREAD);
-        printf("XUL Symbols loaded: init res:%i\n", res);
-        delete listener;
-        delete mapp;
-    } else {
-        printf("XUL Symbols failed to load\n");
-    }
-    return 0;
+  printf("Load XUL Symbols\n");
+  if (LoadEmbedLite(argc, argv)) {
+    printf("XUL Symbols loaded\n");
+    EmbedLiteApp* mapp = XRE_GetEmbedLite();
+    MyListener* listener = new MyListener(mapp);
+    mapp->SetListener(listener);
+    bool res = mapp->Start(EmbedLiteApp::EMBED_THREAD);
+    printf("XUL Symbols loaded: init res:%i\n", res);
+    delete listener;
+    delete mapp;
+  } else {
+    printf("XUL Symbols failed to load\n");
+  }
+  return 0;
 }

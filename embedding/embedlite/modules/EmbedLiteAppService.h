@@ -19,33 +19,33 @@ class EmbedLiteAppService : public nsIObserver,
                             public nsIEmbedAppService
 {
 public:
-    EmbedLiteAppService();
-    virtual ~EmbedLiteAppService();
+  EmbedLiteAppService();
+  virtual ~EmbedLiteAppService();
 
-    NS_DECL_ISUPPORTS
-    NS_DECL_NSIOBSERVER
-    NS_DECL_NSIEMBEDAPPSERVICE
+  NS_DECL_ISUPPORTS
+  NS_DECL_NSIOBSERVER
+  NS_DECL_NSIEMBEDAPPSERVICE
 
-    void RegisterView(uint32_t aId);
-    void UnregisterView(uint32_t aId);
-    void HandleAsyncMessage(const char* aMessage, const nsString& aData);
+  void RegisterView(uint32_t aId);
+  void UnregisterView(uint32_t aId);
+  void HandleAsyncMessage(const char* aMessage, const nsString& aData);
 
 private:
-    friend class EmbedLiteJSON;
-    JSContext* GetAnyJSContext(uint32_t aWinID);
-    std::map<uint64_t, uint32_t> mIDMap;
-    nsClassHashtable<nsCStringHashKey,
-                     nsTArray<nsCOMPtr<nsIEmbedMessageListener> > > mMessageListeners;
-    int mPushedSomething;
+  friend class EmbedLiteJSON;
+  JSContext* GetAnyJSContext(uint32_t aWinID);
+  std::map<uint64_t, uint32_t> mIDMap;
+  nsClassHashtable<nsCStringHashKey,
+                   nsTArray<nsCOMPtr<nsIEmbedMessageListener> > > mMessageListeners;
+  int mPushedSomething;
 };
 
 #define NS_EMBED_LITE_APP_CONTRACTID "@mozilla.org/embedlite-app-service;1"
 #define NS_EMBED_LITE_APP_SERVICE_CLASSNAME "EmbedLiteApp Component"
 #define NS_EMBED_LITE_APP_SERVICE_CID \
-{ 0x3960150c, \
-  0x6e89, \
-  0x11e2, \
-  { 0x90, 0xb3, 0x63, 0x18, 0x13, 0xf0, 0x21 }}
+  { 0x3960150c, \
+    0x6e89, \
+    0x11e2, \
+    { 0x90, 0xb3, 0x63, 0x18, 0x13, 0xf0, 0x21 }}
 
 
 #endif /* EmbedLiteAppService_H_ */
