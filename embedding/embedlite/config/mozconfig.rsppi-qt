@@ -1,7 +1,6 @@
 export PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig
-export CPPFLAGS="-I/usr/include/arm-linux-gnueabihf -D_STDC_PREDEF_H=1"
-export CFLAGS="-I/usr/include/arm-linux-gnueabihf -D_STDC_PREDEF_H=1"
-export CXXFLAGS=" -D_STDC_PREDEF_H=1 "
+export CPPFLAGS="-I/usr/include/arm-linux-gnueabihf"
+export CFLAGS="-I/usr/include/arm-linux-gnueabihf"
 mk_add_options  CPPFLAGS=$CPPFLAGS
 mk_add_options  CFLAGS=$CFLAGS
 
