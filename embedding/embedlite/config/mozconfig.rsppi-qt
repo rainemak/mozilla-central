@@ -23,6 +23,7 @@ ac_add_options --enable-default-toolkit=cairo-qt
 ac_add_options --enable-mobile-optimize
 ac_add_options --enable-optimize
 ac_add_options --enable-system-ffi
+ac_add_options --disable-necko-wifi
 
 export MOZ_DEBUG_SYMBOLS=1
 ac_add_options --enable-debug-symbols="-gdwarf-2"
