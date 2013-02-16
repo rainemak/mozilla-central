@@ -2,9 +2,21 @@ Source: xulrunner
 Section: libs
 Priority: extra
 Maintainer: unknown <tmeshkova@github.com>
-Build-Depends: debhelper (>= 7)
-Standards-Version: 3.8.4
-Homepage: <insert the upstream URL, if relevant>
+Build-Depends: debhelper (>= 7),
+ autoconf2.13,
+ meta-harmattan-dev | valgrind,
+ python,
+ unzip,
+ zip,
+ libpango1.0-dev,
+ libdbus-1-dev,
+ libdbus-glib-1-dev,
+ libasound2-dev,
+ libgstreamer0.10-dev,
+ libgstreamer-plugins-base0.10-dev,
+ libx11-dev,
+ libxt-dev
+Homepage: https://wiki.mozilla.org/Embedding/IPCLiteAPI
 
 Package: xulrunner
 Architecture: any
