@@ -843,6 +843,10 @@ void AsyncPanZoomController::ScrollBy(const gfx::Point& aOffset) {
   FrameMetrics metrics(mFrameMetrics);
   metrics.mScrollOffset = newOffset;
   mFrameMetrics = metrics;
+  if (mGeckoContentController) {
+    gfxSize resolution = CalculateResolution(mFrameMetrics);
+    mGeckoContentController->ScrollUpdate(mFrameMetrics.mScrollOffset, resolution.width);
+  }
 }
 
 void AsyncPanZoomController::SetPageRect(const gfx::Rect& aCSSPageRect) {

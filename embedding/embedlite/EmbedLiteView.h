@@ -59,6 +59,7 @@ public:
   virtual bool HandleLongTap(const nsIntPoint& aPoint) { return false; }
   virtual bool SendAsyncScrollDOMEvent(const gfxRect& aContentRect,
                                        const gfxSize& aScrollableSize) { return false; }
+  virtual bool ScrollUpdate(const gfxPoint& aPosition, const float aResolution) { return false; }
 };
 
 class EmbedLiteApp;

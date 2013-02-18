@@ -52,6 +52,8 @@ public:
   virtual void SendAsyncScrollDOMEvent(const gfx::Rect &aContentRect,
                                        const gfx::Size &aScrollableSize) = 0;
 
+  virtual void ScrollUpdate(const gfx::Point& aPosition, const float aResolution) = 0;
+
   GeckoContentController() {}
   virtual ~GeckoContentController() {}
 };

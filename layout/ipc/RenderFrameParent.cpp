@@ -569,6 +569,10 @@ public:
     }
   }
 
+  virtual void ScrollUpdate(const gfx::Point& aPosition, const float aResolution)
+  {
+  }
+
 private:
   void DoRequestContentRepaint(const FrameMetrics& aFrameMetrics)
   {
