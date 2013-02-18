@@ -4,7 +4,6 @@ Priority: extra
 Maintainer: unknown <tmeshkova@github.com>
 Build-Depends: debhelper (>= 7),
  autoconf2.13,
- meta-harmattan-dev | valgrind,
  python,
  unzip,
  zip,

@@ -73,6 +73,8 @@ endif
 endif
 	echo "ac_add_options --prefix=/$(prefix)" >> $(CURDIR)/$(MOZCONFIG_FILE)
 	echo "ac_add_options --disable-tests" >> $(CURDIR)/$(MOZCONFIG_FILE)
+	echo "ac_add_options --disable-valgrind" >> $(CURDIR)/$(MOZCONFIG_FILE)
+	echo "ac_add_options --disable-profiling" >> $(CURDIR)/$(MOZCONFIG_FILE)
 	echo "mk_add_options MOZ_OBJDIR=\"$(DEST_OBJ_DIR)\"" >> $(CURDIR)/$(MOZCONFIG_FILE)
 	echo "mk_add_options MOZ_MAKE_FLAGS=\"$(NJOBS)\"" >> $(CURDIR)/$(MOZCONFIG_FILE)
 	MOZCONFIG=$(CURDIR)/$(MOZCONFIG_FILE) $(MAKE) -f client.mk configure
