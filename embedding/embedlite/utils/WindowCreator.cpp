@@ -7,11 +7,18 @@
 #include "EmbedLog.h"
 
 #include "nsIWebBrowserChrome.h"
+#include "nsIURI.h"
 #include "WindowCreator.h"
+#include "nsStringGlue.h"
 #include <stdio.h>
+#include "EmbedLiteAppThreadChild.h"
+#include "EmbedLiteViewThreadChild.h"
 
-WindowCreator::WindowCreator()
+using namespace mozilla::embedlite;
+
+WindowCreator::WindowCreator(EmbedLiteAppThreadChild* aChild)
   : mOpenBlock(false)
+  , mChild(aChild)
 {
   LOGT();
 }
@@ -44,19 +51,45 @@ WindowCreator::CreateChromeWindow2(nsIWebBrowserChrome* aParent,
 
   if (mOpenBlock) {
     mOpenBlock = PR_FALSE;
-    return NS_ERROR_FAILURE;
+    *aCancel = true;
+    return NS_OK;
   }
-  /*
-      // No parent?  Ask via the singleton object instead.
-      *_retval = static_cast<nsIWebBrowserChrome*>(mContext->RequestNewWindow(aParent, aChromeFlags));
-      if (*_retval) {
-          NS_ADDREF(*_retval);
-          return NS_OK;
-      }
-  */
-  *_retval = nullptr;
+
+  nsCString spec;
+  aURI->GetSpec(spec);
+
+  EmbedLiteViewThreadChild* parent = mChild->GetViewByChromeParent(aParent);
+  uint32_t createdID = 0;
+  uint32_t parentID = parent ? parent->GetID() : 0;
+  mChild->SendCreateWindow(parentID, spec, aChromeFlags, aContextFlags, &createdID, aCancel);
+
+  if (*aCancel) {
+    return NS_OK;
+  }
+
+  nsresult rv(NS_OK);
+  nsCOMPtr<nsIWebBrowserChrome> browser;
+  nsCOMPtr<nsIThread> thread;
+  NS_GetCurrentThread(getter_AddRefs(thread));
+  while (!browser && NS_SUCCEEDED(rv)) {
+    bool processedEvent;
+    rv = thread->ProcessNextEvent(true, &processedEvent);
+    if (NS_SUCCEEDED(rv) && !processedEvent) {
+      rv = NS_ERROR_UNEXPECTED;
+    }
+    EmbedLiteViewThreadChild* view = mChild->GetViewByID(createdID);
+    if (view) {
+      view->GetBrowserChrome(getter_AddRefs(browser));
+    }
+  }
+
   // check to make sure that we made a new window
-  return NS_ERROR_NOT_IMPLEMENTED;
+  if (_retval) {
+      NS_ADDREF(*_retval = browser);
+      return NS_OK;
+  }
+
+  return NS_ERROR_UNEXPECTED;
 }
 
 NS_IMETHODIMP

@@ -29,7 +29,7 @@ class EmbedLiteViewThreadChild : public PEmbedLiteViewChild,
 {
   NS_INLINE_DECL_REFCOUNTING(EmbedLiteViewThreadChild)
 public:
-  EmbedLiteViewThreadChild(uint32_t);
+  EmbedLiteViewThreadChild(const uint32_t& id, const uint32_t& parentId);
   virtual ~EmbedLiteViewThreadChild();
 
   NS_DECL_NSIEMBEDBROWSERCHROMELISTENER
@@ -51,8 +51,9 @@ public:
   void AddGeckoContentListener(mozilla::layers::GeckoContentController* listener);
   void RemoveGeckoContentListener(mozilla::layers::GeckoContentController* listener);
 
-  void GetBrowser(nsIWebBrowser** outBrowser);
-
+  nsresult GetBrowser(nsIWebBrowser** outBrowser);
+  nsresult GetBrowserChrome(nsIWebBrowserChrome** outChrome);
+  uint32_t GetID() { return mId; }
 protected:
   virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
   virtual bool RecvDestroy();
@@ -99,8 +100,9 @@ protected:
 private:
   friend class TabChildHelper;
   friend class EmbedLiteAppService;
+  friend class EmbedLiteAppThreadChild;
 
-  void InitGeckoWindow();
+  void InitGeckoWindow(const uint32_t& parentId);
   EmbedLiteAppThreadChild* AppChild();
 
   uint32_t mId;

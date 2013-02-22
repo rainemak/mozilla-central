@@ -33,11 +33,20 @@ public:
   virtual bool RecvObserve(const nsCString& topic,
                            const nsString& data);
 
+  virtual bool
+  RecvCreateWindow(
+          const uint32_t& parentId,
+          const nsCString& uri,
+          const uint32_t& chromeFlags,
+          const uint32_t& contextFlags,
+          uint32_t* createdID,
+          bool* cancel);
+
   static EmbedLiteAppThreadParent* GetInstance();
 
 protected:
   virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
-  virtual PEmbedLiteViewParent* AllocPEmbedLiteView(const uint32_t&);
+  virtual PEmbedLiteViewParent* AllocPEmbedLiteView(const uint32_t&, const uint32_t&);
   virtual bool DeallocPEmbedLiteView(PEmbedLiteViewParent*);
 
 private:

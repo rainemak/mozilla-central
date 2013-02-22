@@ -67,6 +67,19 @@ EmbedLiteAppThreadParent::RecvReadyToShutdown()
   return true;
 }
 
+bool
+EmbedLiteAppThreadParent::RecvCreateWindow(const uint32_t& parentId,
+                                           const nsCString& uri,
+                                           const uint32_t& chromeFlags,
+                                           const uint32_t& contextFlags,
+                                           uint32_t* createdID,
+                                           bool* cancel)
+{
+  *createdID = mApp->CreateWindowRequested(chromeFlags, uri.get(), contextFlags, parentId);
+  *cancel = !*createdID;
+  return true;
+}
+
 void
 EmbedLiteAppThreadParent::ActorDestroy(ActorDestroyReason aWhy)
 {
@@ -74,10 +87,10 @@ EmbedLiteAppThreadParent::ActorDestroy(ActorDestroyReason aWhy)
 }
 
 PEmbedLiteViewParent*
-EmbedLiteAppThreadParent::AllocPEmbedLiteView(const uint32_t& id)
+EmbedLiteAppThreadParent::AllocPEmbedLiteView(const uint32_t& id, const uint32_t& parentId)
 {
-  LOGT();
-  EmbedLiteViewThreadParent* tview = new EmbedLiteViewThreadParent(id);
+  LOGT("id:%u, parent:%u", id, parentId);
+  EmbedLiteViewThreadParent* tview = new EmbedLiteViewThreadParent(id, parentId);
   return tview;
 }
 

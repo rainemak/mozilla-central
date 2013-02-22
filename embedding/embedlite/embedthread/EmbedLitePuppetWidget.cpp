@@ -140,7 +140,9 @@ EmbedLitePuppetWidget::Create(nsIWidget*        aParent,
   EmbedLitePuppetWidget* parent = static_cast<EmbedLitePuppetWidget*>(aParent);
   if (parent) {
     parent->mChild = this;
-    mLayerManager = parent->GetLayerManager();
+    if (aInitData->mWindowType == eWindowType_child) {
+      mLayerManager = parent->GetLayerManager();
+    }
   } else {
     Resize(mBounds.x, mBounds.y, mBounds.width, mBounds.height, false);
   }

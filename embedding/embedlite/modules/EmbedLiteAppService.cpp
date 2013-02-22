@@ -270,7 +270,8 @@ EmbedLiteAppService::GetBrowserByID(uint32_t aId, nsIWebBrowser * *outWindow)
   NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
   nsresult rv;
   nsCOMPtr<nsIWebBrowser> br;
-  view->GetBrowser(getter_AddRefs(br));
+  rv = view->GetBrowser(getter_AddRefs(br));
+  NS_ENSURE_TRUE(br, rv);
   *outWindow = br.forget().get();
   return rv;
 }

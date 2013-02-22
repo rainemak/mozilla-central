@@ -23,7 +23,7 @@ class EmbedLiteViewThreadParent : public PEmbedLiteViewParent,
 {
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EmbedLiteViewThreadParent)
 public:
-  EmbedLiteViewThreadParent(const uint32_t& id);
+  EmbedLiteViewThreadParent(const uint32_t& id, const uint32_t& parentId);
   virtual ~EmbedLiteViewThreadParent();
 
   virtual void LoadURL(const char*);

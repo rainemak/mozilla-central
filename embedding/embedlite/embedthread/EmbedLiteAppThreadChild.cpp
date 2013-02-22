@@ -89,7 +89,7 @@ void
 EmbedLiteAppThreadChild::InitWindowWatcher()
 {
   // create an nsWindowCreator and give it to the WindowWatcher service
-  nsCOMPtr<nsIWindowCreator> creator(new WindowCreator());
+  nsCOMPtr<nsIWindowCreator> creator(new WindowCreator(this));
   if (!creator) {
     LOGE("Out of memory");
     return;
@@ -110,18 +110,18 @@ EmbedLiteAppThreadChild::ActorDestroy(ActorDestroyReason aWhy)
 }
 
 bool
-EmbedLiteAppThreadChild::RecvCreateView(const uint32_t& id)
+EmbedLiteAppThreadChild::RecvCreateView(const uint32_t& id, const uint32_t& parentId)
 {
-  LOGT("id:%u", id);
-  unused << SendPEmbedLiteViewConstructor(id);
+  LOGT("id:%u, parentId:%u", id, parentId);
+  unused << SendPEmbedLiteViewConstructor(id, parentId);
   return true;
 }
 
 PEmbedLiteViewChild*
-EmbedLiteAppThreadChild::AllocPEmbedLiteView(const uint32_t& id)
+EmbedLiteAppThreadChild::AllocPEmbedLiteView(const uint32_t& id, const uint32_t& parentId)
 {
-  LOGT("id:%u", id);
-  EmbedLiteViewThreadChild* view = new EmbedLiteViewThreadChild(id);
+  LOGT("id:%u, parentId:%u", id, parentId);
+  EmbedLiteViewThreadChild* view = new EmbedLiteViewThreadChild(id, parentId);
   mWeakViewMap[id] = view;
   return view;
 }
@@ -144,7 +144,20 @@ EmbedLiteAppThreadChild::DeallocPEmbedLiteView(PEmbedLiteViewChild* actor)
 EmbedLiteViewThreadChild*
 EmbedLiteAppThreadChild::GetViewByID(uint32_t aId)
 {
-  return mWeakViewMap[aId];
+  return aId ? mWeakViewMap[aId] : nullptr;
+}
+
+EmbedLiteViewThreadChild*
+EmbedLiteAppThreadChild::GetViewByChromeParent(nsIWebBrowserChrome* aParent)
+{
+  LOGT("mWeakViewMap:%i", mWeakViewMap.size());
+  std::map<uint32_t, EmbedLiteViewThreadChild*>::iterator it;
+  for (it = mWeakViewMap.begin(); it != mWeakViewMap.end(); ++it) {
+    if (aParent == it->second->mChrome.get()) {
+      return it->second;
+    }
+  }
+  return nullptr;
 }
 
 bool

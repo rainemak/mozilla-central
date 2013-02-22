@@ -244,12 +244,13 @@ EmbedLiteApp::RemoveObserver(const char* aMessageName)
 }
 
 EmbedLiteView*
-EmbedLiteApp::CreateView()
+EmbedLiteApp::CreateView(uint32_t aParent)
 {
   LOGT();
-  EmbedLiteView* view = new EmbedLiteView(this);
-  mViews[++mViewCreateID] = view;
-  unused << STHREADAPP()->SendCreateView(mViewCreateID);
+  mViewCreateID++;
+  EmbedLiteView* view = new EmbedLiteView(this, mViewCreateID, aParent);
+  mViews[mViewCreateID] = view;
+  unused << STHREADAPP()->SendCreateView(mViewCreateID, aParent);
   return view;
 }
 
@@ -271,6 +272,21 @@ EmbedLiteApp::ChildReadyToDestroy()
     mUILoop->PostTask(FROM_HERE,
                       NewRunnableFunction(&_FinalStop, this));
   }
+}
+
+uint32_t
+EmbedLiteApp::CreateWindowRequested(const uint32_t& chromeFlags, const char* uri, const uint32_t& contextFlags, const uint32_t& parentId)
+{
+  EmbedLiteView* view = nullptr;
+  std::map<uint32_t, EmbedLiteView*>::iterator it;
+  for (it = mViews.begin(); it != mViews.end(); it++) {
+    if (it->second->GetUniqueID() == parentId) {
+      LOGT("Found parent view:%p", it->second);
+      view = it->second;
+      break;
+    }
+  }
+  return mListener->CreateNewWindowRequested(chromeFlags, uri, contextFlags, view);
 }
 
 void

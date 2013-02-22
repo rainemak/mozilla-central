@@ -134,7 +134,7 @@ class EmbedContentController : public GeckoContentController
     EmbedLiteViewThreadParent* mRenderFrame;
 };
 
-EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id)
+EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id, const uint32_t& parentId)
   : mId(id)
   , mView(EmbedLiteApp::GetInstance()->GetViewByID(id))
   , mViewAPIDestroyed(false)

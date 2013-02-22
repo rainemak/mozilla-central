@@ -9,10 +9,14 @@
 #include "nsIWindowCreator.h"
 #include "nsIWindowCreator2.h"
 
+namespace mozilla {
+namespace embedlite {
+class EmbedLiteAppThreadChild;
+}}
 class WindowCreator : public nsIWindowCreator2
 {
 public:
-  WindowCreator();
+  WindowCreator(mozilla::embedlite::EmbedLiteAppThreadChild* aChild);
   virtual ~WindowCreator();
 
   NS_DECL_ISUPPORTS
@@ -21,6 +25,7 @@ public:
 
 private:
   bool mOpenBlock;
+  mozilla::embedlite::EmbedLiteAppThreadChild* mChild;
 };
 
 #endif

@@ -10,6 +10,7 @@
 #include "EmbedLiteModulesService.h"
 
 class EmbedLiteAppService;
+class nsIWebBrowserChrome;
 
 namespace mozilla {
 namespace embedlite {
@@ -33,6 +34,9 @@ public:
   }
   EmbedLiteViewThreadChild* GetViewByID(uint32_t aId);
   ::EmbedLiteAppService* AppService();
+  EmbedLiteViewThreadChild* GetViewByChromeParent(nsIWebBrowserChrome* aParent);
+
+  virtual bool RecvCreateView(const uint32_t& id, const uint32_t& parentId);
 
 protected:
   // Embed API ipdl interface
@@ -44,19 +48,19 @@ protected:
   // IPDL protocol impl
   virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
 
-  virtual bool RecvCreateView(const uint32_t&);
   virtual bool RecvPreDestroy();
   virtual bool RecvObserve(const nsCString& topic,
                            const nsString& data);
   virtual bool RecvAddObserver(const nsCString&);
   virtual bool RecvRemoveObserver(const nsCString&);
 
-  virtual PEmbedLiteViewChild* AllocPEmbedLiteView(const uint32_t&);
+  virtual PEmbedLiteViewChild* AllocPEmbedLiteView(const uint32_t&, const uint32_t& parentId);
   virtual bool DeallocPEmbedLiteView(PEmbedLiteViewChild*);
 
 private:
   void InitWindowWatcher();
   friend class EmbedLiteViewThreadChild;
+
 
   MessageLoop* mParentLoop;
   RefPtr<EmbedLiteAppThreadParent> mThreadParent;

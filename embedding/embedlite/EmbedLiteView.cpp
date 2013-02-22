@@ -23,11 +23,13 @@ namespace embedlite {
 
 class FakeListener : public EmbedLiteViewListener {};
 
-EmbedLiteView::EmbedLiteView(EmbedLiteApp* aApp)
+EmbedLiteView::EmbedLiteView(EmbedLiteApp* aApp, uint32_t aUniqueID, uint32_t aParent)
   : mApp(aApp)
   , mListener(new FakeListener())
   , mViewImpl(NULL)
   , mPanControlType(PanZoomControlType::GECKO_TOUCH)
+  , mUniqueID(aUniqueID)
+  , mParent(aParent)
 {
   LOGT();
 }
@@ -376,8 +378,10 @@ EmbedLiteView::PinchEnd(int x, int y, float scale)
 uint32_t
 EmbedLiteView::GetUniqueID()
 {
-  NS_ENSURE_TRUE(mViewImpl, 0);
-  return mViewImpl->GetUniqueID();
+  if (mViewImpl && mViewImpl->GetUniqueID() != mUniqueID) {
+    NS_ERROR("Something went wrong");
+  }
+  return mUniqueID;
 }
 
 } // namespace embedlite

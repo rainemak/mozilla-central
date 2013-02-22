@@ -36,19 +36,19 @@ using namespace mozilla::widget;
 namespace mozilla {
 namespace embedlite {
 
-EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(uint32_t aId)
+EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(const uint32_t& aId, const uint32_t& parentId)
   : mId(aId)
   , mOuterId(0)
   , mViewSize(0, 0)
   , mDispatchSynthMouseEvents(true)
   , mIMEComposing(false)
 {
-  LOGT();
+  LOGT("id:%u, parentID:%u", aId, parentId);
   AddRef();
   MessageLoop::current()->
   PostTask(FROM_HERE,
            NewRunnableMethod(this,
-                             &EmbedLiteViewThreadChild::InitGeckoWindow));
+                             &EmbedLiteViewThreadChild::InitGeckoWindow, parentId));
   mRegisteredMessages.Init();
 }
 
@@ -89,9 +89,9 @@ bool EmbedLiteViewThreadChild::RecvDestroy()
 }
 
 void
-EmbedLiteViewThreadChild::InitGeckoWindow()
+EmbedLiteViewThreadChild::InitGeckoWindow(const uint32_t& parentId)
 {
-  LOGT();
+  LOGT("parentID: %u", parentId);
   nsresult rv;
   mWebBrowser = do_CreateInstance(NS_WEBBROWSER_CONTRACTID, &rv);
   if (NS_FAILED(rv)) {
@@ -105,11 +105,17 @@ EmbedLiteViewThreadChild::InitGeckoWindow()
 
   mWidget = new EmbedLitePuppetWidget(this, mId);
 
+  nsCOMPtr<nsIWidget> parentWidget;
+  EmbedLiteViewThreadChild* parentView = EmbedLiteAppThreadChild::GetInstance()->GetViewByID(parentId);
+  if (parentView) {
+    parentWidget = parentView->mWidget;
+  }
+
   nsWidgetInitData  widgetInit;
   widgetInit.clipChildren = true;
   widgetInit.mWindowType = eWindowType_toplevel;
   mWidget->Create(
-    nullptr, 0,              // no parents
+    parentWidget, 0,              // no parents
     nsIntRect(nsIntPoint(0, 0), nsIntSize(800, 600)),
     nullptr,                 // HandleWidgetEvent
     &widgetInit              // nsDeviceContext
@@ -184,10 +190,22 @@ EmbedLiteViewThreadChild::InitGeckoWindow()
   unused << SendInitialized();
 }
 
-void
+nsresult
 EmbedLiteViewThreadChild::GetBrowser(nsIWebBrowser** outBrowser)
 {
+  if (!mWebBrowser)
+    return NS_ERROR_FAILURE;
   NS_ADDREF(*outBrowser = mWebBrowser.get());
+  return NS_OK;
+}
+
+nsresult
+EmbedLiteViewThreadChild::GetBrowserChrome(nsIWebBrowserChrome** outChrome)
+{
+  if (!mChrome)
+    return NS_ERROR_FAILURE;
+  NS_ADDREF(*outChrome = mChrome.get());
+  return NS_OK;
 }
 
 bool

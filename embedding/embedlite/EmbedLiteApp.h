@@ -37,6 +37,7 @@ public:
   virtual void Destroyed() {}
   // Messaging interface, allow to receive json messages from content child scripts
   virtual void OnObserve(const char* aMessage, const PRUnichar* aData) {}
+  virtual unsigned int CreateNewWindowRequested(const uint32_t& chromeFlags, const char* uri, const uint32_t& contextFlags, EmbedLiteView* aParentView) { return 0; }
 };
 
 class EmbedLiteApp
@@ -82,7 +83,7 @@ public:
   // Must be called from same thread as StartChildThread, and before Stop()
   virtual bool StopChildThread();
 
-  virtual EmbedLiteView* CreateView();
+  virtual EmbedLiteView* CreateView(uint32_t aParent = 0);
   virtual void DestroyView(EmbedLiteView* aView);
 
   virtual void SetIsAccelerated(bool aIsAccelerated);
@@ -124,6 +125,7 @@ private:
   EmbedLiteView* GetViewByID(uint32_t id);
   void ViewDestroyed(uint32_t id);
   void ChildReadyToDestroy();
+  uint32_t CreateWindowRequested(const uint32_t& chromeFlags, const char* uri, const uint32_t& contextFlags, const uint32_t& parentId);
 
   static EmbedLiteApp* sSingleton;
   EmbedLiteAppListener* mListener;

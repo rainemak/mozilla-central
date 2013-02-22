@@ -66,7 +66,7 @@ class EmbedLiteApp;
 class EmbedLiteView
 {
 public:
-  EmbedLiteView(EmbedLiteApp* aApp);
+  EmbedLiteView(EmbedLiteApp* aApp, uint32_t aViewID, uint32_t aParent);
   virtual ~EmbedLiteView();
 
   // Listener setup
@@ -151,6 +151,8 @@ private:
   EmbedLiteViewListener* mListener;
   EmbedLiteViewImplIface* mViewImpl;
   PanZoomControlType mPanControlType;
+  uint32_t mUniqueID;
+  uint32_t mParent;
 };
 
 } // namespace embedlite
