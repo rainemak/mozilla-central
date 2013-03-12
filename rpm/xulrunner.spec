@@ -47,11 +47,20 @@ Tests and misc files for xulrunner
 %setup -q -n %{name}-%{version}
 
 %build
-export MOZCONFIG=embedding/embedlite/config/mozconfig.merqtxulrunner
+cp -rf embedding/embedlite/config/mozconfig.merqtxulrunner mozconfig
+%ifarch i586
+echo "ac_add_options --disable-libjpeg-turbo" >> mozconfig
+%else
+echo "ac_add_options --with-arm-kuser" >> mozconfig
+echo "ac_add_options --with-float-abi=toolchain-default" >> mozconfig
+# No need for this, this should be managed by toolchain
+echo "ac_add_options --with-thumb=yes" >> mozconfig
+%endif
+export MOZCONFIG=mozconfig
 %{__make} -f client.mk build_all %{?jobs:MOZ_MAKE_FLAGS="-j%jobs"}
 
 %install
-export MOZCONFIG=embedding/embedlite/config/mozconfig.merqtxulrunner
+export MOZCONFIG=mozconfig
 %{__make} -f client.mk install DESTDIR=%{buildroot}
 %{__chmod} +x %{buildroot}%{_libdir}/xulrunner-%{greversion}/*.so
 

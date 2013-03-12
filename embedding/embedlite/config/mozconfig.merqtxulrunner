@@ -21,12 +21,6 @@ ac_add_options --enable-mobile-optimize
 ac_add_options --enable-profile-guided-optimization
 ac_add_options --enable-debug-symbols="-gdwarf-2"
 ac_add_options --enable-cpp-rtti
-ac_add_options --with-arm-kuser
-ac_add_options --with-thumb=yes
-ac_add_options --with-float-abi=toolchain-default
-# ac_add_options --enable-official-branding
-# changed release for nightly, it doesn't exist in mobile/xul/branding/
-ac_add_options --with-branding=mobile/xul/branding/nightly
 ac_add_options --with-system-jpeg
 
 # disabling for now, since the build fails...
@@ -35,6 +29,3 @@ ac_add_options --enable-libjpeg-turbo
 ac_add_options --enable-profiling
 ac_add_options --enable-gstreamer
 ac_add_options --enable-webapp-runtime
-
-
-
