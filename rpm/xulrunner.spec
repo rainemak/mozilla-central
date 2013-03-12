@@ -54,6 +54,7 @@ cp -rf embedding/embedlite/config/mozconfig.merqtxulrunner mozconfig
 %ifarch i586 i486 i386
 echo "ac_add_options --disable-libjpeg-turbo" >> mozconfig
 echo "ac_add_options --disable-webm" >> mozconfig
+echo "ac_add_options --disable-ogg" >> mozconfig
 echo "ac_add_options --disable-dash" >> mozconfig
 %endif
 
