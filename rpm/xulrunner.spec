@@ -46,16 +46,22 @@ Tests and misc files for xulrunner
 %prep
 %setup -q -n %{name}-%{version}
 
+# Disable Accessibility, no use anyway
+echo "ac_add_options --disable-accessibility" >> mozconfig
+
 %build
 cp -rf embedding/embedlite/config/mozconfig.merqtxulrunner mozconfig
-%ifarch i586
+%ifarch i586 i486 i386
 echo "ac_add_options --disable-libjpeg-turbo" >> mozconfig
-%else
+%endif
+
+%ifarch %arm
 echo "ac_add_options --with-arm-kuser" >> mozconfig
 echo "ac_add_options --with-float-abi=toolchain-default" >> mozconfig
 # No need for this, this should be managed by toolchain
-echo "ac_add_options --with-thumb=yes" >> mozconfig
+echo "ac_add_options --with-thumb=toolchain-default" >> mozconfig
 %endif
+
 export MOZCONFIG=mozconfig
 %{__make} -f client.mk build_all %{?jobs:MOZ_MAKE_FLAGS="-j%jobs"}
 
