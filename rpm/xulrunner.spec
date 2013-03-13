@@ -23,6 +23,7 @@ BuildRequires:  autoconf213
 BuildRequires:  python
 BuildRequires:  zip
 BuildRequires:  unzip
+BuildRequires:  yasm
 
 %description
 Mozilla XUL runner
