@@ -19,11 +19,15 @@ BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(gstreamer-0.10)
 BuildRequires:  pkgconfig(gstreamer-app-0.10)
 BuildRequires:  pkgconfig(gstreamer-plugins-base-0.10)
+BuildRequires:  pkgconfig(nspr)
+BuildRequires:  pkgconfig(nss)
 BuildRequires:  autoconf213
 BuildRequires:  python
 BuildRequires:  zip
 BuildRequires:  unzip
+%ifarch i586 i486 i386
 BuildRequires:  yasm
+%endif
 
 %description
 Mozilla XUL runner
@@ -46,9 +50,6 @@ Tests and misc files for xulrunner
 
 %prep
 %setup -q -n %{name}-%{version}
-
-# Disable Accessibility, no use anyway
-echo "ac_add_options --disable-accessibility" >> mozconfig
 
 %build
 cp -rf embedding/embedlite/config/mozconfig.merqtxulrunner mozconfig
