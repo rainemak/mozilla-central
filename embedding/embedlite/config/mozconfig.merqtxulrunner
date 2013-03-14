@@ -6,8 +6,10 @@ export MOZ_DEBUG_SYMBOLS=1
 export MOZILLA_OFFICIAL=1
 
 mk_add_options PROFILE_GEN_SCRIPT=@TOPSRCDIR@/build/profile_pageloader.pl
-mk_add_options MOZ_MAKE_FLAGS="-j2"
+mk_add_options MOZ_MAKE_FLAGS="-j4"
 mk_add_options MOZ_OBJDIR="@TOPSRCDIR@/obj-build-mer-qt-xr"
+
+export CXXFLAGS="$CXXFLAGS -DFORCE_BASICTILEDTHEBESLAYER=1 -DEGL_HAS_BACKING_SURFACE=1 -DUSE_ANDROID_OMTC_HACKS=1 "
 
 ac_add_options --prefix=/usr
 ac_add_options --enable-application=xulrunner
@@ -22,6 +24,7 @@ ac_add_options --enable-profile-guided-optimization
 ac_add_options --enable-debug-symbols="-gdwarf-2"
 ac_add_options --enable-cpp-rtti
 ac_add_options --with-system-jpeg
+ac_add_options --enable-skia
 
 # disabling for now, since the build fails...
 ac_add_options --enable-webrtc

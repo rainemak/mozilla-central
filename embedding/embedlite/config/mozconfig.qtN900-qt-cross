@@ -52,6 +52,7 @@ ac_add_options --disable-necko-wifi
 ac_add_options --disable-jemalloc
 ac_add_options --enable-webapp-runtime
 ac_add_options --enable-gstreamer
+ac_add_options --enable-skia
 
 export MOZ_DEBUG_SYMBOLS=1
 ac_add_options --enable-debug-symbols="-gdwarf-2"

@@ -1674,7 +1674,7 @@ RadioInterfaceLayer.prototype = {
     delete this._sentSmsEnvelopes[message.envelopeId];
 
     let error = Ci.nsISmsRequest.UNKNOWN_ERROR;
-    switch (message.error) {
+    switch (message.errorMsg) {
       case RIL.ERROR_RADIO_NOT_AVAILABLE:
         error = Ci.nsISmsRequest.NO_SIGNAL_ERROR;
         break;
@@ -2063,7 +2063,7 @@ RadioInterfaceLayer.prototype = {
     if (!PhoneNumberUtils.isViablePhoneNumber(number)) {
       this.handleCallError({
         callIndex: -1,
-        error: RIL.RIL_CALL_FAILCAUSE_TO_GECKO_CALL_ERROR[RIL.CALL_FAIL_UNOBTAINABLE_NUMBER]
+        errorMsg: RIL.RIL_CALL_FAILCAUSE_TO_GECKO_CALL_ERROR[RIL.CALL_FAIL_UNOBTAINABLE_NUMBER]
       });
       debug("Number '" + number + "' doesn't seem to be a viable number. Drop.");
       return;
@@ -2871,7 +2871,7 @@ RadioInterfaceLayer.prototype = {
   },
 
   _contactUpdateCallbacks: null,
-  updateICCContact: function updateICCContact(contactType, contact, callback) {
+  updateICCContact: function updateICCContact(contactType, contact, pin2, callback) {
     if (!this._contactUpdateCallbacks) {
       this._contactUpdateCallbacks = {};
     }
@@ -2880,6 +2880,7 @@ RadioInterfaceLayer.prototype = {
     this.worker.postMessage({rilMessageType: "updateICCContact",
                              contactType: contactType,
                              contact: contact,
+                             pin2: pin2,
                              requestId: requestId});
   },
 };

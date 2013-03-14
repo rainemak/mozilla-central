@@ -1070,8 +1070,8 @@ pref("devtools.debugger.ui.win-x", 0);
 pref("devtools.debugger.ui.win-y", 0);
 pref("devtools.debugger.ui.win-width", 900);
 pref("devtools.debugger.ui.win-height", 400);
-pref("devtools.debugger.ui.stackframes-width", 200);
-pref("devtools.debugger.ui.variables-width", 300);
+pref("devtools.debugger.ui.panes-sources-width", 200);
+pref("devtools.debugger.ui.panes-instruments-width", 300);
 pref("devtools.debugger.ui.pause-on-exceptions", false);
 pref("devtools.debugger.ui.panes-visible-on-startup", false);
 pref("devtools.debugger.ui.variables-sorting-enabled", true);
@@ -1146,6 +1146,9 @@ pref("devtools.editor.expandtab", true);
 //   indenting and bracket recognition.
 pref("devtools.editor.component", "orion");
 
+// Enable the Font Inspector
+pref("devtools.fontinspector.enabled", true);
+
 // Whether the character encoding menu is under the main Firefox button. This
 // preference is a string so that localizers can alter it.
 pref("browser.menu.showCharacterEncoding", "chrome://browser/locale/browser.properties");
@@ -1219,3 +1222,6 @@ pref("social.sidebar.unload_timeout_ms", 10000);
 pref("social.toast-notifications.enabled", true);
 
 pref("dom.identity.enabled", false);
+
+// Override the Gecko-default value of false for Firefox.
+pref("plain_text.wrap_long_lines", true);

@@ -31,6 +31,7 @@
 #include "gfxPangoFonts.h"
 #include "gfxContext.h"
 #include "gfxUserFontSet.h"
+#include "gfxFT2FontBase.h"
 #else
 #include "gfxFT2Fonts.h"
 #endif
@@ -142,6 +143,9 @@ gfxQtPlatform::gfxQtPlatform()
     if (pixmap.paintEngine())
         sDefaultQtPaintEngineType = pixmap.paintEngine()->type();
 #endif
+    uint32_t canvasMask = (1 << BACKEND_CAIRO) | (1 << BACKEND_SKIA);
+    uint32_t contentMask = (1 << BACKEND_CAIRO);
+    InitBackendPrefs(canvasMask, contentMask);
 }
 
 gfxQtPlatform::~gfxQtPlatform()
@@ -615,3 +619,18 @@ gfxQtPlatform::GetScreenDepth() const
     return mScreenDepth;
 }
 
+TemporaryRef<ScaledFont>
+gfxQtPlatform::GetScaledFontForFont(DrawTarget* aTarget, gfxFont *aFont)
+{
+    NativeFont nativeFont;
+    if (aTarget->GetType() == BACKEND_CAIRO) {
+        nativeFont.mType = NATIVE_FONT_CAIRO_FONT_FACE;
+        nativeFont.mFont = NULL;
+        return Factory::CreateScaledFontWithCairo(nativeFont, aFont->GetAdjustedSize(), aFont->GetCairoScaledFont());
+    }
+
+    NS_ASSERTION(aFont->GetType() == gfxFont::FONT_TYPE_FT2, "Expecting Freetype font");
+    nativeFont.mType = NATIVE_FONT_SKIA_FONT_FACE;
+    nativeFont.mFont = static_cast<gfxFT2FontBase*>(aFont)->GetFontOptions();
+    return Factory::CreateScaledFontForNativeFont(nativeFont, aFont->GetAdjustedSize());
+}

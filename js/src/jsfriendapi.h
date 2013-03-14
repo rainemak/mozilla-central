@@ -687,8 +687,6 @@ SetRuntimeProfilingStack(JSRuntime *rt, ProfileEntry *stack, uint32_t *size,
 JS_FRIEND_API(void)
 EnableRuntimeProfilingStack(JSRuntime *rt, bool enabled);
 
-// Use RawScript rather than UnrootedScript because it may be called from a
-// signal handler
 JS_FRIEND_API(jsbytecode*)
 ProfilingGetPC(JSRuntime *rt, RawScript script, void *ip);
 
@@ -1423,7 +1421,7 @@ class JS_FRIEND_API(AutoCTypesActivityCallback) {
 extern JS_FRIEND_API(void)
 assertEnteredPolicy(JSContext *cx, JSObject *obj, jsid id);
 #else
-inline JS_FRIEND_API(void) assertEnteredPolicy(JSContext *cx, JSObject *obj, jsid id) {};
+inline void assertEnteredPolicy(JSContext *cx, JSObject *obj, jsid id) {};
 #endif
 
 } /* namespace js */

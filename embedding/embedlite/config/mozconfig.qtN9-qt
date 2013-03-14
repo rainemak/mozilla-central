@@ -28,6 +28,7 @@ ac_add_options --disable-elf-hack
 ac_add_options --disable-webrtc
 ac_add_options --enable-libjpeg-turbo
 ac_add_options --with-gl-provider=EGL
+ac_add_options --enable-skia
 
 ac_add_options --enable-tests
 ac_add_options --enable-optimize
