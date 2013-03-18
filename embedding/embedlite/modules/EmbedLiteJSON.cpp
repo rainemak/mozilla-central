@@ -23,8 +23,8 @@ EmbedLiteJSON::~EmbedLiteJSON()
 
 NS_IMPL_ISUPPORTS1(EmbedLiteJSON, nsIEmbedLiteJSON)
 
-NS_IMETHODIMP
-EmbedLiteJSON::CreateObject(nsIWritablePropertyBag2 * *aObject)
+nsresult
+CreateObjectStatic(nsIWritablePropertyBag2 * *aObject)
 {
   nsRefPtr<nsHashPropertyBag> hpb = new nsHashPropertyBag();
   if (!hpb) {
@@ -40,6 +40,13 @@ EmbedLiteJSON::CreateObject(nsIWritablePropertyBag2 * *aObject)
   return NS_OK;
 }
 
+
+NS_IMETHODIMP
+EmbedLiteJSON::CreateObject(nsIWritablePropertyBag2 * *aObject)
+{
+  return CreateObjectStatic(aObject);
+}
+
 static JSBool
 JSONCreator(const jschar* aBuf, uint32_t aLen, void* aData)
 {
@@ -47,6 +54,100 @@ JSONCreator(const jschar* aBuf, uint32_t aLen, void* aData)
   result->Append(static_cast<const PRUnichar*>(aBuf),
                  static_cast<uint32_t>(aLen));
   return true;
+}
+
+nsresult
+JSValToVariant(JSContext* cx, jsval& propval, nsIWritableVariant* aVariant)
+{
+  if (JSVAL_IS_BOOLEAN(propval)) {
+    aVariant->SetAsBool(JSVAL_TO_BOOLEAN(propval));
+  } else if (JSVAL_IS_INT(propval)) {
+    aVariant->SetAsInt32(JSVAL_TO_INT(propval));
+  } else if (JSVAL_IS_DOUBLE(propval)) {
+    aVariant->SetAsDouble(JSVAL_TO_DOUBLE(propval));
+  } else if (JSVAL_IS_STRING(propval)) {
+
+    JSString* propvalString = JS_ValueToString(cx, propval);
+    nsDependentJSString vstr;
+    if (!propvalString || !vstr.init(cx, propvalString)) {
+      return NS_ERROR_FAILURE;
+    }
+    aVariant->SetAsAString(vstr);
+  } else if (!JSVAL_IS_PRIMITIVE(propval)) {
+    NS_ERROR("Value is not primitive");
+    return NS_ERROR_FAILURE;
+  }
+  return NS_OK;
+}
+
+nsresult
+ParseObject(JSContext* cx, JSObject* object, nsIWritablePropertyBag2* aBag)
+{
+  JS::AutoIdArray props(cx, JS_Enumerate(cx, object));
+  for (size_t i = 0; !!props && i < props.length(); ++i) {
+    jsid propid = props[i];
+    jsval propname, propval;
+    if (!JS_IdToValue(cx, propid, &propname) ||
+        !JS_GetPropertyById(cx, object, propid, &propval)) {
+      NS_ERROR("Failed to get property by ID");
+      return NS_ERROR_FAILURE;
+    }
+
+    JSString* propnameString = JS_ValueToString(cx, propname);
+    nsDependentJSString pstr;
+    if (!propnameString || !pstr.init(cx, propnameString)) {
+      NS_ERROR("Failed to get property string");
+      return NS_ERROR_FAILURE;
+    }
+
+    if (JSVAL_IS_PRIMITIVE(propval)) {
+      nsCOMPtr<nsIWritableVariant> value = do_CreateInstance("@mozilla.org/variant;1");
+      JSValToVariant(cx, propval, value);
+      nsCOMPtr<nsIWritablePropertyBag> bagSimple = do_QueryInterface(aBag);
+      bagSimple->SetProperty(pstr, value);
+    } else {
+      JSObject* obj = JSVAL_TO_OBJECT(propval);
+      if (JS_IsArrayObject(cx, obj)) {
+        nsCOMPtr<nsIWritableVariant> childElements = do_CreateInstance("@mozilla.org/variant;1");
+        uint32_t tmp;
+        if (JS_GetArrayLength(cx, obj, &tmp)) {
+          nsTArray<nsCOMPtr<nsIVariant>> childArray;
+          for (uint32_t i = 0; i < tmp; i++) {
+            jsval v;
+            if (!JS_GetElement(cx, obj, i, &v))
+              continue;
+            nsCOMPtr<nsIWritableVariant> value = do_CreateInstance("@mozilla.org/variant;1");
+            if (JSVAL_IS_PRIMITIVE(v)) {
+              JSValToVariant(cx, v, value);
+              childArray.AppendElement(value);
+            } else {
+              nsCOMPtr<nsIWritablePropertyBag2> contextProps;
+              CreateObjectStatic(getter_AddRefs(contextProps));
+              JSObject* obj = JSVAL_TO_OBJECT(v);
+              ParseObject(cx, obj, contextProps);
+              value->SetAsInterface(NS_GET_IID(nsIWritablePropertyBag2), contextProps);
+              childArray.AppendElement(value);
+            }
+          }
+          childElements->SetAsArray(nsIDataType::VTYPE_INTERFACE_IS, &NS_GET_IID(nsIVariant), childArray.Length(), childArray.Elements());
+          nsCOMPtr<nsIWritablePropertyBag> bagSimple = do_QueryInterface(aBag);
+          bagSimple->SetProperty(pstr, childElements);
+        }
+      } else if (JS_IsTypedArrayObject(obj)) {
+        NS_ERROR("Don't know how to parse TypedArrayObject");
+      } else {
+        nsCOMPtr<nsIWritablePropertyBag2> contextPropst;
+        CreateObjectStatic(getter_AddRefs(contextPropst));
+        if (NS_SUCCEEDED(ParseObject(cx, obj, contextPropst))) {
+          nsCOMPtr<nsIWritableVariant> value = do_CreateInstance("@mozilla.org/variant;1");
+          value->SetAsInterface(NS_GET_IID(nsIWritablePropertyBag2), contextPropst);
+          nsCOMPtr<nsIWritablePropertyBag> bagSimple = do_QueryInterface(aBag);
+          bagSimple->SetProperty(pstr, value);
+        }
+      }
+    }
+  }
+  return NS_OK;
 }
 
 NS_IMETHODIMP
@@ -66,40 +167,16 @@ EmbedLiteJSON::ParseJSON(nsAString const& aJson, nsIPropertyBag2** aRoot)
     return NS_ERROR_FAILURE;
   }
 
+  if (JSVAL_IS_PRIMITIVE(json)) {
+    NS_ERROR("We don't handle primitive values");
+    return NS_ERROR_FAILURE;
+  }
+
+  JSObject* obj = JSVAL_TO_OBJECT(json);
   nsCOMPtr<nsIWritablePropertyBag2> contextProps;
-  CreateObject(getter_AddRefs(contextProps));
-
-  JSObject& opts = json.toObject();
-  JS::AutoIdArray props(cx, JS_Enumerate(cx, &opts));
-  for (size_t i = 0; !!props && i < props.length(); ++i) {
-    jsid propid = props[i];
-    jsval propname, propval;
-    if (!JS_IdToValue(cx, propid, &propname) ||
-        !JS_GetPropertyById(cx, &opts, propid, &propval)) {
-      return NS_ERROR_FAILURE;
-    }
-
-    JSString* propnameString = JS_ValueToString(cx, propname);
-    nsDependentJSString pstr;
-    if (!propnameString || !pstr.init(cx, propnameString)) {
-      return NS_ERROR_FAILURE;
-    }
-
-    if (JSVAL_IS_BOOLEAN(propval)) {
-      contextProps->SetPropertyAsBool(pstr, JSVAL_TO_BOOLEAN(propval));
-    } else if (JSVAL_IS_INT(propval)) {
-      contextProps->SetPropertyAsInt32(pstr, JSVAL_TO_INT(propval));
-    } else if (JSVAL_IS_DOUBLE(propval)) {
-      contextProps->SetPropertyAsDouble(pstr, JSVAL_TO_DOUBLE(propval));
-    } else if (JSVAL_IS_STRING(propval)) {
-      JSString* propvalString = JS_ValueToString(cx, propval);
-      nsDependentJSString vstr;
-      if (!propvalString || !vstr.init(cx, propvalString)) {
-        return NS_ERROR_FAILURE;
-      }
-
-      contextProps->SetPropertyAsAString(pstr, vstr);
-    }
+  if (obj) {
+    CreateObject(getter_AddRefs(contextProps));
+    ParseObject(cx, obj, contextProps);
   }
 
   *aRoot = contextProps.forget().get();
