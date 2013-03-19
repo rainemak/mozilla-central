@@ -39,6 +39,7 @@ public:
   virtual void OnFirstPaint(int32_t aX, int32_t aY) {}
   virtual void OnScrolledAreaChanged(unsigned int aWidth, unsigned int aHeight) {}
   virtual void OnScrollChanged(int32_t offSetX, int32_t offSetY) {}
+  virtual void OnTitleChanged(const PRUnichar* aTitle) {}
   virtual void SetBackgroundColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {}
 
   // Compositor Interface

@@ -832,6 +832,12 @@ EmbedLiteViewThreadChild::OnScrollChanged(int32_t offSetX, int32_t offSetY)
 }
 
 NS_IMETHODIMP
+EmbedLiteViewThreadChild::OnTitleChanged(const PRUnichar* aTitle)
+{
+  return SendOnTitleChanged(nsDependentString(aTitle)) ? NS_OK : NS_ERROR_FAILURE;
+}
+
+NS_IMETHODIMP
 EmbedLiteViewThreadChild::OnUpdateDisplayPort()
 {
   LOGNI();

@@ -99,6 +99,9 @@ protected:
     const int32_t& offSetX,
     const int32_t& offSetY);
 
+  virtual bool
+  RecvOnTitleChanged(const nsString& aTitle);
+
   virtual bool RecvAsyncMessage(const nsString& aMessage,
                                 const nsString& aData);
   virtual bool RecvSyncMessage(const nsString& aMessage,

@@ -68,6 +68,7 @@ private:
   nsIntPoint mScrollOffset;
   nsCOMPtr<nsIObserverService> mObserverService;
   nsIEmbedBrowserChromeListener* mListener;
+  nsString mTitle;
 };
 
 #endif /* Header guard */

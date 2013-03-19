@@ -59,7 +59,7 @@ EmbedLiteAppThreadChild::Observe(nsISupports* aSubject,
                                  const PRUnichar* aData)
 {
   LOGF("topic:%s", aTopic);
-  unused << SendObserve(nsDependentCString(aTopic), nsDependentString(aData));
+  unused << SendObserve(nsDependentCString(aTopic), aData ? nsDependentString(aData) : nsString());
   return NS_OK;
 }
 

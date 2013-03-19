@@ -368,6 +368,17 @@ EmbedLiteViewThreadParent::RecvOnScrollChanged(const int32_t& offSetX,
 }
 
 bool
+EmbedLiteViewThreadParent::RecvOnTitleChanged(const nsString& aTitle)
+{
+  if (mViewAPIDestroyed) {
+    return true;
+  }
+
+  mView->GetListener()->OnTitleChanged(aTitle.get());
+  return true;
+}
+
+bool
 EmbedLiteViewThreadParent::RecvUpdateZoomConstraints(const bool& val, const float& min, const float& max)
 {
   if (mController) {

@@ -536,15 +536,18 @@ NS_IMETHODIMP WebBrowserChrome::SetVisibility(bool aVisibility)
   return NS_OK;
 }
 
-NS_IMETHODIMP WebBrowserChrome::GetTitle(PRUnichar** /*aTitle*/)
+NS_IMETHODIMP WebBrowserChrome::GetTitle(PRUnichar** aTitle)
 {
-  LOGNI();
-  return NS_ERROR_NOT_IMPLEMENTED;
+  NS_ENSURE_ARG_POINTER(aTitle);
+  *aTitle = ToNewUnicode(mTitle);
+  return NS_OK;
 }
 
 NS_IMETHODIMP WebBrowserChrome::SetTitle(const PRUnichar* aTitle)
 {
-  LOGNI();
+  // Store local title
+  mTitle = aTitle;
+  mListener->OnTitleChanged(mTitle.get());
   return NS_OK;
 }
 
