@@ -226,7 +226,7 @@ void
 EmbedLiteApp::SendObserve(const char* aMessageName, const PRUnichar* aMessage)
 {
   LOGT("topic:%s", aMessageName);
-  unused << STHREADAPP()->SendObserve(nsDependentCString(aMessageName), nsDependentString(aMessage));
+  unused << STHREADAPP()->SendObserve(nsDependentCString(aMessageName), aMessage ? nsDependentString(aMessage) : nsString());
 }
 
 void
