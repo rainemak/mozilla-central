@@ -1029,10 +1029,10 @@ $(COBJS): %.$(OBJ_SUFFIX): %.c $(call mkdir_deps,$(MDDEPDIR))
 # 'moc' only knows about #defines it gets on the command line (-D...), not in
 # included headers like mozilla-config.h
 moc_%.cpp: %.h
-	$(ELOG) $(MOC) $(DEFINES) $< $(OUTOPTION)$@
+	$(ELOG) $(MOC) $(DEFINES) $(ACDEFINES) $< $(OUTOPTION)$@
 
 moc_%.cc: %.cc
-	$(ELOG) $(MOC) $(DEFINES) $(_VPATH_SRCS:.cc=.h) $(OUTOPTION)$@
+	$(ELOG) $(MOC) $(DEFINES) $(ACDEFINES) $(_VPATH_SRCS:.cc=.h) $(OUTOPTION)$@
 
 qrc_%.cpp: %.qrc
 	$(ELOG) $(RCC) -name $* $< $(OUTOPTION)$@
