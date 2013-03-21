@@ -6,16 +6,20 @@
 #ifndef __NS_SVGBOOLEAN_H__
 #define __NS_SVGBOOLEAN_H__
 
-#include "nsAutoPtr.h"
-#include "nsCycleCollectionParticipant.h"
 #include "nsError.h"
 #include "nsISMILAttr.h"
-#include "nsISupportsImpl.h"
-#include "nsSVGElement.h"
 #include "mozilla/Attributes.h"
 
-class nsISMILAnimationElement;
+class nsIAtom;
+class nsISupports;
 class nsSMILValue;
+class nsSVGElement;
+
+namespace mozilla {
+namespace dom {
+class SVGAnimationElement;
+}
+}
 
 class nsSVGBoolean
 {
@@ -65,7 +69,7 @@ public:
 
     // nsISMILAttr methods
     virtual nsresult ValueFromString(const nsAString& aStr,
-                                     const nsISMILAnimationElement* aSrcElement,
+                                     const mozilla::dom::SVGAnimationElement* aSrcElement,
                                      nsSMILValue& aValue,
                                      bool& aPreventCachingOfSandwich) const;
     virtual nsSMILValue GetBaseValue() const;

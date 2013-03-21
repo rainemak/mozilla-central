@@ -47,18 +47,20 @@ WEBRTC_LIBS += \
 endif
 
 ifeq ($(CPU_ARCH), arm)
+ifeq (Android,$(OS_TARGET))
+# NEON detection on WebRTC is Android only. If WebRTC supports Linux/arm etc,
+# we should remove OS check
 # extra ARM libs
-ifdef ANDROID
 WEBRTC_LIBS += \
   $(call EXPAND_LIBNAME_PATH,cpu_features_android,$(DEPTH)/media/webrtc/trunk/webrtc/system_wrappers/source/system_wrappers_cpu_features_android) \
   $(NULL)
-endif
 # neon for ARM
 ifeq ($(HAVE_ARM_NEON),1)
 WEBRTC_LIBS += \
   $(call EXPAND_LIBNAME_PATH,signal_processing_neon,$(DEPTH)/media/webrtc/trunk/webrtc/common_audio/common_audio_signal_processing_neon) \
   $(call EXPAND_LIBNAME_PATH,audio_processing_neon,$(DEPTH)/media/webrtc/trunk/webrtc/modules/modules_audio_processing_neon) \
   $(NULL)
+endif
 endif
 endif
 

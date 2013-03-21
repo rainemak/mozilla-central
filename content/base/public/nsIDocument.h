@@ -1551,6 +1551,13 @@ public:
    * OnPageHide having been called and OnPageShow not yet having been called)
    */
   bool IsVisible() const { return mVisible; }
+
+  /**
+   * Return whether the document and all its ancestors are visible in the sense of
+   * pageshow / hide.
+   */
+  bool IsVisibleConsideringAncestors() const;
+
   /**
    * Return true when this document is active, i.e., the active document
    * in a content viewer.
@@ -2471,6 +2478,10 @@ NS_NewImageDocument(nsIDocument** aInstancePtrResult);
 nsresult
 NS_NewVideoDocument(nsIDocument** aInstancePtrResult);
 #endif
+
+already_AddRefed<mozilla::dom::DocumentFragment>
+NS_NewDocumentFragment(nsNodeInfoManager* aNodeInfoManager,
+                       mozilla::ErrorResult& aRv);
 
 nsresult
 NS_NewDocumentFragment(nsIDOMDocumentFragment** aInstancePtrResult,

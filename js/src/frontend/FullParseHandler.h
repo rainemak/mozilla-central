@@ -120,8 +120,8 @@ class FullParseHandler
         return new_<BinaryNode>(kind, op, pos, left, right);
     }
     ParseNode *newBinaryOrAppend(ParseNodeKind kind, ParseNode *left, ParseNode *right,
-                                 JSOp op = JSOP_NOP) {
-        return ParseNode::newBinaryOrAppend(kind, op, left, right, this, foldConstants);
+                                 ParseContext<FullParseHandler> *pc, JSOp op = JSOP_NOP) {
+        return ParseNode::newBinaryOrAppend(kind, op, left, right, this, pc, foldConstants);
     }
     void setBinaryRHS(ParseNode *pn, ParseNode *rhs) {
         JS_ASSERT(pn->isArity(PN_BINARY));
@@ -135,19 +135,19 @@ class FullParseHandler
         return new_<TernaryNode>(kind, op, first, second, third);
     }
 
-    ParseNode *newBreak(PropertyName *label, const TokenPtr &begin, const TokenPtr &end) {
+    ParseNode *newBreak(PropertyName *label, uint32_t begin, uint32_t end) {
         return new_<BreakStatement>(label, begin, end);
     }
-    ParseNode *newContinue(PropertyName *label, const TokenPtr &begin, const TokenPtr &end) {
+    ParseNode *newContinue(PropertyName *label, uint32_t begin, uint32_t end) {
         return new_<ContinueStatement>(label, begin, end);
     }
     ParseNode *newDebuggerStatement(const TokenPos &pos) {
         return new_<DebuggerStatement>(pos);
     }
-    ParseNode *newPropertyAccess(ParseNode *pn, PropertyName *name, const TokenPtr &end) {
+    ParseNode *newPropertyAccess(ParseNode *pn, PropertyName *name, uint32_t end) {
         return new_<PropertyAccess>(pn, name, pn->pn_pos.begin, end);
     }
-    ParseNode *newPropertyByValue(ParseNode *pn, ParseNode *kid, const TokenPtr &end) {
+    ParseNode *newPropertyByValue(ParseNode *pn, ParseNode *kid, uint32_t end) {
         return new_<PropertyByValue>(pn, kid, pn->pn_pos.begin, end);
     }
 
@@ -166,6 +166,7 @@ class FullParseHandler
     void setFunctionBox(ParseNode *pn, FunctionBox *funbox) {
         pn->pn_funbox = funbox;
     }
+    inline ParseNode *newLexicalScope(ObjectBox *blockbox);
     bool isOperationWithoutParens(ParseNode *pn, ParseNodeKind kind) {
         return pn->isKind(kind) && !pn->isInParens();
     }
@@ -176,7 +177,7 @@ class FullParseHandler
     void setBeginPosition(ParseNode *pn, ParseNode *oth) {
         setBeginPosition(pn, oth->pn_pos.begin);
     }
-    void setBeginPosition(ParseNode *pn, const TokenPtr &begin) {
+    void setBeginPosition(ParseNode *pn, uint32_t begin) {
         pn->pn_pos.begin = begin;
         JS_ASSERT(pn->pn_pos.begin <= pn->pn_pos.end);
     }
@@ -184,7 +185,7 @@ class FullParseHandler
     void setEndPosition(ParseNode *pn, ParseNode *oth) {
         setEndPosition(pn, oth->pn_pos.end);
     }
-    void setEndPosition(ParseNode *pn, const TokenPtr &end) {
+    void setEndPosition(ParseNode *pn, uint32_t end) {
         pn->pn_pos.end = end;
         JS_ASSERT(pn->pn_pos.begin <= pn->pn_pos.end);
     }
@@ -299,6 +300,20 @@ FullParseHandler::newFunctionDefinition()
         return NULL;
     pn->pn_body = NULL;
     pn->pn_funbox = NULL;
+    pn->pn_cookie.makeFree();
+    pn->pn_dflags = 0;
+    return pn;
+}
+
+inline ParseNode *
+FullParseHandler::newLexicalScope(ObjectBox *blockbox)
+{
+    ParseNode *pn = LexicalScopeNode::create(PNK_LEXICALSCOPE, this);
+    if (!pn)
+        return NULL;
+
+    pn->setOp(JSOP_LEAVEBLOCK);
+    pn->pn_objbox = blockbox;
     pn->pn_cookie.makeFree();
     pn->pn_dflags = 0;
     return pn;

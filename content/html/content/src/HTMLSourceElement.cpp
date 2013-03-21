@@ -70,17 +70,16 @@ HTMLSourceElement::BindToTree(nsIDocument *aDocument,
   if (!aParent || !aParent->IsNodeOfType(nsINode::eMEDIA))
     return NS_OK;
 
-  nsHTMLMediaElement* media = static_cast<nsHTMLMediaElement*>(aParent);
+  HTMLMediaElement* media = static_cast<HTMLMediaElement*>(aParent);
   media->NotifyAddedSource();
 
   return NS_OK;
 }
 
 JSObject*
-HTMLSourceElement::WrapNode(JSContext* aCx, JSObject* aScope,
-                            bool* aTriedToWrap)
+HTMLSourceElement::WrapNode(JSContext* aCx, JSObject* aScope)
 {
-  return HTMLSourceElementBinding::Wrap(aCx, aScope, this, aTriedToWrap);
+  return HTMLSourceElementBinding::Wrap(aCx, aScope, this);
 }
 
 } // namespace dom

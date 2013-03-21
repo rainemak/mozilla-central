@@ -18,8 +18,6 @@ VPATH += \
 
 include $(DEPTH)/config/autoconf.mk
 
-MODULE = embedlite
-XPIDL_MODULE = embedlite
 MODULE_NAME = embedlite
 GRE_MODULE = 1
 
@@ -68,12 +66,6 @@ CPPSRCS = \
     EmbedLiteAppService.cpp \
     EmbedLiteJSON.cpp \
     EmbedLiteModulesService.cpp \
-    $(NULL)
-
-XPIDLSRCS = \
-    nsIEmbedAppService.idl \
-    nsIEmbedLiteJSON.idl \
-    nsIEmbedBrowserChromeListener.idl \
     $(NULL)
 
 LOCAL_INCLUDES += \

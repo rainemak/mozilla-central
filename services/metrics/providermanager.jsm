@@ -7,7 +7,7 @@
 #ifndef MERGED_COMPARTMENT
 this.EXPORTED_SYMBOLS = ["ProviderManager"];
 
-const {utils: Cu} = Components;
+const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
 Cu.import("resource://gre/modules/services/metrics/dataprovider.jsm");
 #endif
@@ -32,6 +32,13 @@ this.ProviderManager = function (storage) {
 
   this._providerInitQueue = [];
   this._providerInitializing = false;
+
+  this._pullOnlyProviders = {};
+  this._pullOnlyProvidersRegistered = false;
+
+  // Callback to allow customization of providers after they are constructed
+  // but before they call out into their initialization code.
+  this.onProviderInit = null;
 }
 
 this.ProviderManager.prototype = Object.freeze({
@@ -58,6 +65,72 @@ this.ProviderManager.prototype = Object.freeze({
   },
 
   /**
+   * Registers providers from a category manager category.
+   *
+   * This examines the specified category entries and registers found
+   * providers.
+   *
+   * Category entries are essentially JS modules and the name of the symbol
+   * within that module that is a `Metrics.Provider` instance.
+   *
+   * The category entry name is the name of the JS type for the provider. The
+   * value is the resource:// URI to import which makes this type available.
+   *
+   * Example entry:
+   *
+   *   FooProvider resource://gre/modules/foo.jsm
+   *
+   * One can register entries in the application's .manifest file. e.g.
+   *
+   *   category healthreport-js-provider FooProvider resource://gre/modules/foo.jsm
+   *
+   * Then to load them:
+   *
+   *   let reporter = getHealthReporter("healthreport.");
+   *   reporter.registerProvidersFromCategoryManager("healthreport-js-provider");
+   *
+   * @param category
+   *        (string) Name of category to query and load from.
+   */
+  registerProvidersFromCategoryManager: function (category) {
+    this._log.info("Registering providers from category: " + category);
+    let cm = Cc["@mozilla.org/categorymanager;1"]
+               .getService(Ci.nsICategoryManager);
+
+    let promises = [];
+    let enumerator = cm.enumerateCategory(category);
+    while (enumerator.hasMoreElements()) {
+      let entry = enumerator.getNext()
+                            .QueryInterface(Ci.nsISupportsCString)
+                            .toString();
+
+      let uri = cm.getCategoryEntry(category, entry);
+      this._log.info("Attempting to load provider from category manager: " +
+                     entry + " from " + uri);
+
+      try {
+        let ns = {};
+        Cu.import(uri, ns);
+
+        let promise = this.registerProviderFromType(ns[entry]);
+        if (promise) {
+          promises.push(promise);
+        }
+      } catch (ex) {
+        this._recordError("Error registering provider from category manager : " +
+                          entry + ": ", ex);
+        continue;
+      }
+    }
+
+    return Task.spawn(function wait() {
+      for (let promise of promises) {
+        yield promise;
+      }
+    });
+  },
+
+  /**
    * Registers a `MetricsProvider` with this manager.
    *
    * Once a `MetricsProvider` is registered, data will be collected from it
@@ -80,7 +153,7 @@ this.ProviderManager.prototype = Object.freeze({
     }
 
     if (this._providers.has(provider.name)) {
-      return Promise.resolve();
+      return CommonUtils.laterTickResolvingPromise();
     }
 
     let deferred = Promise.defer();
@@ -94,6 +167,47 @@ this.ProviderManager.prototype = Object.freeze({
   },
 
   /**
+   * Registers a provider from its constructor function.
+   *
+   * If the provider is pull-only, it will be stashed away and
+   * initialized later. Null will be returned.
+   *
+   * If it is not pull-only, it will be initialized immediately and a
+   * promise will be returned. The promise will be resolved when the
+   * provider has finished initializing.
+   */
+  registerProviderFromType: function (type) {
+    let proto = type.prototype;
+    if (proto.pullOnly) {
+      this._log.info("Provider is pull-only. Deferring initialization: " +
+                     proto.name);
+      this._pullOnlyProviders[proto.name] = type;
+
+      return null;
+    }
+
+    let provider = this._initProviderFromType(type);
+    return this.registerProvider(provider);
+  },
+
+  /**
+   * Initializes a provider from its type.
+   *
+   * This is how a constructor function should be turned into a provider
+   * instance.
+   *
+   * A side-effect is the provider is registered with the manager.
+   */
+  _initProviderFromType: function (type) {
+    let provider = new type();
+    if (this.onProviderInit) {
+      this.onProviderInit(provider);
+    }
+
+    return provider;
+  },
+
+  /**
    * Remove a named provider from the manager.
    *
    * It is the caller's responsibility to shut down the provider
@@ -101,6 +215,64 @@ this.ProviderManager.prototype = Object.freeze({
    */
   unregisterProvider: function (name) {
     this._providers.delete(name);
+  },
+
+  /**
+   * Ensure that pull-only providers are registered.
+   */
+  ensurePullOnlyProvidersRegistered: function () {
+    if (this._pullOnlyProvidersRegistered) {
+      return CommonUtils.laterTickResolvingPromise();
+    }
+
+    let onFinished = function () {
+      this._pullOnlyProvidersRegistered = true;
+
+      return CommonUtils.laterTickResolvingPromise();
+    }.bind(this);
+
+    return Task.spawn(function registerPullProviders() {
+      for each (let providerType in this._pullOnlyProviders) {
+        try {
+          let provider = this._initProviderFromType(providerType);
+          yield this.registerProvider(provider);
+        } catch (ex) {
+          this._recordError("Error registering pull-only provider", ex);
+        }
+      }
+    }.bind(this)).then(onFinished, onFinished);
+  },
+
+  ensurePullOnlyProvidersUnregistered: function () {
+    if (!this._pullOnlyProvidersRegistered) {
+      return CommonUtils.laterTickResolvingPromise();
+    }
+
+    let onFinished = function () {
+      this._pullOnlyProvidersRegistered = false;
+
+      return CommonUtils.laterTickResolvingPromise();
+    }.bind(this);
+
+    return Task.spawn(function unregisterPullProviders() {
+      for (let provider of this.providers) {
+        if (!provider.pullOnly) {
+          continue;
+        }
+
+        this._log.info("Shutting down pull-only provider: " +
+                       provider.name);
+
+        try {
+          yield provider.shutdown();
+        } catch (ex) {
+          this._recordError("Error when shutting down provider: " +
+                            provider.name, ex);
+        } finally {
+          this.unregisterProvider(provider.name);
+        }
+      }
+    }.bind(this)).then(onFinished, onFinished);
   },
 
   _popAndInitProvider: function () {
@@ -201,7 +373,7 @@ this.ProviderManager.prototype = Object.freeze({
           }
         }
 
-        return Promise.resolve(result);
+        return CommonUtils.laterTickResolvingPromise(result);
       });
 
       promises.push([provider.name, promise]);
@@ -240,7 +412,7 @@ this.ProviderManager.prototype = Object.freeze({
   _recordProviderError: function (name, msg, ex) {
     let msg = "Provider error: " + name + ": " + msg;
     if (ex) {
-      msg += ": " + ex.message;
+      msg += ": " + CommonUtils.exceptionStr(ex);
     }
     this._log.warn(msg);
 

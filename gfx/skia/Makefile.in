@@ -10,7 +10,6 @@ VPATH		= @srcdir@
 
 include $(DEPTH)/config/autoconf.mk
 
-MODULE		= skia
 LIBRARY_NAME	= skia
 LIBXUL_LIBRARY  = 1
 EXPORT_LIBRARY  = 1
@@ -503,6 +502,7 @@ CPPSRCS += \
 	SkFontHost_sandbox_none.cpp \
 	SkTime_win.cpp \
 	$(NULL)
+DEFINES += -DSKIA_IMPLEMENTATION=1 -DGR_IMPLEMENTATION=1
 endif
 
 ifneq (,$(INTEL_ARCHITECTURE))

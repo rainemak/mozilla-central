@@ -589,11 +589,11 @@ TraceRuntime(JSTracer *trc);
 
 /* Must be called with GC lock taken. */
 extern void
-TriggerGC(JSRuntime *rt, js::gcreason::Reason reason);
+TriggerGC(JSRuntime *rt, JS::gcreason::Reason reason);
 
 /* Must be called with GC lock taken. */
 extern void
-TriggerZoneGC(Zone *zone, js::gcreason::Reason reason);
+TriggerZoneGC(Zone *zone, JS::gcreason::Reason reason);
 
 extern void
 MaybeGC(JSContext *cx);
@@ -613,13 +613,13 @@ typedef enum JSGCInvocationKind {
 } JSGCInvocationKind;
 
 extern void
-GC(JSRuntime *rt, JSGCInvocationKind gckind, js::gcreason::Reason reason);
+GC(JSRuntime *rt, JSGCInvocationKind gckind, JS::gcreason::Reason reason);
 
 extern void
-GCSlice(JSRuntime *rt, JSGCInvocationKind gckind, js::gcreason::Reason reason, int64_t millis = 0);
+GCSlice(JSRuntime *rt, JSGCInvocationKind gckind, JS::gcreason::Reason reason, int64_t millis = 0);
 
 extern void
-GCFinalSlice(JSRuntime *rt, JSGCInvocationKind gckind, js::gcreason::Reason reason);
+GCFinalSlice(JSRuntime *rt, JSGCInvocationKind gckind, JS::gcreason::Reason reason);
 
 extern void
 GCDebugSlice(JSRuntime *rt, bool limit, int64_t objCount);
@@ -1166,6 +1166,7 @@ void
 MarkStackRangeConservatively(JSTracer *trc, Value *begin, Value *end);
 
 typedef void (*IterateChunkCallback)(JSRuntime *rt, void *data, gc::Chunk *chunk);
+typedef void (*IterateZoneCallback)(JSRuntime *rt, void *data, JS::Zone *zone);
 typedef void (*IterateArenaCallback)(JSRuntime *rt, void *data, gc::Arena *arena,
                                      JSGCTraceKind traceKind, size_t thingSize);
 typedef void (*IterateCellCallback)(JSRuntime *rt, void *data, void *thing,
@@ -1177,10 +1178,11 @@ typedef void (*IterateCellCallback)(JSRuntime *rt, void *data, void *thing,
  * cell in the GC heap.
  */
 extern void
-IterateCompartmentsArenasCells(JSRuntime *rt, void *data,
-                               JSIterateCompartmentCallback compartmentCallback,
-                               IterateArenaCallback arenaCallback,
-                               IterateCellCallback cellCallback);
+IterateZonesCompartmentsArenasCells(JSRuntime *rt, void *data,
+                                    IterateZoneCallback zoneCallback,
+                                    JSIterateCompartmentCallback compartmentCallback,
+                                    IterateArenaCallback arenaCallback,
+                                    IterateCellCallback cellCallback);
 
 /*
  * Invoke chunkCallback on every in-use chunk.
@@ -1188,13 +1190,15 @@ IterateCompartmentsArenasCells(JSRuntime *rt, void *data,
 extern void
 IterateChunks(JSRuntime *rt, void *data, IterateChunkCallback chunkCallback);
 
+typedef void (*IterateScriptCallback)(JSRuntime *rt, void *data, JSScript *script);
+
 /*
- * Invoke cellCallback on every in-use object of the specified thing kind for
+ * Invoke scriptCallback on every in-use script for
  * the given compartment or for all compartments if it is null.
  */
 extern void
-IterateCells(JSRuntime *rt, JSCompartment *compartment, gc::AllocKind thingKind,
-             void *data, IterateCellCallback cellCallback);
+IterateScripts(JSRuntime *rt, JSCompartment *compartment,
+               void *data, IterateScriptCallback scriptCallback);
 
 } /* namespace js */
 
@@ -1208,10 +1212,11 @@ js_FinalizeStringRT(JSRuntime *rt, JSString *str);
     ((trc)->callback == NULL || (trc)->callback == GCMarker::GrayCallback)
 
 namespace js {
-namespace gc {
 
 JSCompartment *
-NewCompartment(JSContext *cx, JSPrincipals *principals);
+NewCompartment(JSContext *cx, JS::Zone *zone, JSPrincipals *principals);
+
+namespace gc {
 
 /* Tries to run a GC no matter what (used for GC zeal). */
 void
@@ -1278,7 +1283,7 @@ MaybeVerifyBarriers(JSContext *cx, bool always = false)
 } /* namespace gc */
 
 void
-PurgeJITCaches(JSCompartment *c);
+PurgeJITCaches(JS::Zone *zone);
 
 } /* namespace js */
 

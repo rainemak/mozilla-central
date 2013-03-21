@@ -671,35 +671,50 @@ JS::isGCEnabled()
 {
     return !TlsPerThreadData.get()->suppressGC;
 }
-
-JS_FRIEND_API(bool)
-JS::NeedRelaxedRootChecks()
-{
-    return TlsPerThreadData.get()->gcRelaxRootChecks;
-}
 #else
 JS_FRIEND_API(bool) JS::isGCEnabled() { return true; }
-JS_FRIEND_API(bool) JS::NeedRelaxedRootChecks() { return false; }
 #endif
 
 static const JSSecurityCallbacks NullSecurityCallbacks = { };
 
-js::PerThreadData::PerThreadData(JSRuntime *runtime)
+PerThreadData::PerThreadData(JSRuntime *runtime)
   : PerThreadDataFriendFields(),
     runtime_(runtime),
-#ifdef DEBUG
-    gcRelaxRootChecks(false),
-#endif
     ionTop(NULL),
     ionJSContext(NULL),
     ionStackLimit(0),
     ionActivation(NULL),
+    asmJSActivationStack_(NULL),
+# ifdef JS_THREADSAFE
+    asmJSActivationStackLock_(NULL),
+# endif
     suppressGC(0)
 {}
+
+bool
+PerThreadData::init()
+{
+#ifdef JS_THREADSAFE
+    asmJSActivationStackLock_ = PR_NewLock();
+    if (!asmJSActivationStackLock_)
+        return false;
+#endif
+    return true;
+}
+
+PerThreadData::~PerThreadData()
+{
+#ifdef JS_THREADSAFE
+    if (asmJSActivationStackLock_)
+        PR_DestroyLock(asmJSActivationStackLock_);
+#endif
+}
 
 JSRuntime::JSRuntime(JSUseHelperThreads useHelperThreads)
   : mainThread(this),
     atomsCompartment(NULL),
+    systemZone(NULL),
+    numCompartments(0),
     localeCallbacks(NULL),
     defaultLocale(NULL),
 #ifdef JS_THREADSAFE
@@ -760,7 +775,7 @@ JSRuntime::JSRuntime(JSUseHelperThreads useHelperThreads)
     gcNumber(0),
     gcStartNumber(0),
     gcIsFull(false),
-    gcTriggerReason(gcreason::NO_REASON),
+    gcTriggerReason(JS::gcreason::NO_REASON),
     gcStrictCompartmentChecking(false),
     gcDisableStrictProxyCheckingCount(0),
     gcIncrementalState(gc::NO_INCREMENTAL),
@@ -788,8 +803,10 @@ JSRuntime::JSRuntime(JSUseHelperThreads useHelperThreads)
     gcPoke(false),
     heapState(Idle),
 #ifdef JSGC_GENERATIONAL
-    gcNursery(),
-    gcStoreBuffer(&gcNursery),
+# ifdef JS_GC_ZEAL
+    gcVerifierNursery(),
+# endif
+    gcStoreBuffer(thisFromCtor()),
 #endif
 #ifdef JS_GC_ZEAL
     gcZeal_(0),
@@ -883,6 +900,9 @@ JSRuntime::init(uint32_t maxbytes)
     ownerThread_ = PR_GetCurrentThread();
 #endif
 
+    if (!mainThread.init())
+        return false;
+
     js::TlsPerThreadData.set(&mainThread);
 
 #ifdef JS_METHODJIT_SPEW
@@ -899,16 +919,23 @@ JSRuntime::init(uint32_t maxbytes)
     if (size)
         SetMarkStackLimit(this, atoi(size));
 
-    if (!(atomsCompartment = this->new_<JSCompartment>(this)) ||
-        !atomsCompartment->init(NULL) ||
-        !compartments.append(atomsCompartment))
-    {
-        js_delete(atomsCompartment);
+    ScopedJSDeletePtr<Zone> atomsZone(new_<Zone>(this));
+    if (!atomsZone)
         return false;
-    }
 
-    atomsCompartment->zone()->isSystem = true;
-    atomsCompartment->zone()->setGCLastBytes(8192, GC_NORMAL);
+    ScopedJSDeletePtr<JSCompartment> atomsCompartment(new_<JSCompartment>(atomsZone.get()));
+    if (!atomsCompartment || !atomsCompartment->init(NULL))
+        return false;
+
+    zones.append(atomsZone.get());
+    atomsZone->compartments.append(atomsCompartment.get());
+
+    atomsCompartment->isSystem = true;
+    atomsZone->isSystem = true;
+    atomsZone->setGCLastBytes(8192, GC_NORMAL);
+
+    atomsZone.forget();
+    this->atomsCompartment = atomsCompartment.forget();
 
     if (!InitAtoms(this))
         return false;
@@ -923,9 +950,6 @@ JSRuntime::init(uint32_t maxbytes)
     dateTimeInfo.updateTimeZoneAdjustment();
 
     if (!stackSpace.init())
-        return false;
-
-    if (!scriptFilenameTable.init())
         return false;
 
     if (!scriptDataTable.init())
@@ -956,7 +980,6 @@ JSRuntime::~JSRuntime()
      * Even though all objects in the compartment are dead, we may have keep
      * some filenames around because of gcKeepAtoms.
      */
-    FreeScriptFilenames(this);
     FreeScriptData(this);
 
 #ifdef JS_THREADSAFE
@@ -1453,14 +1476,6 @@ JSAutoCompartment::JSAutoCompartment(JSContext *cx, JSRawObject target)
 }
 
 JSAutoCompartment::JSAutoCompartment(JSContext *cx, JSScript *target)
-  : cx_(cx),
-    oldCompartment_(cx->compartment)
-{
-    AssertHeapIsIdleOrIterating(cx_);
-    cx_->enterCompartment(target->compartment());
-}
-
-JSAutoCompartment::JSAutoCompartment(JSContext *cx, JSString *target)
   : cx_(cx),
     oldCompartment_(cx->compartment)
 {
@@ -2540,7 +2555,7 @@ JS_GetTraceThingInfo(char *buf, size_t bufsize, JSTracer *trc, void *thing,
           case JSTRACE_SCRIPT:
           {
             JSScript *script = static_cast<JSScript *>(thing);
-            JS_snprintf(buf, bufsize, " %s:%u", script->filename, unsigned(script->lineno));
+            JS_snprintf(buf, bufsize, " %s:%u", script->filename(), unsigned(script->lineno));
             break;
           }
 
@@ -2810,8 +2825,8 @@ JS_PUBLIC_API(void)
 JS_GC(JSRuntime *rt)
 {
     AssertHeapIsIdle(rt);
-    PrepareForFullGC(rt);
-    GC(rt, GC_NORMAL, gcreason::API);
+    JS::PrepareForFullGC(rt);
+    GC(rt, GC_NORMAL, JS::gcreason::API);
 }
 
 JS_PUBLIC_API(void)
@@ -3260,17 +3275,18 @@ JS_GetObjectId(JSContext *cx, JSRawObject obj, jsid *idp)
     return JS_TRUE;
 }
 
-class AutoHoldCompartment {
+class AutoHoldZone
+{
   public:
-    explicit AutoHoldCompartment(JSCompartment *compartment
-                                 MOZ_GUARD_OBJECT_NOTIFIER_PARAM)
-      : holdp(&compartment->hold)
+    explicit AutoHoldZone(Zone *zone
+                          MOZ_GUARD_OBJECT_NOTIFIER_PARAM)
+      : holdp(&zone->hold)
     {
         MOZ_GUARD_OBJECT_NOTIFIER_INIT;
         *holdp = true;
     }
 
-    ~AutoHoldCompartment() {
+    ~AutoHoldZone() {
         *holdp = false;
     }
 
@@ -3280,17 +3296,32 @@ class AutoHoldCompartment {
 };
 
 JS_PUBLIC_API(JSObject *)
-JS_NewGlobalObject(JSContext *cx, JSClass *clasp, JSPrincipals *principals)
+JS_NewGlobalObject(JSContext *cx, JSClass *clasp, JSPrincipals *principals, JS::ZoneSpecifier zoneSpec)
 {
     AssertHeapIsIdle(cx);
     CHECK_REQUEST(cx);
     JS_THREADSAFE_ASSERT(cx->compartment != cx->runtime->atomsCompartment);
 
-    JSCompartment *compartment = NewCompartment(cx, principals);
+    JSRuntime *rt = cx->runtime;
+
+    Zone *zone;
+    if (zoneSpec == JS::SystemZone)
+        zone = rt->systemZone;
+    else if (zoneSpec == JS::FreshZone)
+        zone = NULL;
+    else
+        zone = ((JSObject *)zoneSpec)->zone();
+
+    JSCompartment *compartment = NewCompartment(cx, zone, principals);
     if (!compartment)
         return NULL;
 
-    AutoHoldCompartment hold(compartment);
+    if (zoneSpec == JS::SystemZone) {
+        rt->systemZone = compartment->zone();
+        rt->systemZone->isSystem = true;
+    }
+
+    AutoHoldZone hold(compartment->zone());
 
     JSCompartment *saved = cx->compartment;
     cx->setCompartment(compartment);
@@ -4396,8 +4427,8 @@ JS_DeleteProperty(JSContext *cx, JSObject *objArg, const char *name)
 static RawShape
 LastConfigurableShape(JSObject *obj)
 {
-    for (Shape::Range r(obj->lastProperty()->all()); !r.empty(); r.popFront()) {
-        RawShape shape = &r.front();
+    for (Shape::Range<NoGC> r(obj->lastProperty()); !r.empty(); r.popFront()) {
+        Shape *shape = &r.front();
         if (shape->configurable())
             return shape;
     }
@@ -4425,8 +4456,8 @@ JS_ClearNonGlobalObject(JSContext *cx, JSObject *objArg)
     }
 
     /* Set all remaining writable plain data properties to undefined. */
-    for (Shape::Range r(obj->lastProperty()->all()); !r.empty(); r.popFront()) {
-        RawShape shape = &r.front();
+    for (Shape::Range<NoGC> r(obj->lastProperty()); !r.empty(); r.popFront()) {
+        Shape *shape = &r.front();
         if (shape->isDataDescriptor() &&
             shape->writable() &&
             shape->hasDefaultSetter() &&
@@ -4799,6 +4830,11 @@ JS_CloneFunctionObject(JSContext *cx, JSObject *funobjArg, JSRawObject parentArg
     }
 
     if (fun->isBoundFunction()) {
+        JS_ReportErrorNumber(cx, js_GetErrorMessage, NULL, JSMSG_CANT_CLONE_OBJECT);
+        return NULL;
+    }
+
+    if (fun->hasScript() && fun->nonLazyScript()->asmJS) {
         JS_ReportErrorNumber(cx, js_GetErrorMessage, NULL, JSMSG_CANT_CLONE_OBJECT);
         return NULL;
     }
@@ -5498,6 +5534,8 @@ JS_ExecuteScriptVersion(JSContext *cx, JSObject *objArg, JSScript *script, jsval
     return JS_ExecuteScript(cx, obj, script, rval);
 }
 
+static const unsigned LARGE_SCRIPT_LENGTH = 500*1024;
+
 extern JS_PUBLIC_API(bool)
 JS::Evaluate(JSContext *cx, HandleObject obj, CompileOptions options,
              const jschar *chars, size_t length, jsval *rval)
@@ -5530,6 +5568,18 @@ JS::Evaluate(JSContext *cx, HandleObject obj, CompileOptions options,
     bool result = Execute(cx, script, *obj, rval);
     if (!sct.complete())
         result = false;
+
+    // After evaluation, the compiled script will not be run again.
+    // script->ensureRanAnalysis allocated 1 analyze::Bytecode for every opcode
+    // which for large scripts means significant memory. Perform a GC eagerly
+    // to clear out this analysis data before anything happens to inhibit the
+    // flushing of this memory (such as setting requestAnimationFrame).
+    if (script->length > LARGE_SCRIPT_LENGTH) {
+        script = NULL;
+        PrepareZoneForGC(cx->zone());
+        GC(cx->runtime, GC_NORMAL, gcreason::FINISH_LARGE_EVALUTE);
+    }
+
     return result;
 }
 
@@ -5956,10 +6006,13 @@ JS_GetStringCharsZ(JSContext *cx, JSString *str)
 JS_PUBLIC_API(const jschar *)
 JS_GetStringCharsZAndLength(JSContext *cx, JSString *str, size_t *plength)
 {
+    /*
+     * Don't require |cx->compartment| to be |str|'s compartment. We don't need
+     * it, and it's annoying for callers.
+     */
     JS_ASSERT(plength);
     AssertHeapIsIdleOrStringIsFlat(cx, str);
     CHECK_REQUEST(cx);
-    assertSameCompartment(cx, str);
     JSFlatString *flat = str->ensureFlat(cx);
     if (!flat)
         return NULL;
@@ -6199,7 +6252,7 @@ JS_ParseJSON(JSContext *cx, const jschar *chars, uint32_t len, jsval *vp)
     CHECK_REQUEST(cx);
 
     RootedValue reviver(cx, NullValue()), value(cx);
-    if (!ParseJSONWithReviver(cx, StableCharPtr(chars, len), len, reviver, &value))
+    if (!ParseJSONWithReviver(cx, JS::StableCharPtr(chars, len), len, reviver, &value))
         return false;
 
     *vp = value;

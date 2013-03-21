@@ -4,3 +4,12 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 TOOL_DIRS += ['tests']
+
+XPIDL_SOURCES += [
+    'nsIEmbedAppService.idl',
+    'nsIEmbedLiteJSON.idl',
+    'nsIEmbedBrowserChromeListener.idl',
+]
+
+XPIDL_MODULE = 'embedLite'
+MODULE = 'embedlite'

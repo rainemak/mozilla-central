@@ -9,10 +9,8 @@ VPATH     = @srcdir@
 
 include $(DEPTH)/config/autoconf.mk
 
-MODULE         = necko
 LIBRARY_NAME   = neckowifi_s
 LIBXUL_LIBRARY = 1
-XPIDL_MODULE   = necko_wifi
 GRE_MODULE     = 1
 
 FORCE_STATIC_LIB = 1
@@ -21,12 +19,6 @@ ifneq ($(OS_ARCH),Darwin)
 # osx_corewlan.mm has warnings I don't understand.
 FAIL_ON_WARNINGS := 1
 endif
-
-XPIDLSRCS = \
-  nsIWifiAccessPoint.idl \
-  nsIWifiListener.idl \
-  nsIWifiMonitor.idl \
-  $(NULL)
 
 ifeq (gonk,$(MOZ_WIDGET_TOOLKIT))
 CPPSRCS += nsWifiMonitorGonk.cpp
@@ -39,20 +31,24 @@ CPPSRCS += nsWifiAccessPoint.cpp
 ifeq ($(OS_ARCH),Darwin)
 CPPSRCS += nsWifiScannerMac.cpp
 CMMSRCS = osx_corewlan.mm
+DEFINES += -DHAS_WIFI_SCANNER=1
 endif
 
 ifneq (,$(filter WINNT,$(OS_ARCH)))
 CPPSRCS += nsWifiScannerWin.cpp
+DEFINES += -DHAS_WIFI_SCANNER=1
 endif
 
 ifeq ($(OS_ARCH),SunOS)
 CPPSRCS += nsWifiScannerSolaris.cpp
 OS_INCLUDES += $(GLIB_CFLAGS)
+DEFINES += -DHAS_WIFI_SCANNER=1
 endif
 
 ifdef MOZ_ENABLE_DBUS
 CPPSRCS += nsWifiScannerDBus.cpp
 OS_INCLUDES += $(MOZ_DBUS_GLIB_CFLAGS)
+DEFINES += -DHAS_WIFI_SCANNER=1
 endif
 
 include $(topsrcdir)/config/rules.mk

@@ -30,7 +30,6 @@
 #include "jsproxy.h"
 #include "jsscript.h"
 
-#include "builtin/ParallelArray.h"
 #include "ds/Sort.h"
 #include "frontend/TokenStream.h"
 #include "gc/Marking.h"
@@ -41,7 +40,6 @@
 #include "jsobjinlines.h"
 
 #include "builtin/Iterator-inl.h"
-#include "builtin/ParallelArray-inl.h"
 #include "vm/Stack-inl.h"
 #include "vm/String-inl.h"
 
@@ -142,8 +140,7 @@ EnumerateNativeProperties(JSContext *cx, HandleObject pobj, unsigned flags, IdSe
     size_t initialLength = props->length();
 
     /* Collect all unique properties from this object's scope. */
-    Shape::Range r = pobj->lastProperty()->all();
-    Shape::Range::AutoRooter root(cx, &r);
+    Shape::Range<NoGC> r(pobj->lastProperty());
     for (; !r.empty(); r.popFront()) {
         Shape &shape = r.front();
 
@@ -203,14 +200,6 @@ Snapshot(JSContext *cx, RawObject pobj_, unsigned flags, AutoIdVector *props)
                 return false;
             if (!EnumerateNativeProperties(cx, pobj, flags, ht, props))
                 return false;
-        } else if (ParallelArrayObject::is(pobj)) {
-            if (!ParallelArrayObject::enumerate(cx, pobj, flags, props))
-                return false;
-            /*
-             * ParallelArray objects enumerate the prototype on their own, so
-             * we are done here.
-             */
-            break;
         } else {
             if (pobj->isProxy()) {
                 AutoIdVector proxyProps(cx);

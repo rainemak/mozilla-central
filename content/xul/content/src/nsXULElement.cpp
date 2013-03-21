@@ -21,7 +21,6 @@
 #include "nsError.h"
 #include "nsDOMString.h"
 #include "nsIDOMEvent.h"
-#include "nsHashtable.h"
 #include "nsIAtom.h"
 #include "nsIBaseWindow.h"
 #include "nsIDOMAttr.h"
@@ -1935,9 +1934,9 @@ nsXULElement::IsEventAttributeName(nsIAtom *aName)
 }
 
 JSObject*
-nsXULElement::WrapNode(JSContext *aCx, JSObject *aScope, bool *aTriedToWrap)
+nsXULElement::WrapNode(JSContext *aCx, JSObject *aScope)
 {
-    return dom::XULElementBinding::Wrap(aCx, aScope, this, aTriedToWrap);
+    return dom::XULElementBinding::Wrap(aCx, aScope, this);
 }
 
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(nsXULPrototypeNode)
