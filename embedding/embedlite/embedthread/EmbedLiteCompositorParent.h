@@ -48,7 +48,9 @@ protected:
   virtual void SetFirstPaintViewport(const nsIntPoint& aOffset, float aZoom, const nsIntRect& aPageRect, const gfx::Rect& aCssPageRect);
   virtual void SetPageRect(const gfx::Rect& aCssPageRect);
   virtual void SyncViewportInfo(const nsIntRect& aDisplayPort, float aDisplayResolution, bool aLayersUpdated,
-                                nsIntPoint& aScrollOffset, float& aScaleX, float& aScaleY);
+                                nsIntPoint& aScrollOffset, float& aScaleX, float& aScaleY,
+                                gfx::Margin& aFixedLayerMargins);
+
   bool IsGLBackend();
 
   RefPtr<EmbedLiteViewThreadParent> mView;

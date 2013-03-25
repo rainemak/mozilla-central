@@ -202,7 +202,8 @@ void EmbedLiteCompositorParent::SetPageRect(const gfx::Rect& aCssPageRect)
 void
 EmbedLiteCompositorParent::SyncViewportInfo(const nsIntRect& aDisplayPort, float aDisplayResolution,
                                             bool aLayersUpdated, nsIntPoint& aScrollOffset,
-                                            float& aScaleX, float& aScaleY)
+                                            float& aScaleX, float& aScaleY,
+                                            gfx::Margin& aFixedLayerMargins)
 {
   LOGT("t");
   EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);

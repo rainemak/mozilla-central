@@ -127,7 +127,7 @@ private:
   bool mIMEComposing;
 
   nsDataHashtable<nsStringHashKey, bool/*start with key*/> mRegisteredMessages;
-  nsTArray<RefPtr<mozilla::layers::GeckoContentController>> mControllerListeners;
+  nsTArray<mozilla::layers::GeckoContentController*> mControllerListeners;
 
   DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadChild);
 };

@@ -168,8 +168,11 @@ EmbedLiteViewThreadParent::~EmbedLiteViewThreadParent()
     mGeckoController->ClearRenderFrame();
   }
   if (mController) {
+    mController->SetCompositorParent(nullptr);
     mController->Destroy();
+    mController = nullptr;
   }
+
   if (mView) {
     mView->SetImpl(NULL);
   }
@@ -622,7 +625,7 @@ EmbedLiteViewThreadParent::SetGLViewPortSize(int width, int height)
   if (mCompositor) {
     mCompositor->SetSurfaceSize(width, height);
   }
-  SendSetGLViewSize(mGLViewPortSize);
+  unused << SendSetGLViewSize(mGLViewPortSize);
 }
 
 void
