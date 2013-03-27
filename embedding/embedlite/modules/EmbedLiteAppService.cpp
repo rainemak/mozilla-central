@@ -28,12 +28,37 @@
 #include "nsIBaseWindow.h"
 #include "nsIWebBrowser.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
+#include "mozilla/embedlite/EmbedLog.h"
 
 using namespace mozilla;
 using namespace mozilla::embedlite;
 
+namespace
+{
+  class AsyncArrayRemove : public nsRunnable
+  {
+  protected:
+    nsCString mName;
+    nsRefPtr<EmbedLiteAppService> mService;
+    nsCOMPtr<nsIEmbedMessageListener> mListener;
+  public:
+    AsyncArrayRemove(EmbedLiteAppService* service, const char* name, nsIEmbedMessageListener* aListener)
+      : mName(name)
+      , mService(service)
+      , mListener(aListener)
+    {
+    }
+
+    NS_IMETHOD Run()
+    {
+        return mService->RemoveMessageListener(mName.get(), mListener);
+    }
+  };
+}
+
 EmbedLiteAppService::EmbedLiteAppService()
   : mPushedSomething(0)
+  , mHandlingMessages(false)
 {
   mMessageListeners.Init();
 }
@@ -139,6 +164,13 @@ EmbedLiteAppService::AddMessageListener(const char* name, nsIEmbedMessageListene
 NS_IMETHODIMP
 EmbedLiteAppService::RemoveMessageListener(const char* name, nsIEmbedMessageListener* aListener)
 {
+  if (mHandlingMessages) {
+    nsCOMPtr<nsIRunnable> event =
+      new AsyncArrayRemove(this, name, aListener);
+    NS_DispatchToMainThread(event, NS_DISPATCH_NORMAL);
+    return NS_OK;
+  }
+
   nsTArray<nsCOMPtr<nsIEmbedMessageListener> >* array;
   nsDependentCString cstrname(name);
   if (!mMessageListeners.Get(cstrname, &array)) {
@@ -162,6 +194,9 @@ EmbedLiteAppService::RemoveMessageListener(const char* name, nsIEmbedMessageList
 void
 EmbedLiteAppService::HandleAsyncMessage(const char* aMessage, const nsString& aData)
 {
+  mozilla::AutoRestore<bool> setVisited(mHandlingMessages);
+  mHandlingMessages = true;
+
   nsTArray<nsCOMPtr<nsIEmbedMessageListener> >* array;
   if (!mMessageListeners.Get(nsDependentCString(aMessage), &array)) {
     return;

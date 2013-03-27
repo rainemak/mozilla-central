@@ -34,9 +34,10 @@ private:
   friend class EmbedLiteJSON;
   JSContext* GetAnyJSContext(uint32_t aWinID);
   std::map<uint64_t, uint32_t> mIDMap;
-  nsClassHashtable<nsCStringHashKey,
-                   nsTArray<nsCOMPtr<nsIEmbedMessageListener> > > mMessageListeners;
+  typedef nsClassHashtable<nsCStringHashKey, nsTArray<nsCOMPtr<nsIEmbedMessageListener> > > MsgListenersArray;
+  MsgListenersArray mMessageListeners;
   int mPushedSomething;
+  bool mHandlingMessages;
 };
 
 #define NS_EMBED_LITE_APP_CONTRACTID "@mozilla.org/embedlite-app-service;1"
