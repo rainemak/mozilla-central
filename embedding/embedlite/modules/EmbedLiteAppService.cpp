@@ -115,7 +115,9 @@ EmbedLiteAppService::SendSyncMessage(uint32_t aId, const PRUnichar* messageName,
   NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
   InfallibleTArray<nsString> retvalArray;
   view->DoSendSyncMessage(messageName, message, &retvalArray);
-  retval = retvalArray[0];
+  if (!retvalArray.IsEmpty()) {
+    retval = retvalArray[0];
+  }
   return NS_OK;
 }
 

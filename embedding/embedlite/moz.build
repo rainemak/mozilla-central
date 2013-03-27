@@ -12,4 +12,4 @@ XPIDL_SOURCES += [
 ]
 
 XPIDL_MODULE = 'embedLite'
-MODULE = 'embedlite'
+MODULE = 'embedLite'

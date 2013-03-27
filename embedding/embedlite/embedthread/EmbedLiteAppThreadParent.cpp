@@ -27,8 +27,9 @@ EmbedLiteAppThreadParent::GetInstance()
   return sAppThreadParent;
 }
 
-EmbedLiteAppThreadParent::EmbedLiteAppThreadParent()
+EmbedLiteAppThreadParent::EmbedLiteAppThreadParent(MessageLoop* aParentLoop)
   : mApp(EmbedLiteApp::GetInstance())
+  , mParentLoop(aParentLoop)
 {
   LOGT();
   MOZ_COUNT_CTOR(EmbedLiteAppThreadParent);

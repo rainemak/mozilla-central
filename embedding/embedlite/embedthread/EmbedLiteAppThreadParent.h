@@ -16,7 +16,7 @@ class EmbedLiteAppThreadParent : public PEmbedLiteAppParent
 {
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(EmbedLiteAppThreadParent)
 public:
-  EmbedLiteAppThreadParent();
+  EmbedLiteAppThreadParent(MessageLoop* aParentLoop);
   virtual ~EmbedLiteAppThreadParent();
 
   virtual void SetBoolPref(const char* aName, bool aValue);
@@ -44,6 +44,8 @@ public:
 
   static EmbedLiteAppThreadParent* GetInstance();
 
+  MessageLoop* GetParentLoop() { return mParentLoop; }
+
 protected:
   virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
   virtual PEmbedLiteViewParent* AllocPEmbedLiteView(const uint32_t&, const uint32_t&);
@@ -51,6 +53,7 @@ protected:
 
 private:
   EmbedLiteApp* mApp;
+  MessageLoop* mParentLoop;
 
 private:
   DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteAppThreadParent);

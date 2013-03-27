@@ -47,7 +47,9 @@ EmbedLiteView::~EmbedLiteView()
     mViewImpl->ViewAPIDestroyed();
   }
   mViewImpl = NULL;
-  mListener->ViewDestroyed();
+  if (mListener) {
+    mListener->ViewDestroyed();
+  }
 }
 
 void

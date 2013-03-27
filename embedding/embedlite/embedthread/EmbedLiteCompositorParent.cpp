@@ -113,9 +113,22 @@ void EmbedLiteCompositorParent::SetClipping(const gfxRect& aClipRect)
 
 static void DeferredDestroyCompositor(EmbedLiteCompositorParent* aCompositorParent, uint32_t id)
 {
-  LOGT();
-  aCompositorParent->GetChildCompositor()->Release();
-  aCompositorParent->Release();
+  if (aCompositorParent->GetChildCompositor()) {
+    // First iteration, if child compositor available
+    // Destroy it from current Child Message Loop and
+    // Post task for Parent Compositor destroy in Parent MessageLoop
+    NS_ASSERTION(MessageLoop::current() != EmbedLiteAppThreadParent::GetInstance()->GetParentLoop(),
+                 "CompositorChild must be destroyed from Child Message Loop");
+    aCompositorParent->GetChildCompositor()->Release();
+    aCompositorParent->SetChildCompositor(nullptr, nullptr);
+    EmbedLiteAppThreadParent::GetInstance()->GetParentLoop()->PostTask(FROM_HERE,
+        NewRunnableFunction(DeferredDestroyCompositor, aCompositorParent, id));
+  } else {
+    NS_ASSERTION(MessageLoop::current() == EmbedLiteAppThreadParent::GetInstance()->GetParentLoop(),
+                 "CompositorParent must be destroyed from Parent Message Loop");
+    // Finally destroy Parent compositor
+    aCompositorParent->Release();
+  }
 }
 
 void
@@ -129,9 +142,11 @@ EmbedLiteCompositorParent::SetChildCompositor(CompositorChild* aCompositorChild,
 bool EmbedLiteCompositorParent::RecvStop()
 {
   LOGT("t: childComp:%p, mChildMessageLoop:%p, curLoop:%p", mChildCompositor.get(), MessageLoop::current());
+  Destroy();
+  // Delegate destroy of Child/Parent compositor in delayed task in order to avoid Child loop having dead objects
   mChildMessageLoop->PostTask(FROM_HERE,
                               NewRunnableFunction(DeferredDestroyCompositor, this, mId));
-  return CompositorParent::RecvStop();
+  return true;
 }
 
 void EmbedLiteCompositorParent::ShadowLayersUpdated(ShadowLayersParent* aLayerTree,

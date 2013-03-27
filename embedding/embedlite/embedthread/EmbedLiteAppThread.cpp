@@ -30,7 +30,7 @@ void
 EmbedLiteAppThread::Init()
 {
   LOGT();
-  mParentThread = new EmbedLiteAppThreadParent();
+  mParentThread = new EmbedLiteAppThreadParent(mParentLoop);
   mChildThread = new EmbedLiteAppThreadChild(mParentLoop);
   mChildThread->Init(mParentThread);
 }

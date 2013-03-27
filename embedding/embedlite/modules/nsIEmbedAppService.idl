@@ -37,11 +37,11 @@ interface nsIEmbedMessageListener : nsISupports
 interface nsIEmbedAppService : nsISupports
 {
     // Get Embed View ID by DOMWindow
-    void getIDByWindow(in nsIDOMWindow aWin, out uint32_t aId);
+    void getIDByWindow(in nsIDOMWindow aWin, [retval] out uint32_t aId);
     // Send JSON Message to Embed View with related View ID
     void sendAsyncMessage(in uint32_t aId, in wstring messageName, in wstring message);
     void sendSyncMessage(in uint32_t aId, in wstring messageName, in wstring message,
-                         out AString retval);
+                         [retval] out AString retval);
     // Subscribe to specific JSON Message which EmbedView posting to content from UI
     void addMessageListener(in string name, in nsIEmbedMessageListener listener);
     // Un Subscribe from specific JSON Message which EmbedView posting to content from UI
@@ -54,7 +54,7 @@ interface nsIEmbedAppService : nsISupports
     [noscript] void addContentListener(in uint32_t aId, in GeckoContentController listener);
     [noscript] void removeContentListener(in uint32_t aId, in GeckoContentController listener);
     // Get EmbedLite nsIWebBrowser by unique ID
-    void getBrowserByID(in uint32_t aId, out nsIWebBrowser outBrowser);
+    void getBrowserByID(in uint32_t aId, [retval] out nsIWebBrowser outBrowser);
 
     // Simple interface which allow to send JSON message from XPCOM C++ components to related JS Frame script which handle this message
     void sendAsyncMessageLocal(in uint32_t aId, in wstring messageName, in wstring message);

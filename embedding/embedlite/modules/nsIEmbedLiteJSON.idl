@@ -24,7 +24,7 @@
 [scriptable, uuid(40c612f8-6b80-11e2-bd12-5f5e1c40dd30)]
 interface nsIEmbedLiteJSON : nsISupports
 {
-    void createObject(out nsIWritablePropertyBag2 aObject);
-    void ParseJSON(in AString aJSON, out nsIPropertyBag2 aRoot);
-    void CreateJSON(in nsIPropertyBag aRoot, out AString outJson);
+    void createObject([retval] out nsIWritablePropertyBag2 aObject);
+    void ParseJSON(in AString aJSON, [retval] out nsIPropertyBag2 aRoot);
+    void CreateJSON(in nsIPropertyBag aRoot, [retval] out AString outJson);
 };
