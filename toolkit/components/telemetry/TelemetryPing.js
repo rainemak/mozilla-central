@@ -771,7 +771,10 @@ TelemetryPing.prototype = {
     } catch (e) {
       // Preference was not set.
     }
-    let thisBuildID = Services.appinfo.appBuildID;
+    let thisBuildID = undefined;
+    try {
+      thisBuildID = Services.appinfo.appBuildID;
+    } catch (e) {}
     // If there is no previousBuildID preference, this._previousBuildID remains
     // undefined so no value is sent in the telemetry metadata.
     if (previousBuildID != thisBuildID) {

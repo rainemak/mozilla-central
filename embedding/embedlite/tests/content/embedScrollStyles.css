@@ -347,8 +347,6 @@ xul|menulist {
   min-width: 1.27mozmm;
 }
 
-@namespace url(http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul);
-
 /* video controls */
 .controlsOverlay {
   -moz-box-pack: center;
