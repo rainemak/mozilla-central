@@ -55,7 +55,7 @@ def attributeVariableTypeAndName(a):
         l = ["nsCOMPtr<%s> %s" % (a.realtype.nativeType('in').strip('* '),
                    a.name)]
     elif a.realtype.nativeType('in').count("nsAString"):
-        l = ["nsAutoString %s" % a.name]
+        l = ["nsString %s" % a.name]
     elif a.realtype.nativeType('in').count("JS::Value"):
         l = ["JS::Value %s" % a.name]
     else:
@@ -373,7 +373,7 @@ def write_cpp(iface, fd):
                  iface.base)
         fd.write("  NS_ENSURE_SUCCESS(rv, rv);\n")
 
-    fd.write("  JSBool found = PR_FALSE;\n")
+    fd.write("  JSBool found = JS_FALSE;\n")
     needjsval = False
     needccx = False
     for a in attributes:

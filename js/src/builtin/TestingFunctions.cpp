@@ -177,6 +177,14 @@ GetBuildConfiguration(JSContext *cx, unsigned argc, jsval *vp)
     if (!JS_SetProperty(cx, info, "methodjit", &value))
         return false;
 
+#ifdef ENABLE_PARALLEL_JS
+    value = BooleanValue(true);
+#else
+    value = BooleanValue(false);
+#endif
+    if (!JS_SetProperty(cx, info, "parallelJS", &value))
+        return false;
+
     *vp = ObjectValue(*info);
     return true;
 }
@@ -575,8 +583,8 @@ NondeterminsticGetWeakMapKeys(JSContext *cx, unsigned argc, jsval *vp)
                              InformalValueTypeName(args[0]));
         return false;
     }
-    JSObject *arr;
-    if (!JS_NondeterministicGetWeakMapKeys(cx, &args[0].toObject(), &arr))
+    RootedObject arr(cx);
+    if (!JS_NondeterministicGetWeakMapKeys(cx, &args[0].toObject(), arr.address()))
         return false;
     if (!arr) {
         JS_ReportErrorNumber(cx, js_GetErrorMessage, NULL, JSMSG_NOT_EXPECTED_TYPE,

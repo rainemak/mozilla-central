@@ -70,12 +70,12 @@ static inline bool IsLibXulInThePath(const char* path, std::string& xpcomPath)
 {
   xpcomPath = path;
 #ifdef XP_UNIX
-  xpcomPath += "/libxpcom";
+  xpcomPath += "/libxul";
   xpcomPath += MOZ_DLL_SUFFIX;
   struct stat buf;
   return !stat(xpcomPath.c_str(), &buf);
 #else
-  xpcomPath += "/xpcom";
+  xpcomPath += "/xul";
   xpcomPath += MOZ_DLL_SUFFIX;
   NS_ERROR("Not implemented file detection for windows");
   return true;

@@ -37,6 +37,8 @@ import java.nio.ByteBuffer;
 public class GeckoEvent {
     private static final String LOGTAG = "GeckoEvent";
 
+    // Make sure to keep these values in sync with the enum in
+    // AndroidGeckoEvent in widget/android/AndroidJavaWrapper.h
     private static final int NATIVE_POKE = 0;
     private static final int KEY_EVENT = 1;
     private static final int MOTION_EVENT = 2;
@@ -45,22 +47,20 @@ public class GeckoEvent {
     private static final int IME_EVENT = 6;
     private static final int DRAW = 7;
     private static final int SIZE_CHANGED = 8;
-    private static final int ACTIVITY_STOPPING = 9;
-    private static final int ACTIVITY_PAUSING = 10;
-    private static final int ACTIVITY_SHUTDOWN = 11;
+    private static final int APP_BACKGROUNDING = 9;
+    private static final int APP_FOREGROUNDING = 10;
     private static final int LOAD_URI = 12;
     private static final int NOOP = 15;
-    private static final int ACTIVITY_START = 17;
     private static final int BROADCAST = 19;
     private static final int VIEWPORT = 20;
     private static final int VISITED = 21;
     private static final int NETWORK_CHANGED = 22;
-    private static final int ACTIVITY_RESUMING = 24;
     private static final int THUMBNAIL = 25;
     private static final int SCREENORIENTATION_CHANGED = 27;
-    private static final int COMPOSITOR_PAUSE = 28;
-    private static final int COMPOSITOR_RESUME = 29;
-    private static final int NATIVE_GESTURE_EVENT = 30;
+    private static final int COMPOSITOR_CREATE = 28;
+    private static final int COMPOSITOR_PAUSE = 29;
+    private static final int COMPOSITOR_RESUME = 30;
+    private static final int NATIVE_GESTURE_EVENT = 31;
 
     /**
      * These DOM_KEY_LOCATION constants mirror the DOM KeyboardEvent's constants.
@@ -148,36 +148,19 @@ public class GeckoEvent {
 
     private ByteBuffer mBuffer;
 
+    private int mWidth;
+    private int mHeight;
+
     private GeckoEvent(int evType) {
         mType = evType;
     }
 
-    public static GeckoEvent createPauseEvent(boolean isApplicationInBackground) {
-        GeckoEvent event = new GeckoEvent(ACTIVITY_PAUSING);
-        event.mFlags = isApplicationInBackground ? 0 : 1;
-        return event;
+    public static GeckoEvent createAppBackgroundingEvent() {
+        return new GeckoEvent(APP_BACKGROUNDING);
     }
 
-    public static GeckoEvent createResumeEvent(boolean isApplicationInBackground) {
-        GeckoEvent event = new GeckoEvent(ACTIVITY_RESUMING);
-        event.mFlags = isApplicationInBackground ? 0 : 1;
-        return event;
-    }
-
-    public static GeckoEvent createStoppingEvent(boolean isApplicationInBackground) {
-        GeckoEvent event = new GeckoEvent(ACTIVITY_STOPPING);
-        event.mFlags = isApplicationInBackground ? 0 : 1;
-        return event;
-    }
-
-    public static GeckoEvent createStartEvent(boolean isApplicationInBackground) {
-        GeckoEvent event = new GeckoEvent(ACTIVITY_START);
-        event.mFlags = isApplicationInBackground ? 0 : 1;
-        return event;
-    }
-
-    public static GeckoEvent createShutdownEvent() {
-        return new GeckoEvent(ACTIVITY_SHUTDOWN);
+    public static GeckoEvent createAppForegroundingEvent() {
+        return new GeckoEvent(APP_FOREGROUNDING);
     }
 
     public static GeckoEvent createNoOpEvent() {
@@ -187,6 +170,13 @@ public class GeckoEvent {
     public static GeckoEvent createKeyEvent(KeyEvent k, int metaState) {
         GeckoEvent event = new GeckoEvent(KEY_EVENT);
         event.initKeyEvent(k, metaState);
+        return event;
+    }
+
+    public static GeckoEvent createCompositorCreateEvent(int width, int height) {
+        GeckoEvent event = new GeckoEvent(COMPOSITOR_CREATE);
+        event.mWidth = width;
+        event.mHeight = height;
         return event;
     }
 

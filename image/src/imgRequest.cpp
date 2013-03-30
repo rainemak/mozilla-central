@@ -7,14 +7,6 @@
 #include "imgRequest.h"
 #include "ImageLogging.h"
 
-/* We end up pulling in windows.h because we eventually hit gfxWindowsSurface;
- * windows.h defines LoadImage, so we have to #undef it or imgLoader::LoadImage
- * gets changed.
- * This #undef needs to be in multiple places because we don't always pull
- * headers in in the same order.
- */
-#undef LoadImage
-
 #include "imgLoader.h"
 #include "imgRequestProxy.h"
 #include "imgStatusTracker.h"
@@ -604,11 +596,6 @@ NS_IMETHODIMP imgRequest::OnStopRequest(nsIRequest *aRequest, nsISupports *ctxt,
 {
   LOG_FUNC(GetImgLog(), "imgRequest::OnStopRequest");
 
-  bool lastPart = true;
-  nsCOMPtr<nsIMultiPartChannel> mpchan(do_QueryInterface(aRequest));
-  if (mpchan)
-    mpchan->GetIsLastPart(&lastPart);
-
   // XXXldb What if this is a non-last part of a multipart request?
   // xxx before we release our reference to mRequest, lets
   // save the last status that we saw so that the
@@ -624,6 +611,11 @@ NS_IMETHODIMP imgRequest::OnStopRequest(nsIRequest *aRequest, nsISupports *ctxt,
     mChannel = nullptr;
   }
 
+  bool lastPart = true;
+  nsCOMPtr<nsIMultiPartChannel> mpchan(do_QueryInterface(aRequest));
+  if (mpchan)
+    mpchan->GetIsLastPart(&lastPart);
+
   // Tell the image that it has all of the source data. Note that this can
   // trigger a failure, since the image might be waiting for more non-optional
   // data and this is the point where we break the news that it's not coming.
@@ -636,12 +628,6 @@ NS_IMETHODIMP imgRequest::OnStopRequest(nsIRequest *aRequest, nsISupports *ctxt,
     // more meaningful.
     if (NS_FAILED(rv) && NS_SUCCEEDED(status))
       status = rv;
-  } else {
-    // We have to fire imgStatusTracker::OnStopRequest ourselves because there's
-    // no image capable of doing so.
-    imgStatusTracker& statusTracker = GetStatusTracker();
-    statusTracker.RecordCancel();  // No image indicates an error!
-    statusTracker.OnStopRequest(lastPart, status);
   }
 
   // If the request went through, update the cache entry size. Otherwise,
@@ -654,6 +640,13 @@ NS_IMETHODIMP imgRequest::OnStopRequest(nsIRequest *aRequest, nsISupports *ctxt,
   else {
     // stops animations, removes from cache
     this->Cancel(status);
+  }
+
+  if (!mImage) {
+    // We have to fire imgStatusTracker::OnStopRequest ourselves because there's
+    // no image capable of doing so.
+    imgStatusTracker& statusTracker = GetStatusTracker();
+    statusTracker.OnStopRequest(lastPart, status);
   }
 
   mTimedChannel = nullptr;
@@ -723,6 +716,17 @@ imgRequest::OnDataAvailable(nsIRequest *aRequest, nsISupports *ctxt,
 
       LOG_MSG(GetImgLog(), "imgRequest::OnDataAvailable", "Got content type from the channel");
     }
+
+#ifdef MOZ_WBMP
+#ifdef MOZ_WIDGET_GONK
+    // Only support WBMP in privileged app and certified app, do not support in browser app.
+    if (newType.EqualsLiteral(IMAGE_WBMP) &&
+        (!mLoadingPrincipal || mLoadingPrincipal->GetAppStatus() < nsIPrincipal::APP_STATUS_PRIVILEGED)) {
+      this->Cancel(NS_ERROR_FAILURE);
+      return NS_BINDING_ABORTED;
+    }
+#endif
+#endif
 
     // If we're a regular image and this is the first call to OnDataAvailable,
     // this will always be true. If we've resniffed our MIME type (i.e. we're a

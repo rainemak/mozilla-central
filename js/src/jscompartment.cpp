@@ -199,8 +199,6 @@ JSCompartment::putWrapper(const CrossCompartmentKey &wrapped, const js::Value &w
     JS_ASSERT(!IsPoisonedPtr(wrapper.toGCThing()));
     JS_ASSERT_IF(wrapped.kind == CrossCompartmentKey::StringWrapper, wrapper.isString());
     JS_ASSERT_IF(wrapped.kind != CrossCompartmentKey::StringWrapper, wrapper.isObject());
-    // todo: uncomment when bug 815999 is fixed:
-    // JS_ASSERT(!wrapped.wrapped->isMarked(gc::GRAY));
     return crossCompartmentWrappers.put(wrapped, wrapper);
 }
 
@@ -487,12 +485,6 @@ JSCompartment::markCrossCompartmentWrappers(JSTracer *trc)
             Value referent = GetProxyPrivate(wrapper);
             MarkValueRoot(trc, &referent, "cross-compartment wrapper");
             JS_ASSERT(referent == GetProxyPrivate(wrapper));
-
-            if (IsFunctionProxy(wrapper)) {
-                Value call = GetProxyCall(wrapper);
-                MarkValueRoot(trc, &call, "cross-compartment wrapper");
-                JS_ASSERT(call == GetProxyCall(wrapper));
-            }
         }
     }
 }

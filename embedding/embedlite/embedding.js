@@ -73,3 +73,4 @@ pref("embedlite.azpc.json.singletap", false);
 pref("embedlite.azpc.json.doubletap", false);
 pref("embedlite.azpc.json.longtap", false);
 pref("embedlite.azpc.json.scroll", false);
+pref("extensions.update.enabled", false);

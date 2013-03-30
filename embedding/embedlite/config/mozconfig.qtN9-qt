@@ -31,6 +31,7 @@ ac_add_options --with-gl-provider=EGL
 ac_add_options --enable-skia
 ac_add_options --disable-dbus
 ac_add_options --disable-updater
+ac_add_options --disable-gamepad
 
 ac_add_options --enable-tests
 ac_add_options --enable-optimize

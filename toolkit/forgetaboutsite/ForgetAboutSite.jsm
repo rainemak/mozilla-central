@@ -3,6 +3,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 Components.utils.import("resource://gre/modules/Services.jsm");
+Components.utils.import("resource://gre/modules/XPCOMUtils.jsm");
+XPCOMUtils.defineLazyModuleGetter(this, "PlacesUtils",
+                                  "resource://gre/modules/PlacesUtils.jsm");
 
 this.EXPORTED_SYMBOLS = ["ForgetAboutSite"];
 
@@ -43,11 +46,7 @@ this.ForgetAboutSite = {
         Services.prefs.deleteBranch("geo.wifi.access_token.");
     } catch (e) {}
 
-    // History
-    let (bh = Cc["@mozilla.org/browser/global-history;2"].
-              getService(Ci.nsIBrowserHistory)) {
-      bh.removePagesFromHost(aDomain, true);
-    }
+    PlacesUtils.history.removePagesFromHost(aDomain, true);
 
     // Cache
     let (cs = Cc["@mozilla.org/network/cache-service;1"].
@@ -210,9 +209,9 @@ this.ForgetAboutSite = {
       }
     }
 
-    // Indexed DB
-    let (idbm = Cc["@mozilla.org/dom/indexeddb/manager;1"].
-                getService(Ci.nsIIndexedDatabaseManager)) {
+    // Offline Storages
+    let (qm = Cc["@mozilla.org/dom/quota/manager;1"].
+              getService(Ci.nsIQuotaManager)) {
       // delete data from both HTTP and HTTPS sites
       let caUtils = {};
       let scriptLoader = Cc["@mozilla.org/moz/jssubscript-loader;1"].
@@ -221,8 +220,8 @@ this.ForgetAboutSite = {
                                  caUtils);
       let httpURI = caUtils.makeURI("http://" + aDomain);
       let httpsURI = caUtils.makeURI("https://" + aDomain);
-      idbm.clearDatabasesForURI(httpURI);
-      idbm.clearDatabasesForURI(httpsURI);
+      qm.clearStoragesForURI(httpURI);
+      qm.clearStoragesForURI(httpsURI);
     }
 
     // Everybody else (including extensions)

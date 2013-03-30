@@ -4,6 +4,30 @@
 
 // FIXME(bug 844882): Parallel array properties should not be exposed.
 
+// The mode asserts options object.
+#define TRY_PARALLEL(MODE) \
+  ((!MODE || MODE.mode === "par"))
+#define ASSERT_SEQUENTIAL_IS_OK(MODE) \
+  do { if (MODE) AssertSequentialIsOK(MODE) } while(false)
+
+// Slice array: see ComputeAllSliceBounds()
+#define SLICE_INFO(START, END) START, END, START, 0
+#define SLICE_START(ID) ((ID << 2) + 0)
+#define SLICE_END(ID)   ((ID << 2) + 1)
+#define SLICE_POS(ID)   ((ID << 2) + 2)
+
+// How many items at a time do we do recomp. for parallel execution.
+// Note that filter currently assumes that this is no greater than 32
+// in order to make use of a bitset.
+#define CHUNK_SHIFT 5
+#define CHUNK_SIZE 32
+
+// Safe versions of ARRAY.push(ELEMENT)
+#define ARRAY_PUSH(ARRAY, ELEMENT) \
+  callFunction(std_Array_push, ARRAY, ELEMENT);
+#define ARRAY_SLICE(ARRAY, ELEMENT) \
+  callFunction(std_Array_slice, ARRAY, ELEMENT);
+
 /**
  * Determine the number of chunks of size CHUNK_SIZE;
  * note that the final chunk may be smaller than CHUNK_SIZE.
@@ -79,7 +103,7 @@ function ComputeIndices(shape, index1d) {
 
     // Compute how many steps of width stride we could take.
     var index = (index1d / stride) | 0;
-    result[i] = index;
+    ARRAY_PUSH(result, index);
 
     // Adjust remaining indices for smaller dimensions.
     index1d -= (index * stride);
@@ -129,7 +153,7 @@ function ParallelArrayConstructFromArray(buffer) {
 
   var buffer1 = [];
   for (var i = 0; i < length; i++)
-    buffer1[i] = buffer[i];
+    ARRAY_PUSH(buffer1, buffer[i]);
 
   this.buffer = buffer1;
   this.offset = 0;
@@ -184,7 +208,7 @@ function ParallelArrayConstructFromComprehension(self, shape, func, mode) {
       var s1 = s0 >>> 0;
       if (s1 !== s0)
         ThrowError(JSMSG_PAR_ARRAY_BAD_ARG, "");
-      shape1[i] = s1;
+      ARRAY_PUSH(shape1, s1);
     }
     ParallelArrayBuild(self, shape1, func, mode);
   }
@@ -375,7 +399,8 @@ function ParallelArrayMap(func, mode) {
   ASSERT_SEQUENTIAL_IS_OK(mode);
   for (var i = 0; i < length; i++) {
     // Note: Unlike JS arrays, parallel arrays cannot have holes.
-    buffer[i] = func(self.get(i), i, self);
+    var v = func(self.get(i), i, self);
+    UnsafeSetElement(buffer, i, v);
   }
   return NewParallelArray(ParallelArrayView, [length], buffer, 0);
 
@@ -516,9 +541,12 @@ function ParallelArrayScan(func, mode) {
 
     // Compute intermediates array (see comment on phase2()).
     var intermediates = [];
-    var accumulator = intermediates[0] = buffer[finalElement(0)];
-    for (var i = 1; i < numSlices - 1; i++)
-      accumulator = intermediates[i] = func(accumulator, buffer[finalElement(i)]);
+    var accumulator = buffer[finalElement(0)];
+    ARRAY_PUSH(intermediates, accumulator);
+    for (var i = 1; i < numSlices - 1; i++) {
+      accumulator = func(accumulator, buffer[finalElement(i)]);
+      ARRAY_PUSH(intermediates, accumulator);
+    }
 
     // Reset the current position information for each slice, but
     // convert from chunks to indices (see comment on phase2()).
@@ -783,13 +811,15 @@ function ParallelArrayScatter(targets, defaultValue, conflictFunc, length, mode)
     var numSlices = ParallelSlices();
     var checkpoints = NewDenseArray(numSlices);
     for (var i = 0; i < numSlices; i++)
-      checkpoints[i] = 0;
+      UnsafeSetElement(checkpoints, i, 0);
 
     var buffer = NewDenseArray(length);
     var conflicts = NewDenseArray(length);
 
-    for (var i = 0; i < length; i++)
-      buffer[i] = defaultValue;
+    for (var i = 0; i < length; i++) {
+      UnsafeSetElement(buffer, i, defaultValue);
+      UnsafeSetElement(conflicts, i, false);
+    }
 
     ParallelDo(fill, CheckParallel(mode));
     return NewParallelArray(ParallelArrayView, [length], buffer, 0);
@@ -830,10 +860,14 @@ function ParallelArrayScatter(targets, defaultValue, conflictFunc, length, mode)
     // FIXME(bug 844890): Use typed arrays here.
     var localBuffers = NewDenseArray(numSlices);
     for (var i = 0; i < numSlices; i++)
-        localBuffers[i] = NewDenseArray(length);
+      UnsafeSetElement(localBuffers, i, NewDenseArray(length));
     var localConflicts = NewDenseArray(numSlices);
-    for (var i = 0; i < numSlices; i++)
-        localConflicts[i] = NewDenseArray(length);
+    for (var i = 0; i < numSlices; i++) {
+      var conflicts_i = NewDenseArray(length);
+      for (var j = 0; j < length; j++)
+        UnsafeSetElement(conflicts_i, j, false);
+      UnsafeSetElement(localConflicts, i, conflicts_i);
+    }
 
     // Initialize the 0th buffer, which will become the output. For
     // the other buffers, we track which parts have been written to
@@ -896,8 +930,10 @@ function ParallelArrayScatter(targets, defaultValue, conflictFunc, length, mode)
     var buffer = NewDenseArray(length);
     var conflicts = NewDenseArray(length);
 
-    for (var i = 0; i < length; i++)
-      buffer[i] = defaultValue;
+    for (var i = 0; i < length; i++) {
+      UnsafeSetElement(buffer, i, defaultValue);
+      UnsafeSetElement(conflicts, i, false);
+    }
 
     for (var i = 0; i < targetsLength; i++) {
       var x = self.get(i);
@@ -917,7 +953,7 @@ function ParallelArrayScatter(targets, defaultValue, conflictFunc, length, mode)
       if ((t | 0) !== t)
         ThrowError(JSMSG_PAR_ARRAY_SCATTER_BAD_TARGET, i);
 
-      if (t >= length)
+      if (t < 0 || t >= length)
         ThrowError(JSMSG_PAR_ARRAY_SCATTER_BOUNDS);
   }
 }
@@ -956,7 +992,7 @@ function ParallelArrayFilter(func, mode) {
     // FIXME(bug 844890): Use typed arrays here.
     var counts = NewDenseArray(numSlices);
     for (var i = 0; i < numSlices; i++)
-      counts[i] = 0;
+      UnsafeSetElement(counts, i, 0);
     var survivors = NewDenseArray(chunks);
     ParallelDo(findSurvivorsInSlice, CheckParallel(mode));
 
@@ -973,13 +1009,13 @@ function ParallelArrayFilter(func, mode) {
 
   // Sequential fallback:
   ASSERT_SEQUENTIAL_IS_OK(mode);
-  var buffer = [], count = 0;
+  var buffer = [];
   for (var i = 0; i < length; i++) {
     var elem = self.get(i);
     if (func(elem, i, self))
-      buffer[count++] = elem;
+      ARRAY_PUSH(buffer, elem);
   }
-  return NewParallelArray(ParallelArrayView, [count], buffer, 0);
+  return NewParallelArray(ParallelArrayView, [buffer.length], buffer, 0);
 
   /**
    * As described above, our goal is to determine which items we

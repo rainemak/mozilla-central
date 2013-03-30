@@ -52,6 +52,7 @@ public:
                                 nsIntPoint& aScrollOffset, float& aScaleX, float& aScaleY) {}
   virtual void SetPageRect(const gfxRect& aCssPageRect) {}
   virtual void IMENotification(int aEnabled, bool aOpen, int aCause, int aFocusChange) {}
+  virtual void GetIMEStatus(int32_t* aIMEEnabled, int32_t* aIMEOpen, intptr_t* aNativeIMEContext) {}
 
   // AZPC Interface, return true in order to prevent default behavior
   virtual bool RequestContentRepaint() { return false; }

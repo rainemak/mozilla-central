@@ -54,7 +54,7 @@
 #include "nsFocusManager.h"
 #include "nsFrameList.h"
 #include "nsListControlFrame.h"
-#include "nsHTMLInputElement.h"
+#include "mozilla/dom/HTMLInputElement.h"
 #include "SVGElementFactory.h"
 #include "nsSVGUtils.h"
 #include "nsMathMLAtoms.h"
@@ -113,6 +113,7 @@ using namespace mozilla::system;
 #include "nsApplicationCacheService.h"
 #include "mozilla/dom/time/DateCacheCleaner.h"
 #include "nsIMEStateManager.h"
+#include "nsDocument.h"
 
 extern void NS_ShutdownEventTargetChainItemRecyclePool();
 
@@ -374,7 +375,7 @@ nsLayoutStatics::Shutdown()
 
   nsFrameList::Shutdown();
 
-  nsHTMLInputElement::DestroyUploadLastDir();
+  HTMLInputElement::DestroyUploadLastDir();
 
   nsLayoutUtils::Shutdown();
 
@@ -387,4 +388,6 @@ nsLayoutStatics::Shutdown()
   ContentParent::ShutDown();
 
   nsRefreshDriver::Shutdown();
+
+  nsDocument::XPCOMShutdown();
 }

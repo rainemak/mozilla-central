@@ -2218,6 +2218,15 @@ JS_GetGlobalForCompartmentOrNull(JSContext *cx, JSCompartment *c);
 extern JS_PUBLIC_API(JSObject *)
 JS_GetGlobalForScopeChain(JSContext *cx);
 
+/*
+ * This method returns the global corresponding to the most recent scripted
+ * frame, which may not match the cx's current compartment. This is extremely
+ * dangerous, because it can bypass compartment security invariants in subtle
+ * ways. To use it safely, the caller must perform a subsequent security
+ * check. There is currently only one consumer of this function in Gecko, and
+ * it should probably stay that way. If you'd like to use it, please consult
+ * the XPConnect module owner first.
+ */
 extern JS_PUBLIC_API(JSObject *)
 JS_GetScriptedGlobal(JSContext *cx);
 
@@ -2401,12 +2410,6 @@ js_RemoveRoot(JSRuntime *rt, void *rp);
  */
 extern JS_NEVER_INLINE JS_PUBLIC_API(void)
 JS_AnchorPtr(void *p);
-
-extern JS_PUBLIC_API(JSBool)
-JS_LockGCThingRT(JSRuntime *rt, void *gcthing);
-
-extern JS_PUBLIC_API(JSBool)
-JS_UnlockGCThingRT(JSRuntime *rt, void *gcthing);
 
 /*
  * Register externally maintained GC roots.
@@ -4542,7 +4545,7 @@ JS_ResetDefaultLocale(JSRuntime *rt);
 struct JSLocaleCallbacks {
     JSLocaleToUpperCase     localeToUpperCase;
     JSLocaleToLowerCase     localeToLowerCase;
-    JSLocaleCompare         localeCompare;
+    JSLocaleCompare         localeCompare; // not used #if ENABLE_INTL_API
     JSLocaleToUnicode       localeToUnicode;
     JSErrorCallback         localeGetErrorMessage;
 };
@@ -4953,6 +4956,13 @@ extern JS_PUBLIC_API(JSObject *)
 JS_DecodeInterpretedFunction(JSContext *cx, const void *data, uint32_t length,
                              JSPrincipals *principals, JSPrincipals *originPrincipals);
 
+namespace JS {
+
+extern JS_PUBLIC_DATA(const HandleId) JSID_VOIDHANDLE;
+extern JS_PUBLIC_DATA(const HandleId) JSID_EMPTYHANDLE;
+
+};
+
 namespace js {
 
 /*
@@ -5027,8 +5037,6 @@ using JS::MutableHandleScript;
 using JS::MutableHandleString;
 using JS::MutableHandleId;
 using JS::MutableHandleValue;
-
-using JS::NullPtr;  /* To be removed by bug 781070. */
 
 using JS::Zone;
 

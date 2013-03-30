@@ -110,6 +110,7 @@ function startListeners() {
   addMessageListenerId("Marionette:doubleTap", doubleTap);
   addMessageListenerId("Marionette:press", press);
   addMessageListenerId("Marionette:release", release);
+  addMessageListenerId("Marionette:cancelTouch", cancelTouch);
   addMessageListenerId("Marionette:actionChain", actionChain);
   addMessageListenerId("Marionette:multiAction", multiAction);
   addMessageListenerId("Marionette:setSearchTimeout", setSearchTimeout);
@@ -203,6 +204,7 @@ function deleteSession(msg) {
   removeMessageListenerId("Marionette:doubleTap", doubleTap);
   removeMessageListenerId("Marionette:press", press);
   removeMessageListenerId("Marionette:release", release);
+  removeMessageListenerId("Marionette:cancelTouch", cancelTouch);
   removeMessageListenerId("Marionette:actionChain", actionChain);
   removeMessageListenerId("Marionette:multiAction", multiAction);
   removeMessageListenerId("Marionette:setSearchTimeout", setSearchTimeout);
@@ -312,6 +314,7 @@ function createExecuteContentSandbox(aWindow, timeout) {
   sandbox.document = sandbox.window.document;
   sandbox.navigator = sandbox.window.navigator;
   sandbox.testUtils = utils;
+  sandbox.asyncTestCommandId = asyncTestCommandId;
 
   let marionette = new Marionette(this, aWindow, "content",
                                   marionetteLogObj, marionettePerf,
@@ -330,44 +333,45 @@ function createExecuteContentSandbox(aWindow, timeout) {
     return new SpecialPowers(aWindow);
   });
 
-  sandbox.asyncComplete = function sandbox_asyncComplete(value, status) {
-    curWindow.removeEventListener("unload", onunload, false);
+  sandbox.asyncComplete = function sandbox_asyncComplete(value, status, stack, commandId) {
+    if (commandId == asyncTestCommandId) {
+      curWindow.removeEventListener("unload", onunload, false);
+      curWindow.clearTimeout(asyncTestTimeoutId);
 
-    curWindow.clearTimeout(asyncTestTimeoutId);
+      sendSyncMessage("Marionette:shareData", {log: elementManager.wrapValue(marionetteLogObj.getLogs()),
+                                               perf: elementManager.wrapValue(marionettePerf.getPerfData())});
+      marionetteLogObj.clearLogs();
+      marionettePerf.clearPerfData();
 
-    sendSyncMessage("Marionette:shareData", {log: elementManager.wrapValue(marionetteLogObj.getLogs()),
-                                             perf: elementManager.wrapValue(marionettePerf.getPerfData())});
-    marionetteLogObj.clearLogs();
-    marionettePerf.clearPerfData();
-
-    if (status == 0){
-      if (Object.keys(_emu_cbs).length) {
-        _emu_cbs = {};
-        sendError("Emulator callback still pending when finish() called",
-                  500, null, asyncTestCommandId);
+      if (status == 0){
+        if (Object.keys(_emu_cbs).length) {
+          _emu_cbs = {};
+          sendError("Emulator callback still pending when finish() called",
+                    500, null, commandId);
+        }
+        else {
+          sendResponse({value: elementManager.wrapValue(value), status: status},
+                       commandId);
+        }
       }
       else {
-        sendResponse({value: elementManager.wrapValue(value), status: status},
-                     asyncTestCommandId);
+        sendError(value, status, stack, commandId);
       }
-    }
-    else {
-      sendError(value, status, null, asyncTestCommandId);
-    }
 
-    asyncTestRunning = false;
-    asyncTestTimeoutId = undefined;
-    asyncTestCommandId = undefined;
+      asyncTestRunning = false;
+      asyncTestTimeoutId = undefined;
+      asyncTestCommandId = undefined;
+    }
   };
   sandbox.finish = function sandbox_finish() {
     if (asyncTestRunning) {
-      sandbox.asyncComplete(marionette.generate_results(), 0);
+      sandbox.asyncComplete(marionette.generate_results(), 0, null, sandbox.asyncTestCommandId);
     } else {
       return marionette.generate_results();
     }
   };
   sandbox.marionetteScriptFinished = function sandbox_marionetteScriptFinished(value) {
-    return sandbox.asyncComplete(value, 0);
+    return sandbox.asyncComplete(value, 0, null, sandbox.asyncTestCommandId);
   };
 
   return sandbox;
@@ -388,6 +392,9 @@ function executeScript(msg, directInject) {
       sendError("Could not create sandbox!", 500, null, asyncTestCommandId);
       return;
     }
+  }
+  else {
+    sandbox.asyncTestCommandId = asyncTestCommandId;
   }
 
   try {
@@ -495,6 +502,9 @@ function executeWithCallback(msg, useFinish) {
       sendError("Could not create sandbox!", 17, null, asyncTestCommandId);
       return;
     }
+  }
+  else {
+    sandbox.asyncTestCommandId = asyncTestCommandId;
   }
   sandbox.tag = script;
 
@@ -892,7 +902,29 @@ function release(msg) {
       sendOk(msg.json.command_id);
     }
     else {
-      sendError("Element has not be pressed: InvalidElementCoordinates", 29, null, command_id);
+      sendError("Element has not been pressed: no such element", 7, null, command_id);
+    }
+  }
+  catch (e) {
+    sendError(e.message, e.code, e.stack, msg.json.command_id);
+  }
+}
+
+/**
+ * Function to cancel a touch event
+ */
+function cancelTouch(msg) {
+  let command_id = msg.json.command_id;
+  try {
+    let id = msg.json.touchId;
+    if (id in touchIds) {
+      let startTouch = touchIds[id];
+      emitTouchEvent('touchcancel', startTouch);
+      delete touchIds[id];
+      sendOk(msg.json.command_id);
+    }
+    else {
+      sendError("Element not previously interacted with", 7, null, command_id);
     }
   }
   catch (e) {
@@ -909,7 +941,7 @@ function actions(finger, touchId, command_id, i){
     i = 0;
   }
   if (i == finger.length) {
-    sendOk(command_id);
+    sendResponse({value: touchId}, command_id);
     return;
   }
   let pack = finger[i];
@@ -936,11 +968,20 @@ function actions(finger, touchId, command_id, i){
       actions(finger,touchId, command_id, i);
       break;
     case 'release':
+      if (lastTouch == null) {
+        sendError("Element has not been pressed: no such element", 7, null, command_id);
+        return;
+      }
       touch = lastTouch;
+      lastTouch = null;
       emitTouchEvent('touchend', touch);
       actions(finger, touchId, command_id, i);
       break;
     case 'move':
+      if (lastTouch == null) {
+        sendError("Element has not been pressed: no such element", 7, null, command_id);
+        return;
+      }
       el = elementManager.getKnownElement(pack[1], curWindow);
       let boxTarget = el.getBoundingClientRect();
       let startElement = lastTouch.target;
@@ -953,6 +994,10 @@ function actions(finger, touchId, command_id, i){
       actions(finger, touchId, command_id, i);
       break;
     case 'moveByOffset':
+      if (lastTouch == null) {
+        sendError("Element has not been pressed: no such element", 7, null, command_id);
+        return;
+      }
       el = lastTouch.target;
       let doc = el.ownerDocument;
       let win = doc.defaultView;
@@ -976,6 +1021,12 @@ function actions(finger, touchId, command_id, i){
         actions(finger, touchId, command_id, i);
       }
       break;
+    case 'cancel':
+      touch = lastTouch;
+      emitTouchEvent('touchcancel', touch);
+      lastTouch = null;
+      actions(finger, touchId, command_id, i);
+      break;
   }
 }
 
@@ -984,12 +1035,14 @@ function actions(finger, touchId, command_id, i){
  */
 function actionChain(msg) {
   let command_id = msg.json.command_id;
-  let args = msg.json.value;
+  let args = msg.json.chain;
+  let touchId = msg.json.nextId;
   try {
     let commandArray = elementManager.convertWrappedArguments(args, curWindow);
-    // each finger associates with one touchId
-    let touchId = nextTouchId++;
     // loop the action array [ ['press', id], ['move', id], ['release', id] ]
+    if (touchId == null) {
+      touchId = nextTouchId++;
+    }
     actions(commandArray, touchId, command_id);
   }
   catch (e) {
