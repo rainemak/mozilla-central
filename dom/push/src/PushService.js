@@ -446,7 +446,9 @@ PushService.prototype = {
 
   _shutdown: function() {
     debug("_shutdown()");
-    this._db.close();
+    if (this._db) {
+      this._db.close();
+    }
     this._db = null;
 
     if (this._udpServer) {

@@ -781,7 +781,9 @@ EmbedLiteViewThreadParent::RecvGetInputContext(int32_t* aIMEEnabled,
   *aIMEEnabled = mLastIMEState;
   *aIMEOpen = IMEState::OPEN_STATE_NOT_SUPPORTED;
   *aNativeIMEContext = 0;
-   mView->GetListener()->GetIMEStatus(aIMEEnabled, aIMEOpen, aNativeIMEContext);
+  if (mView) {
+    mView->GetListener()->GetIMEStatus(aIMEEnabled, aIMEOpen, aNativeIMEContext);
+  }
   return true;
 }
 
