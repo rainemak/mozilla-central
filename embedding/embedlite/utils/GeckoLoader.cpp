@@ -31,6 +31,10 @@
 #endif
 
 #include "nsDirectoryServiceDefs.h"
+#include "EmbedLiteXulAppInfo.h"
+#include "nsXULAppAPI.h"
+#include "EmbedLiteXulAppInfo.h"
+#include "mozilla/ModuleUtils.h"
 
 #ifdef XP_MACOSX
 #include "MacQuirks.h"
@@ -50,8 +54,29 @@
 #  define MAX_PATH PATH_MAX
 #endif
 
+using namespace mozilla::embedlite;
+
 static DirProvider kDirectoryProvider;
 static bool sInitialized = false;
+
+NS_GENERIC_FACTORY_CONSTRUCTOR(EmbedLiteXulAppInfo)
+NS_DEFINE_NAMED_CID(NS_EMBED_LITE_XULAPPINFO_SERVICE_CID);
+
+static const mozilla::Module::CIDEntry kLocalCIDs[] = {
+    { &kNS_EMBED_LITE_XULAPPINFO_SERVICE_CID, false, NULL, EmbedLiteXulAppInfoConstructor },
+    { NULL }
+};
+
+static const mozilla::Module::ContractIDEntry kLocalContracts[] = {
+    { NS_EMBED_LITE_XULAPPINFO_CONTRACTID, &kNS_EMBED_LITE_XULAPPINFO_SERVICE_CID },
+    { NULL }
+};
+
+static const mozilla::Module kLocalAppInfoModule = {
+    mozilla::Module::kVersion,
+    kLocalCIDs,
+    kLocalContracts
+};
 
 bool
 GeckoLoader::InitEmbedding(const char* aProfilePath)
@@ -166,6 +191,11 @@ GeckoLoader::InitEmbedding(const char* aProfilePath)
 #endif
   rv = NS_NewNativeLocalFile(greHomeCSTR, PR_FALSE,
                              getter_AddRefs(kDirectoryProvider.sGREDir));
+
+  if (getenv("USE_PRE_DEFINED_APP_INFO")) {
+    XRE_AddStaticComponent(&kLocalAppInfoModule);
+  }
+
   // init embedding
   rv = XRE_InitEmbedding2(xuldir, appdir,
                           aProfilePath ? const_cast<DirProvider*>(&kDirectoryProvider) : nullptr);

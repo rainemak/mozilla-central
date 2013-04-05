@@ -74,7 +74,7 @@ public:
   virtual ~EmbedLiteView();
 
   // Listener setup, call this with null pointer if listener destroyed before EmbedLiteView
-  virtual void SetListener(EmbedLiteViewListener* aListener) { mListener = aListener; }
+  virtual void SetListener(EmbedLiteViewListener* aListener);
   virtual EmbedLiteViewListener* GetListener() { return mListener; }
 
   // Embed Interface

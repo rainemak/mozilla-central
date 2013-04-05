@@ -53,6 +53,15 @@ EmbedLiteView::~EmbedLiteView()
 }
 
 void
+EmbedLiteView::SetListener(EmbedLiteViewListener* aListener)
+{
+   mListener = aListener;
+   if (!mListener) {
+     mListener = new FakeListener();
+   }
+}
+
+void
 EmbedLiteView::SetPanZoomControlType(PanZoomControlType aType)
 {
   mPanControlType = aType;
