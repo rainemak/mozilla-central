@@ -335,3 +335,13 @@ EmbedLiteAppService::SendAsyncMessageLocal(uint32_t aId, const PRUnichar* messag
   view->RecvAsyncMessage(nsDependentString(messageName), nsDependentString(message));
   return NS_OK;
 }
+
+NS_IMETHODIMP
+EmbedLiteAppService::ChromeEventHandler(nsIDOMWindow *aWin, nsIDOMEventTarget * *eventHandler)
+{
+  nsCOMPtr<nsPIDOMWindow> pidomWindow = do_GetInterface(aWin);
+  NS_ENSURE_TRUE(pidomWindow, NS_ERROR_FAILURE);
+  nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
+  *eventHandler = target.forget().get();
+  return NS_OK;
+}

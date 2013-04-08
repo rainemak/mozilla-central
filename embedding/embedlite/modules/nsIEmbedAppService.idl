@@ -7,6 +7,7 @@
 #include "nsIDOMWindow.idl"
 #include "nsIBaseWindow.idl"
 #include "nsIWebBrowser.idl"
+#include "nsIDOMEventTarget.idl"
 
 /**
  * An optional interface for embedding clients wishing to receive
@@ -65,4 +66,6 @@ interface nsIEmbedAppService : nsISupports
     void contentReceivedTouch(in uint32_t aId, in boolean aPreventDefault);
     void detectScrollableSubframe(in uint32_t aId);
     void cancelDefaultPanZoom(in uint32_t aId);
+    // Not sure how else to add event listener from js component without browser
+    void chromeEventHandler(in nsIDOMWindow aWin, [retval] out nsIDOMEventTarget eventHandler);
 };
