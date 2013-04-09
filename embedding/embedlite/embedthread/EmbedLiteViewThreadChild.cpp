@@ -51,6 +51,8 @@ static struct {
     bool longTap;
 } sPostAZPCAsJson;
 
+static bool sAllowKeyWordURL = false;
+
 static void ReadAZPCPrefs()
 {
   // Init default azpc notifications behavior
@@ -65,6 +67,8 @@ static void ReadAZPCPrefs()
   Preferences::AddBoolVarCache(&sPostAZPCAsJson.doubleTap, "embedlite.azpc.json.doubletap", false);
   Preferences::AddBoolVarCache(&sPostAZPCAsJson.longTap, "embedlite.azpc.json.longtap", false);
   Preferences::AddBoolVarCache(&sPostAZPCAsJson.scroll, "embedlite.azpc.json.scroll", false);
+
+  Preferences::AddBoolVarCache(&sAllowKeyWordURL, "keyword.enabled", sAllowKeyWordURL);
 }
 
 EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(const uint32_t& aId, const uint32_t& parentId)
@@ -252,8 +256,12 @@ EmbedLiteViewThreadChild::RecvLoadURL(const nsString& url)
   }
 
   ioService->SetOffline(false);
+  uint32_t flags = 0;
+  if (sAllowKeyWordURL) {
+    flags |= nsIWebNavigation::LOAD_FLAGS_ALLOW_THIRD_PARTY_FIXUP;
+  }
   mWebNavigation->LoadURI(url.get(),
-                          nsIWebNavigation::LOAD_FLAGS_NONE,
+                          flags,
                           0, 0, 0);
 
   return true;

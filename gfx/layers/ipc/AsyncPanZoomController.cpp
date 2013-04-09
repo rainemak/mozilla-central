@@ -109,6 +109,38 @@ static float gYSkateSizeMultiplier = 3.5f;
 static float gXStationarySizeMultiplier = 1.5f;
 static float gYStationarySizeMultiplier = 2.5f;
 
+/** Direction scroll lock ratios.
+ * Since touch events are inaccurate it's difficult to scroll directly up/down
+ * or left/right. These ratios help to lock scroll directions.
+ *
+ * Given a scroll offset vector is in the first quadrant the vertical scroll
+ * lock ratio equal to 2 means that a displacement angle more than
+ * 63 degrees would lock scrolling to strictly vertical (atan(2) == 63.43 deg).
+ * And the horizontal scroll lock ratio equal to 0.5 means that the displacement
+ * angle less than 26 degrees would lock scrolling to strictly horizontal
+ * (atan(0.5) == 26.57 deg).
+ */
+static float gVerticalScrollLockRatio = 2.0f;
+static float gHorizontalScrollLockRatio = 0.5f;
+
+/** Calculates scroll locking.
+ */
+static inline const gfx::Point lockScrollAxis(const gfx::Point& aOffset) {
+  float offsetX(aOffset.x);
+  float offsetY(aOffset.y);
+
+  if (fabs(offsetX) > 0) {
+    float ratio(fabs(offsetY/offsetX));
+
+    if (ratio > gVerticalScrollLockRatio) {
+      offsetX = 0.0f;
+    } else if (ratio < gHorizontalScrollLockRatio) {
+      offsetY = 0.0f;
+    }
+  }
+  return gfx::Point(offsetX, offsetY);
+}
+
 static void ReadAZPCPrefs()
 {
   Preferences::AddIntVarCache(&gPanRepaintInterval, "gfx.azpc.pan_repaint_interval", gPanRepaintInterval);
@@ -122,6 +154,8 @@ static void ReadAZPCPrefs()
   Preferences::AddFloatVarCache(&gXStationarySizeMultiplier, "gfx.azpc.x_stationary_size_multiplier", gXStationarySizeMultiplier);
   Preferences::AddFloatVarCache(&gYStationarySizeMultiplier, "gfx.azpc.y_stationary_size_multiplier", gYStationarySizeMultiplier);
   Preferences::AddBoolVarCache(&gEnableKineticSpeedAmortization, "gfx.azpc.tweak_fling_velocity", gEnableKineticSpeedAmortization);
+  Preferences::AddFloatVarCache(&gVerticalScrollLockRatio, "gfx.azpc.vertical_scroll_lock_ratio", gVerticalScrollLockRatio);
+  Preferences::AddFloatVarCache(&gHorizontalScrollLockRatio, "gfx.azpc.horizontal_scroll_lock_ratio", gHorizontalScrollLockRatio);
 }
 
 class ReadAZPCPref MOZ_FINAL : public nsRunnable {
@@ -821,10 +855,10 @@ bool AsyncPanZoomController::DoFling(const TimeDuration& aDelta) {
   // larger swipe should move you a shorter distance.
   gfxFloat inverseResolution = 1 / CalculateResolution(mFrameMetrics).width;
 
-  ScrollBy(gfx::Point(
+  ScrollBy(lockScrollAxis(gfx::Point(
     mX.GetDisplacementForDuration(inverseResolution, aDelta),
     mY.GetDisplacementForDuration(inverseResolution, aDelta)
-  ));
+  )));
   TimeDuration timePaintDelta = TimeStamp::Now() - mPreviousPaintStartTime;
   if (timePaintDelta.ToMilliseconds() > gFlingRepaintInterval) {
     RequestContentRepaint();
