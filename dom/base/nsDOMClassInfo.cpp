@@ -198,9 +198,6 @@
 #include "nsIDOMHTMLIFrameElement.h"
 #include "nsIDOMHTMLInputElement.h"
 #include "nsIDOMHTMLObjectElement.h"
-#include "nsIDOMTimeRanges.h"
-#include "nsIDOMHTMLVideoElement.h"
-#include "nsIDOMHTMLAudioElement.h"
 #include "nsIDOMCSSCharsetRule.h"
 #include "nsIDOMCSSImportRule.h"
 #include "nsIDOMCSSMediaRule.h"
@@ -302,13 +299,12 @@
 #include "nsIEventListenerService.h"
 #include "nsIMessageManager.h"
 #include "mozilla/dom/Element.h"
-#include "nsHTMLSelectElement.h"
+#include "mozilla/dom/HTMLSelectElement.h"
 #include "HTMLLegendElement.h"
 
 #include "DOMSVGStringList.h"
 
 #include "mozilla/dom/indexedDB/IDBWrapperCache.h"
-#include "mozilla/dom/indexedDB/IDBFactory.h"
 #include "mozilla/dom/indexedDB/IDBFileHandle.h"
 #include "mozilla/dom/indexedDB/IDBRequest.h"
 #include "mozilla/dom/indexedDB/IDBDatabase.h"
@@ -336,10 +332,9 @@ using mozilla::dom::workers::ResolveWorkerClasses;
 #include "nsIDOMMobileMessageManager.h"
 #include "nsIDOMMozSmsMessage.h"
 #include "nsIDOMMozMmsMessage.h"
-#include "nsIDOMSmsRequest.h"
 #include "nsIDOMSmsFilter.h"
-#include "nsIDOMSmsCursor.h"
 #include "nsIDOMSmsSegmentInfo.h"
+#include "nsIDOMMozMobileMessageThread.h"
 #include "nsIDOMConnection.h"
 #include "mozilla/dom/network/Utils.h"
 
@@ -524,24 +519,6 @@ DOMCI_DATA_NO_CLASS(DOMConstructor)
 
 namespace {
 
-class IDBFactorySH : public nsDOMGenericSH
-{
-protected:
-  IDBFactorySH(nsDOMClassInfoData* aData) : nsDOMGenericSH(aData)
-  { }
-
-  virtual ~IDBFactorySH()
-  { }
-
-public:
-  NS_IMETHOD PostCreatePrototype(JSContext * cx, JSObject * proto);
-
-  static nsIClassInfo *doCreate(nsDOMClassInfoData *aData)
-  {
-    return new IDBFactorySH(aData);
-  }
-};
-
 class IDBEventTargetSH : public nsEventTargetSH
 {
 protected:
@@ -670,9 +647,9 @@ static nsDOMClassInfoData sClassInfoData[] = {
 
   NS_DEFINE_CLASSINFO_DATA(DeviceMotionEvent, nsEventSH,
                            DOM_DEFAULT_SCRIPTABLE_FLAGS)
-  NS_DEFINE_CLASSINFO_DATA(DeviceAcceleration, nsEventSH,
+  NS_DEFINE_CLASSINFO_DATA(DeviceAcceleration, nsDOMGenericSH,
                            DOM_DEFAULT_SCRIPTABLE_FLAGS)
-  NS_DEFINE_CLASSINFO_DATA(DeviceRotationRate, nsEventSH,
+  NS_DEFINE_CLASSINFO_DATA(DeviceRotationRate, nsDOMGenericSH,
                            DOM_DEFAULT_SCRIPTABLE_FLAGS)
 
   // Misc HTML classes
@@ -934,16 +911,13 @@ static nsDOMClassInfoData sClassInfoData[] = {
   NS_DEFINE_CLASSINFO_DATA(MozMmsMessage, nsDOMGenericSH,
                            DOM_DEFAULT_SCRIPTABLE_FLAGS)
 
-  NS_DEFINE_CLASSINFO_DATA(MozSmsRequest, nsDOMGenericSH,
-                           DOM_DEFAULT_SCRIPTABLE_FLAGS)
-
   NS_DEFINE_CLASSINFO_DATA(MozSmsFilter, nsDOMGenericSH,
                            DOM_DEFAULT_SCRIPTABLE_FLAGS)
 
-  NS_DEFINE_CLASSINFO_DATA(MozSmsCursor, nsDOMGenericSH,
+  NS_DEFINE_CLASSINFO_DATA(MozSmsSegmentInfo, nsDOMGenericSH,
                            DOM_DEFAULT_SCRIPTABLE_FLAGS)
 
-  NS_DEFINE_CLASSINFO_DATA(MozSmsSegmentInfo, nsDOMGenericSH,
+  NS_DEFINE_CLASSINFO_DATA(MozMobileMessageThread, nsDOMGenericSH,
                            DOM_DEFAULT_SCRIPTABLE_FLAGS)
 
   NS_DEFINE_CLASSINFO_DATA(MozConnection, nsDOMGenericSH,
@@ -959,15 +933,6 @@ static nsDOMClassInfoData sClassInfoData[] = {
 
   NS_DEFINE_CLASSINFO_DATA(CSSFontFaceRule, nsDOMGenericSH,
                            DOM_DEFAULT_SCRIPTABLE_FLAGS)
-
-#if defined(MOZ_MEDIA)
-  NS_DEFINE_CLASSINFO_DATA(HTMLVideoElement, nsElementSH,
-                           ELEMENT_SCRIPTABLE_FLAGS)
-  NS_DEFINE_CLASSINFO_DATA(HTMLAudioElement, nsElementSH,
-                           ELEMENT_SCRIPTABLE_FLAGS)
-  NS_DEFINE_CLASSINFO_DATA(TimeRanges, nsDOMGenericSH,
-                           DOM_DEFAULT_SCRIPTABLE_FLAGS)
-#endif
 
   // DOM Traversal NodeIterator class
   NS_DEFINE_CLASSINFO_DATA(NodeIterator, nsDOMGenericSH,
@@ -1007,8 +972,6 @@ static nsDOMClassInfoData sClassInfoData[] = {
   NS_DEFINE_CLASSINFO_DATA(DesktopNotificationCenter, nsDOMGenericSH,
                            DOM_DEFAULT_SCRIPTABLE_FLAGS)
 
-  NS_DEFINE_CLASSINFO_DATA(IDBFactory, IDBFactorySH,
-                           DOM_DEFAULT_SCRIPTABLE_FLAGS)
   NS_DEFINE_CLASSINFO_DATA_WITH_NAME(IDBFileHandle, FileHandle, nsEventTargetSH,
                            EVENTTARGET_SCRIPTABLE_FLAGS)
   NS_DEFINE_CLASSINFO_DATA(IDBRequest, IDBEventTargetSH,
@@ -1796,6 +1759,9 @@ nsDOMClassInfo::Init()
 
   DOM_CLASSINFO_MAP_BEGIN(Window, nsIDOMWindow)
     DOM_CLASSINFO_WINDOW_MAP_ENTRIES(nsGlobalWindow::HasIndexedDBSupport())
+#ifdef MOZ_WEBSPEECH
+    DOM_CLASSINFO_MAP_ENTRY(nsISpeechSynthesisGetter)
+#endif
   DOM_CLASSINFO_MAP_END
 
   DOM_CLASSINFO_MAP_BEGIN(WindowUtils, nsIDOMWindowUtils)
@@ -2137,6 +2103,9 @@ nsDOMClassInfo::Init()
   DOM_CLASSINFO_MAP_BEGIN_NO_CLASS_IF(ChromeWindow, nsIDOMWindow)
     DOM_CLASSINFO_WINDOW_MAP_ENTRIES(true)
     DOM_CLASSINFO_MAP_ENTRY(nsIDOMChromeWindow)
+#ifdef MOZ_WEBSPEECH
+    DOM_CLASSINFO_MAP_ENTRY(nsISpeechSynthesisGetter)
+#endif
   DOM_CLASSINFO_MAP_END
 
   DOM_CLASSINFO_MAP_BEGIN(ImageDocument, nsIImageDocument)
@@ -2325,6 +2294,9 @@ nsDOMClassInfo::Init()
   DOM_CLASSINFO_MAP_BEGIN_NO_CLASS_IF(ModalContentWindow, nsIDOMWindow)
     DOM_CLASSINFO_WINDOW_MAP_ENTRIES(nsGlobalWindow::HasIndexedDBSupport())
     DOM_CLASSINFO_MAP_ENTRY(nsIDOMModalContentWindow)
+#ifdef MOZ_WEBSPEECH
+    DOM_CLASSINFO_MAP_ENTRY(nsISpeechSynthesisGetter)
+#endif
   DOM_CLASSINFO_MAP_END
 
   DOM_CLASSINFO_MAP_BEGIN(DataContainerEvent, nsIDOMDataContainerEvent)
@@ -2382,21 +2354,16 @@ nsDOMClassInfo::Init()
      DOM_CLASSINFO_MAP_ENTRY(nsIDOMMozMmsMessage)
   DOM_CLASSINFO_MAP_END
 
-  DOM_CLASSINFO_MAP_BEGIN(MozSmsRequest, nsIDOMMozSmsRequest)
-     DOM_CLASSINFO_MAP_ENTRY(nsIDOMMozSmsRequest)
-     DOM_CLASSINFO_MAP_ENTRY(nsIDOMEventTarget)
-  DOM_CLASSINFO_MAP_END
-
   DOM_CLASSINFO_MAP_BEGIN(MozSmsFilter, nsIDOMMozSmsFilter)
      DOM_CLASSINFO_MAP_ENTRY(nsIDOMMozSmsFilter)
   DOM_CLASSINFO_MAP_END
 
-  DOM_CLASSINFO_MAP_BEGIN(MozSmsCursor, nsIDOMMozSmsCursor)
-     DOM_CLASSINFO_MAP_ENTRY(nsIDOMMozSmsCursor)
-  DOM_CLASSINFO_MAP_END
-
   DOM_CLASSINFO_MAP_BEGIN(MozSmsSegmentInfo, nsIDOMMozSmsSegmentInfo)
      DOM_CLASSINFO_MAP_ENTRY(nsIDOMMozSmsSegmentInfo)
+  DOM_CLASSINFO_MAP_END
+
+  DOM_CLASSINFO_MAP_BEGIN(MozMobileMessageThread, nsIDOMMozMobileMessageThread)
+     DOM_CLASSINFO_MAP_ENTRY(nsIDOMMozMobileMessageThread)
   DOM_CLASSINFO_MAP_END
 
   DOM_CLASSINFO_MAP_BEGIN(MozConnection, nsIDOMMozConnection)
@@ -2424,22 +2391,6 @@ nsDOMClassInfo::Init()
   DOM_CLASSINFO_MAP_BEGIN(CSSFontFaceRule, nsIDOMCSSFontFaceRule)
     DOM_CLASSINFO_MAP_ENTRY(nsIDOMCSSFontFaceRule)
   DOM_CLASSINFO_MAP_END
-
-#if defined (MOZ_MEDIA)
-  DOM_CLASSINFO_MAP_BEGIN(HTMLVideoElement, nsIDOMHTMLVideoElement)
-    DOM_CLASSINFO_MAP_ENTRY(nsIDOMHTMLVideoElement)
-    DOM_CLASSINFO_GENERIC_HTML_MAP_ENTRIES
-  DOM_CLASSINFO_MAP_END
-
-  DOM_CLASSINFO_MAP_BEGIN(HTMLAudioElement, nsIDOMHTMLAudioElement)
-    DOM_CLASSINFO_MAP_ENTRY(nsIDOMHTMLAudioElement)
-    DOM_CLASSINFO_GENERIC_HTML_MAP_ENTRIES
-  DOM_CLASSINFO_MAP_END
-
-  DOM_CLASSINFO_MAP_BEGIN(TimeRanges, nsIDOMTimeRanges)
-    DOM_CLASSINFO_MAP_ENTRY(nsIDOMTimeRanges)
-  DOM_CLASSINFO_MAP_END
-#endif
 
   DOM_CLASSINFO_MAP_BEGIN(DataTransfer, nsIDOMDataTransfer)
     DOM_CLASSINFO_MAP_ENTRY(nsIDOMDataTransfer)
@@ -2507,10 +2458,6 @@ nsDOMClassInfo::Init()
 
   DOM_CLASSINFO_MAP_BEGIN(DesktopNotificationCenter, nsIDOMDesktopNotificationCenter)
     DOM_CLASSINFO_MAP_ENTRY(nsIDOMDesktopNotificationCenter)
-  DOM_CLASSINFO_MAP_END
-
-  DOM_CLASSINFO_MAP_BEGIN(IDBFactory, nsIIDBFactory)
-    DOM_CLASSINFO_MAP_ENTRY(nsIIDBFactory)
   DOM_CLASSINFO_MAP_END
 
   DOM_CLASSINFO_MAP_BEGIN(IDBFileHandle, nsIDOMFileHandle)
@@ -4819,7 +4766,7 @@ nsWindowSH::GlobalResolve(nsGlobalWindow *aWin, JSContext *cx,
       JSObject* global;
       bool defineOnXray = ObjectIsNativeWrapper(cx, obj);
       if (defineOnXray) {
-        global = xpc::Unwrap(cx, obj, false);
+        global = js::UnwrapObjectChecked(obj, /* stopAtOuter = */ false);
         if (!global) {
           return NS_ERROR_DOM_SECURITY_ERR;
         }
@@ -6035,92 +5982,6 @@ nsEventSH::PreserveWrapper(nsISupports* aNative)
   nsContentUtils::PreserveWrapper(aNative, event);
 }
 
-// IDBFactory helper
-
-/* static */
-template<nsresult (*func)(JSContext *, unsigned, jsval *, bool), bool aDelete>
-JSBool
-IDBFNativeShim(JSContext *cx, unsigned argc, jsval *vp)
-{
-  nsresult rv = (*func)(cx, argc, vp, aDelete);
-  if (NS_FAILED(rv)) {
-    xpc::Throw(cx, rv);
-    return false;
-  }
-
-  return true;
-}
-
-/* static */ nsresult
-IDBFOpenForPrincipal(JSContext *cx, unsigned argc, JS::Value *vp, bool aDelete)
-{
-  // Just to be on the extra-safe side
-  if (!nsContentUtils::IsCallerChrome()) {
-    MOZ_NOT_REACHED("Shouldn't be possible to get here");
-    return NS_ERROR_FAILURE;
-  }
-
-  JSObject* principalJS;
-  JSString* nameJS;
-  uint32_t version = 0;
-  if (!JS_ConvertArguments(cx, argc, JS_ARGV(cx, vp), "oS/u",
-                           &principalJS, &nameJS, &version)) {
-    return NS_ERROR_FAILURE;
-  }
-
-  if (version < 1 && argc >= 3) {
-    return NS_ERROR_TYPE_ERR;
-  }
-
-  if (aDelete) {
-    version = 0;
-  }
-
-  nsDependentJSString name;
-  NS_ENSURE_TRUE(name.init(cx, nameJS), NS_ERROR_UNEXPECTED);
-
-  nsCOMPtr<nsIPrincipal> principal = do_QueryWrapper(cx, principalJS);
-  NS_ENSURE_TRUE(principal, NS_ERROR_NO_INTERFACE);
-
-  nsCString extendedOrigin;
-  nsresult rv = principal->GetExtendedOrigin(extendedOrigin);
-  NS_ENSURE_FALSE(extendedOrigin.IsEmpty(), NS_ERROR_UNEXPECTED);
-
-  nsCOMPtr<nsIIDBFactory> factory =
-    do_QueryWrapper(cx, JS_THIS_OBJECT(cx, vp));
-  NS_ENSURE_TRUE(factory, NS_ERROR_NO_INTERFACE);
-
-  nsRefPtr<indexedDB::IDBOpenDBRequest> request;
-  rv = static_cast<indexedDB::IDBFactory*>(factory.get())->
-    OpenCommon(name, version, extendedOrigin, aDelete, cx,
-               getter_AddRefs(request));
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  return WrapNative(cx, JS_GetGlobalForScopeChain(cx),
-                    static_cast<nsIIDBOpenDBRequest*>(request),
-                    &NS_GET_IID(nsIIDBOpenDBRequest), true, vp);
-}
-
-NS_IMETHODIMP
-IDBFactorySH::PostCreatePrototype(JSContext * cx, JSObject * proto)
-{
-  // set up our proto first
-  nsresult rv = nsDOMGenericSH::PostCreatePrototype(cx, proto);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  if (xpc::AccessCheck::isChrome(js::GetObjectCompartment(proto)) &&
-      (!JS_DefineFunction(cx, proto, "openForPrincipal",
-                          IDBFNativeShim<IDBFOpenForPrincipal, false>,
-                          3, JSPROP_ENUMERATE) ||
-       !JS_DefineFunction(cx, proto, "deleteForPrincipal",
-                          IDBFNativeShim<IDBFOpenForPrincipal, true>,
-                          2, JSPROP_ENUMERATE))) {
-    return NS_ERROR_UNEXPECTED;
-  }
-
-  return rv;
-}
-
 // IDBEventTarget helper
 
 NS_IMETHODIMP
@@ -7273,32 +7134,6 @@ nsHTMLDocumentSH::GetProperty(nsIXPConnectWrappedNative *wrapper,
 
 // HTMLFormElement helper
 
-// static
-nsresult
-nsHTMLFormElementSH::FindNamedItem(nsIForm *aForm, jsid id,
-                                   nsISupports **aResult,
-                                   nsWrapperCache **aCache)
-{
-  nsDependentJSString name(id);
-
-  *aResult = aForm->ResolveName(name).get();
-  // FIXME Get the wrapper cache from nsIForm::ResolveName
-  *aCache = nullptr;
-
-  if (!*aResult) {
-    nsCOMPtr<nsIContent> content(do_QueryInterface(aForm));
-
-    nsCOMPtr<nsIHTMLDocument> html_doc =
-      do_QueryInterface(content->GetDocument());
-
-    if (html_doc && content) {
-      *aResult = html_doc->ResolveName(name, content, aCache).get();
-    }
-  }
-
-  return NS_OK;
-}
-
 NS_IMETHODIMP
 nsHTMLFormElementSH::NewResolve(nsIXPConnectWrappedNative *wrapper,
                                 JSContext *cx, JSObject *obj, jsid id,
@@ -7310,10 +7145,11 @@ nsHTMLFormElementSH::NewResolve(nsIXPConnectWrappedNative *wrapper,
       (!ObjectIsNativeWrapper(cx, obj) ||
        xpc::WrapperFactory::XrayWrapperNotShadowing(obj, id))) {
     nsCOMPtr<nsIForm> form(do_QueryWrappedNative(wrapper, obj));
-    nsCOMPtr<nsISupports> result;
-    nsWrapperCache *cache;
 
-    FindNamedItem(form, id, getter_AddRefs(result), &cache);
+    nsDependentJSString name(id);
+    nsWrapperCache* cache;
+    nsCOMPtr<nsISupports> result =
+      static_cast<nsHTMLFormElement*>(form.get())->FindNamedItem(name, &cache);
 
     if (result) {
       JSAutoRequest ar(cx);
@@ -7339,10 +7175,10 @@ nsHTMLFormElementSH::GetProperty(nsIXPConnectWrappedNative *wrapper,
 
   if (JSID_IS_STRING(id)) {
     // For native wrappers, do not get random names on form
-    nsCOMPtr<nsISupports> result;
-    nsWrapperCache *cache;
-
-    FindNamedItem(form, id, getter_AddRefs(result), &cache);
+    nsDependentJSString name(id);
+    nsWrapperCache* cache;
+    nsCOMPtr<nsISupports> result =
+      static_cast<nsHTMLFormElement*>(form.get())->FindNamedItem(name, &cache);
 
     if (result) {
       // Wrap result, result can be either an element or a list of
@@ -7455,8 +7291,8 @@ nsHTMLSelectElementSH::NewResolve(nsIXPConnectWrappedNative *wrapper, JSContext 
 {
   int32_t n = GetArrayIndexFromId(cx, id);
   if (n >= 0) {
-    nsHTMLSelectElement *s =
-      nsHTMLSelectElement::FromSupports(GetNative(wrapper, obj));
+    HTMLSelectElement *s =
+      HTMLSelectElement::FromSupports(GetNative(wrapper, obj));
 
     HTMLOptionsCollection *options = s->GetOptions();
     if (options) {
@@ -7483,8 +7319,8 @@ nsHTMLSelectElementSH::GetProperty(nsIXPConnectWrappedNative *wrapper,
 
   nsresult rv = NS_OK;
   if (n >= 0) {
-    nsHTMLSelectElement *s =
-      nsHTMLSelectElement::FromSupports(GetNative(wrapper, obj));
+    HTMLSelectElement *s =
+      HTMLSelectElement::FromSupports(GetNative(wrapper, obj));
 
     HTMLOptionsCollection *options = s->GetOptions();
 

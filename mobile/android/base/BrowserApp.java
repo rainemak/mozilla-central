@@ -12,8 +12,11 @@ import org.mozilla.gecko.gfx.ImmutableViewportMetrics;
 import org.mozilla.gecko.gfx.LayerView;
 import org.mozilla.gecko.util.FloatUtils;
 import org.mozilla.gecko.util.GamepadUtils;
+import org.mozilla.gecko.util.HardwareUtils;
 import org.mozilla.gecko.util.ThreadUtils;
 import org.mozilla.gecko.util.UiAsyncTask;
+import org.mozilla.gecko.widget.AboutHomeContent;
+import org.mozilla.gecko.widget.TopSitesView;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -22,15 +25,15 @@ import org.json.JSONObject;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
-import android.content.SharedPreferences;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
 import android.graphics.PointF;
 import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
@@ -39,6 +42,7 @@ import android.nfc.NfcEvent;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -195,7 +199,7 @@ abstract public class BrowserApp extends GeckoApp
             case PAGE_SHOW:
                 loadFavicon(tab);
                 break;
-            case LINK_ADDED:
+            case LINK_FAVICON:
                 // If tab is not loading and the favicon is updated, we
                 // want to load the image straight away. If tab is still
                 // loading, we only load the favicon once the page's content
@@ -448,7 +452,11 @@ abstract public class BrowserApp extends GeckoApp
                 // put the focus on the layerview and carry on
                 LayerView layerView = mLayerView;
                 if (layerView != null && !layerView.hasFocus() && GamepadUtils.isPanningControl(event)) {
-                    layerView.requestFocus();
+                    if (Boolean.FALSE.equals(mAboutHomeShowing)) {
+                        layerView.requestFocus();
+                    } else {
+                        mAboutHomeContent.requestFocus();
+                    }
                 }
                 return false;
             }
@@ -584,6 +592,11 @@ abstract public class BrowserApp extends GeckoApp
 
         mBrowserToolbar.updateBackButton(false);
         mBrowserToolbar.updateForwardButton(false);
+
+        // Reset mToolbarHeight before setting margins so we force the
+        // Viewport:FixedMarginsChanged message to be sent again now that
+        // Gecko has loaded.
+        mToolbarHeight = 0;
         ((BrowserToolbarLayout)mBrowserToolbar.getLayout()).refreshMargins();
 
         mDoorHangerPopup.setAnchor(mBrowserToolbar.mFavicon);
@@ -699,7 +712,7 @@ abstract public class BrowserApp extends GeckoApp
     @Override
     public void refreshChrome() {
         // Only ICS phones use a smaller action-bar in landscape mode.
-        if (Build.VERSION.SDK_INT >= 14 && !isTablet()) {
+        if (Build.VERSION.SDK_INT >= 14 && !HardwareUtils.isTablet()) {
             int index = mMainLayout.indexOfChild(mBrowserToolbar.getLayout());
             mMainLayout.removeViewAt(index);
 
@@ -731,7 +744,7 @@ abstract public class BrowserApp extends GeckoApp
     public View getActionBarLayout() {
         int actionBarRes;
 
-        if (!hasPermanentMenuKey() || isTablet())
+        if (!HardwareUtils.hasMenuButton() || HardwareUtils.isTablet())
            actionBarRes = R.layout.browser_toolbar_menu;
         else
            actionBarRes = R.layout.browser_toolbar;
@@ -751,7 +764,7 @@ abstract public class BrowserApp extends GeckoApp
         if (mMainLayoutAnimator != null)
             mMainLayoutAnimator.stop();
 
-        boolean isSideBar = (GeckoAppShell.isTablet() && mOrientation == Configuration.ORIENTATION_LANDSCAPE);
+        boolean isSideBar = (HardwareUtils.isTablet() && mOrientation == Configuration.ORIENTATION_LANDSCAPE);
 
         ViewGroup.LayoutParams lp = mTabsPanel.getLayoutParams();
         if (isSideBar) {
@@ -1177,8 +1190,10 @@ abstract public class BrowserApp extends GeckoApp
                                                         AboutHomeContent.UpdateFlags.REMOTE_TABS));
                 }
                 mAboutHomeContent.setVisibility(View.VISIBLE);
+                mBrowserToolbar.setNextFocusDownId(R.id.abouthome_content);
             } else {
                 findViewById(R.id.abouthome_content).setVisibility(View.GONE);
+                mBrowserToolbar.setNextFocusDownId(R.id.layer_view);
             }
 
             // Refresh margins to possibly restore the toolbar padding
@@ -1376,7 +1391,7 @@ abstract public class BrowserApp extends GeckoApp
         super.onCreateOptionsMenu(menu);
 
         // Inform the menu about the action-items bar. 
-        if (menu instanceof GeckoMenu && isTablet())
+        if (menu instanceof GeckoMenu && HardwareUtils.isTablet())
             ((GeckoMenu) menu).setActionItemBarPresenter(mBrowserToolbar);
 
         MenuInflater inflater = getMenuInflater();
@@ -1447,9 +1462,9 @@ abstract public class BrowserApp extends GeckoApp
         MenuItem findInPage = aMenu.findItem(R.id.find_in_page);
         MenuItem desktopMode = aMenu.findItem(R.id.desktop_mode);
 
-        // Only show the "Quit" menu item on pre-ICS. In ICS+, it's easy to
-        // kill an app through the task switcher.
-        aMenu.findItem(R.id.quit).setVisible(Build.VERSION.SDK_INT < 14 || !isTouchDevice());
+        // Only show the "Quit" menu item on pre-ICS or television devices.
+        // In ICS+, it's easy to kill an app through the task switcher.
+        aMenu.findItem(R.id.quit).setVisible(Build.VERSION.SDK_INT < 14 || HardwareUtils.isTelevision());
 
         if (tab == null || tab.getURL() == null) {
             bookmark.setEnabled(false);
@@ -1495,21 +1510,31 @@ abstract public class BrowserApp extends GeckoApp
 
     @Override
     public boolean onContextItemSelected(MenuItem item) {
+        ContextMenuInfo info = item.getMenuInfo();
+
         switch (item.getItemId()) {
+            case R.id.abouthome_open_new_tab:
+                mAboutHomeContent.openNewTab(info);
+                return true;
+
+            case R.id.abouthome_open_private_tab:
+                mAboutHomeContent.openNewPrivateTab(info);
+                return true;
+
             case R.id.abouthome_topsites_edit:
-                mAboutHomeContent.editSite();
+                mAboutHomeContent.editSite(info);
                 return true;
 
             case R.id.abouthome_topsites_unpin:
-                mAboutHomeContent.unpinSite(AboutHomeContent.UnpinFlags.REMOVE_PIN);
+                mAboutHomeContent.unpinSite(info, TopSitesView.UnpinFlags.REMOVE_PIN);
                 return true;
 
             case R.id.abouthome_topsites_pin:
-                mAboutHomeContent.pinSite();
+                mAboutHomeContent.pinSite(info);
                 return true;
 
             case R.id.abouthome_topsites_remove:
-                mAboutHomeContent.unpinSite(AboutHomeContent.UnpinFlags.REMOVE_HISTORY);
+                mAboutHomeContent.unpinSite(info, TopSitesView.UnpinFlags.REMOVE_HISTORY);
                 return true;
 
         }

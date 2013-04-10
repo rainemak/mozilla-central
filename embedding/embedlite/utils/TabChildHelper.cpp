@@ -417,21 +417,21 @@ TabChildHelper::ConvertMutiTouchInputToEvent(const mozilla::MultiTouchInput& aDa
     return false;
   }
 
+  aEvent.touches.SetCapacity(aData.mTouches.Length());
   for (uint32_t i = 0; i < aData.mTouches.Length(); ++i) {
     const SingleTouchData& data = aData.mTouches[i];
     gfx::Point pt(data.mScreenPoint.x, data.mScreenPoint.y);
     pt.x = pt.x / res.width;
     pt.y = pt.y / res.height;
     nsIntPoint tpt = ToWidgetPoint(pt.x, pt.y, offset, presContext);
-    if (!getenv("TT1")) {
-      tpt.x -= diff.x;
-      tpt.y -= diff.y;
-    }
-    aEvent.touches.AppendElement(new nsDOMTouch(data.mIdentifier,
-                                                tpt,
-                                                data.mRadius,
-                                                data.mRotationAngle,
-                                                data.mForce));
+    tpt.x -= diff.x;
+    tpt.y -= diff.y;
+    nsCOMPtr<nsIDOMTouch> t(new Touch(data.mIdentifier,
+                                      tpt,
+                                      data.mRadius,
+                                      data.mRotationAngle,
+                                      data.mForce));
+    aEvent.touches.AppendElement(t);
   }
 
   return true;

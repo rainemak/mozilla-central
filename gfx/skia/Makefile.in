@@ -461,6 +461,7 @@ CPPSRCS += \
 	$(NULL)
 
 OS_CXXFLAGS += $(CAIRO_FT_CFLAGS)
+DEFINES += -DSK_USE_POSIX_THREADS=1
 else
 CPPSRCS += \
 	SkDebug_stdio.cpp \
@@ -494,6 +495,10 @@ CPPSRCS += \
 	$(NULL)
 
 OS_CXXFLAGS += $(MOZ_CAIRO_CFLAGS) $(CAIRO_FT_CFLAGS) $(MOZ_PANGO_CFLAGS)
+endif
+
+ifeq (Linux,$(OS_TARGET))
+DEFINES += -DSK_USE_POSIX_THREADS=1
 endif
 
 ifeq (windows,$(MOZ_WIDGET_TOOLKIT))

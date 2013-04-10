@@ -5,6 +5,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "mozilla/PodOperations.h"
+
 #include "jscompartment.h"
 #include "jsiter.h"
 
@@ -20,6 +22,8 @@
 
 using namespace js;
 using namespace js::types;
+
+using mozilla::PodZero;
 
 typedef Rooted<ArgumentsObject *> RootedArgumentsObject;
 
@@ -226,7 +230,7 @@ CallObject::createForFunction(JSContext *cx, AbstractFramePtr frame)
     assertSameCompartment(cx, frame);
 
     RootedObject scopeChain(cx, frame.scopeChain());
-    RootedFunction callee(cx, &frame.callee());
+    RootedFunction callee(cx, frame.callee());
 
     CallObject *callobj = createForFunction(cx, scopeChain, callee);
     if (!callobj)
@@ -1307,8 +1311,16 @@ class DebugScopeProxy : public BaseProxyHandler
 
     DebugScopeProxy() : BaseProxyHandler(&family) {}
 
+    bool isExtensible(JSObject *proxy) MOZ_OVERRIDE
+    {
+        // always [[Extensible]], can't be made non-[[Extensible]], like most
+        // proxies
+        return true;
+    }
+
     bool preventExtensions(JSContext *cx, HandleObject proxy) MOZ_OVERRIDE
     {
+        // See above.
         JS_ReportErrorNumber(cx, js_GetErrorMessage, NULL, JSMSG_CANT_CHANGE_EXTENSIBILITY);
         return false;
     }
@@ -1471,13 +1483,6 @@ class DebugScopeProxy : public BaseProxyHandler
         RootedValue idval(cx, IdToValue(id));
         return js_ReportValueErrorFlags(cx, JSREPORT_ERROR, JSMSG_CANT_DELETE,
                                         JSDVG_IGNORE_STACK, idval, NullPtr(), NULL, NULL);
-    }
-
-    bool isExtensible(JSObject *proxy) MOZ_OVERRIDE
-    {
-        // always [[Extensible]], can't be made non-[[Extensible]], like most
-        // proxies
-        return true;
     }
 };
 
@@ -1890,15 +1895,9 @@ DebugScopes::onCompartmentLeaveDebugMode(JSCompartment *c)
 {
     DebugScopes *scopes = c->debugScopes;
     if (scopes) {
-        if (c->rt->isHeapBusy()) {
-            scopes->proxiedScopes.clearWithoutCallingDestructors();
-            scopes->missingScopes.clearWithoutCallingDestructors();
-            scopes->liveScopes.clearWithoutCallingDestructors();
-        } else {
-            scopes->proxiedScopes.clear();
-            scopes->missingScopes.clear();
-            scopes->liveScopes.clear();
-        }
+        scopes->proxiedScopes.clear();
+        scopes->missingScopes.clear();
+        scopes->liveScopes.clear();
     }
 }
 
@@ -1923,7 +1922,7 @@ DebugScopes::updateLiveScopes(JSContext *cx)
          * Debug-mode currently disables Ion compilation in the compartment of
          * the debuggee.
          */
-        if (i.isIon())
+        if (i.isIonOptimizedJS())
             continue;
 
         AbstractFramePtr frame = i.abstractFramePtr();

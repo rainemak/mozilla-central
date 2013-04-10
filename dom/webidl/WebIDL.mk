@@ -9,6 +9,7 @@ generated_webidl_files = \
   $(NULL)
 
 webidl_files = \
+  AnalyserNode.webidl \
   AnimationEvent.webidl \
   ArchiveReader.webidl \
   ArchiveRequest.webidl \
@@ -19,7 +20,6 @@ webidl_files = \
   AudioListener.webidl \
   AudioNode.webidl \
   AudioParam.webidl \
-  AudioSourceNode.webidl \
   BatteryManager.webidl \
   BeforeUnloadEvent.webidl \
   BiquadFilterNode.webidl \
@@ -31,6 +31,7 @@ webidl_files = \
   CharacterData.webidl \
   ClientRect.webidl \
   ClientRectList.webidl \
+  ClipboardEvent.webidl \
   CommandEvent.webidl \
   Comment.webidl \
   CompositionEvent.webidl \
@@ -120,6 +121,7 @@ webidl_files = \
   HTMLPropertiesCollection.webidl \
   HTMLQuoteElement.webidl \
   HTMLScriptElement.webidl \
+  HTMLSourceElement.webidl \
   HTMLSpanElement.webidl \
   HTMLStyleElement.webidl \
   HTMLTableCaptionElement.webidl \
@@ -134,12 +136,14 @@ webidl_files = \
   HTMLTitleElement.webidl \
   HTMLUListElement.webidl \
   HTMLVideoElement.webidl \
+  IDBFactory.webidl \
   IDBVersionChangeEvent.webidl \
   ImageData.webidl \
   InspectorUtils.webidl \
   LinkStyle.webidl \
   LocalMediaStream.webidl \
   Location.webidl \
+  MediaError.webidl \
   MediaStream.webidl \
   MessageEvent.webidl \
   MouseEvent.webidl \
@@ -163,6 +167,8 @@ webidl_files = \
   RGBColor.webidl \
   RTCConfiguration.webidl \
   Screen.webidl \
+  ScrollAreaEvent.webidl \
+  SimpleGestureEvent.webidl \
   StyleSheet.webidl \
   SVGAElement.webidl \
   SVGAltGlyphElement.webidl \
@@ -273,6 +279,7 @@ webidl_files = \
   ValidityState.webidl \
   WebComponents.webidl \
   WebSocket.webidl \
+  WheelEvent.webidl \
   UndoManager.webidl \
   URLUtils.webidl \
   USSDReceivedEvent.webidl \
@@ -283,6 +290,7 @@ webidl_files = \
   XMLSerializer.webidl \
   XMLStylesheetProcessingInstruction.webidl \
   XPathEvaluator.webidl \
+  XULCommandEvent.webidl \
   XULDocument.webidl \
   XULElement.webidl \
   $(NULL)
@@ -290,13 +298,6 @@ webidl_files = \
 ifdef MOZ_AUDIO_CHANNEL_MANAGER
 webidl_files += \
   AudioChannelManager.webidl \
-  $(NULL)
-endif
-
-ifdef MOZ_MEDIA
-webidl_files += \
-  HTMLSourceElement.webidl \
-  MediaError.webidl \
   $(NULL)
 endif
 
@@ -314,13 +315,16 @@ endif
 
 ifdef MOZ_WEBSPEECH
 webidl_files += \
-    SpeechGrammar.webidl \
-    SpeechGrammarList.webidl \
-    SpeechRecognitionAlternative.webidl \
-    SpeechRecognitionResultList.webidl \
-    SpeechRecognitionResult.webidl \
-    SpeechRecognition.webidl \
-    $(NULL)
+  SpeechGrammar.webidl \
+  SpeechGrammarList.webidl \
+  SpeechRecognitionAlternative.webidl \
+  SpeechRecognitionResultList.webidl \
+  SpeechRecognitionResult.webidl \
+  SpeechRecognition.webidl \
+  SpeechSynthesisUtterance.webidl \
+  SpeechSynthesisVoice.webidl \
+  SpeechSynthesis.webidl \
+  $(NULL)
 endif
 
 ifdef ENABLE_TESTS
@@ -329,6 +333,7 @@ test_webidl_files := \
   TestDictionary.webidl \
   TestExampleGen.webidl \
   TestJSImplGen.webidl \
+  TestJSImplInheritanceGen.webidl \
   TestTypedef.webidl \
   $(NULL)
 else

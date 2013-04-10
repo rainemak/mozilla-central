@@ -13,6 +13,7 @@ import org.mozilla.gecko.gfx.PanZoomController;
 import org.mozilla.gecko.mozglue.GeckoLoader;
 import org.mozilla.gecko.util.EventDispatcher;
 import org.mozilla.gecko.util.GeckoEventListener;
+import org.mozilla.gecko.util.HardwareUtils;
 import org.mozilla.gecko.util.ThreadUtils;
 
 import android.app.ActivityManager;
@@ -54,6 +55,7 @@ import android.os.MessageQueue;
 import android.os.SystemClock;
 import android.os.Vibrator;
 import android.provider.Settings;
+import android.text.TextUtils;
 import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -64,7 +66,6 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.MimeTypeMap;
 import android.widget.Toast;
-import android.text.TextUtils;
 
 import java.io.BufferedReader;
 import java.io.Closeable;
@@ -77,6 +78,9 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.Proxy;
+import java.net.ProxySelector;
+import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -89,9 +93,6 @@ import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
 import java.util.concurrent.SynchronousQueue;
-import java.net.ProxySelector;
-import java.net.Proxy;
-import java.net.URI;
 
 public class GeckoAppShell
 {
@@ -150,7 +151,7 @@ public class GeckoAppShell
 
     private static boolean mLocationHighAccuracy = false;
 
-    static ActivityHandlerHelper sActivityHelper = new ActivityHandlerHelper();
+    public static ActivityHandlerHelper sActivityHelper = new ActivityHandlerHelper();
     static NotificationClient sNotificationClient;
 
     /* The Android-side API: API methods that Android calls */
@@ -1696,6 +1697,10 @@ public class GeckoAppShell
         }
     }
 
+    public static Context getContext() {
+        return GeckoApp.mAppContext;
+    }
+
     public static android.hardware.Camera sCamera = null;
 
     static native void cameraCallbackBridge(byte[] data);
@@ -1938,16 +1943,9 @@ public class GeckoAppShell
         SmsManager.getInstance().clearMessageList(aListId);
     }
 
+    /* Called by JNI from AndroidBridge, and by reflection from tests/BaseTest.java.in */
     public static boolean isTablet() {
-        return GeckoApp.mAppContext.isTablet();
-    }
-
-    public static boolean isLargeTablet() {
-        return GeckoApp.mAppContext.isLargeTablet();
-    }
-
-    public static boolean isSmallTablet() {
-        return GeckoApp.mAppContext.isSmallTablet();
+        return HardwareUtils.isTablet();
     }
 
     public static void viewSizeChanged() {

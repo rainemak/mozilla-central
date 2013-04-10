@@ -131,7 +131,23 @@ nsRangeFrame::BuildDisplayList(nsDisplayListBuilder*   aBuilder,
                                const nsRect&           aDirtyRect,
                                const nsDisplayListSet& aLists)
 {
-  BuildDisplayListForInline(aBuilder, aDirtyRect, aLists);
+  if (IsThemed()) {
+    DisplayBorderBackgroundOutline(aBuilder, aLists);
+    // Only create items for the thumb. Specifically, we do not want
+    // the track to paint, since *our* background is used to paint
+    // the track, and we don't want the unthemed track painting over
+    // the top of the themed track.
+    // This logic is copied from
+    // nsContainerFrame::BuildDisplayListForNonBlockChildren as
+    // called by BuildDisplayListForInline.
+    nsIFrame* thumb = mThumbDiv->GetPrimaryFrame();
+    if (thumb) {
+      nsDisplayListSet set(aLists, aLists.Content());
+      BuildDisplayListForChild(aBuilder, thumb, aDirtyRect, set, DISPLAY_CHILD_INLINE);
+    }
+  } else {
+    BuildDisplayListForInline(aBuilder, aDirtyRect, aLists);
+  }
 }
 
 NS_IMETHODIMP
@@ -198,10 +214,6 @@ nsRangeFrame::ReflowAnonymousContent(nsPresContext*           aPresContext,
                                      nsHTMLReflowMetrics&     aDesiredSize,
                                      const nsHTMLReflowState& aReflowState)
 {
-  if (ShouldUseNativeStyle()) {
-    return NS_OK; // No need to reflow since we're not using these frames
-  }
-
   // The width/height of our content box, which is the available width/height
   // for our anonymous content:
   nscoord rangeFrameContentBoxWidth = aReflowState.ComputedWidth();
@@ -241,7 +253,7 @@ nsRangeFrame::ReflowAnonymousContent(nsPresContext*           aPresContext,
     trackX += aReflowState.mComputedBorderPadding.left;
     trackY += aReflowState.mComputedBorderPadding.top;
 
-    nsReflowStatus frameStatus = NS_FRAME_COMPLETE;
+    nsReflowStatus frameStatus;
     nsHTMLReflowMetrics trackDesiredSize;
     nsresult rv = ReflowChild(trackFrame, aPresContext, trackDesiredSize,
                               trackReflowState, trackX, trackY, 0, frameStatus);
@@ -263,7 +275,7 @@ nsRangeFrame::ReflowAnonymousContent(nsPresContext*           aPresContext,
     // Where we position the thumb depends on its size, so we first reflow
     // the thumb at {0,0} to obtain its size, then position it afterwards.
 
-    nsReflowStatus frameStatus = NS_FRAME_COMPLETE;
+    nsReflowStatus frameStatus;
     nsHTMLReflowMetrics thumbDesiredSize;
     nsresult rv = ReflowChild(thumbFrame, aPresContext, thumbDesiredSize,
                               thumbReflowState, 0, 0, 0, frameStatus);
@@ -290,7 +302,7 @@ nsRangeFrame::ReflowAnonymousContent(nsPresContext*           aPresContext,
     // unadjusted dimensions, then we adjust it to so that the appropriate edge
     // ends at the thumb.
 
-    nsReflowStatus frameStatus = NS_FRAME_COMPLETE;
+    nsReflowStatus frameStatus;
     nsHTMLReflowMetrics progressDesiredSize;
     nsresult rv = ReflowChild(rangeProgressFrame, aPresContext,
                               progressDesiredSize, progressReflowState, 0, 0,
