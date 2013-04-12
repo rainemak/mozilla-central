@@ -507,6 +507,10 @@ private:
    */
   void SetState(PanZoomState aState);
 
+/** Locks scrolling if velocity vector is close to an axis.
+ */
+  void LockScroll();
+
   nsRefPtr<CompositorParent> mCompositorParent;
   TaskThrottler mPaintThrottler;
   nsRefPtr<GeckoContentController> mGeckoContentController;
@@ -559,7 +563,7 @@ private:
   // frame.
   TimeStamp mLastSampleTime;
   // The last time a touch event came through on the UI thread.
-  int32_t mLastEventTime;
+  uint32_t mLastEventTime;
 
   // Start time of an animation. This is used for a zoom to animation to mark
   // the beginning.

@@ -113,33 +113,15 @@ static float gYStationarySizeMultiplier = 2.5f;
  * Since touch events are inaccurate it's difficult to scroll directly up/down
  * or left/right. These ratios help to lock scroll directions.
  *
- * Given a scroll offset vector is in the first quadrant the vertical scroll
- * lock ratio equal to 2 means that a displacement angle more than
- * 63 degrees would lock scrolling to strictly vertical (atan(2) == 63.43 deg).
- * And the horizontal scroll lock ratio equal to 0.5 means that the displacement
+ * Given a velocity vector is in the first quadrant the vertical scroll
+ * lock ratio equal to 2 means that the velocity angle more than 63 degrees
+ * would lock scrolling to strictly vertical (atan(2) == 63.43 deg).
+ * And the horizontal scroll lock ratio equal to 0.5 means that the velocity
  * angle less than 26 degrees would lock scrolling to strictly horizontal
  * (atan(0.5) == 26.57 deg).
  */
 static float gVerticalScrollLockRatio = 2.0f;
 static float gHorizontalScrollLockRatio = 0.5f;
-
-/** Calculates scroll locking.
- */
-static inline const gfx::Point lockScrollAxis(const gfx::Point& aOffset) {
-  float offsetX(aOffset.x);
-  float offsetY(aOffset.y);
-
-  if (fabs(offsetX) > 0) {
-    float ratio(fabs(offsetY/offsetX));
-
-    if (ratio > gVerticalScrollLockRatio) {
-      offsetX = 0.0f;
-    } else if (ratio < gHorizontalScrollLockRatio) {
-      offsetY = 0.0f;
-    }
-  }
-  return gfx::Point(offsetX, offsetY);
-}
 
 static void ReadAZPCPrefs()
 {
@@ -353,10 +335,7 @@ nsEventStatus AsyncPanZoomController::ReceiveInputEvent(const InputData& aEvent)
         mTouchListenerTimeoutTask =
           NewRunnableMethod(this, &AsyncPanZoomController::TimeoutTouchListeners);
 
-        MessageLoop::current()->PostDelayedTask(
-          FROM_HERE,
-          mTouchListenerTimeoutTask,
-          gTouchListenerTimeout);
+        PostDelayedTask(mTouchListenerTimeoutTask, gTouchListenerTimeout);
       }
     }
     return nsEventStatus_eConsumeNoDefault;
@@ -385,10 +364,7 @@ nsEventStatus AsyncPanZoomController::HandleInputEvent(const InputData& aEvent) 
         mTouchListenerTimeoutTask =
           NewRunnableMethod(this, &AsyncPanZoomController::TimeoutTouchListeners);
 
-        MessageLoop::current()->PostDelayedTask(
-          FROM_HERE,
-          mTouchListenerTimeoutTask,
-          gTouchListenerTimeout);
+        PostDelayedTask(mTouchListenerTimeoutTask, gTouchListenerTimeout);
       }
       return nsEventStatus_eConsumeNoDefault;
     }
@@ -552,6 +528,8 @@ nsEventStatus AsyncPanZoomController::OnTouchEnd(const MultiTouchInput& aEvent) 
     }
     mX.EndTouch();
     mY.EndTouch();
+
+    LockScroll();
     SetState(FLING);
     return nsEventStatus_eConsumeNoDefault;
 
@@ -813,6 +791,8 @@ void AsyncPanZoomController::TrackTouch(const MultiTouchInput& aEvent) {
     if (!gEnableKineticSpeedAmortization) {
       timeDelta = TimeDuration().FromMilliseconds(0);
     }
+
+    LockScroll();
     float xDisplacement = mX.GetDisplacementForDuration(inverseResolution,
                                                         timeDelta);
     float yDisplacement = mY.GetDisplacementForDuration(inverseResolution,
@@ -857,10 +837,10 @@ bool AsyncPanZoomController::DoFling(const TimeDuration& aDelta) {
   // larger swipe should move you a shorter distance.
   gfxFloat inverseResolution = 1 / CalculateResolution(mFrameMetrics).width;
 
-  ScrollBy(lockScrollAxis(gfx::Point(
+  ScrollBy(gfx::Point(
     mX.GetDisplacementForDuration(inverseResolution, aDelta),
     mY.GetDisplacementForDuration(inverseResolution, aDelta)
-  )));
+  ));
   TimeDuration timePaintDelta = TimeStamp::Now() - mPreviousPaintStartTime;
   if (timePaintDelta.ToMilliseconds() > gFlingRepaintInterval) {
     RequestContentRepaint();
@@ -1560,6 +1540,16 @@ void AsyncPanZoomController::ContentReceivedTouch(bool aPreventDefault) {
 void AsyncPanZoomController::SetState(PanZoomState aState) {
   MonitorAutoLock monitor(mMonitor);
   mState = aState;
+}
+
+void AsyncPanZoomController::LockScroll() {
+  float ratio(fabs(mY.GetVelocity()/mX.GetVelocity()));
+  if (ratio > gVerticalScrollLockRatio) {
+    mX.CancelTouch();
+  }
+  if (ratio < gHorizontalScrollLockRatio) {
+    mY.CancelTouch();
+  }
 }
 
 void AsyncPanZoomController::TimeoutTouchListeners() {
