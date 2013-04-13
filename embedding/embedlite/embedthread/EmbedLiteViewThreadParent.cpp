@@ -805,7 +805,7 @@ EmbedLiteViewThreadParent::RecvSetInputContext(const int32_t& aIMEEnabled,
 
   NS_ENSURE_TRUE(mView, false);
   mLastIMEState = aIMEEnabled;
-  mView->GetListener()->IMENotification(aIMEEnabled, aIMEOpen, aCause, aFocusChange);
+  mView->GetListener()->IMENotification(aIMEEnabled, aIMEOpen, aCause, aFocusChange, aType.get(), aInputmode.get());
   return true;
 }
 
