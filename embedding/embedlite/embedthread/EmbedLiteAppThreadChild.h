@@ -44,6 +44,7 @@ protected:
   virtual bool RecvSetCharPref(const nsCString&, const nsCString&);
   virtual bool RecvSetIntPref(const nsCString&, const int&);
   virtual bool RecvLoadGlobalStyleSheet(const nsCString&, const bool&);
+  virtual bool RecvLoadComponentManifest(const nsCString&);
 
   // IPDL protocol impl
   virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;

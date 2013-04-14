@@ -230,6 +230,20 @@ EmbedLiteAppThreadChild::RecvLoadGlobalStyleSheet(const nsCString& uri, const bo
   return true;
 }
 
+bool EmbedLiteAppThreadChild::RecvLoadComponentManifest(const nsCString& manifest)
+{
+  nsCOMPtr<nsIFile> f;
+  NS_NewNativeLocalFile(manifest, true,
+                        getter_AddRefs(f));
+  if (f) {
+    LOGT("Loading manifest: %s", manifest.get());
+    XRE_AddManifestLocation(NS_COMPONENT_LOCATION, f);
+  } else {
+    NS_ERROR("Failed to create nsIFile for manifest location");
+  }
+  return true;
+}
+
 bool
 EmbedLiteAppThreadChild::RecvObserve(const nsCString& topic,
                                      const nsString& data)

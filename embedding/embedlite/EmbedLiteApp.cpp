@@ -133,7 +133,11 @@ EmbedLiteApp::Start(EmbedType aEmbedType)
 void
 EmbedLiteApp::AddManifestLocation(const char* manifest)
 {
-  sComponentDirs.AppendElement(nsCString(manifest));
+  if (!mAppThread) {
+    sComponentDirs.AppendElement(nsCString(manifest));
+  } else {
+    unused << STHREADAPP()->SendLoadComponentManifest(nsDependentCString(manifest));
+  }
 }
 
 bool

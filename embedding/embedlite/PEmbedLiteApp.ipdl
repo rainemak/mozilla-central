@@ -25,6 +25,7 @@ child:
   async LoadGlobalStyleSheet(nsCString uri, bool aEnable);
   async AddObserver(nsCString topic);
   async RemoveObserver(nsCString topic);
+  async LoadComponentManifest(nsCString manifest);
 both:
   async Observe(nsCString topic, nsString data);
 };
