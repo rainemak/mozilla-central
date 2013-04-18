@@ -507,10 +507,6 @@ private:
    */
   void SetState(PanZoomState aState);
 
-/** Locks scrolling if velocity vector is close to an axis.
- */
-  void LockScroll();
-
   nsRefPtr<CompositorParent> mCompositorParent;
   TaskThrottler mPaintThrottler;
   nsRefPtr<GeckoContentController> mGeckoContentController;

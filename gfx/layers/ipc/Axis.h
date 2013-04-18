@@ -54,6 +54,12 @@ public:
   void StartTouch(int32_t aPos);
 
   /**
+   * Mark this Axis as locked, i.e. user's input along this axis gets ignored,
+   * and reset velocity and acceleration for this axis.
+   */
+  void Lock();
+
+  /**
    * Notify this Axis that a touch has ended gracefully. This may perform
    * recalculations of the axis velocity.
    */
@@ -187,6 +193,7 @@ protected:
   int32_t mLastPos;
   AsyncPanZoomController* mAsyncPanZoomController;
   nsTArray<float> mVelocityQueue;
+  bool mLocked;
 };
 
 class AxisX : public Axis {

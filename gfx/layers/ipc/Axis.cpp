@@ -35,6 +35,12 @@ static float gFlingFriction = 0.006f;
 static float gVelocityThreshold = 0.14f;
 
 /**
+ * The multiplier we apply to calculated velocity in order to regulate
+ * sensitivity of touch moves.
+ */
+static float gVelocityMultiplier = 1.0f;
+
+/**
  * Amount of acceleration we multiply in each time the user flings in one
  * direction. Every time they let go of the screen, we increase the acceleration
  * by this amount raised to the power of the amount of times they have let go,
@@ -66,6 +72,7 @@ static void ReadAxisPrefs()
   Preferences::AddFloatVarCache(&gAccelerationMultiplier, "gfx.axis.acceleration_multiplier", gAccelerationMultiplier);
   Preferences::AddFloatVarCache(&gFlingStoppedThreshold, "gfx.axis.fling_stopped_threshold", gFlingStoppedThreshold);
   Preferences::AddIntVarCache(&gMaxVelocityQueueSize, "gfx.axis.max_velocity_queue_size", gMaxVelocityQueueSize);
+  Preferences::AddFloatVarCache(&gVelocityMultiplier, "gfx.axis.velocity_multiplier", gVelocityMultiplier);
 }
 
 class ReadAxisPref MOZ_FINAL : public nsRunnable {
@@ -97,19 +104,24 @@ Axis::Axis(AsyncPanZoomController* aAsyncPanZoomController)
     mVelocity(0.0f),
     mAcceleration(0),
     mLastPos(0),
-    mAsyncPanZoomController(aAsyncPanZoomController)
+    mAsyncPanZoomController(aAsyncPanZoomController),
+    mLocked(false)
 {
   InitAxisPrefs();
 }
 
 void Axis::UpdateWithTouchAtDevicePoint(int32_t aPos, const TimeDuration& aTimeDelta) {
+  if (mLocked) {
+    return;
+  }
+
   if (mPos == aPos) {
     // Does not make sense to calculate velocity when distance is 0
     mLastPos = aPos;
     return;
   }
 
-  float newVelocity = (mPos - aPos) / aTimeDelta.ToMilliseconds();
+  float newVelocity = (mPos - aPos) / aTimeDelta.ToMilliseconds() * gVelocityMultiplier;
 
   bool curVelocityBelowThreshold = fabsf(newVelocity) < gVelocityThreshold;
   bool directionChange = (mVelocity > 0) != (newVelocity > 0);
@@ -135,9 +147,14 @@ void Axis::StartTouch(int32_t aPos) {
   mStartPos = aPos;
   mPos = aPos;
   mLastPos = aPos;
+  mLocked = false;
 }
 
 float Axis::GetDisplacementForDuration(float aScale, const TimeDuration& aDelta) {
+  if (mLocked) {
+    return 0.0f;
+  }
+
   if (fabsf(mVelocity) < gVelocityThreshold) {
     mAcceleration = 0;
   }
@@ -165,7 +182,17 @@ float Axis::PanDistance() {
   return fabsf(mPos - mStartPos);
 }
 
+void Axis::Lock() {
+  mLocked = true;
+  CancelTouch();
+}
+
 void Axis::EndTouch() {
+  if (mLocked) {
+    mLocked = false;
+    return;
+  }
+
   mAcceleration++;
 
   // Calculate the mean velocity and empty the queue.

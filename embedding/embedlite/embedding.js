@@ -55,9 +55,12 @@ pref("gfx.use_tiled_thebes", true);
 pref("gfx.azpc.y_skate_size_multiplier", "4.5f");
 pref("gfx.azpc.y_stationary_size_multiplier", "4.5f");
 pref("gfx.axis.max_event_acceleration", "12.0f");
-pref("gfx.axis.fling_friction", "0.00245f");
+pref("gfx.axis.acceleration_multiplier", "1.125f");
+pref("gfx.axis.velocity_multiplier", "0.55f");
+pref("gfx.axis.fling_friction", "0.00345f");
 pref("gfx.azpc.min_skate_speed", "10.0f");
 pref("gfx.azpc.tweak_fling_velocity", false);
+pref("gfx.azpc.vertical_scroll_lock_ratio", "1.2f");
 pref("ui.dragThresholdX", 25);
 pref("ui.dragThresholdY", 25);
 pref("embedlite.dispatch_mouse_events", false); // Will dispatch mouse events if page using them

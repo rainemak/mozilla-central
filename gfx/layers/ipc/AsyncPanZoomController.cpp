@@ -472,6 +472,13 @@ nsEventStatus AsyncPanZoomController::OnTouchMove(const MultiTouchInput& aEvent)
         return nsEventStatus_eIgnore;
       }
 
+      float ratio(mY.PanDistance() / mX.PanDistance());
+      if (ratio > gVerticalScrollLockRatio) {
+        mX.Lock();
+      } else if (ratio < gHorizontalScrollLockRatio) {
+        mY.Lock();
+      }
+
       StartPanning(aEvent);
 
       return nsEventStatus_eConsumeNoDefault;
@@ -528,8 +535,6 @@ nsEventStatus AsyncPanZoomController::OnTouchEnd(const MultiTouchInput& aEvent) 
     }
     mX.EndTouch();
     mY.EndTouch();
-
-    LockScroll();
     SetState(FLING);
     return nsEventStatus_eConsumeNoDefault;
 
@@ -791,8 +796,6 @@ void AsyncPanZoomController::TrackTouch(const MultiTouchInput& aEvent) {
     if (!gEnableKineticSpeedAmortization) {
       timeDelta = TimeDuration().FromMilliseconds(0);
     }
-
-    LockScroll();
     float xDisplacement = mX.GetDisplacementForDuration(inverseResolution,
                                                         timeDelta);
     float yDisplacement = mY.GetDisplacementForDuration(inverseResolution,
@@ -1540,16 +1543,6 @@ void AsyncPanZoomController::ContentReceivedTouch(bool aPreventDefault) {
 void AsyncPanZoomController::SetState(PanZoomState aState) {
   MonitorAutoLock monitor(mMonitor);
   mState = aState;
-}
-
-void AsyncPanZoomController::LockScroll() {
-  float ratio(fabs(mY.GetVelocity()/mX.GetVelocity()));
-  if (ratio > gVerticalScrollLockRatio) {
-    mX.CancelTouch();
-  }
-  if (ratio < gHorizontalScrollLockRatio) {
-    mY.CancelTouch();
-  }
 }
 
 void AsyncPanZoomController::TimeoutTouchListeners() {
