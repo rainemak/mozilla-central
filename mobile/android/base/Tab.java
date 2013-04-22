@@ -13,6 +13,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.content.ContentResolver;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
@@ -35,6 +36,7 @@ public class Tab {
     private final int mId;
     private long mLastUsed;
     private String mUrl;
+    private String mUserSearch;
     private String mTitle;
     private Bitmap mFavicon;
     private String mFaviconUrl;
@@ -56,11 +58,12 @@ public class Tab {
     private ZoomConstraints mZoomConstraints;
     private ArrayList<View> mPluginViews;
     private HashMap<Object, Layer> mPluginLayers;
-    private int mBackgroundColor = Color.WHITE;
+    private int mBackgroundColor;
     private int mState;
     private Bitmap mThumbnailBitmap;
     private boolean mDesktopMode;
     private boolean mEnteringReaderMode;
+    private Context mContext;
     private static final int MAX_HISTORY_LIST_SIZE = 50;
 
     public static final int STATE_DELAYED = 0;
@@ -68,10 +71,12 @@ public class Tab {
     public static final int STATE_SUCCESS = 2;
     public static final int STATE_ERROR = 3;
 
-    public Tab(int id, String url, boolean external, int parentId, String title) {
+    public Tab(Context context, int id, String url, boolean external, int parentId, String title) {
+        mContext = context;
         mId = id;
         mLastUsed = 0;
         mUrl = url;
+        mUserSearch = "";
         mExternal = external;
         mParentId = parentId;
         mTitle = title == null ? "" : title;
@@ -94,6 +99,11 @@ public class Tab {
         mPluginViews = new ArrayList<View>();
         mPluginLayers = new HashMap<Object, Layer>();
         mState = shouldShowProgress(url) ? STATE_SUCCESS : STATE_LOADING;
+
+        // At startup, the background is set to a color specified by LayerView
+        // when the LayerView is created. Shortly after, this background color
+        // will be used before the tab's content is shown.
+        mBackgroundColor = getBackgroundColorForUrl(url);
     }
 
     private ContentResolver getContentResolver() {
@@ -123,6 +133,11 @@ public class Tab {
     // may be null if user-entered query hasn't yet been resolved to a URI
     public synchronized String getURL() {
         return mUrl;
+    }
+
+    // mUserSearch should never be null, but it may be an empty string
+    public synchronized String getUserSearch() {
+        return mUserSearch;
     }
 
     // mTitle should never be null, but it may be an empty string
@@ -230,6 +245,10 @@ public class Tab {
             mUrl = url;
             updateBookmark();
         }
+    }
+
+    private synchronized void updateUserSearch(String userSearch) {
+        mUserSearch = userSearch;
     }
 
     public void setDocumentURI(String documentURI) {
@@ -380,7 +399,15 @@ public class Tab {
         if (!mReaderEnabled)
             return;
 
-        GeckoEvent e = GeckoEvent.createBroadcastEvent("Reader:Add", String.valueOf(getId()));
+        JSONObject json = new JSONObject();
+        try {
+            json.put("tabID", String.valueOf(getId()));
+        } catch (JSONException e) {
+            Log.e(LOGTAG, "JSON error - failing to add to reading list", e);
+            return;
+        }
+
+        GeckoEvent e = GeckoEvent.createBroadcastEvent("Reader:Add", json.toString());
         GeckoAppShell.sendEventToGecko(e);
     }
 
@@ -527,10 +554,13 @@ public class Tab {
         final String uri = message.getString("uri");
         mEnteringReaderMode = ReaderModeUtils.isEnteringReaderMode(mUrl, uri);
         updateURL(uri);
+        updateUserSearch(message.getString("userSearch"));
 
         setDocumentURI(message.getString("documentURI"));
         if (message.getBoolean("sameDocument")) {
             // We can get a location change event for the same document with an anchor tag
+            // Notify listeners so that buttons like back or forward will update themselves
+            Tabs.getInstance().notifyListeners(this, Tabs.TabEvents.LOCATION_CHANGE, uri);
             return;
         }
 
@@ -542,13 +572,20 @@ public class Tab {
         setReaderEnabled(false);
         setZoomConstraints(new ZoomConstraints(true));
         setHasTouchListeners(false);
-        setBackgroundColor(Color.WHITE);
+        setBackgroundColor(getBackgroundColorForUrl(uri));
 
         Tabs.getInstance().notifyListeners(this, Tabs.TabEvents.LOCATION_CHANGE, uri);
     }
 
     private boolean shouldShowProgress(String url) {
         return "about:home".equals(url) || ReaderModeUtils.isAboutReader(url);
+    }
+
+    private int getBackgroundColorForUrl(String url) {
+        if ("about:home".equals(url)) {
+            return mContext.getResources().getColor(R.color.background_normal);
+        }
+        return Color.WHITE;
     }
 
     void handleDocumentStart(boolean showProgress, String url) {

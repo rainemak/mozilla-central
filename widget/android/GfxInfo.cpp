@@ -348,6 +348,19 @@ GfxInfo::GetFeatureStatusImpl(int32_t aFeature,
     if (aFeature == FEATURE_STAGEFRIGHT) {
       NS_LossyConvertUTF16toASCII cManufacturer(mManufacturer);
       NS_LossyConvertUTF16toASCII cModel(mModel);
+      NS_LossyConvertUTF16toASCII cHardware(mHardware);
+
+      if (cHardware.Equals("antares") ||
+          cHardware.Equals("endeavoru") ||
+          cHardware.Equals("harmony") ||
+          cHardware.Equals("picasso") ||
+          cHardware.Equals("picasso_e") ||
+          cHardware.Equals("ventana"))
+      {
+        *aStatus = nsIGfxInfo::FEATURE_BLOCKED_DEVICE;
+        return NS_OK;
+      }
+
       if (CompareVersions(mOSVersion.get(), "2.2.0") >= 0 &&
           CompareVersions(mOSVersion.get(), "2.3.0") < 0)
       {
@@ -365,11 +378,26 @@ GfxInfo::GetFeatureStatusImpl(int32_t aFeature,
           CompareVersions(mOSVersion.get(), "2.4.0") < 0)
       {
         // Gingerbread HTC devices are whitelisted.
-        // Gingerbread Samsung devices are whitelisted.
+        // Gingerbread Samsung devices are whitelisted except for:
+        //   Samsung devices identified in Bug 847837
         // All other Gingerbread devices are blacklisted.
-	bool isWhitelisted =
+        bool isWhitelisted =
           cManufacturer.Equals("htc", nsCaseInsensitiveCStringComparator()) ||
           cManufacturer.Equals("samsung", nsCaseInsensitiveCStringComparator());
+
+        if (cModel.Equals("GT-I8160", nsCaseInsensitiveCStringComparator()) ||
+            cModel.Equals("GT-I8160L", nsCaseInsensitiveCStringComparator()) ||
+            cModel.Equals("GT-I8530", nsCaseInsensitiveCStringComparator()) ||
+            cModel.Equals("GT-I9070", nsCaseInsensitiveCStringComparator()) ||
+            cModel.Equals("GT-I9070P", nsCaseInsensitiveCStringComparator()) ||
+            cModel.Equals("GT-I8160P", nsCaseInsensitiveCStringComparator()) ||
+            cModel.Equals("GT-S7500", nsCaseInsensitiveCStringComparator()) ||
+            cModel.Equals("GT-S7500T", nsCaseInsensitiveCStringComparator()) ||
+            cModel.Equals("GT-S7500L", nsCaseInsensitiveCStringComparator()) ||
+            cModel.Equals("GT-S6500T", nsCaseInsensitiveCStringComparator()))
+        {
+          isWhitelisted = false;
+        }
 
         if (!isWhitelisted) {
           *aStatus = nsIGfxInfo::FEATURE_BLOCKED_DEVICE;

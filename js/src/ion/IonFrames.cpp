@@ -1,6 +1,5 @@
-/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- * vim: set ts=4 sw=4 et tw=99:
- *
+/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ * vim: set ts=8 sts=4 et sw=4 tw=99:
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -25,6 +24,8 @@
 #include "SnapshotReader.h"
 #include "Safepoints.h"
 #include "VMFunctions.h"
+
+#include "vm/ParallelDo.h"
 
 namespace js {
 namespace ion {
@@ -61,8 +62,14 @@ IonFrameIterator::checkInvalidation(IonScript **ionScriptOut) const
     RawScript script = this->script();
     // N.B. the current IonScript is not the same as the frame's
     // IonScript if the frame has since been invalidated.
-    bool invalidated = !script->hasIonScript() ||
-        !script->ionScript()->containsReturnAddress(returnAddr);
+    bool invalidated;
+    if (isParallelFunctionFrame()) {
+        invalidated = !script->hasParallelIonScript() ||
+            !script->parallelIonScript()->containsReturnAddress(returnAddr);
+    } else {
+        invalidated = !script->hasIonScript() ||
+            !script->ionScript()->containsReturnAddress(returnAddr);
+    }
     if (!invalidated)
         return false;
 
@@ -84,8 +91,10 @@ JSFunction *
 IonFrameIterator::callee() const
 {
     if (isScripted()) {
-        JS_ASSERT(isFunctionFrame());
-        return CalleeTokenToFunction(calleeToken());
+        JS_ASSERT(isFunctionFrame() || isParallelFunctionFrame());
+        if (isFunctionFrame())
+            return CalleeTokenToFunction(calleeToken());
+        return CalleeTokenToParallelFunction(calleeToken());
     }
 
     JS_ASSERT(isNative());
@@ -95,7 +104,7 @@ IonFrameIterator::callee() const
 JSFunction *
 IonFrameIterator::maybeCallee() const
 {
-    if ((isScripted() && isFunctionFrame()) || isNative())
+    if ((isScripted() && (isFunctionFrame() || isParallelFunctionFrame())) || isNative())
         return callee();
     return NULL;
 }
@@ -136,6 +145,12 @@ bool
 IonFrameIterator::isFunctionFrame() const
 {
     return CalleeTokenIsFunction(calleeToken());
+}
+
+bool
+IonFrameIterator::isParallelFunctionFrame() const
+{
+    return GetCalleeTokenTag(calleeToken()) == CalleeToken_ParallelFunction;
 }
 
 bool
@@ -272,7 +287,7 @@ CloseLiveIterator(JSContext *cx, const InlineFrameIterator &frame, uint32_t loca
     SnapshotIterator si = frame.snapshotIterator();
 
     // Skip stack slots until we reach the iterator object.
-    uint32_t base = CountArgSlots(frame.maybeCallee()) + frame.script()->nfixed;
+    uint32_t base = CountArgSlots(frame.script(), frame.maybeCallee()) + frame.script()->nfixed;
     uint32_t skipSlots = base + localSlot - 1;
 
     for (unsigned i = 0; i < skipSlots; i++)
@@ -494,6 +509,23 @@ HandleException(ResumeFromException *rfe)
         }
     }
 
+    rfe->stackPointer = iter.fp();
+}
+
+void
+HandleParallelFailure(ResumeFromException *rfe)
+{
+    ForkJoinSlice *slice = ForkJoinSlice::Current();
+    IonFrameIterator iter(slice->perThreadData->ionTop);
+
+    while (!iter.isEntry()) {
+        parallel::Spew(parallel::SpewBailouts, "Bailing from VM reentry");
+        if (!slice->abortedScript && iter.isScripted())
+            slice->abortedScript = iter.script();
+        ++iter;
+    }
+
+    rfe->kind = ResumeFromException::RESUME_ENTRY_FRAME;
     rfe->stackPointer = iter.fp();
 }
 
@@ -1091,7 +1123,15 @@ IonFrameIterator::ionScript() const
     IonScript *ionScript = NULL;
     if (checkInvalidation(&ionScript))
         return ionScript;
-    return script()->ionScript();
+    switch (GetCalleeTokenTag(calleeToken())) {
+      case CalleeToken_Function:
+      case CalleeToken_Script:
+        return script()->ionScript();
+      case CalleeToken_ParallelFunction:
+        return script()->parallelIonScript();
+      default:
+        JS_NOT_REACHED("unknown callee token type");
+    }
 }
 
 const SafepointIndex *

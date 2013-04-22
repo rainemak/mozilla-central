@@ -11,4 +11,5 @@ elif CONFIG['OS_ARCH'] == 'Darwin':
 elif CONFIG['OS_ARCH'] == 'Linux':
     DIRS += ['linux']
 
+DIRS += ['locales']
 TEST_DIRS += ['test']

@@ -404,8 +404,8 @@ VariablesView.prototype = {
       return;
     }
     this._searchboxContainer.parentNode.removeChild(this._searchboxContainer);
-    this._searchboxNode.addEventListener("input", this._onSearchboxInput, false);
-    this._searchboxNode.addEventListener("keypress", this._onSearchboxKeyPress, false);
+    this._searchboxNode.removeEventListener("input", this._onSearchboxInput, false);
+    this._searchboxNode.removeEventListener("keypress", this._onSearchboxKeyPress, false);
 
     this._searchboxContainer = null;
     this._searchboxNode = null;
@@ -734,40 +734,27 @@ VariablesView.prototype = {
         return;
 
       case e.DOM_VK_DOWN:
-        // Only expand scopes before advancing focus.
-        if (!(item instanceof Variable) &&
-            !(item instanceof Property) &&
-            !item._isExpanded && item._isArrowVisible) {
-          item.expand();
-        } else {
-          this.focusNextItem(true);
-        }
+        // Always advance focus.
+        this.focusNextItem(true);
         return;
 
       case e.DOM_VK_LEFT:
-        // If this is a collapsed or un-expandable item that has an expandable
-        // variable or property parent, collapse and focus the owner view.
-        if (!item._isExpanded || !item._isArrowVisible) {
-          let ownerView = item.ownerView;
-          if ((ownerView instanceof Variable ||
-               ownerView instanceof Property) &&
-               ownerView._isExpanded && ownerView._isArrowVisible) {
-            if (this._focusItem(ownerView, true)) {
-              return;
-            }
-          }
-        }
         // Collapse scopes, variables and properties before rewinding focus.
         if (item._isExpanded && item._isArrowVisible) {
           item.collapse();
         } else {
-          this.focusPrevItem(true);
+          this._focusItem(item.ownerView);
         }
         return;
 
       case e.DOM_VK_RIGHT:
+        // Nothing to do here if this item never expands.
+        if (!item._isArrowVisible) {
+          return;
+        }
+
         // Expand scopes, variables and properties before advancing focus.
-        if (!item._isExpanded && item._isArrowVisible) {
+        if (!item._isExpanded) {
           item.expand();
         } else {
           this.focusNextItem(true);
@@ -1556,7 +1543,9 @@ Scope.prototype = {
    * The click listener for this scope's title.
    */
   _onClick: function S__onClick(e) {
-    if (e.target == this._inputNode) {
+    if (e.target == this._inputNode ||
+        e.target == this._editNode ||
+        e.target == this._deleteNode) {
       return;
     }
     this.toggle();

@@ -64,6 +64,7 @@ var SelectionHandler = {
     addMessageListener("Browser:CaretUpdate", this);
     addMessageListener("Browser:SelectionSwitchMode", this);
     addMessageListener("Browser:RepositionInfoRequest", this);
+    addMessageListener("Browser:SelectionHandlerPing", this);
   },
 
   shutdown: function shutdown() {
@@ -82,6 +83,7 @@ var SelectionHandler = {
     removeMessageListener("Browser:CaretUpdate", this);
     removeMessageListener("Browser:SelectionSwitchMode", this);
     removeMessageListener("Browser:RepositionInfoRequest", this);
+    removeMessageListener("Browser:SelectionHandlerPing", this);
   },
 
   /*************************************************
@@ -436,6 +438,10 @@ var SelectionHandler = {
     });
   },
 
+  _onPing: function _onPing(aId) {
+    sendAsyncMessage("Content:SelectionHandlerPong", { id: aId });
+  },
+
   /*************************************************
    * Selection helpers
    */
@@ -474,6 +480,7 @@ var SelectionHandler = {
     this._contentOffset = null;
     this._domWinUtils = null;
     this._targetIsEditable = false;
+    sendSyncMessage("Content:HandlerShutdown", {});
   },
 
   /*
@@ -535,17 +542,7 @@ var SelectionHandler = {
     this._contentWindow = contentWindow;
     this._contentOffset = offset;
     this._domWinUtils = utils;
-    this._targetIsEditable = false;
-    if (this._isTextInput(this._targetElement)) {
-      this._targetIsEditable = true;
-      // Since we have an overlay, focus will not get set, so set it. There
-      // are ways around this if this causes trouble - we have the selection
-      // controller, so we can turn selection display on manually. (Selection
-      // display is setup on edits when focus changes.) I think web pages will
-      // prefer that focus be set when we are interacting with selection in
-      // the element.
-      this._targetElement.focus();
-    }
+    this._targetIsEditable = this._isTextInput(this._targetElement);
     return true;
   },
 
@@ -852,13 +849,16 @@ var SelectionHandler = {
 
     let orientation = this._pointOrientationToRect(aClientPoint);
     let result = { speed: 1, trigger: false, start: false, end: false };
+    let ml = Util.isMultilineInput(this._targetElement);
 
-    if (orientation.left || orientation.top) {
+    // This could be improved such that we only select to the beginning of
+    // the line when dragging left but not up.
+    if (orientation.left || (ml && orientation.top)) {
       this._addEditSelection(kSelectionNodeAnchor);
       result.speed = orientation.left + orientation.top;
       result.trigger = true;
       result.end = true;
-    } else if (orientation.right || orientation.bottom) {
+    } else if (orientation.right || (ml && orientation.bottom)) {
       this._addEditSelection(kSelectionNodeFocus);
       result.speed = orientation.right + orientation.bottom;
       result.trigger = true;
@@ -1227,6 +1227,10 @@ var SelectionHandler = {
 
       case "Browser:RepositionInfoRequest":
         this._repositionInfoRequest(json);
+        break;
+
+      case "Browser:SelectionHandlerPing":
+        this._onPing(json.id);
         break;
     }
   },

@@ -46,16 +46,16 @@ EmbedLiteCompositorParent::~EmbedLiteCompositorParent()
 bool
 EmbedLiteCompositorParent::IsGLBackend()
 {
-  LayerManager* mgr = GetLayerManager();
+  LayerManagerComposite* mgr = GetLayerManager();
   NS_ENSURE_TRUE(mgr, false);
 
-  return mgr->GetBackendType() == mozilla::layers::LAYERS_OPENGL;
+  return mgr->GetCompositor()->GetBackend() == mozilla::layers::LAYERS_OPENGL;
 }
 
 bool EmbedLiteCompositorParent::RenderToContext(gfxContext* aContext)
 {
   LOGF();
-  LayerManager* mgr = GetLayerManager();
+  LayerManagerComposite* mgr = GetLayerManager();
   NS_ENSURE_TRUE(mgr, false);
   if (!mgr->GetRoot()) {
     // Nothing to paint yet, just return silently
@@ -71,13 +71,12 @@ bool EmbedLiteCompositorParent::RenderGL()
   bool retval = true;
   NS_ENSURE_TRUE(IsGLBackend(), false);
 
-  LayerManager* mgr = GetLayerManager();
+  LayerManagerComposite* mgr = GetLayerManager();
   if (!mgr->GetRoot()) {
     retval = false;
   }
-  if (mgr->GetBackendType() == mozilla::layers::LAYERS_OPENGL) {
-    static_cast<LayerManagerOGL*>(mgr)->
-    SetWorldTransform(mWorldTransform);
+  if (IsGLBackend()) {
+    mgr->SetWorldTransform(mWorldTransform);
   }
   if (!mActiveClipping.IsEmpty() && mgr->GetRoot()) {
     mgr->GetRoot()->SetClipRect(&mActiveClipping);
@@ -162,7 +161,7 @@ void EmbedLiteCompositorParent::ShadowLayersUpdated(ShadowLayersParent* aLayerTr
   if (ContainerLayer* root = shadowRoot->AsContainerLayer()) {
     AsyncPanZoomController* controller = GetEmbedPanZoomController();
     if (controller) {
-        CompositorParent::SetPanUserData(root, controller);
+        root->SetAsyncPanZoomController(controller);
         controller->NotifyLayersUpdated(root->GetFrameMetrics(), isFirstPaint);
     }
   }

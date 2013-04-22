@@ -1,6 +1,5 @@
-/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- * vim: set ts=4 sw=4 et tw=99:
- *
+/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ * vim: set ts=8 sts=4 et sw=4 tw=99:
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -1016,7 +1015,7 @@ CodeGeneratorARM::visitMathD(LMathD *math)
     const LAllocation *src1 = math->getOperand(0);
     const LAllocation *src2 = math->getOperand(1);
     const LDefinition *output = math->getDef(0);
-    
+
     switch (math->jsop()) {
       case JSOP_ADD:
         masm.ma_vadd(ToFloatRegister(src1), ToFloatRegister(src2), ToFloatRegister(output));
@@ -1628,6 +1627,14 @@ CodeGeneratorARM::generateInvalidateEpilogue()
     // pop the invalidated JS frame and return directly to its caller.
     masm.breakpoint();
     return true;
+}
+
+void
+ParallelGetPropertyIC::initializeAddCacheState(LInstruction *ins, AddCacheState *addState)
+{
+    // Can always use the scratch register on ARM.
+    JS_ASSERT(ins->isGetPropertyCacheV() || ins->isGetPropertyCacheT());
+    addState->dispatchScratch = ScratchRegister;
 }
 
 template <class U>

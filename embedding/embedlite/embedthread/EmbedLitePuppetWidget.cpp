@@ -523,20 +523,20 @@ void EmbedLitePuppetWidget::CreateCompositor()
   EmbedLiteCompositorParent* parent =
     new EmbedLiteCompositorParent(this, renderToEGLSurface, glSize.width, glSize.height, mId);
   mCompositorParent = parent;
+  AsyncChannel* parentChannel = mCompositorParent->GetIPCChannel();
   LayerManager* lm = CreateBasicLayerManager();
   MessageLoop* childMessageLoop = CompositorParent::CompositorLoop();
   mCompositorChild = new CompositorChild(lm);
   parent->SetChildCompositor(mCompositorChild, MessageLoop::current());
-  AsyncChannel* parentChannel = mCompositorParent->GetIPCChannel();
   AsyncChannel::Side childSide = mozilla::ipc::AsyncChannel::Child;
   mCompositorChild->Open(parentChannel, childMessageLoop, childSide);
-  int32_t maxTextureSize;
+
+  TextureFactoryIdentifier textureFactoryIdentifier;
   PLayersChild* shadowManager;
   mozilla::layers::LayersBackend backendHint =
     mUseLayersAcceleration ? mozilla::layers::LAYERS_OPENGL : mozilla::layers::LAYERS_BASIC;
-  mozilla::layers::LayersBackend parentBackend;
   shadowManager = mCompositorChild->SendPLayersConstructor(
-                    backendHint, 0, &parentBackend, &maxTextureSize);
+    backendHint, 0, &textureFactoryIdentifier);
 
   if (shadowManager) {
     ShadowLayerForwarder* lf = lm->AsShadowForwarder();
@@ -546,8 +546,7 @@ void EmbedLitePuppetWidget::CreateCompositor()
       return;
     }
     lf->SetShadowManager(shadowManager);
-    lf->SetParentBackendType(parentBackend);
-    lf->SetMaxTextureSize(maxTextureSize);
+    lf->IdentifyTextureHost(textureFactoryIdentifier);
 
     mLayerManager = lm;
   } else {

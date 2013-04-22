@@ -62,9 +62,9 @@ public class UpdateServiceHelper {
         }
         UPDATE_URL = "https://aus2.mozilla.org/update/4/" + AppConstants.MOZ_APP_BASENAME + "/" +
                      AppConstants.MOZ_APP_VERSION         +
-                     "/%BUILDID%/Android_ "               + AppConstants.MOZ_APP_ABI + pkgSpecial +
+                     "/%BUILDID%/Android_"                + AppConstants.MOZ_APP_ABI + pkgSpecial +
                      "/%LOCALE%/"                         + AppConstants.MOZ_UPDATE_CHANNEL +
-                     "/%OS_VERSION%/default/default/"     + AppConstants.MOZ_APP_VERSION +
+                     "/%OS_VERSION%/default/default/"     + AppConstants.MOZILLA_VERSION +
                      "/update.xml";
     }
 

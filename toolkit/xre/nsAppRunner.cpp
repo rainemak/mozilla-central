@@ -3399,7 +3399,8 @@ XREMain::XRE_mainStartup(bool* aExitFlag)
   // An environment variable is used instead of a pref on X11 platforms because we start having 
   // access to prefs long after the first call to XOpenDisplay which is hard to change due to 
   // interdependencies in the initialization.
-  if (PR_GetEnv("MOZ_USE_OMTC")) {
+  if (PR_GetEnv("MOZ_USE_OMTC") ||
+      PR_GetEnv("MOZ_OMTC_ENABLED")) {
     XInitThreads();
   }
 #endif
@@ -3893,7 +3894,7 @@ XREMain::XRE_mainRun()
 int
 XREMain::XRE_main(int argc, char* argv[], const nsXREAppData* aAppData)
 {
-  profiler_init();
+  GeckoProfilerInitRAII profilerGuard;
   PROFILER_LABEL("Startup", "XRE_Main");
 
   nsresult rv = NS_OK;
@@ -3994,7 +3995,6 @@ XREMain::XRE_main(int argc, char* argv[], const nsXREAppData* aAppData)
     MOZ_gdk_display_close(mGdkDisplay);
 #endif
 
-    profiler_shutdown();
     rv = LaunchChild(mNativeApp, true);
 
 #ifdef MOZ_CRASHREPORTER
@@ -4016,8 +4016,6 @@ XREMain::XRE_main(int argc, char* argv[], const nsXREAppData* aAppData)
 #endif
 
   XRE_DeinitCommandLine();
-
-  profiler_shutdown();
 
   return NS_FAILED(rv) ? 1 : 0;
 }
@@ -4091,7 +4089,7 @@ public:
 int
 XRE_mainMetro(int argc, char* argv[], const nsXREAppData* aAppData)
 {
-  profiler_init();
+  GeckoProfilerInitRAII profilerGuard;
   PROFILER_LABEL("Startup", "XRE_Main");
 
   nsresult rv = NS_OK;
@@ -4132,7 +4130,6 @@ XRE_mainMetro(int argc, char* argv[], const nsXREAppData* aAppData)
   // thread that called XRE_metroStartup.
   NS_ASSERTION(!xreMainPtr->mScopedXPCom,
                "XPCOM Shutdown hasn't occured, and we are exiting.");
-  profiler_shutdown();
   return 0;
 }
 

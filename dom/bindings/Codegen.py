@@ -8,6 +8,7 @@ import operator
 import os
 import re
 import string
+import math
 
 from WebIDL import BuiltinTypes, IDLBuiltinType, IDLNullValue, IDLSequenceType, IDLType
 from Configuration import NoSuchDescriptorError, getTypesFromDescriptor, getTypesFromDictionary, getTypesFromCallback, Descriptor
@@ -174,7 +175,7 @@ DOMJSClass Class = {
   { "%s",
     %s,
     %s, /* addProperty */
-    JS_PropertyStub,       /* delProperty */
+    JS_DeletePropertyStub, /* delProperty */
     JS_PropertyStub,       /* getProperty */
     JS_StrictPropertyStub, /* setProperty */
     JS_EnumerateStub,
@@ -223,7 +224,7 @@ class CGPrototypeJSClass(CGThing):
     "%sPrototype",
     JSCLASS_IS_DOMIFACEANDPROTOJSCLASS | JSCLASS_HAS_RESERVED_SLOTS(2),
     JS_PropertyStub,       /* addProperty */
-    JS_PropertyStub,       /* delProperty */
+    JS_DeletePropertyStub, /* delProperty */
     JS_PropertyStub,       /* getProperty */
     JS_StrictPropertyStub, /* setProperty */
     JS_EnumerateStub,
@@ -277,7 +278,7 @@ static DOMIfaceAndProtoJSClass InterfaceObjectClass = {
     "Function",
     JSCLASS_IS_DOMIFACEANDPROTOJSCLASS | JSCLASS_HAS_RESERVED_SLOTS(DOM_INTERFACE_SLOTS_BASE + %i),
     JS_PropertyStub,       /* addProperty */
-    JS_PropertyStub,       /* delProperty */
+    JS_DeletePropertyStub, /* delProperty */
     JS_PropertyStub,       /* getProperty */
     JS_StrictPropertyStub, /* setProperty */
     JS_EnumerateStub,
@@ -1019,7 +1020,7 @@ class CGClassConstructor(CGAbstractStaticMethod):
 
     def generate_code(self):
         preamble = """
-  JSObject* obj = JSVAL_TO_OBJECT(JS_CALLEE(cx, vp));
+  JS::Rooted<JSObject*> obj(cx, JSVAL_TO_OBJECT(JS_CALLEE(cx, vp)));
 """
         name = self._ctor.identifier.name
         nativeName = MakeNativeName(self.descriptor.binaryNames.get(name, name))
@@ -1111,15 +1112,19 @@ class CGClassHasInstanceHook(CGAbstractStaticMethod):
   // FIXME Limit this to chrome by checking xpc::AccessCheck::isChrome(obj).
   nsISupports* native =
     nsContentUtils::XPConnect()->GetNativeOfWrapper(cx,
-                                                    js::UnwrapObject(instance));
+                                                    js::UncheckedUnwrap(instance));
   nsCOMPtr<nsIDOM%s> qiResult = do_QueryInterface(native);
   *bp = !!qiResult;
   return true;
          """ % self.descriptor.interface.identifier.name
 
         hasInstanceCode = """
-  const DOMClass* domClass = GetDOMClass(js::UnwrapObject(instance));
+  const DOMClass* domClass = GetDOMClass(js::UncheckedUnwrap(instance));
   *bp = false;
+  if (!domClass) {
+    // Not a DOM object, so certainly not an instance of this interface
+    return true;
+  }
   """
         # Sort interaces implementing self by name so we get stable output.
         for iface in sorted(self.descriptor.interface.interfacesImplementingSelf,
@@ -1782,6 +1787,9 @@ class CGDefineDOMInterfaceMethod(CGAbstractMethod):
     def definition_body(self):
         if len(self.descriptor.interface.namedConstructors) > 0:
             getConstructor = """  JSObject* interfaceObject = GetConstructorObject(aCx, aGlobal);
+  if (!interfaceObject) {
+    return nullptr;
+  }
   for (unsigned slot = DOM_INTERFACE_SLOTS_BASE; slot < JSCLASS_RESERVED_SLOTS(&InterfaceObjectClass.mBase); ++slot) {
     JSObject* constructor = &js::GetReservedSlot(interfaceObject, slot).toObject();
     if (JS_GetFunctionId(JS_GetObjectFunction(constructor)) == JSID_TO_STRING(id)) {
@@ -1858,6 +1866,7 @@ def CreateBindingJSObject(descriptor, parent):
         create += """  // Make sure the native objects inherit from NonRefcountedDOMObject so that we
   // log their ctor and dtor.
   MustInheritFromNonRefcountedDOMObject(aObject);
+  *aTookOwnership = true;
 """
     return create % parent
 
@@ -1936,7 +1945,7 @@ class CGWrapWithCacheMethod(CGAbstractMethod):
 
         if self.descriptor.nativeOwnership == 'nsisupports':
             assertISupportsInheritance = (
-                '  MOZ_ASSERT(reinterpret_cast<nsWrapperCache*>(aObject) != aCache,\n'
+                '  MOZ_ASSERT(reinterpret_cast<void*>(aObject) != aCache,\n'
                 '             "nsISupports must be on our primary inheritance chain");\n')
         else:
             assertISupportsInheritance = ""
@@ -1996,6 +2005,8 @@ class CGWrapNonWrapperCacheMethod(CGAbstractMethod):
         assert descriptor.interface.hasInterfacePrototypeObject()
         args = [Argument('JSContext*', 'aCx'), Argument('JSObject*', 'aScope'),
                 Argument(descriptor.nativeType + '*', 'aObject')]
+        if descriptor.nativeOwnership == 'owned':
+            args.append(Argument('bool*', 'aTookOwnership'))
         CGAbstractMethod.__init__(self, descriptor, 'Wrap', 'JSObject*', args)
         self.properties = properties
 
@@ -2038,9 +2049,22 @@ numericSuffixes = {
     IDLType.Tags.uint32: 'U',
     IDLType.Tags.int64: 'LL',
     IDLType.Tags.uint64: 'ULL',
+    IDLType.Tags.unrestricted_float: 'F',
     IDLType.Tags.float: 'F',
+    IDLType.Tags.unrestricted_double: 'D',
     IDLType.Tags.double: 'D'
 }
+
+def numericValue(t, v):
+    if (t == IDLType.Tags.unrestricted_double or
+        t == IDLType.Tags.unrestricted_float):
+        if v == float("inf"):
+            return "MOZ_DOUBLE_POSITIVE_INFINITY()"
+        if v == float("-inf"):
+            return "MOZ_DOUBLE_NEGATIVE_INFINITY()"
+        if math.isnan(v):
+            return "MOZ_DOUBLE_NaN()"
+    return "%s%s" % (v, numericSuffixes[t])
 
 class CastableObjectUnwrapper():
     """
@@ -2419,8 +2443,8 @@ if (!arr.SetCapacity(length)) {
 %s
 }
 for (uint32_t i = 0; i < length; ++i) {
-  jsval temp;
-  if (!JS_GetElement(cx, seq, i, &temp)) {
+  JS::Rooted<JS::Value> temp(cx);
+  if (!JS_GetElement(cx, seq, i, temp.address())) {
 %s
   }
   %s& slot = *arr.AppendElement();
@@ -2437,7 +2461,7 @@ for (uint32_t i = 0; i < length; ++i) {
                 string.Template(elementTemplate).substitute(
                     {
                         "val" : "temp",
-                        "valPtr": "&temp",
+                        "valPtr": "temp.address()",
                         "declName" : "slot",
                         # We only need holderName here to handle isExternal()
                         # interfaces, which use an internal holder for the
@@ -3172,7 +3196,7 @@ for (uint32_t i = 0; i < length; ++i) {
         tag = defaultValue.type.tag()
         if tag in numericSuffixes:
             # Some numeric literals require a suffix to compile without warnings
-            defaultStr = "%s%s" % (defaultValue.value, numericSuffixes[tag])
+            defaultStr = numericValue(tag, defaultValue.value)
         else:
             assert(tag == IDLType.Tags.bool)
             defaultStr = toStringBool(defaultValue.value)
@@ -3279,7 +3303,7 @@ def convertConstIDLValueToJSVal(value):
     if tag == IDLType.Tags.uint32:
         return "UINT_TO_JSVAL(%sU)" % (value.value)
     if tag in [IDLType.Tags.int64, IDLType.Tags.uint64]:
-        return "DOUBLE_TO_JSVAL(%s%s)" % (value.value, numericSuffixes[tag])
+        return "DOUBLE_TO_JSVAL(%s)" % numericValue(tag, value.value)
     if tag == IDLType.Tags.bool:
         return "JSVAL_TRUE" if value.value else "JSVAL_FALSE"
     if tag in [IDLType.Tags.float, IDLType.Tags.double]:
@@ -3439,7 +3463,7 @@ def getWrapTemplateForType(type, descriptorProvider, result, successCode,
                "}\n" +
                successCode) % (wrapCall)
         return str
-    
+
     if type is None or type.isVoid():
         return (setValue("JSVAL_VOID"), True)
 
@@ -3521,11 +3545,15 @@ if (!returnArray) {
             failed = None
         elif not descriptor.interface.isExternal() and not descriptor.skipGen:
             if descriptor.wrapperCache:
+                assert descriptor.nativeOwnership != 'owned'
                 wrapMethod = "WrapNewBindingObject"
             else:
                 if not isCreator:
                     raise MethodNotCreatorError(descriptor.interface.identifier.name)
-                wrapMethod = "WrapNewBindingNonWrapperCachedObject"
+                if descriptor.nativeOwnership == 'owned':
+                    wrapMethod = "WrapNewBindingNonWrapperCachedOwnedObject"
+                else:
+                    wrapMethod = "WrapNewBindingNonWrapperCachedObject"
             wrap = "%s(cx, ${obj}, %s, ${jsvalPtr})" % (wrapMethod, result)
             if not descriptor.hasXPConnectImpls:
                 # Can only fail to wrap as a new-binding object
@@ -3716,11 +3744,17 @@ def typeNeedsCx(type, descriptorProvider, retVal=False):
     if type.isUnion():
         return any(typeNeedsCx(t, descriptorProvider) for t in
                    type.unroll().flatMemberTypes)
+    if type.isDictionary():
+        return dictionaryNeedsCx(type.inner, descriptorProvider)
     if retVal and type.isSpiderMonkeyInterface():
         return True
     if type.isCallback():
         return descriptorProvider.workers
     return type.isAny() or type.isObject()
+
+def dictionaryNeedsCx(dictionary, descriptorProvider):
+    return (any(typeNeedsCx(m.type, descriptorProvider) for m in dictionary.members) or
+        (dictionary.parent and dictionaryNeedsCx(dictionary.parent, descriptorProvider)))
 
 # Returns a tuple consisting of a CGThing containing the type of the return
 # value, or None if there is no need for a return value, and a boolean signaling
@@ -3752,6 +3786,9 @@ def getRetvalDeclarationForType(returnType, descriptorProvider,
             returnType.unroll().inner.identifier.name).nativeType)
         if resultAlreadyAddRefed:
             result = CGTemplatedType("nsRefPtr", result)
+        elif descriptorProvider.getDescriptor(
+            returnType.unroll().inner.identifier.name).nativeOwnership == 'owned':
+            result = CGTemplatedType("nsAutoPtr", result)
         else:
             result = CGWrapper(result, post="*")
         return result, False
@@ -3978,6 +4015,9 @@ if (global.Failed()) {
             # We better be returning addrefed things!
             assert(isResultAlreadyAddRefed(self.descriptor,
                                            self.extendedAttributes) or
+                   # Creators can return raw pointers to owned objects
+                   (self.returnType.isGeckoInterface() and
+                    self.descriptor.getDescriptor(self.returnType.unroll().inner.identifier.name).nativeOwnership == 'owned') or
                    # Workers use raw pointers for new-object return
                    # values or something
                    self.descriptor.workers)
@@ -6086,7 +6126,7 @@ class CGProxyUnwrap(CGAbstractMethod):
         return """  MOZ_ASSERT(js::IsProxy(obj));
   if (js::GetProxyHandler(obj) != DOMProxyHandler::getInstance()) {
     MOZ_ASSERT(xpc::WrapperFactory::IsXrayWrapper(obj));
-    obj = js::UnwrapObject(obj);
+    obj = js::UncheckedUnwrap(obj);
   }
   MOZ_ASSERT(IsProxy(obj));
   return static_cast<%s*>(js::GetProxyPrivate(obj).toPrivate());""" % (self.descriptor.nativeType)
@@ -6593,6 +6633,11 @@ class CGDescriptor(CGThing):
 
         assert not descriptor.concrete or descriptor.interface.hasInterfacePrototypeObject()
 
+        if descriptor.nativeOwnership == 'owned' and (
+           descriptor.interface.hasChildInterfaces() or
+           descriptor.interface.parent):
+           raise TypeError("Owned interface cannot have a parent or children")
+
         self._deps = descriptor.interface.getDeps()
 
         cgThings = []
@@ -6812,17 +6857,17 @@ class CGDictionary(CGThing):
         return (string.Template(
                 "struct ${selfName} ${inheritance}{\n"
                 "  ${selfName}() {}\n"
-                "  bool Init(JSContext* cx, JSObject* scopeObj, const JS::Value& val);\n"
+                "  bool Init(JSContext* cx, JS::Handle<JSObject*> scopeObj, const JS::Value& val);\n"
                 "  bool ToObject(JSContext* cx, JSObject* parentObject, JS::Value *vp);\n"
                 "\n" +
                 ("  bool Init(const nsAString& aJSON)\n"
                  "  {\n"
-                 "    mozilla::Maybe<JSAutoRequest> ar;\n"
-                 "    mozilla::Maybe<JSAutoCompartment> ac;\n"
-                 "    jsval json = JSVAL_VOID;\n"
+                 "    Maybe<JSAutoRequest> ar;\n"
+                 "    Maybe<JSAutoCompartment> ac;\n"
+                 "    Maybe< JS::Rooted<JS::Value> > json;\n"
                  "    JSContext* cx = ParseJSON(aJSON, ar, ac, json);\n"
                  "    NS_ENSURE_TRUE(cx, false);\n"
-                 "    return Init(cx, nullptr, json);\n"
+                 "    return Init(cx, JS::NullPtr(), json.ref());\n"
                  "  }\n" if not self.workers else "") +
                 "\n" +
                 "\n".join(memberDecls) + "\n"
@@ -6839,7 +6884,7 @@ class CGDictionary(CGThing):
                 "struct ${selfName}Initializer : public ${selfName} {\n"
                 "  ${selfName}Initializer() {\n"
                 "    // Safe to pass a null context if we pass a null value\n"
-                "    Init(nullptr, nullptr, JS::NullValue());\n"
+                "    Init(nullptr, JS::NullPtr(), JS::NullValue());\n"
                 "  }\n"
                 "};").substitute( { "selfName": self.makeClassName(d),
                                     "inheritance": inheritance }))
@@ -6855,11 +6900,11 @@ class CGDictionary(CGThing):
                               "if (!%s::ToObject(cx, parentObject, vp)) {\n"
                               "  return false;\n"
                               "}\n" % self.makeClassName(d.parent))
-            ensureObject = "JSObject* obj = &vp->toObject();\n"
+            ensureObject = "JS::Rooted<JSObject*> obj(cx, &vp->toObject());\n"
         else:
             initParent = ""
             toObjectParent = ""
-            ensureObject = ("JSObject* obj = JS_NewObject(cx, nullptr, nullptr, nullptr);\n"
+            ensureObject = ("JS::Rooted<JSObject*> obj(cx, JS_NewObject(cx, nullptr, nullptr, nullptr));\n"
                             "if (!obj) {\n"
                             "  return false;\n"
                             "}\n"
@@ -6896,7 +6941,7 @@ class CGDictionary(CGThing):
              "}\n"
              "\n" if self.needToInitIds else "") +
             "bool\n"
-            "${selfName}::Init(JSContext* cx, JSObject* scopeObj, const JS::Value& val)\n"
+            "${selfName}::Init(JSContext* cx, JS::Handle<JSObject*> scopeObj, const JS::Value& val)\n"
             "{\n"
             "  // Passing a null JSContext is OK only if we're initing from null,\n"
             "  // Since in that case we will not have to do any property gets\n"
@@ -6907,7 +6952,7 @@ class CGDictionary(CGThing):
              "  }\n" if self.needToInitIds else "") +
             "${initParent}" +
             ("  JSBool found;\n"
-             "  JS::Value temp;\n"
+             "  JS::Rooted<JS::Value> temp(cx);\n"
              "  bool isNull = val.isNullOrUndefined();\n" if len(memberInits) > 0 else "") +
             "  if (!IsConvertibleToDictionary(cx, val)) {\n"
             "    return ThrowErrorMessage(cx, MSG_NOT_DICTIONARY);\n"
@@ -6969,7 +7014,7 @@ class CGDictionary(CGThing):
         (member, (templateBody, declType,
                   holderType, dealWithOptional)) = memberInfo
         replacements = { "val": "temp",
-                         "valPtr": "&temp",
+                         "valPtr": "temp.address()",
                          "declName": self.makeMemberName(member.identifier.name),
                          # We need a holder name for external interfaces, but
                          # it's scoped down to the conversion so we can just use
@@ -6988,13 +7033,13 @@ class CGDictionary(CGThing):
             propName = member.identifier.name
             propCheck = ('JS_HasProperty(cx, &val.toObject(), "%s", &found)' %
                          propName)
-            propGet = ('JS_GetProperty(cx, &val.toObject(), "%s", &temp)' %
+            propGet = ('JS_GetProperty(cx, &val.toObject(), "%s", temp.address())' %
                        propName)
         else:
             propId = self.makeIdName(member.identifier.name);
             propCheck = ("JS_HasPropertyById(cx, &val.toObject(), %s, &found)" %
                          propId)
-            propGet = ("JS_GetPropertyById(cx, &val.toObject(), %s, &temp)" %
+            propGet = ("JS_GetPropertyById(cx, &val.toObject(), %s, temp.address())" %
                        propId)
 
         conversionReplacements = {
@@ -7957,9 +8002,7 @@ ${nativeType}::${nativeType}()
 ${nativeType}::~${nativeType}()
 {
 }
-"""
-        if self.descriptor.wrapperCache:
-            classImpl += """
+
 JSObject*
 ${nativeType}::WrapObject(JSContext* aCx, JSObject* aScope)
 {
@@ -7967,16 +8010,6 @@ ${nativeType}::WrapObject(JSContext* aCx, JSObject* aScope)
 }
 
 """
-        else:
-            classImpl += """
-JSObject*
-${nativeType}::WrapObject(JSContext* aCx, JSObject* aScope)
-{
-  return ${ifaceName}Binding::Wrap(aCx, aScope, this);
-}
-
-"""
-
         return string.Template(classImpl).substitute(
             { "ifaceName": self.descriptor.name,
               "nativeType": self.descriptor.nativeType.split('::')[-1] }

@@ -817,9 +817,7 @@ public:
                               int32_t aNamespaceID,
                               nsIContent **aResult);
 
-  nsresult CreateTextNode(const nsAString& aData, nsIContent** aReturn);
-
-  virtual NS_HIDDEN_(nsresult) Sanitize();
+  virtual NS_HIDDEN_(void) Sanitize();
 
   virtual NS_HIDDEN_(void) EnumerateSubDocuments(nsSubDocEnumFunc aCallback,
                                                  void *aData);

@@ -137,7 +137,7 @@ let DebuggerController = {
 
     if (!window._isChromeDebugger) {
       let target = this._target;
-      let { client, form } = target;
+      let { client, form, threadActor } = target;
       target.on("close", this._onTabDetached);
       target.on("navigate", this._onTabNavigated);
       target.on("will-navigate", this._onTabNavigated);
@@ -145,7 +145,7 @@ let DebuggerController = {
       if (target.chrome) {
         this._startChromeDebugging(client, form.chromeDebugger, deferred.resolve);
       } else {
-        this._startDebuggingTab(client, form, deferred.resolve);
+        this._startDebuggingTab(client, threadActor, deferred.resolve);
       }
 
       return deferred.promise;
@@ -176,18 +176,17 @@ let DebuggerController = {
     if (!this.client) {
       return;
     }
-    this.client.removeListener("tabNavigated", this._onTabNavigated);
-    this.client.removeListener("tabDetached", this._onTabDetached);
 
     // When debugging local or a remote instance, the connection is closed by
     // the RemoteTarget.
     if (window._isChromeDebugger) {
+      this.client.removeListener("tabNavigated", this._onTabNavigated);
+      this.client.removeListener("tabDetached", this._onTabDetached);
       this.client.close();
     }
 
     this._connection = null;
     this.client = null;
-    this.tabClient = null;
     this.activeThread = null;
   },
 
@@ -227,42 +226,34 @@ let DebuggerController = {
    *
    * @param DebuggerClient aClient
    *        The debugger client.
-   * @param object aTabGrip
+   * @param string aThreadActor
    *        The remote protocol grip of the tab.
    * @param function aCallback
    *        A function to invoke once the client attached to the active thread.
    */
-  _startDebuggingTab: function DC__startDebuggingTab(aClient, aTabGrip, aCallback) {
+  _startDebuggingTab: function DC__startDebuggingTab(aClient, aThreadActor, aCallback) {
     if (!aClient) {
       Cu.reportError("No client found!");
       return;
     }
     this.client = aClient;
 
-    aClient.attachTab(aTabGrip.actor, (aResponse, aTabClient) => {
-      if (!aTabClient) {
-        Cu.reportError("No tab client found!");
+    aClient.attachThread(aThreadActor, (aResponse, aThreadClient) => {
+      if (!aThreadClient) {
+        Cu.reportError("Couldn't attach to thread: " + aResponse.error);
         return;
       }
-      this.tabClient = aTabClient;
+      this.activeThread = aThreadClient;
 
-      aClient.attachThread(aResponse.threadActor, (aResponse, aThreadClient) => {
-        if (!aThreadClient) {
-          Cu.reportError("Couldn't attach to thread: " + aResponse.error);
-          return;
-        }
-        this.activeThread = aThreadClient;
+      this.ThreadState.connect();
+      this.StackFrames.connect();
+      this.SourceScripts.connect();
+      aThreadClient.resume(this._ensureResumptionOrder);
 
-        this.ThreadState.connect();
-        this.StackFrames.connect();
-        this.SourceScripts.connect();
-        aThreadClient.resume(this._ensureResumptionOrder);
-
-        if (aCallback) {
-          aCallback();
-        }
-      });
-    });
+      if (aCallback) {
+        aCallback();
+      }
+    }, { useSourceMaps: Prefs.sourceMapsEnabled });
   },
 
   /**
@@ -306,6 +297,29 @@ let DebuggerController = {
       if (aCallback) {
         aCallback();
       }
+    }, { useSourceMaps: Prefs.sourceMapsEnabled });
+  },
+
+  /**
+   * Detach and reattach to the thread actor with useSourceMaps true, blow
+   * away old scripts and get sources again.
+   */
+  reconfigureThread: function DC_reconfigureThread(aUseSourceMaps) {
+    this.client.reconfigureThread(aUseSourceMaps, (aResponse) => {
+      if (aResponse.error) {
+        let msg = "Couldn't reconfigure thread: " + aResponse.message;
+        Cu.reportError(msg);
+        dumpn(msg);
+        return;
+      }
+
+      // Update the source list widget.
+      DebuggerView.Sources.empty();
+      SourceUtils.clearCache();
+      this.SourceScripts._handleTabNavigation();
+      // Update the stack frame list.
+      this.activeThread._clearFrames();
+      this.activeThread.fillFrames(CALL_STACK_PAGE_SIZE);
     });
   },
 
@@ -331,7 +345,6 @@ let DebuggerController = {
   _shutdown: null,
   _connection: null,
   client: null,
-  tabClient: null,
   activeThread: null
 };
 
@@ -1112,7 +1125,7 @@ SourceScripts.prototype = {
    */
   _onSourcesAdded: function SS__onSourcesAdded(aResponse) {
     if (aResponse.error) {
-      Cu.reportError("Error getting sources: " + aResponse.message);
+      Cu.reportError(new Error("Error getting sources: " + aResponse.message));
       return;
     }
 
@@ -1667,6 +1680,7 @@ let Prefs = new ViewHelpers.Prefs("devtools.debugger", {
   variablesSortingEnabled: ["Bool", "ui.variables-sorting-enabled"],
   variablesOnlyEnumVisible: ["Bool", "ui.variables-only-enum-visible"],
   variablesSearchboxVisible: ["Bool", "ui.variables-searchbox-visible"],
+  sourceMapsEnabled: ["Bool", "source-maps-enabled"],
   remoteHost: ["Char", "remote-host"],
   remotePort: ["Int", "remote-port"],
   remoteAutoConnect: ["Bool", "remote-autoconnect"],
@@ -1719,9 +1733,6 @@ Object.defineProperties(window, {
   },
   "gClient": {
     get: function() DebuggerController.client
-  },
-  "gTabClient": {
-    get: function() DebuggerController.tabClient
   },
   "gThreadClient": {
     get: function() DebuggerController.activeThread

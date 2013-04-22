@@ -1,6 +1,5 @@
-/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- * vim: set ts=4 sw=4 et tw=99:
- *
+/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ * vim: set ts=8 sts=4 et sw=4 tw=99:
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -575,8 +574,7 @@ class MacroAssemblerARMCompat : public MacroAssemblerARM
     }
 
     CodeOffsetLabel pushWithPatch(ImmWord imm) {
-        CodeOffsetLabel label = currentOffset();
-        ma_movPatchable(Imm32(imm.value), ScratchRegister, Always, hasMOVWT() ? L_MOVWT : L_LDR);
+        CodeOffsetLabel label = movWithPatch(imm, ScratchRegister);
         ma_push(ScratchRegister);
         return label;
     }
@@ -763,6 +761,10 @@ class MacroAssemblerARMCompat : public MacroAssemblerARM
         branchPtr(cond, lhs, ptr, label);
     }
 
+    void branchPrivatePtr(Condition cond, const Address &lhs, Register ptr, Label *label) {
+        branchPtr(cond, lhs, ptr, label);
+    }
+
     void branchPrivatePtr(Condition cond, Register lhs, ImmWord ptr, Label *label) {
         branchPtr(cond, lhs, ptr, label);
     }
@@ -801,6 +803,17 @@ class MacroAssemblerARMCompat : public MacroAssemblerARM
     void branchTestMagic(Condition cond, const T &t, Label *label) {
         cond = testMagic(cond, t);
         ma_b(label, cond);
+    }
+    void branchTestMagicValue(Condition cond, const ValueOperand &val, JSWhyMagic why,
+                              Label *label) {
+        JS_ASSERT(cond == Equal || cond == NotEqual);
+        // Test for magic
+        Label notmagic;
+        Condition testCond = testMagic(cond, val);
+        ma_b(&notmagic, InvertCondition(testCond));
+        // Test magic value
+        branch32(cond, val.payloadReg(), Imm32(static_cast<int32_t>(why)), label);
+        bind(&notmagic);
     }
     template<typename T>
     void branchTestBooleanTruthy(bool b, const T & t, Label *label) {
@@ -972,7 +985,8 @@ class MacroAssemblerARMCompat : public MacroAssemblerARM
     }
 
     void linkExitFrame();
-    void handleException();
+    void linkParallelExitFrame(const Register &pt);
+    void handleFailureWithHandler(void *handler);
 
     /////////////////////////////////////////////////////////////////
     // Common interface.

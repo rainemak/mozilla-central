@@ -128,15 +128,14 @@ class Build(MachCommandBase):
         else:
             print('Your build was successful!')
 
-        # Fennec doesn't have useful output from just building. We should
-        # arguably make the build action useful for Fennec. Another day...
-        if self.substs['MOZ_BUILD_APP'] != 'mobile/android':
-            app_path = self.get_binary_path('app')
-            print('To take your build for a test drive, run: %s' % app_path)
-
         # Only for full builds because incremental builders likely don't
         # need to be burdened with this.
         if not what:
+            # Fennec doesn't have useful output from just building. We should
+            # arguably make the build action useful for Fennec. Another day...
+            if self.substs['MOZ_BUILD_APP'] != 'mobile/android':
+                app_path = self.get_binary_path('app')
+                print('To take your build for a test drive, run: %s' % app_path)
             app = self.substs['MOZ_BUILD_APP']
             if app in ('browser', 'mobile/android'):
                 print('For more information on what to do now, see '
@@ -412,7 +411,7 @@ class RunProgram(MachCommandBase):
         help='Command-line arguments to pass to the program.')
     def run(self, params):
         try:
-            args = [self.get_binary_path('app')]
+            args = [self.get_binary_path('app'), '-no-remote']
         except Exception as e:
             print("It looks like your program isn't built.",
                 "You can run |mach build| to build it.")
@@ -439,14 +438,13 @@ class DebugProgram(MachCommandBase):
             print(e)
             return 1
         try:
-            args = [debugger, self.get_binary_path('app')]
+            args = [debugger, '--args', self.get_binary_path('app'), '-no-remote']
         except Exception as e:
             print("It looks like your program isn't built.",
                 "You can run |mach build| to build it.")
             print(e)
             return 1
         if params:
-            args.insert(1, '--args')
             args.extend(params)
         return self.run_process(args=args, ensure_exit_code=False,
             pass_thru=True)

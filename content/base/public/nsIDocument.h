@@ -1184,7 +1184,7 @@ public:
    * Sanitize the document by resetting all input elements and forms that have
    * autocomplete=off to their default values.
    */
-  virtual nsresult Sanitize() = 0;
+  virtual void Sanitize() = 0;
 
   /**
    * Enumerate all subdocuments.
@@ -1951,11 +1951,10 @@ public:
                                             const nsAString& aQualifiedName,
                                             mozilla::ErrorResult& rv);
   already_AddRefed<mozilla::dom::DocumentFragment>
-    CreateDocumentFragment(mozilla::ErrorResult& rv) const;
-  already_AddRefed<nsTextNode> CreateTextNode(const nsAString& aData,
-                                              mozilla::ErrorResult& rv) const;
+    CreateDocumentFragment() const;
+  already_AddRefed<nsTextNode> CreateTextNode(const nsAString& aData) const;
   already_AddRefed<mozilla::dom::Comment>
-    CreateComment(const nsAString& aData, mozilla::ErrorResult& rv) const;
+    CreateComment(const nsAString& aData) const;
   already_AddRefed<mozilla::dom::ProcessingInstruction>
     CreateProcessingInstruction(const nsAString& target, const nsAString& data,
                                 mozilla::ErrorResult& rv) const;
@@ -2092,7 +2091,7 @@ public:
              nsISupports* aResult, mozilla::ErrorResult& rv);
   // Touch event handlers already on nsINode
   already_AddRefed<nsIDOMTouch>
-    CreateTouch(nsIDOMWindow* aView, nsISupports* aTarget,
+    CreateTouch(nsIDOMWindow* aView, mozilla::dom::EventTarget* aTarget,
                 int32_t aIdentifier, int32_t aPageX, int32_t aPageY,
                 int32_t aScreenX, int32_t aScreenY, int32_t aClientX,
                 int32_t aClientY, int32_t aRadiusX, int32_t aRadiusY,
@@ -2104,7 +2103,7 @@ public:
   already_AddRefed<nsIDOMTouchList>
     CreateTouchList(const mozilla::dom::Sequence<nsRefPtr<nsIDOMTouch> >& aTouches);
 
-  nsHTMLDocument* AsHTMLDocument();
+  virtual nsHTMLDocument* AsHTMLDocument() { return nullptr; }
 
 private:
   uint64_t mWarnedAbout;
@@ -2431,7 +2430,7 @@ NS_DEFINE_STATIC_IID_ACCESSOR(nsIDocument, NS_IDOCUMENT_IID)
  * event is dispatched, if necessary, when the outermost mozAutoSubtreeModified
  * object is deleted.
  */
-class NS_STACK_CLASS mozAutoSubtreeModified
+class MOZ_STACK_CLASS mozAutoSubtreeModified
 {
 public:
   /**
@@ -2468,7 +2467,7 @@ private:
   nsCOMPtr<nsIDocument> mSubtreeOwner;
 };
 
-class NS_STACK_CLASS nsAutoSyncOperation
+class MOZ_STACK_CLASS nsAutoSyncOperation
 {
 public:
   nsAutoSyncOperation(nsIDocument* aDocument);
@@ -2493,14 +2492,6 @@ NS_NewImageDocument(nsIDocument** aInstancePtrResult);
 
 nsresult
 NS_NewVideoDocument(nsIDocument** aInstancePtrResult);
-
-already_AddRefed<mozilla::dom::DocumentFragment>
-NS_NewDocumentFragment(nsNodeInfoManager* aNodeInfoManager,
-                       mozilla::ErrorResult& aRv);
-
-nsresult
-NS_NewDocumentFragment(nsIDOMDocumentFragment** aInstancePtrResult,
-                       nsNodeInfoManager *aNodeInfoManager);
 
 // Note: it's the caller's responsibility to create or get aPrincipal as needed
 // -- this method will not attempt to get a principal based on aDocumentURI.

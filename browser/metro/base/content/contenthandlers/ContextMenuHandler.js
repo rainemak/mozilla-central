@@ -18,10 +18,6 @@ var ContextMenuHandler = {
     // Messages we receive from browser
     // Command sent over from browser that only we can handle.
     addMessageListener("Browser:ContextCommand", this, false);
-    // InvokeContextAtPoint is sent to us from browser's selection
-    // overlay when it traps a contextmenu event. In response we
-    // should invoke context menu logic at the point specified.
-    addMessageListener("Browser:InvokeContextAtPoint", this, false);
 
     this.popupNode = null;
   },
@@ -41,9 +37,6 @@ var ContextMenuHandler = {
     switch (aMessage.name) {
       case "Browser:ContextCommand":
         this._onContextCommand(aMessage);
-      break;
-      case "Browser:InvokeContextAtPoint":
-        this._onContextAtPoint(aMessage);
       break;
     }
   },
@@ -77,18 +70,6 @@ var ContextMenuHandler = {
         this._onCopyImage();
         break;
     }
-  },
-
-  /*
-   * Handler for selection overlay context menu events.
-   */
-  _onContextAtPoint: function _onContextAtPoint(aMessage) {
-    // we need to find popupNode as if the context menu were
-    // invoked on underlying content.
-    let { element, frameX, frameY } =
-      elementFromPoint(aMessage.json.xPos, aMessage.json.yPos);
-    this._processPopupNode(element, frameX, frameY,
-                           Ci.nsIDOMMouseEvent.MOZ_SOURCE_TOUCH);
   },
 
   /******************************************************

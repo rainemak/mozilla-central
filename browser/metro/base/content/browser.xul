@@ -260,7 +260,7 @@
             <scrollbox id="start-scrollbox" orient="horizontal" flex="1">
             <vbox id="start-topsites" class="meta-section">
               <label class="meta-section-title" value="&startTopSitesHeader.label;"/>
-              <richgrid id="start-topsites-grid" seltype="multiple" flex="1"/>
+              <richgrid id="start-topsites-grid" rows="3" columns="3" seltype="multiple" flex="1"/>
             </vbox>
             <vbox id="start-bookmarks" class="meta-section">
               <label class="meta-section-title" value="&startBookmarksHeader.label;"
@@ -283,7 +283,7 @@
             <scrollbox id="snapped-scrollbox" orient="vertical" flex="1">
               <vbox id="snapped-topsites">
                 <label class="meta-section-title" value="&startTopSitesHeader.label;"/>
-                <!--  TODO bug 835999 -->
+                <richgrid id="snapped-topsites-grid" rows="8" columns="1" flex="1"/>
               </vbox>
               <label class="meta-section-title" value="&startBookmarksHeader.label;"
                 onclick="PanelUI.show('bookmarks-container');"/>
@@ -294,7 +294,7 @@
             </scrollbox>
           </vbox>
           <!-- Autocompletion interface -->
-          <box id="start-autocomplete"/>
+          <box id="start-autocomplete" observes="bcast_windowState"/>
         </hbox>
       </vbox> <!-- end tray -->
 
@@ -461,8 +461,15 @@
         </hbox>
       </settings>
       <setting pref="signon.rememberSignons" title="&optionsHeader.privacy.passwords.label;" type="bool"/>
-      <settings id="prefs-donottrack" label="&optionsHeader.privacy.doNotTrack.title;">
-        <setting pref="privacy.donottrackheader.enabled" title="&optionsHeader.privacy.doNotTrack.label;" type="bool"/>
+      <settings id="prefs-dnt" label="&doNotTrack.title;">
+        <description>&doNotTrack.desc;</description>
+        <setting id="prefs-dnt-value" pref="privacy.donottrackheader.value" onpreferencechanged="PreferencesPanelView.onDNTPreferenceChanged()" type="radio" >
+          <radiogroup id="prefs-dnt-options">
+            <radio id="prefs-dnt-notrack" label="&doNotTrack.options.trackingNotOkay;" value="1"/>
+            <radio id="prefs-dnt-nopref" label="&doNotTrack.options.noPreference;" value="-1"/>
+            <radio id="prefs-dnt-oktrack" label="&doNotTrack.options.trackingOkay;" value="0"/>
+          </radiogroup>
+        </setting>
       </settings>
     </flyoutpanel>
 

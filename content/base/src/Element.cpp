@@ -129,6 +129,7 @@
 #include "nsXBLService.h"
 #include "nsContentCID.h"
 #include "nsITextControlElement.h"
+#include "mozilla/dom/DocumentFragment.h"
 
 using namespace mozilla;
 using namespace mozilla::dom;
@@ -590,9 +591,17 @@ static nsSize GetScrollRectSizeForOverflowVisibleFrame(nsIFrame* aFrame)
 
   nsRect paddingRect = aFrame->GetPaddingRectRelativeToSelf();
   nsOverflowAreas overflowAreas(paddingRect, paddingRect);
+  // Add the scrollable overflow areas of children (if any) to the paddingRect.
+  // It's important to start with the paddingRect, otherwise if there are no
+  // children the overflow rect will be 0,0,0,0 which will force the point 0,0
+  // to be included in the final rect.
   nsLayoutUtils::UnionChildOverflow(aFrame, overflowAreas);
+  // Make sure that an empty padding-rect's edges are included, by adding
+  // the padding-rect in again with UnionEdges.
+  nsRect overflowRect =
+    overflowAreas.ScrollableOverflow().UnionEdges(paddingRect);
   return nsLayoutUtils::GetScrolledRect(aFrame,
-      overflowAreas.ScrollableOverflow(), paddingRect.Size(),
+      overflowRect, paddingRect.Size(),
       aFrame->StyleVisibility()->mDirection).Size();
 }
 
@@ -876,20 +885,18 @@ Element::RemoveAttributeNS(const nsAString& aNamespaceURI,
 
 Attr*
 Element::GetAttributeNodeNS(const nsAString& aNamespaceURI,
-                            const nsAString& aLocalName,
-                            ErrorResult& aError)
+                            const nsAString& aLocalName)
 {
   OwnerDoc()->WarnOnceAbout(nsIDocument::eGetAttributeNodeNS);
 
-  return GetAttributeNodeNSInternal(aNamespaceURI, aLocalName, aError);
+  return GetAttributeNodeNSInternal(aNamespaceURI, aLocalName);
 }
 
 Attr*
 Element::GetAttributeNodeNSInternal(const nsAString& aNamespaceURI,
-                                    const nsAString& aLocalName,
-                                    ErrorResult& aError)
+                                    const nsAString& aLocalName)
 {
-  return Attributes()->GetNamedItemNS(aNamespaceURI, aLocalName, aError);
+  return Attributes()->GetNamedItemNS(aNamespaceURI, aLocalName);
 }
 
 already_AddRefed<Attr>
@@ -1829,7 +1836,6 @@ Element::SetAttrAndNotify(int32_t aNamespaceID,
     ni = mNodeInfo->NodeInfoManager()->GetNodeInfo(aName, aPrefix,
                                                    aNamespaceID,
                                                    nsIDOMNode::ATTRIBUTE_NODE);
-    NS_ENSURE_TRUE(ni, NS_ERROR_OUT_OF_MEMORY);
 
     rv = mAttrsAndChildren.SetAndTakeAttr(ni, aParsedValue);
   }
@@ -1864,9 +1870,8 @@ Element::SetAttrAndNotify(int32_t aNamespaceID,
 
     nsAutoString ns;
     nsContentUtils::NameSpaceManager()->GetNameSpaceURI(aNamespaceID, ns);
-    ErrorResult rv;
     Attr* attrNode =
-      GetAttributeNodeNSInternal(ns, nsDependentAtomString(aName), rv);
+      GetAttributeNodeNSInternal(ns, nsDependentAtomString(aName));
     mutation.mRelatedNode = attrNode;
 
     mutation.mAttrName = aName;
@@ -1995,8 +2000,7 @@ Element::UnsetAttr(int32_t aNameSpaceID, nsIAtom* aName,
   if (hasMutationListeners) {
     nsAutoString ns;
     nsContentUtils::NameSpaceManager()->GetNameSpaceURI(aNameSpaceID, ns);
-    ErrorResult rv;
-    attrNode = GetAttributeNodeNSInternal(ns, nsDependentAtomString(aName), rv);
+    attrNode = GetAttributeNodeNSInternal(ns, nsDependentAtomString(aName));
   }
 
   // Clear binding to nsIDOMMozNamedAttrMap
@@ -3398,13 +3402,8 @@ Element::SetOuterHTML(const nsAString& aOuterHTML, ErrorResult& aError)
       localName = nsGkAtoms::body;
       namespaceID = kNameSpaceID_XHTML;
     }
-    nsCOMPtr<nsIDOMDocumentFragment> df;
-    aError = NS_NewDocumentFragment(getter_AddRefs(df),
-                                    OwnerDoc()->NodeInfoManager());
-    if (aError.Failed()) {
-      return;
-    }
-    nsCOMPtr<nsIContent> fragment = do_QueryInterface(df);
+    nsRefPtr<DocumentFragment> fragment =
+      new DocumentFragment(OwnerDoc()->NodeInfoManager());
     nsContentUtils::ParseFragmentHTML(aOuterHTML,
                                       fragment,
                                       localName,

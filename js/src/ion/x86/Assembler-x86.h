@@ -1,6 +1,5 @@
-/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- * vim: set ts=4 sw=4 et tw=99:
- *
+/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ * vim: set ts=8 sts=4 et sw=4 tw=99:
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -432,6 +431,7 @@ class Assembler : public AssemblerX86Shared
     }
 
     void movsd(const double *dp, const FloatRegister &dest) {
+        JS_ASSERT(HasSSE2());
         masm.movsd_mr((const void *)dp, dest.code());
     }
 
@@ -448,6 +448,7 @@ class Assembler : public AssemblerX86Shared
         return masm.currentOffset();
     }
     CodeOffsetLabel movsdWithPatch(void *addr, FloatRegister dest) {
+        JS_ASSERT(HasSSE2());
         masm.movsd_mr(addr, dest.code());
         return masm.currentOffset();
     }
@@ -458,6 +459,7 @@ class Assembler : public AssemblerX86Shared
         return masm.currentOffset();
     }
     CodeOffsetLabel movsdWithPatch(FloatRegister dest, void *addr) {
+        JS_ASSERT(HasSSE2());
         masm.movsd_rm(dest.code(), addr);
         return masm.currentOffset();
     }
@@ -484,10 +486,12 @@ class Assembler : public AssemblerX86Shared
         return masm.currentOffset();
     }
     CodeOffsetLabel movssWithPatch(Address src, FloatRegister dest) {
+        JS_ASSERT(HasSSE2());
         masm.movss_mr_disp32(src.offset, src.base.code(), dest.code());
         return masm.currentOffset();
     }
     CodeOffsetLabel movsdWithPatch(Address src, FloatRegister dest) {
+        JS_ASSERT(HasSSE2());
         masm.movsd_mr_disp32(src.offset, src.base.code(), dest.code());
         return masm.currentOffset();
     }
@@ -506,10 +510,12 @@ class Assembler : public AssemblerX86Shared
         return masm.currentOffset();
     }
     CodeOffsetLabel movssWithPatch(FloatRegister src, Address dest) {
+        JS_ASSERT(HasSSE2());
         masm.movss_rm_disp32(src.code(), dest.offset, dest.base.code());
         return masm.currentOffset();
     }
     CodeOffsetLabel movsdWithPatch(FloatRegister src, Address dest) {
+        JS_ASSERT(HasSSE2());
         masm.movsd_rm_disp32(src.code(), dest.offset, dest.base.code());
         return masm.currentOffset();
     }
@@ -539,4 +545,3 @@ GetTempRegForIntArg(uint32_t usedIntArgs, uint32_t usedFloatArgs, Register *out)
 } // namespace js
 
 #endif // jsion_cpu_x86_assembler_h__
-

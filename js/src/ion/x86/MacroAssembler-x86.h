@@ -1,6 +1,5 @@
-/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- * vim: set ts=4 sw=4 et tw=99:
- *
+/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ * vim: set ts=8 sts=4 et sw=4 tw=99:
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -469,6 +468,10 @@ class MacroAssemblerX86 : public MacroAssemblerX86Shared
         branchPtr(cond, lhs, ptr, label);
     }
 
+    void branchPrivatePtr(Condition cond, const Address &lhs, Register ptr, Label *label) {
+        branchPtr(cond, lhs, ptr, label);
+    }
+
     template <typename T, typename S>
     void branchPtr(Condition cond, T lhs, S ptr, RepatchLabel *label) {
         cmpl(Operand(lhs), ptr);
@@ -604,6 +607,24 @@ class MacroAssemblerX86 : public MacroAssemblerX86Shared
         cond = testMagic(cond, t);
         j(cond, label);
     }
+    void branchTestMagicValue(Condition cond, const ValueOperand &val, JSWhyMagic why,
+                              Label *label)
+    {
+        JS_ASSERT(cond == Equal || cond == NotEqual);
+        if (cond == Equal) {
+            // Test for magic
+            Label notmagic;
+            Condition testCond = testMagic(Equal, val);
+            j(InvertCondition(testCond), &notmagic);
+            // Test magic value
+            branch32(NotEqual, val.payloadReg(), Imm32(static_cast<int32_t>(why)), label);
+            bind(&notmagic);
+        } else {
+            Condition testCond = testMagic(NotEqual, val);
+            j(testCond, label);
+            branch32(NotEqual, val.payloadReg(), Imm32(static_cast<int32_t>(why)), label);
+        }
+    }
 
     // Note: this function clobbers the source register.
     void boxDouble(const FloatRegister &src, const ValueOperand &dest) {
@@ -715,6 +736,13 @@ class MacroAssemblerX86 : public MacroAssemblerX86Shared
     void loadConstantDouble(double d, const FloatRegister &dest);
     void loadStaticDouble(const double *dp, const FloatRegister &dest) {
         movsd(dp, dest);
+    }
+
+    void branchTruncateDouble(const FloatRegister &src, const Register &dest, Label *fail) {
+        JS_STATIC_ASSERT(INT_MIN == int(0x80000000));
+        cvttsd2si(src, dest);
+        cmpl(dest, Imm32(INT_MIN));
+        j(Assembler::Equal, fail);
     }
 
     Condition testInt32Truthy(bool truthy, const ValueOperand &operand) {
@@ -854,7 +882,7 @@ class MacroAssemblerX86 : public MacroAssemblerX86Shared
     void callWithABI(const Address &fun, Result result = GENERAL);
 
     // Used from within an Exit frame to handle a pending exception.
-    void handleException();
+    void handleFailureWithHandler(void *handler);
 
     void makeFrameDescriptor(Register frameSizeReg, FrameType type) {
         shll(Imm32(FRAMESIZE_SHIFT), frameSizeReg);
@@ -862,7 +890,7 @@ class MacroAssemblerX86 : public MacroAssemblerX86Shared
     }
 
     // Save an exit frame (which must be aligned to the stack pointer) to
-    // ThreadData::ionTop.
+    // ThreadData::ionTop of the main thread.
     void linkExitFrame() {
         JSCompartment *compartment = GetIonContext()->compartment;
         movl(StackPointer, Operand(&compartment->rt->mainThread.ionTop));
@@ -873,6 +901,12 @@ class MacroAssemblerX86 : public MacroAssemblerX86Shared
         makeFrameDescriptor(dynStack, IonFrame_OptimizedJS);
         Push(dynStack);
         call(target);
+    }
+
+    // Save an exit frame to the thread data of the current thread, given a
+    // register that holds a PerThreadData *.
+    void linkParallelExitFrame(const Register &pt) {
+        movl(StackPointer, Operand(pt, offsetof(PerThreadData, ionTop)));
     }
 
     void enterOsr(Register calleeToken, Register code) {
