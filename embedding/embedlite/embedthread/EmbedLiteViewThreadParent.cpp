@@ -302,7 +302,7 @@ bool
 EmbedLiteViewThreadParent::RecvOnLoadProgress(const int32_t& aProgress, const int32_t& aCurTotal, const int32_t& aMaxTotal)
 {
   LOGNI("progress:%i", aProgress);
-  NS_ENSURE_TRUE(mView, false);
+  NS_ENSURE_TRUE(mView, true);
   if (mViewAPIDestroyed) {
     return true;
   }

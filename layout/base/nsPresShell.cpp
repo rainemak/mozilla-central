@@ -5492,7 +5492,10 @@ PresShell::Paint(nsView*        aViewToPaint,
   bool isRetainingManager;
   LayerManager* layerManager =
     aViewToPaint->GetWidget()->GetLayerManager(&isRetainingManager);
-  NS_ASSERTION(layerManager, "Must be in paint event");
+  if (!layerManager) {
+    NS_WARNING("LayerManager not available in paint event");
+    return;
+  }
 
   // Whether or not we should set first paint when painting is
   // suppressed is debatable. For now we'll do it because
