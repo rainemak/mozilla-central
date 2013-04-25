@@ -30,9 +30,10 @@ EmbedLiteCompositorParent::EmbedLiteCompositorParent(nsIWidget* aWidget,
   : CompositorParent(aWidget, aRenderToEGLSurface, aSurfaceWidth, aSurfaceHeight)
   , mId(id)
 {
-  LOGT();
   AddRef();
   EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
+  LOGT("this:%p, view:%p", this, view);
+  MOZ_ASSERT(view, "Something went wrong, Compositor not suspended on destroy?");
   EmbedLiteViewThreadParent* pview = static_cast<EmbedLiteViewThreadParent*>(view->GetImpl());
   pview->SetCompositor(this);
 }

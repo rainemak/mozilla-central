@@ -126,6 +126,7 @@ private:
   friend class EmbedLiteAppThreadParent;
   friend class EmbedLiteViewThreadParent;
   friend class EmbedLiteCompositorParent;
+  friend class EmbedLitePuppetWidget;
   EmbedLiteView* GetViewByID(uint32_t id);
   void ViewDestroyed(uint32_t id);
   void ChildReadyToDestroy();

@@ -28,6 +28,7 @@
 #include "GLContextProvider.h"
 #include "EmbedLiteCompositorParent.h"
 #include "mozilla/Preferences.h"
+#include "EmbedLiteApp.h"
 
 using namespace mozilla::dom;
 using namespace mozilla::hal;
@@ -111,13 +112,13 @@ EmbedLitePuppetWidget::EmbedLitePuppetWidget(EmbedLiteViewThreadChild* aEmbed, u
   , mId(aId)
 {
   MOZ_COUNT_CTOR(EmbedLitePuppetWidget);
-  LOGT();
+  LOGT("this:%p", this);
 }
 
 EmbedLitePuppetWidget::~EmbedLitePuppetWidget()
 {
   MOZ_COUNT_DTOR(EmbedLitePuppetWidget);
-  LOGT();
+  LOGT("this:%p", this);
   gTopLevelWindows.RemoveElement(this);
   DestroyCompositor();
 }
@@ -272,7 +273,7 @@ EmbedLitePuppetWidget::SetFocus(bool aRaise)
 void*
 EmbedLitePuppetWidget::GetNativeData(uint32_t aDataType)
 {
-  LOGT("DataType: %i", aDataType);
+  LOGT("t:%p, DataType: %i", this, aDataType);
   switch (aDataType) {
     case NS_NATIVE_SHAREABLE_WINDOW: {
       LOGW("aDataType:%i\n", __LINE__, aDataType);
@@ -426,6 +427,12 @@ EmbedLitePuppetWidget::RemoveIMEComposition()
   DispatchEvent(&event, status);
 }
 
+bool
+EmbedLitePuppetWidget::ViewIsValid()
+{
+  return EmbedLiteApp::GetInstance()->GetViewByID(mId) != nullptr;
+}
+
 LayerManager*
 EmbedLitePuppetWidget::GetLayerManager(PLayersChild* aShadowManager,
                                        LayersBackend aBackendHint,
@@ -457,8 +464,13 @@ EmbedLitePuppetWidget::GetLayerManager(PLayersChild* aShadowManager,
     return mLayerManager;
   }
 
-  EmbedLitePuppetWidget* topWindow = TopWindow();
+  if (!ViewIsValid()) {
+    printf("Embed View has been destroyed early\n");
+    mLayerManager = CreateBasicLayerManager();
+    return mLayerManager;
+  }
 
+  EmbedLitePuppetWidget* topWindow = TopWindow();
   if (!topWindow) {
     printf_stderr(" -- no topwindow\n");
     mLayerManager = CreateBasicLayerManager();
@@ -472,6 +484,11 @@ EmbedLitePuppetWidget::GetLayerManager(PLayersChild* aShadowManager,
   if (useCompositor) {
     CreateCompositor();
     if (mLayerManager) {
+      return mLayerManager;
+    }
+    if (!ViewIsValid()) {
+      printf(" -- Failed create compositor due to quick View destroy\n");
+      mLayerManager = CreateBasicLayerManager();
       return mLayerManager;
     }
 
@@ -551,7 +568,9 @@ void EmbedLitePuppetWidget::CreateCompositor()
     mLayerManager = lm;
   } else {
     // We don't currently want to support not having a LayersChild
-    NS_RUNTIMEABORT("failed to construct LayersChild");
+    if (ViewIsValid()) {
+      NS_RUNTIMEABORT("failed to construct LayersChild, and View still here");
+    }
     delete lm;
     mCompositorChild = nullptr;
   }

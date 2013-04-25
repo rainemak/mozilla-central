@@ -1900,8 +1900,6 @@ GLContextEGL::TileGenFunc(const nsIntSize& aSize,
   return teximage.forget();
 }
 
-static nsRefPtr<GLContext> gGlobalContext;
-
 static const EGLint kEGLConfigAttribsOffscreenPBuffer[] = {
     LOCAL_EGL_SURFACE_TYPE,    LOCAL_EGL_PBUFFER_BIT,
     LOCAL_EGL_RENDERABLE_TYPE, LOCAL_EGL_OPENGL_ES2_BIT,
@@ -2071,7 +2069,7 @@ GLContextProviderEGL::CreateForWindow(nsIWidget *aWidget)
         EGLSurface surface = sEGLLibrary.fGetCurrentSurface(LOCAL_EGL_DRAW);
         nsRefPtr<GLContextEGL> glContext =
             new GLContextEGL(caps,
-                             gGlobalContext, false,
+                             nullptr, false,
                              config, surface, eglContext);
 
         if (!glContext->Init())
@@ -2080,10 +2078,6 @@ GLContextProviderEGL::CreateForWindow(nsIWidget *aWidget)
         glContext->MakeCurrent();
         glContext->SetIsDoubleBuffered(doubleBuffered);
         glContext->SetPlatformContext(platformContext);
-
-        if (!gGlobalContext) {
-            gGlobalContext = glContext;
-        }
 
         return glContext.forget();
     }
@@ -2094,6 +2088,12 @@ GLContextProviderEGL::CreateForWindow(nsIWidget *aWidget)
         return nullptr;
     }
 
+#ifdef MOZ_WIDGET_QT
+    // Make sure we check shell widget availability before call GET_NATIVE_WINDOW
+    if (!aWidget->GetNativeData(NS_NATIVE_SHELLWIDGET)) {
+        return nullptr;
+    }
+#endif
 #ifdef MOZ_ANDROID_OMTC
     mozilla::AndroidBridge::Bridge()->RegisterCompositor();
     EGLSurface surface = mozilla::AndroidBridge::Bridge()->ProvideEGLSurface();
@@ -2382,7 +2382,6 @@ GLContextProviderEGL::GetGlobalContext(const ContextFlags)
 void
 GLContextProviderEGL::Shutdown()
 {
-    gGlobalContext = nullptr;
 }
 
 } /* namespace gl */
