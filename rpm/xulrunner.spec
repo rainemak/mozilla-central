@@ -60,6 +60,8 @@ echo "ac_add_options --with-float-abi=toolchain-default" >> mozconfig
 # No need for this, this should be managed by toolchain
 echo "ac_add_options --with-thumb=toolchain-default" >> mozconfig
 %endif
+echo "mk_add_options MOZ_MAKE_FLAGS='-j%jobs'" >> mozconfig
+echo "export LD=ld.gold" >> mozconfig
 
 export MOZCONFIG=mozconfig
 %{__make} -f client.mk build_all %{?jobs:MOZ_MAKE_FLAGS="-j%jobs"}
