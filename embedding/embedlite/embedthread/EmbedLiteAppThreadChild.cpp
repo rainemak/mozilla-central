@@ -75,6 +75,11 @@ EmbedLiteAppThreadChild::Init(EmbedLiteAppThreadParent* aParent)
   mModulesService = new EmbedLiteModulesService();
   mModulesService->Init();
   SendInitialized();
+  nsCOMPtr<nsIObserverService> observerService =
+    do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
+  if (observerService) {
+    observerService->NotifyObservers(nullptr, "embedliteInitialized", nullptr);
+  }
 }
 
 EmbedLiteAppService*
