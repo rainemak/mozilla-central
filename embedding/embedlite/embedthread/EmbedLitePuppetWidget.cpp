@@ -529,51 +529,12 @@ EmbedLitePuppetWidget::GetLayerManager(PLayersChild* aShadowManager,
   return mLayerManager;
 }
 
-void EmbedLitePuppetWidget::CreateCompositor()
+mozilla::layers::CompositorParent*
+EmbedLitePuppetWidget::NewCompositorParent(int aSurfaceWidth, int aSurfaceHeight)
 {
-  LOGF();
-  bool renderToEGLSurface = true;
-  nsIntRect rect;
-  GetBounds(rect);
   gfxPlatform::GetPlatform();
   gfxSize glSize = mEmbed->GetGLViewSize();
-  EmbedLiteCompositorParent* parent =
-    new EmbedLiteCompositorParent(this, renderToEGLSurface, glSize.width, glSize.height, mId);
-  mCompositorParent = parent;
-  AsyncChannel* parentChannel = mCompositorParent->GetIPCChannel();
-  LayerManager* lm = CreateBasicLayerManager();
-  MessageLoop* childMessageLoop = CompositorParent::CompositorLoop();
-  mCompositorChild = new CompositorChild(lm);
-  parent->SetChildCompositor(mCompositorChild, MessageLoop::current());
-  AsyncChannel::Side childSide = mozilla::ipc::AsyncChannel::Child;
-  mCompositorChild->Open(parentChannel, childMessageLoop, childSide);
-
-  TextureFactoryIdentifier textureFactoryIdentifier;
-  PLayersChild* shadowManager;
-  mozilla::layers::LayersBackend backendHint =
-    mUseLayersAcceleration ? mozilla::layers::LAYERS_OPENGL : mozilla::layers::LAYERS_BASIC;
-  shadowManager = mCompositorChild->SendPLayersConstructor(
-    backendHint, 0, &textureFactoryIdentifier);
-
-  if (shadowManager) {
-    ShadowLayerForwarder* lf = lm->AsShadowForwarder();
-    if (!lf) {
-      delete lm;
-      mCompositorChild = nullptr;
-      return;
-    }
-    lf->SetShadowManager(shadowManager);
-    lf->IdentifyTextureHost(textureFactoryIdentifier);
-
-    mLayerManager = lm;
-  } else {
-    // We don't currently want to support not having a LayersChild
-    if (ViewIsValid()) {
-      NS_RUNTIMEABORT("failed to construct LayersChild, and View still here");
-    }
-    delete lm;
-    mCompositorChild = nullptr;
-  }
+  return new EmbedLiteCompositorParent(this, true, glSize.width, glSize.height, mId);
 }
 
 nsIntRect
