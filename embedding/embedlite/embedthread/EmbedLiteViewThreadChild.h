@@ -51,8 +51,9 @@ public:
   void AddGeckoContentListener(mozilla::layers::GeckoContentController* listener);
   void RemoveGeckoContentListener(mozilla::layers::GeckoContentController* listener);
 
-  nsresult GetBrowser(nsIWebBrowser** outBrowser);
+  nsresult GetContentDOMWindow(nsIDOMWindow** outWindow);
   nsresult GetBrowserChrome(nsIWebBrowserChrome** outChrome);
+  nsresult GetBrowser(nsIWebBrowser** outBrowser);
   uint32_t GetID() { return mId; }
   gfxSize GetGLViewSize() { return mGLViewSize; }
 

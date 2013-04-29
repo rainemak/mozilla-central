@@ -54,8 +54,9 @@ interface nsIEmbedAppService : nsISupports
     // Add listener for AZPC Gecko notifications (single/long/double tap..)
     [noscript] void addContentListener(in uint32_t aId, in GeckoContentController listener);
     [noscript] void removeContentListener(in uint32_t aId, in GeckoContentController listener);
-    // Get EmbedLite nsIWebBrowser by unique ID
-    void getBrowserByID(in uint32_t aId, [retval] out nsIWebBrowser outBrowser);
+    // Get EmbedLite nsIWebBrowser by unique ID C++ only
+    void getBrowserByID(in uint32_t aId, out nsIWebBrowser outBrowser);
+    void getContentWindowByID(in uint32_t aId, [retval] out nsIDOMWindow outWindow);
 
     // Simple interface which allow to send JSON message from XPCOM C++ components to related JS Frame script which handle this message
     void sendAsyncMessageLocal(in uint32_t aId, in wstring messageName, in wstring message);

@@ -313,6 +313,20 @@ EmbedLiteAppService::GetBrowserByID(uint32_t aId, nsIWebBrowser * *outWindow)
   return rv;
 }
 
+
+NS_IMETHODIMP
+EmbedLiteAppService::GetContentWindowByID(uint32_t aId, nsIDOMWindow * *outWindow)
+{
+  EmbedLiteViewThreadChild* view = sGetViewById(aId);
+  NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
+  nsresult rv;
+  nsCOMPtr<nsIDOMWindow> domWindow;
+  rv = view->GetContentDOMWindow(getter_AddRefs(domWindow));
+  NS_ENSURE_TRUE(domWindow, rv);
+  domWindow.forget(outWindow);
+  return rv;
+}
+
 NS_IMETHODIMP
 EmbedLiteAppService::GetCompositedRectInCSS(const mozilla::layers::FrameMetrics& aFrameMetrics,
                                             float* aX, float* aY, float* aWidth, float* aHeight)

@@ -236,6 +236,17 @@ EmbedLiteViewThreadChild::GetBrowser(nsIWebBrowser** outBrowser)
 }
 
 nsresult
+EmbedLiteViewThreadChild::GetContentDOMWindow(nsIDOMWindow** outWindow)
+{
+  if (!mWebBrowser)
+    return NS_ERROR_FAILURE;
+  nsCOMPtr<nsIDOMWindow> domWindow;
+  mWebBrowser->GetContentDOMWindow(getter_AddRefs(domWindow));
+  domWindow.forget(outWindow);
+  return NS_OK;
+}
+
+nsresult
 EmbedLiteViewThreadChild::GetBrowserChrome(nsIWebBrowserChrome** outChrome)
 {
   if (!mChrome)
