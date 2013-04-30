@@ -6,7 +6,7 @@ Version:    %{greversion}
 Release:    1
 Group:      Applications/Internet
 License:    Mozilla License
-URL:        http://www.mozilla.com
+URL:        http://hg.mozilla.org/mozilla-central
 Source0:    %{name}-%{version}.tar.bz2
 BuildRequires:  pkgconfig(QtCore) >= 4.6.0
 BuildRequires:  pkgconfig(QtOpenGL)
@@ -19,8 +19,8 @@ BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(gstreamer-0.10)
 BuildRequires:  pkgconfig(gstreamer-app-0.10)
 BuildRequires:  pkgconfig(gstreamer-plugins-base-0.10)
-BuildRequires:  pkgconfig(nspr)
-BuildRequires:  pkgconfig(nss)
+BuildRequires:  pkgconfig(nspr) >= 4.9.6
+BuildRequires:  pkgconfig(nss) >= 3.14.3
 BuildRequires:  autoconf213
 BuildRequires:  python
 BuildRequires:  zip
@@ -94,5 +94,3 @@ export MOZCONFIG=mozconfig
 %exclude %{_libdir}/xulrunner-%{greversion}/omni.ja
 %exclude %{_libdir}/xulrunner-%{greversion}/dependentlibs.list
 %exclude %{_libdir}/xulrunner-%{greversion}/dictionaries/*
-
-%changelog

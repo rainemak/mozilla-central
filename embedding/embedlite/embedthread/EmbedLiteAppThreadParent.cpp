@@ -91,8 +91,13 @@ PEmbedLiteViewParent*
 EmbedLiteAppThreadParent::AllocPEmbedLiteView(const uint32_t& id, const uint32_t& parentId)
 {
   LOGT("id:%u, parent:%u", id, parentId);
-  EmbedLiteViewThreadParent* tview = new EmbedLiteViewThreadParent(id, parentId);
-  return tview;
+  // Return iv view has been destroyed during creation
+  if (!EmbedLiteApp::GetInstance()->GetViewByID(id)) {
+    NS_ERROR("View was unexpectedly destroyed during startup let's Shutdown");
+    EmbedLiteApp::GetInstance()->ViewDestroyed(id);
+    return nullptr;
+  }
+  return new EmbedLiteViewThreadParent(id, parentId);
 }
 
 bool

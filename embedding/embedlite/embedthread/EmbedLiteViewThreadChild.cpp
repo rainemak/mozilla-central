@@ -86,10 +86,9 @@ EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(const uint32_t& aId, const ui
     sPrefInitialized = true;
     ReadAZPCPrefs();
   }
-  MessageLoop::current()->
-  PostTask(FROM_HERE,
-           NewRunnableMethod(this,
-                             &EmbedLiteViewThreadChild::InitGeckoWindow, parentId));
+  mInitWindowTask = NewRunnableMethod(this,
+                                      &EmbedLiteViewThreadChild::InitGeckoWindow, parentId);
+  MessageLoop::current()->PostTask(FROM_HERE, mInitWindowTask);
   mRegisteredMessages.Init();
 }
 
@@ -97,6 +96,10 @@ EmbedLiteViewThreadChild::~EmbedLiteViewThreadChild()
 {
   LOGT();
   NS_ASSERTION(mControllerListeners.IsEmpty(), "Controller listeners list is not empty...");
+  if (mInitWindowTask) {
+    mInitWindowTask->Cancel();
+  }
+  mInitWindowTask = nullptr;
 }
 
 EmbedLiteAppThreadChild*
@@ -109,7 +112,9 @@ void
 EmbedLiteViewThreadChild::ActorDestroy(ActorDestroyReason aWhy)
 {
   LOGT("reason:%i", aWhy);
-  mHelper->Disconnect();
+  if (mHelper) {
+    mHelper->Disconnect();
+  }
   mControllerListeners.Clear();
 }
 
@@ -118,8 +123,10 @@ bool EmbedLiteViewThreadChild::RecvDestroy()
   LOGT("destroy");
   mControllerListeners.Clear();
   AppChild()->AppService()->UnregisterView(mId);
-  mHelper->Unload();
-  mBChrome->RemoveEventHandler();
+  if (mHelper)
+    mHelper->Unload();
+  if (mBChrome)
+    mBChrome->RemoveEventHandler();
   mWidget = nullptr;
   mWebBrowser = nullptr;
   mChrome = nullptr;
@@ -132,6 +139,10 @@ bool EmbedLiteViewThreadChild::RecvDestroy()
 void
 EmbedLiteViewThreadChild::InitGeckoWindow(const uint32_t& parentId)
 {
+  if (mInitWindowTask) {
+    mInitWindowTask->Cancel();
+  }
+  mInitWindowTask = nullptr;
   LOGT("parentID: %u", parentId);
   nsresult rv;
   mWebBrowser = do_CreateInstance(NS_WEBBROWSER_CONTRACTID, &rv);

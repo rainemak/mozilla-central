@@ -155,7 +155,7 @@ EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id, const u
   , mLastIMEState(0)
 {
   MOZ_COUNT_CTOR(EmbedLiteViewThreadParent);
-  NS_ASSERTION(mView, "View not found");
+  MOZ_ASSERT(mView, "View destroyed during OMTC view construction");
   mView->SetImpl(this);
   mGeckoController = new EmbedContentController(this);
 }
@@ -163,7 +163,8 @@ EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id, const u
 EmbedLiteViewThreadParent::~EmbedLiteViewThreadParent()
 {
   MOZ_COUNT_DTOR(EmbedLiteViewThreadParent);
-  LOGT();
+  LOGT("mView:%p, mGeckoController:%p, mController:%p, mCompositor:%p", mView, mGeckoController.get(), mController.get(), mCompositor.get());
+  bool mHadCompositor = mCompositor.get() != nullptr;
   if (mGeckoController) {
     mGeckoController->ClearRenderFrame();
   }
@@ -175,6 +176,11 @@ EmbedLiteViewThreadParent::~EmbedLiteViewThreadParent()
 
   if (mView) {
     mView->SetImpl(NULL);
+  }
+  // If we haven't had compositor created, then noone will notify app that view destroyed
+  // Let's do it here
+  if (!mHadCompositor) {
+    EmbedLiteApp::GetInstance()->ViewDestroyed(mId);
   }
 }
 

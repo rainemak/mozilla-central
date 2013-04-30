@@ -126,6 +126,7 @@ private:
   nsCOMPtr<TabChildHelper> mHelper;
   bool mDispatchSynthMouseEvents;
   bool mIMEComposing;
+  CancelableTask* mInitWindowTask;
 
   nsDataHashtable<nsStringHashKey, bool/*start with key*/> mRegisteredMessages;
   nsTArray<mozilla::layers::GeckoContentController*> mControllerListeners;

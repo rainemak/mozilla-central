@@ -118,8 +118,7 @@ bool
 EmbedLiteAppThreadChild::RecvCreateView(const uint32_t& id, const uint32_t& parentId)
 {
   LOGT("id:%u, parentId:%u", id, parentId);
-  unused << SendPEmbedLiteViewConstructor(id, parentId);
-  return true;
+  return SendPEmbedLiteViewConstructor(id, parentId);
 }
 
 PEmbedLiteViewChild*
