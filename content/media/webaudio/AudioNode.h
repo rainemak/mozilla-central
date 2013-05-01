@@ -73,20 +73,15 @@ private:
 class AudioNode : public nsDOMEventTargetHelper,
                   public EnableWebAudioCheck
 {
-public:
-  explicit AudioNode(AudioContext* aContext);
+protected:
+  // You can only use refcounting to delete this object
   virtual ~AudioNode();
 
+public:
+  explicit AudioNode(AudioContext* aContext);
+
   // This should be idempotent (safe to call multiple times).
-  // This should be called in the destructor of every class that overrides
-  // this method.
-  virtual void DestroyMediaStream()
-  {
-    if (mStream) {
-      mStream->Destroy();
-      mStream = nullptr;
-    }
-  }
+  virtual void DestroyMediaStream();
 
   // This method should be overridden to return true in nodes
   // which support being hooked up to the Media Stream graph.
@@ -95,7 +90,7 @@ public:
     return false;
   }
 
-  NS_DECL_CYCLE_COLLECTING_ISUPPORTS
+  NS_DECL_ISUPPORTS_INHERITED
   NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(AudioNode,
                                            nsDOMEventTargetHelper)
 
@@ -113,10 +108,10 @@ public:
     return mContext;
   }
 
-  void Connect(AudioNode& aDestination, uint32_t aOutput,
-               uint32_t aInput, ErrorResult& aRv);
+  virtual void Connect(AudioNode& aDestination, uint32_t aOutput,
+                       uint32_t aInput, ErrorResult& aRv);
 
-  void Disconnect(uint32_t aOutput, ErrorResult& aRv);
+  virtual void Disconnect(uint32_t aOutput, ErrorResult& aRv);
 
   // The following two virtual methods must be implemented by each node type
   // to provide their number of input and output ports. These numbers are

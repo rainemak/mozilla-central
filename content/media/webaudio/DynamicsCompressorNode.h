@@ -19,12 +19,12 @@ class DynamicsCompressorNode : public AudioNode
 {
 public:
   explicit DynamicsCompressorNode(AudioContext* aContext);
-  ~DynamicsCompressorNode();
 
   NS_DECL_ISUPPORTS_INHERITED
   NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(DynamicsCompressorNode, AudioNode)
 
-  virtual JSObject* WrapObject(JSContext* aCx, JSObject* aScope);
+  virtual JSObject* WrapObject(JSContext* aCx,
+                               JS::Handle<JSObject*> aScope) MOZ_OVERRIDE;
 
   virtual bool SupportsMediaStreams() const MOZ_OVERRIDE
   {
@@ -66,7 +66,6 @@ private:
   static void SendThresholdToStream(AudioNode* aNode);
   static void SendKneeToStream(AudioNode* aNode);
   static void SendRatioToStream(AudioNode* aNode);
-  static void SendReductionToStream(AudioNode* aNode);
   static void SendAttackToStream(AudioNode* aNode);
   static void SendReleaseToStream(AudioNode* aNode);
 

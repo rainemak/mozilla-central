@@ -140,8 +140,8 @@ public:
   }
 
   virtual LayerManager*
-  GetLayerManager(PLayersChild* aShadowManager = nullptr,
-                  LayersBackend aBackendHint = mozilla::layers::LAYERS_NONE,
+  GetLayerManager(PLayerTransactionChild* aShadowManager,
+                  LayersBackend aBackendHint,
                   LayerManagerPersistence aPersistence = LAYER_MANAGER_CURRENT,
                   bool* aAllowRetaining = nullptr);
 

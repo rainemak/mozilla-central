@@ -24,7 +24,6 @@
 #include "nsComponentManagerUtils.h"
 #include "EmbedLiteAppThreadChild.h"
 #include "EmbedLiteViewThreadChild.h"
-#include "nsIJSContextStack.h"
 #include "nsIBaseWindow.h"
 #include "nsIWebBrowser.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
@@ -210,13 +209,15 @@ EmbedLiteAppService::HandleAsyncMessage(const char* aMessage, const nsString& aD
 
 NS_IMETHODIMP EmbedLiteAppService::EnterSecureJSContext()
 {
-  nsIThreadJSContextStack* stack = nsContentUtils::ThreadJSContextStack();
-  if (!stack) {
-    return NS_OK;
+  nsIXPConnect *xpc = nsContentUtils::XPConnect();
+  if (!xpc) {
+    // If someone tries to push a cx when we don't have the relevant state,
+    // it's probably safest to just crash.
+    MOZ_CRASH();
   }
 
-  if (NS_FAILED(stack->Push(nullptr))) {
-    return NS_ERROR_FAILURE;
+  if (!xpc::danger::PushJSContext(nullptr)) {
+    MOZ_CRASH();
   }
 
   mPushedSomething++;
@@ -225,15 +226,14 @@ NS_IMETHODIMP EmbedLiteAppService::EnterSecureJSContext()
 
 NS_IMETHODIMP EmbedLiteAppService::LeaveSecureJSContext()
 {
-  nsIThreadJSContextStack* stack = nsContentUtils::ThreadJSContextStack();
-  if (!mPushedSomething || !stack) {
-    mPushedSomething = 0;
+  MOZ_ASSERT(nsContentUtils::XPConnect());
+  if (!mPushedSomething) {
     return NS_ERROR_FAILURE;
   }
 
-  JSContext* unused;
-  stack->Pop(&unused);
-
+  DebugOnly<JSContext*> stackTop;
+  MOZ_ASSERT(mPushedContext == nsContentUtils::GetCurrentJSContext());
+  xpc::danger::PopJSContext();
   mPushedSomething--;
   return NS_OK;
 }

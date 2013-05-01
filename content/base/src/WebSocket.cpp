@@ -32,7 +32,6 @@
 #include "nsIDOMCloseEvent.h"
 #include "nsICryptoHash.h"
 #include "jsdbgapi.h"
-#include "nsIJSContextStack.h"
 #include "nsJSUtils.h"
 #include "nsIScriptError.h"
 #include "nsNetUtil.h"
@@ -476,7 +475,7 @@ WebSocket::~WebSocket()
 }
 
 JSObject*
-WebSocket::WrapObject(JSContext* cx, JSObject* scope)
+WebSocket::WrapObject(JSContext* cx, JS::Handle<JSObject*> scope)
 {
   return WebSocketBinding::Wrap(cx, scope, this);
 }
@@ -1099,10 +1098,10 @@ WebSocket::UpdateMustKeepAlive()
 
   if (mKeepingAlive && !shouldKeepAlive) {
     mKeepingAlive = false;
-    static_cast<nsIDOMEventTarget*>(this)->Release();
+    static_cast<EventTarget*>(this)->Release();
   } else if (!mKeepingAlive && shouldKeepAlive) {
     mKeepingAlive = true;
-    static_cast<nsIDOMEventTarget*>(this)->AddRef();
+    static_cast<EventTarget*>(this)->AddRef();
   }
 }
 
@@ -1112,7 +1111,7 @@ WebSocket::DontKeepAliveAnyMore()
   NS_ABORT_IF_FALSE(NS_IsMainThread(), "Not running on main thread");
   if (mKeepingAlive) {
     mKeepingAlive = false;
-    static_cast<nsIDOMEventTarget*>(this)->Release();
+    static_cast<EventTarget*>(this)->Release();
   }
   mCheckMustKeepAlive = false;
 }

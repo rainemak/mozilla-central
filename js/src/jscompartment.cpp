@@ -4,11 +4,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "jscompartment.h"
+
 #include "mozilla/DebugOnly.h"
 
 #include "jscntxt.h"
-#include "jsdate.h"
-#include "jscompartment.h"
 #include "jsgc.h"
 #include "jsiter.h"
 #include "jsmath.h"
@@ -16,29 +16,15 @@
 #include "jswatchpoint.h"
 #include "jswrapper.h"
 
-#if ENABLE_YARR_JIT
-#include "assembler/jit/ExecutableAllocator.h"
-#endif
-#include "assembler/wtf/Platform.h"
 #include "gc/Marking.h"
 #ifdef JS_ION
 #include "ion/IonCompartment.h"
-#include "ion/Ion.h"
 #endif
-#include "js/MemoryMetrics.h"
 #include "js/RootingAPI.h"
-#include "methodjit/MethodJIT.h"
-#include "methodjit/PolyIC.h"
-#include "methodjit/MonoIC.h"
-#include "methodjit/Retcon.h"
 #include "vm/Debugger.h"
-#include "vm/ForkJoin.h"
-#include "yarr/BumpPointerAllocator.h"
 
 #include "jsgcinlines.h"
 #include "jsobjinlines.h"
-
-#include "vm/Shape-inl.h"
 
 using namespace js;
 using namespace js::gc;
@@ -213,15 +199,7 @@ JSCompartment::wrap(JSContext *cx, MutableHandleValue vp, HandleObject existingA
 
     JS_CHECK_CHROME_RECURSION(cx, return false);
 
-#ifdef DEBUG
-    struct AutoDisableProxyCheck {
-        JSRuntime *runtime;
-        AutoDisableProxyCheck(JSRuntime *rt) : runtime(rt) {
-            runtime->gcDisableStrictProxyCheckingCount++;
-        }
-        ~AutoDisableProxyCheck() { runtime->gcDisableStrictProxyCheckingCount--; }
-    } adpc(rt);
-#endif
+    AutoDisableProxyCheck adpc(rt);
 
     /* Only GC things have to be wrapped or copied. */
     if (!vp.isMarkable())
@@ -822,7 +800,7 @@ void
 JSCompartment::sizeOfIncludingThis(JSMallocSizeOfFun mallocSizeOf, size_t *compartmentObject,
                                    JS::TypeInferenceSizes *tiSizes, size_t *shapesCompartmentTables,
                                    size_t *crossCompartmentWrappersArg, size_t *regexpCompartment,
-                                   size_t *debuggeesSet, size_t *baselineOptimizedStubs)
+                                   size_t *debuggeesSet, size_t *baselineStubsOptimized)
 {
     *compartmentObject = mallocSizeOf(this);
     sizeOfTypeInferenceData(tiSizes, mallocSizeOf);
@@ -834,11 +812,11 @@ JSCompartment::sizeOfIncludingThis(JSMallocSizeOfFun mallocSizeOf, size_t *compa
     *regexpCompartment = regExps.sizeOfExcludingThis(mallocSizeOf);
     *debuggeesSet = debuggees.sizeOfExcludingThis(mallocSizeOf);
 #ifdef JS_ION
-    *baselineOptimizedStubs = ionCompartment()
+    *baselineStubsOptimized = ionCompartment()
         ? ionCompartment()->optimizedStubSpace()->sizeOfExcludingThis(mallocSizeOf)
         : 0;
 #else
-    *baselineOptimizedStubs = 0;
+    *baselineStubsOptimized = 0;
 #endif
 }
 

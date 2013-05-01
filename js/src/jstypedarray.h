@@ -34,7 +34,7 @@ class ArrayBufferObject : public JSObject
 
   public:
     static Class protoClass;
-    static JSFunctionSpec jsfuncs[];
+    static const JSFunctionSpec jsfuncs[];
 
     static JSBool byteLengthGetter(JSContext *cx, unsigned argc, Value *vp);
 
@@ -321,6 +321,7 @@ TypedArrayShift(ArrayBufferView::ViewType viewType)
     switch (viewType) {
       case ArrayBufferView::TYPE_INT8:
       case ArrayBufferView::TYPE_UINT8:
+      case ArrayBufferView::TYPE_UINT8_CLAMPED:
         return 0;
       case ArrayBufferView::TYPE_INT16:
       case ArrayBufferView::TYPE_UINT16:
@@ -438,7 +439,7 @@ private:
     static bool write(JSContext *cx, Handle<DataViewObject*> obj,
                       CallArgs &args, const char *method);
   private:
-    static JSFunctionSpec jsfuncs[];
+    static const JSFunctionSpec jsfuncs[];
 };
 
 bool

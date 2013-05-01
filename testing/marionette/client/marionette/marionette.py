@@ -6,7 +6,6 @@ import datetime
 import socket
 import sys
 import time
-import traceback
 
 from client import MarionetteClient
 from application_cache import ApplicationCache
@@ -137,6 +136,22 @@ class Actions(object):
 
     def cancel(self):
         self.action_chain.append(['cancel'])
+        return self
+
+    def flick(self, element, x1, y1, x2, y2, duration=200):
+        element = element.id
+        time = 0
+        time_increment = 10
+        if time_increment >= duration:
+            time_increment = duration
+        move_x = time_increment*1.0/duration * (x2 - x1)
+        move_y = time_increment*1.0/duration * (y2 - y1)
+        self.action_chain.append(['press', element, x1, y1])
+        while (time < duration):
+            time += time_increment
+            self.action_chain.append(['moveByOffset', move_x, move_y])
+            self.action_chain.append(['wait', time_increment/1000])
+        self.action_chain.append(['release'])
         return self
 
     def long_press(self, element, time_in_seconds):
@@ -420,9 +435,9 @@ class Marionette(object):
             # We are ignoring desired_capabilities, at least for now.
             self.session = self._send_message('newSession', 'value')
         except:
-            traceback.print_exc()
+            exc, val, tb = sys.exc_info()
             self.check_for_crash()
-            sys.exit()
+            raise exc, val, tb
 
         self.b2g = 'b2g' in self.session
         return self.session
@@ -629,12 +644,6 @@ class Marionette(object):
 
     def get_logs(self):
         return self._send_message('getLogs', 'value')
-
-    def add_perf_data(self, suite, name, value):
-        return self._send_message('addPerfData', 'ok', suite=suite, name=name, value=value)
-
-    def get_perf_data(self):
-        return self._send_message('getPerfData', 'value')
 
     def import_script(self, js_file):
         js = ''

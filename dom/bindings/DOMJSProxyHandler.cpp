@@ -143,8 +143,8 @@ DOMProxyHandler::defineProperty(JSContext* cx, JS::Handle<JSObject*> proxy, JS::
     return false;
   }
 
-  return JS_DefinePropertyById(cx, expando, id, desc->value, desc->getter, desc->setter,
-                               desc->attrs);
+  JSBool dummy;
+  return js_DefineOwnProperty(cx, expando, id, *desc, &dummy);
 }
 
 bool
@@ -203,34 +203,6 @@ DOMProxyHandler::has(JSContext* cx, JS::Handle<JSObject*> proxy, JS::Handle<jsid
     *bp = protoHasProp;
   }
   return ok;
-}
-
-// static
-JSString*
-DOMProxyHandler::obj_toString(JSContext* cx, const char* className)
-{
-  size_t nchars = sizeof("[object ]") - 1 + strlen(className);
-  jschar* chars = static_cast<jschar*>(JS_malloc(cx, (nchars + 1) * sizeof(jschar)));
-  if (!chars) {
-    return NULL;
-  }
-
-  const char* prefix = "[object ";
-  nchars = 0;
-  while ((chars[nchars] = (jschar)*prefix) != 0) {
-    nchars++, prefix++;
-  }
-  while ((chars[nchars] = (jschar)*className) != 0) {
-    nchars++, className++;
-  }
-  chars[nchars++] = ']';
-  chars[nchars] = 0;
-
-  JSString* str = JS_NewUCString(cx, chars, nchars);
-  if (!str) {
-    JS_free(cx, chars);
-  }
-  return str;
 }
 
 bool

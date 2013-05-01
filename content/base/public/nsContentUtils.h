@@ -52,7 +52,6 @@ class nsIDocumentObserver;
 class nsIDOMDocument;
 class nsIDOMDocumentFragment;
 class nsIDOMEvent;
-class nsIDOMEventTarget;
 class nsIDOMHTMLFormElement;
 class nsIDOMHTMLInputElement;
 class nsIDOMKeyEvent;
@@ -65,7 +64,6 @@ class nsIFragmentContentSink;
 class nsIImageLoadingContent;
 class nsIInterfaceRequestor;
 class nsIIOService;
-class nsIJSContextStack;
 class nsIJSRuntimeService;
 class nsILineBreaker;
 class nsIMIMEHeaderParam;
@@ -83,7 +81,6 @@ class nsIScriptSecurityManager;
 class nsIStringBundle;
 class nsIStringBundleService;
 class nsISupportsHashKey;
-class nsIThreadJSContextStack;
 class nsIURI;
 class nsIWidget;
 class nsIWordBreaker;
@@ -426,7 +423,7 @@ public:
    *
    * @return The document or null if no JS Context.
    */
-  static nsIDOMDocument *GetDocumentFromCaller();
+  static nsIDocument* GetDocumentFromCaller();
 
   /**
    * Get the document through the JS context that's currently on the stack.
@@ -435,7 +432,7 @@ public:
    *
    * @return The document or null if no JS context
    */
-  static nsIDOMDocument *GetDocumentFromContext();
+  static nsIDocument* GetDocumentFromContext();
 
   // Check if a node is in the document prolog, i.e. before the document
   // element.
@@ -796,6 +793,7 @@ public:
     eBRAND_PROPERTIES,
     eCOMMON_DIALOG_PROPERTIES,
     eMATHML_PROPERTIES,
+    eSECURITY_PROPERTIES,
     PropertiesFile_COUNT
   };
   static nsresult ReportToConsole(uint32_t aErrorFlags,
@@ -954,7 +952,7 @@ public:
                                        bool aCanBubble,
                                        bool aCancelable,
                                        bool *aDefaultAction = nullptr);
-                                       
+
   /**
    * This method creates and dispatches a untrusted event.
    * Works only with events which can be created by calling
@@ -1627,12 +1625,7 @@ public:
   static nsresult CheckSameOrigin(nsIChannel *aOldChannel, nsIChannel *aNewChannel);
   static nsIInterfaceRequestor* GetSameOriginChecker();
 
-  static nsIThreadJSContextStack* ThreadJSContextStack()
-  {
-    return sThreadJSContextStack;
-  }
-
-  // Trace the safe JS context of the ThreadJSContextStack.
+  // Trace the safe JS context.
   static void TraceSafeJSContext(JSTracer* aTrc);
 
 
@@ -2182,8 +2175,6 @@ private:
   static nsIXPConnect *sXPConnect;
 
   static nsIScriptSecurityManager *sSecurityManager;
-
-  static nsIThreadJSContextStack *sThreadJSContextStack;
 
   static nsIParserService *sParserService;
 

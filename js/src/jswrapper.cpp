@@ -4,26 +4,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "jswrapper.h"
+
 #include "jsapi.h"
 #include "jscntxt.h"
 #include "jscompartment.h"
 #include "jsexn.h"
 #include "jsgc.h"
 #include "jsiter.h"
-#include "jsnum.h"
-#include "jswrapper.h"
-
-#ifdef JS_METHODJIT
-# include "assembler/jit/ExecutableAllocator.h"
-#endif
-#include "gc/Marking.h"
-#include "methodjit/PolyIC.h"
-#include "methodjit/MonoIC.h"
 
 #include "jsobjinlines.h"
 
 #include "builtin/Iterator-inl.h"
-#include "vm/RegExpObject-inl.h"
 
 using namespace js;
 using namespace js::gc;
@@ -505,7 +497,7 @@ CrossCompartmentWrapper::nativeCall(JSContext *cx, IsAcceptableThis test, Native
             // will stymie this whole process. If that happens, unwrap the wrapper.
             // This logic can go away when same-compartment security wrappers go away.
             if ((src == srcArgs.base() + 1) && dst->isObject()) {
-                JSObject *thisObj = &dst->toObject();
+                RootedObject thisObj(cx, &dst->toObject());
                 if (thisObj->isWrapper() &&
                     !Wrapper::wrapperHandler(thisObj)->isSafeToUnwrap())
                 {
@@ -534,19 +526,11 @@ CrossCompartmentWrapper::hasInstance(JSContext *cx, HandleObject wrapper, Mutabl
     return Wrapper::hasInstance(cx, wrapper, v, bp);
 }
 
-JSString *
-CrossCompartmentWrapper::obj_toString(JSContext *cx, HandleObject wrapper)
+const char *
+CrossCompartmentWrapper::className(JSContext *cx, HandleObject wrapper)
 {
-    RootedString str(cx);
-    {
-        AutoCompartment call(cx, wrappedObject(wrapper));
-        str = Wrapper::obj_toString(cx, wrapper);
-        if (!str)
-            return NULL;
-    }
-    if (!cx->compartment->wrap(cx, str.address()))
-        return NULL;
-    return str;
+    AutoCompartment call(cx, wrappedObject(wrapper));
+    return Wrapper::className(cx, wrapper);
 }
 
 JSString *
@@ -797,10 +781,10 @@ DeadObjectProxy::objectClassIs(HandleObject obj, ESClassValue classValue, JSCont
     return false;
 }
 
-JSString *
-DeadObjectProxy::obj_toString(JSContext *cx, HandleObject wrapper)
+const char *
+DeadObjectProxy::className(JSContext *cx, HandleObject wrapper)
 {
-    return JS_NewStringCopyZ(cx, "[object DeadObject]");
+    return "DeadObject";
 }
 
 JSString *
@@ -952,6 +936,8 @@ js::RemapWrapper(JSContext *cx, JSObject *wobjArg, JSObject *newTargetArg)
     JS_ASSERT(origTarget);
     Value origv = ObjectValue(*origTarget);
     JSCompartment *wcompartment = wobj->compartment();
+
+    AutoDisableProxyCheck adpc(cx->runtime);
 
     // If we're mapping to a different target (as opposed to just recomputing
     // for the same target), we must not have an existing wrapper for the new

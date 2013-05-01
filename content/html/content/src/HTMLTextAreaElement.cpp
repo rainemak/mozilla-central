@@ -18,7 +18,6 @@
 #include "nsIFormControl.h"
 #include "nsIForm.h"
 #include "nsFormSubmission.h"
-#include "nsIDOMEventTarget.h"
 #include "nsAttrValueInlines.h"
 #include "nsStyleConsts.h"
 #include "nsPresContext.h"
@@ -1437,7 +1436,7 @@ HTMLTextAreaElement::FieldSetDisabledChanged(bool aNotify)
 }
 
 JSObject*
-HTMLTextAreaElement::WrapNode(JSContext* aCx, JSObject* aScope)
+HTMLTextAreaElement::WrapNode(JSContext* aCx, JS::Handle<JSObject*> aScope)
 {
   return HTMLTextAreaElementBinding::Wrap(aCx, aScope, this);
 }

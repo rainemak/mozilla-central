@@ -14,7 +14,7 @@ callback DecodeSuccessCallback = void (AudioBuffer decodedData);
 callback DecodeErrorCallback = void ();
 
 [Constructor, PrefControlled]
-interface AudioContext {
+interface AudioContext : EventTarget {
 
     readonly attribute AudioDestinationNode destination;
     readonly attribute float sampleRate;
@@ -34,6 +34,11 @@ interface AudioContext {
     // AudioNode creation 
     [Creator]
     AudioBufferSourceNode createBufferSource();
+
+    [Creator, Throws]
+    ScriptProcessorNode createScriptProcessor(optional unsigned long bufferSize = 0,
+                                              optional unsigned long numberOfInputChannels = 2,
+                                              optional unsigned long numberOfOutputChannels = 2);
 
     [Creator]
     AnalyserNode createAnalyser();
@@ -66,10 +71,10 @@ partial interface AudioContext {
     DelayNode createDelayNode(optional double maxDelayTime = 1);
 
     // Same as createScriptProcessor()
-    // [Creator]
-    // ScriptProcessorNode createJavaScriptNode(unsigned long bufferSize,
-    //                                          optional unsigned long numberOfInputChannels = 2,
-    //                                          optional unsigned long numberOfOutputChannels = 2);
+    [Creator, Throws]
+    ScriptProcessorNode createJavaScriptNode(optional unsigned long bufferSize = 0,
+                                             optional unsigned long numberOfInputChannels = 2,
+                                             optional unsigned long numberOfOutputChannels = 2);
 };
 
 

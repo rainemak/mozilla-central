@@ -183,14 +183,14 @@ IonRuntime::initialize(JSContext *cx)
 {
     AutoEnterAtomsCompartment ac(cx);
 
-    if (!cx->compartment->ensureIonCompartmentExists(cx))
-        return false;
-
     IonContext ictx(cx, NULL);
     AutoFlushCache afc("IonRuntime::initialize");
 
     execAlloc_ = cx->runtime->getExecAlloc(cx);
     if (!execAlloc_)
+        return false;
+
+    if (!cx->compartment->ensureIonCompartmentExists(cx))
         return false;
 
     functionWrappers_ = cx->new_<VMWrapperMap>(cx);
@@ -284,7 +284,8 @@ IonRuntime::freeOsrTempData()
 IonCompartment::IonCompartment(IonRuntime *rt)
   : rt(rt),
     stubCodes_(NULL),
-    baselineCallReturnAddr_(NULL)
+    baselineCallReturnAddr_(NULL),
+    stringConcatStub_(NULL)
 {
 }
 
@@ -300,6 +301,19 @@ IonCompartment::initialize(JSContext *cx)
     stubCodes_ = cx->new_<ICStubCodeMap>(cx);
     if (!stubCodes_ || !stubCodes_->init())
         return false;
+
+    return true;
+}
+
+bool
+IonCompartment::ensureIonStubsExist(JSContext *cx)
+{
+    if (!stringConcatStub_) {
+        stringConcatStub_ = generateStringConcatStub(cx);
+        if (!stringConcatStub_)
+            return false;
+    }
+
     return true;
 }
 
@@ -364,6 +378,9 @@ IonCompartment::sweep(FreeOp *fop)
     // If the sweep removed the ICCall_Fallback stub, NULL the baselineCallReturnAddr_ field.
     if (!stubCodes_->lookup(static_cast<uint32_t>(ICStub::Call_Fallback)))
         baselineCallReturnAddr_ = NULL;
+
+    if (stringConcatStub_ && !IsIonCodeMarked(stringConcatStub_.unsafeGet()))
+        stringConcatStub_ = NULL;
 }
 
 IonCode *
@@ -535,7 +552,7 @@ IonScript::IonScript()
     osrEntryOffset_(0),
     invalidateEpilogueOffset_(0),
     invalidateEpilogueDataOffset_(0),
-    bailoutExpected_(0),
+    numBailouts_(0),
     hasInvalidatedCallTarget_(false),
     runtimeData_(0),
     runtimeSize_(0),
@@ -561,8 +578,7 @@ IonScript::IonScript()
     callTargetEntries_(0),
     refcount_(0),
     recompileInfo_(),
-    osrPcMismatchCounter_(0),
-    slowCallCount(0)
+    osrPcMismatchCounter_(0)
 {
 }
 
@@ -1010,14 +1026,20 @@ OptimizeMIR(MIRGenerator *mir)
         return false;
 
     if (js_IonOptions.licm) {
-        LICM licm(mir, graph);
-        if (!licm.analyze())
-            return false;
-        IonSpewPass("LICM");
-        AssertExtendedGraphCoherency(graph);
+        // LICM can hoist instructions from conditional branches and trigger
+        // repeated bailouts. Disable it if this script is known to bailout
+        // frequently.
+        JSScript *script = mir->info().script();
+        if (!script || !script->hadFrequentBailouts) {
+            LICM licm(mir, graph);
+            if (!licm.analyze())
+                return false;
+            IonSpewPass("LICM");
+            AssertExtendedGraphCoherency(graph);
 
-        if (mir->shouldCancel("LICM"))
-            return false;
+            if (mir->shouldCancel("LICM"))
+                return false;
+        }
     }
 
     if (js_IonOptions.rangeAnalysis) {
@@ -1287,7 +1309,8 @@ static const size_t BUILDER_LIFO_ALLOC_PRIMARY_CHUNK_SIZE = 1 << 12;
 
 template <typename CompileContext>
 static AbortReason
-IonCompile(JSContext *cx, JSScript *script, JSFunction *fun, jsbytecode *osrPc, bool constructing,
+IonCompile(JSContext *cx, JSScript *script,
+           AbstractFramePtr fp, jsbytecode *osrPc, bool constructing,
            CompileContext &compileContext)
 {
 #if JS_TRACE_LOGGING
@@ -1296,6 +1319,9 @@ IonCompile(JSContext *cx, JSScript *script, JSFunction *fun, jsbytecode *osrPc, 
                         TraceLogging::ION_COMPILE_STOP,
                         script);
 #endif
+
+    if (!script->ensureRanAnalysis(cx))
+        return AbortReason_Alloc;
 
     LifoAlloc *alloc = cx->new_<LifoAlloc>(BUILDER_LIFO_ALLOC_PRIMARY_CHUNK_SIZE);
     if (!alloc)
@@ -1314,16 +1340,15 @@ IonCompile(JSContext *cx, JSScript *script, JSFunction *fun, jsbytecode *osrPc, 
     if (!cx->compartment->ensureIonCompartmentExists(cx))
         return AbortReason_Alloc;
 
+    if (!cx->compartment->ionCompartment()->ensureIonStubsExist(cx))
+        return AbortReason_Alloc;
+
     MIRGraph *graph = alloc->new_<MIRGraph>(temp);
     ExecutionMode executionMode = compileContext.executionMode();
-    CompileInfo *info = alloc->new_<CompileInfo>(script, fun, osrPc, constructing,
+    CompileInfo *info = alloc->new_<CompileInfo>(script, script->function(), osrPc, constructing,
                                                  executionMode);
     if (!info)
         return AbortReason_Alloc;
-
-    TypeInferenceOracle oracle;
-    if (!oracle.init(cx, script, /* inlinedCall = */ false))
-        return AbortReason_Disable;
 
     BaselineInspector inspector(cx, script);
 
@@ -1335,7 +1360,7 @@ IonCompile(JSContext *cx, JSScript *script, JSFunction *fun, jsbytecode *osrPc, 
 
     AutoTempAllocatorRooter root(cx, temp);
 
-    IonBuilder *builder = alloc->new_<IonBuilder>(cx, temp, graph, &oracle, &inspector, info);
+    IonBuilder *builder = alloc->new_<IonBuilder>(cx, temp, graph, &inspector, info, fp);
     if (!builder)
         return AbortReason_Alloc;
 
@@ -1519,7 +1544,7 @@ CanIonCompileScript(JSContext *cx, HandleScript script, bool osr)
 
 template <typename CompileContext>
 static MethodStatus
-Compile(JSContext *cx, HandleScript script, HandleFunction fun, jsbytecode *osrPc,
+Compile(JSContext *cx, HandleScript script, AbstractFramePtr fp, jsbytecode *osrPc,
         bool constructing, CompileContext &compileContext)
 {
     JS_ASSERT(ion::IsEnabled(cx));
@@ -1570,7 +1595,7 @@ Compile(JSContext *cx, HandleScript script, HandleFunction fun, jsbytecode *osrP
         }
     }
 
-    AbortReason reason = IonCompile(cx, script, fun, osrPc, constructing, compileContext);
+    AbortReason reason = IonCompile(cx, script, fp, osrPc, constructing, compileContext);
     if (reason == AbortReason_Disable)
         return Method_CantCompile;
 
@@ -1613,10 +1638,9 @@ ion::CanEnterAtBranch(JSContext *cx, JSScript *script, AbstractFramePtr fp,
     }
 
     // Attempt compilation. Returns Method_Compiled if already compiled.
-    RootedFunction fun(cx, fp.isFunctionFrame() ? fp.fun() : NULL);
     SequentialCompileContext compileContext;
     RootedScript rscript(cx, script);
-    MethodStatus status = Compile(cx, rscript, fun, pc, isConstructing, compileContext);
+    MethodStatus status = Compile(cx, rscript, fp, pc, isConstructing, compileContext);
     if (status != Method_Compiled) {
         if (status == Method_CantCompile)
             ForbidCompilation(cx, script);
@@ -1677,10 +1701,9 @@ ion::CanEnter(JSContext *cx, JSScript *script, AbstractFramePtr fp, bool isConst
     }
 
     // Attempt compilation. Returns Method_Compiled if already compiled.
-    RootedFunction fun(cx, fp.isFunctionFrame() ? fp.fun() : NULL);
     SequentialCompileContext compileContext;
     RootedScript rscript(cx, script);
-    MethodStatus status = Compile(cx, rscript, fun, NULL, isConstructing, compileContext);
+    MethodStatus status = Compile(cx, rscript, fp, NULL, isConstructing, compileContext);
     if (status != Method_Compiled) {
         if (status == Method_CantCompile)
             ForbidCompilation(cx, script);
@@ -1708,8 +1731,7 @@ ion::CompileFunctionForBaseline(JSContext *cx, HandleScript script, AbstractFram
 
     // Attempt compilation. Returns Method_Compiled if already compiled.
     SequentialCompileContext compileContext;
-    RootedFunction fun(cx, fp.fun());
-    MethodStatus status = Compile(cx, script, fun, NULL, isConstructing, compileContext);
+    MethodStatus status = Compile(cx, script, fp, NULL, isConstructing, compileContext);
     if (status != Method_Compiled) {
         if (status == Method_CantCompile)
             ForbidCompilation(cx, script);
@@ -1800,7 +1822,7 @@ ParallelCompileContext::compileTransitively()
         }
 
         // Attempt compilation. Returns Method_Compiled if already compiled.
-        MethodStatus status = Compile(cx_, script, fun, NULL, false, *this);
+        MethodStatus status = Compile(cx_, script, AbstractFramePtr(), NULL, false, *this);
         if (status != Method_Compiled) {
             if (status == Method_CantCompile)
                 ForbidCompilation(cx_, script, ParallelExecution);

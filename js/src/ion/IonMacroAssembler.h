@@ -16,7 +16,6 @@
 #endif
 #include "ion/IonCompartment.h"
 #include "ion/IonInstrumentation.h"
-#include "ion/TypeOracle.h"
 #include "ion/ParallelFunctions.h"
 
 #include "vm/ForkJoin.h"
@@ -556,6 +555,7 @@ class MacroAssembler : public MacroAssemblerSpecific
     void newGCThing(const Register &result, gc::AllocKind allocKind, Label *fail);
     void newGCThing(const Register &result, JSObject *templateObject, Label *fail);
     void newGCString(const Register &result, Label *fail);
+    void newGCShortString(const Register &result, Label *fail);
 
     void parNewGCThing(const Register &result,
                        const Register &threadContextReg,
@@ -808,7 +808,7 @@ class MacroAssembler : public MacroAssemblerSpecific
         add32(Imm32(-1), Address(temp, 0));
     }
 
-    void loadBaselineOrIonCode(Register script, Register scratch, Label *failure);
+    void loadBaselineOrIonRaw(Register script, Register dest, ExecutionMode mode, Label *failure);
 
     void loadBaselineFramePtr(Register framePtr, Register dest);
 

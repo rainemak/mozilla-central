@@ -24,7 +24,20 @@ NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INHERITED(AudioNode, nsDOMEventTargetHel
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
 
 NS_IMPL_ADDREF_INHERITED(AudioNode, nsDOMEventTargetHelper)
-NS_IMPL_RELEASE_INHERITED(AudioNode, nsDOMEventTargetHelper)
+
+NS_IMETHODIMP_(nsrefcnt)
+AudioNode::Release()
+{
+  if (mRefCnt.get() == 1) {
+    // We are about to be deleted, disconnect the object from the graph before
+    // the derived type is destroyed.
+    DisconnectFromGraph();
+  }
+  nsrefcnt r = nsDOMEventTargetHelper::Release();
+  NS_LOG_RELEASE(this, r, "AudioNode");
+  return r;
+}
+
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION_INHERITED(AudioNode)
 NS_INTERFACE_MAP_END_INHERITING(nsDOMEventTargetHelper)
 
@@ -38,7 +51,6 @@ AudioNode::AudioNode(AudioContext* aContext)
 
 AudioNode::~AudioNode()
 {
-  DisconnectFromGraph();
   MOZ_ASSERT(mInputNodes.IsEmpty());
   MOZ_ASSERT(mOutputNodes.IsEmpty());
 }
@@ -199,6 +211,27 @@ AudioNode::Disconnect(uint32_t aOutput, ErrorResult& aRv)
 
   // This disconnection may have disconnected a panner and a source.
   Context()->UpdatePannerSource();
+}
+
+void
+AudioNode::DestroyMediaStream()
+{
+  if (mStream) {
+    {
+      // Remove the node reference on the engine, and take care to not
+      // hold the lock when the stream gets destroyed, because that will
+      // cause the engine to be destroyed as well, and we don't want to
+      // be holding the lock as we're trying to destroy it!
+      AudioNodeStream* ns = static_cast<AudioNodeStream*>(mStream.get());
+      MutexAutoLock lock(ns->Engine()->NodeMutex());
+      MOZ_ASSERT(ns, "How come we don't have a stream here?");
+      MOZ_ASSERT(ns->Engine()->Node() == this, "Invalid node reference");
+      ns->Engine()->ClearNode();
+    }
+
+    mStream->Destroy();
+    mStream = nullptr;
+  }
 }
 
 }

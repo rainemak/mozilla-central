@@ -4,17 +4,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "jsproxy.h"
+
 #include <string.h>
+
 #include "jsapi.h"
 #include "jscntxt.h"
 #include "jsfun.h"
 #include "jsgc.h"
 #include "jsprvtd.h"
-#include "jsnum.h"
-#include "jsproxy.h"
 
 #include "gc/Marking.h"
-#include "vm/Shape.h"
 
 #include "jsatominlines.h"
 #include "jsinferinlines.h"
@@ -320,12 +320,10 @@ BaseProxyHandler::construct(JSContext *cx, HandleObject proxy, const CallArgs &a
     return false;
 }
 
-JSString *
-BaseProxyHandler::obj_toString(JSContext *cx, HandleObject proxy)
+const char *
+BaseProxyHandler::className(JSContext *cx, HandleObject proxy)
 {
-    return JS_NewStringCopyZ(cx, IsFunctionProxy(proxy)
-                                 ? "[object Function]"
-                                 : "[object Object]");
+    return IsFunctionProxy(proxy) ? "Function" : "Object";
 }
 
 JSString *
@@ -524,12 +522,12 @@ DirectProxyHandler::objectClassIs(HandleObject proxy, ESClassValue classValue,
     return ObjectClassIs(obj, classValue, cx);
 }
 
-JSString *
-DirectProxyHandler::obj_toString(JSContext *cx, HandleObject proxy)
+const char *
+DirectProxyHandler::className(JSContext *cx, HandleObject proxy)
 {
     assertEnteredPolicy(cx, proxy, JSID_VOID);
     RootedObject target(cx, GetProxyTargetObject(proxy));
-    return obj_toStringHelper(cx, target);
+    return JSObject::className(cx, target);
 }
 
 JSString *
@@ -2662,8 +2660,8 @@ Proxy::objectClassIs(HandleObject proxy, ESClassValue classValue, JSContext *cx)
     return GetProxyHandler(proxy)->objectClassIs(proxy, classValue, cx);
 }
 
-JSString *
-Proxy::obj_toString(JSContext *cx, HandleObject proxy)
+const char *
+Proxy::className(JSContext *cx, HandleObject proxy)
 {
     JS_CHECK_RECURSION(cx, return NULL);
     BaseProxyHandler *handler = GetProxyHandler(proxy);
@@ -2671,9 +2669,9 @@ Proxy::obj_toString(JSContext *cx, HandleObject proxy)
                            BaseProxyHandler::GET, /* mayThrow = */ false);
     // Do the safe thing if the policy rejects.
     if (!policy.allowed()) {
-        return handler->BaseProxyHandler::obj_toString(cx, proxy);
+        return handler->BaseProxyHandler::className(cx, proxy);
     }
-    return handler->obj_toString(cx, proxy);
+    return handler->className(cx, proxy);
 }
 
 JSString *
@@ -3290,8 +3288,11 @@ js::NewProxyObject(JSContext *cx, BaseProxyHandler *handler, const Value &priv_,
 
 static JSObject *
 NewProxyObject(JSContext *cx, BaseProxyHandler *handler, const Value &priv_, JSObject *proto_,
-               JSObject *parent_, JSObject *call, JSObject *construct)
+               JSObject *parent_, JSObject *call_, JSObject *construct_)
 {
+    RootedObject call(cx, call_);
+    RootedObject construct(cx, construct_);
+
     JS_ASSERT_IF(construct, cx->compartment == construct->compartment());
     JS_ASSERT_IF(call && cx->compartment != call->compartment(), priv_ == ObjectValue(*call));
 
@@ -3443,7 +3444,7 @@ proxy_createFunction(JSContext *cx, unsigned argc, Value *vp)
     return true;
 }
 
-static JSFunctionSpec static_methods[] = {
+static const JSFunctionSpec static_methods[] = {
     JS_FN("create",         proxy_create,          2, 0),
     JS_FN("createFunction", proxy_createFunction,  3, 0),
     JS_FS_END

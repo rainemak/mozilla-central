@@ -71,7 +71,6 @@ static const char kPrintingPromptService[] = "@mozilla.org/embedcomp/printingpro
 #include "nsIDocument.h"
 
 // Focus
-#include "nsIDOMEventTarget.h"
 #include "nsISelectionController.h"
 
 // Misc
@@ -343,7 +342,7 @@ nsPrintEngine::InstallPrintPreviewListener()
     nsCOMPtr<nsIDocShell> docShell = do_QueryReferent(mContainer);
     nsCOMPtr<nsPIDOMWindow> win(do_GetInterface(docShell));
     if (win) {
-      nsCOMPtr<nsIDOMEventTarget> target(do_QueryInterface(win->GetFrameElementInternal()));
+      nsCOMPtr<EventTarget> target = do_QueryInterface(win->GetFrameElementInternal());
       mPrt->mPPEventListeners = new nsPrintPreviewListener(target);
       mPrt->mPPEventListeners->AddListeners();
     }
@@ -3116,15 +3115,15 @@ nsPrintEngine::FindFocusedDOMWindow()
   nsCOMPtr<nsPIDOMWindow> rootWindow = window->GetPrivateRoot();
   NS_ENSURE_TRUE(rootWindow, nullptr);
 
-  nsPIDOMWindow* focusedWindow;
-  nsFocusManager::GetFocusedDescendant(rootWindow, true, &focusedWindow);
+  nsCOMPtr<nsPIDOMWindow> focusedWindow;
+  nsFocusManager::GetFocusedDescendant(rootWindow, true,
+                                       getter_AddRefs(focusedWindow));
   NS_ENSURE_TRUE(focusedWindow, nullptr);
 
   if (IsWindowsInOurSubTree(focusedWindow)) {
-    return focusedWindow;
+    return focusedWindow.forget();
   }
 
-  NS_IF_RELEASE(focusedWindow);
   return nullptr;
 }
 

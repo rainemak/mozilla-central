@@ -8,13 +8,15 @@
 
 #include "EmbedLiteCompositorParent.h"
 #include "LayerManagerOGL.h"
-#include "mozilla/layers/ShadowLayersParent.h"
 #include "BasicLayers.h"
 #include "EmbedLiteAppThreadParent.h"
 #include "EmbedLiteViewThreadParent.h"
 #include "EmbedLiteApp.h"
 #include "EmbedLiteView.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
+#include "mozilla/layers/LayerManagerComposite.h"
+#include "mozilla/layers/AsyncCompositionManager.h"
+#include "mozilla/layers/LayerTransactionParent.h"
 #include "gfxUtils.h"
 
 using namespace mozilla::layers;
@@ -149,7 +151,7 @@ bool EmbedLiteCompositorParent::RecvStop()
   return true;
 }
 
-void EmbedLiteCompositorParent::ShadowLayersUpdated(ShadowLayersParent* aLayerTree,
+void EmbedLiteCompositorParent::ShadowLayersUpdated(mozilla::layers::LayerTransactionParent* aLayerTree,
                                                     const TargetConfig& aTargetConfig,
                                                     bool isFirstPaint)
 {

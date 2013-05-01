@@ -17,7 +17,6 @@
 #endif
 #include "mozilla/Hal.h"
 #include "mozilla/layers/CompositorChild.h"
-#include "mozilla/layers/PLayersChild.h"
 #include "EmbedLitePuppetWidget.h"
 #include "nsIWidgetListener.h"
 
@@ -434,7 +433,7 @@ EmbedLitePuppetWidget::ViewIsValid()
 }
 
 LayerManager*
-EmbedLitePuppetWidget::GetLayerManager(PLayersChild* aShadowManager,
+EmbedLitePuppetWidget::GetLayerManager(PLayerTransactionChild* aShadowManager,
                                        LayersBackend aBackendHint,
                                        LayerManagerPersistence aPersistence,
                                        bool* aAllowRetaining)
@@ -551,10 +550,11 @@ void EmbedLitePuppetWidget::CreateCompositor(int aWidth, int aHeight)
   mCompositorChild->Open(parentChannel, childMessageLoop, childSide);
 
   TextureFactoryIdentifier textureFactoryIdentifier;
-  PLayersChild* shadowManager;
+  PLayerTransactionChild* shadowManager;
   mozilla::layers::LayersBackend backendHint =
     mUseLayersAcceleration ? mozilla::layers::LAYERS_OPENGL : mozilla::layers::LAYERS_BASIC;
-  shadowManager = mCompositorChild->SendPLayersConstructor(
+
+  shadowManager = mCompositorChild->SendPLayerTransactionConstructor(
     backendHint, 0, &textureFactoryIdentifier);
 
   if (shadowManager) {

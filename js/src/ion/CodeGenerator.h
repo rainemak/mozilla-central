@@ -41,6 +41,7 @@ class CodeGenerator : public CodeGeneratorSpecific
 
   public:
     CodeGenerator(MIRGenerator *gen, LIRGraph *graph, MacroAssembler *masm = NULL);
+    ~CodeGenerator();
 
   public:
     bool generate();
@@ -140,6 +141,14 @@ class CodeGenerator : public CodeGeneratorSpecific
     bool visitLoadFixedSlotT(LLoadFixedSlotT *ins);
     bool visitStoreFixedSlotV(LStoreFixedSlotV *ins);
     bool visitStoreFixedSlotT(LStoreFixedSlotT *ins);
+    bool emitGetPropertyPolymorphic(LInstruction *lir, Register obj,
+                                    Register scratch, const TypedOrValueRegister &output);
+    bool visitGetPropertyPolymorphicV(LGetPropertyPolymorphicV *ins);
+    bool visitGetPropertyPolymorphicT(LGetPropertyPolymorphicT *ins);
+    bool emitSetPropertyPolymorphic(LInstruction *lir, Register obj,
+                                    Register scratch, const ConstantOrRegister &value);
+    bool visitSetPropertyPolymorphicV(LSetPropertyPolymorphicV *ins);
+    bool visitSetPropertyPolymorphicT(LSetPropertyPolymorphicT *ins);
     bool visitAbsI(LAbsI *lir);
     bool visitPowI(LPowI *lir);
     bool visitPowD(LPowD *lir);
@@ -152,7 +161,6 @@ class CodeGenerator : public CodeGeneratorSpecific
                       Register output, Register temp);
     bool visitCompareS(LCompareS *lir);
     bool visitCompareStrictS(LCompareStrictS *lir);
-    bool visitParCompareS(LParCompareS *lir);
     bool visitCompareVM(LCompareVM *lir);
     bool visitIsNullOrLikeUndefined(LIsNullOrLikeUndefined *lir);
     bool visitIsNullOrLikeUndefinedAndBranch(LIsNullOrLikeUndefinedAndBranch *lir);
@@ -168,6 +176,7 @@ class CodeGenerator : public CodeGeneratorSpecific
     bool visitCallGetProperty(LCallGetProperty *lir);
     bool visitCallGetElement(LCallGetElement *lir);
     bool visitCallSetElement(LCallSetElement *lir);
+    bool visitCallInitElementArray(LCallInitElementArray *lir);
     bool visitThrow(LThrow *lir);
     bool visitTypeOfV(LTypeOfV *lir);
     bool visitOutOfLineTypeOfV(OutOfLineTypeOfV *ool);
@@ -262,6 +271,12 @@ class CodeGenerator : public CodeGeneratorSpecific
     bool visitNameIC(OutOfLineUpdateCache *ool, NameIC *ic);
     bool visitCallsiteCloneIC(OutOfLineUpdateCache *ool, CallsiteCloneIC *ic);
 
+    IonScriptCounts *extractUnassociatedScriptCounts() {
+        IonScriptCounts *counts = unassociatedScriptCounts_;
+        unassociatedScriptCounts_ = NULL;  // prevent delete in dtor
+        return counts;
+    }
+
   private:
     bool addGetPropertyCache(LInstruction *ins, RegisterSet liveRegs, Register objReg,
                              PropertyName *name, TypedOrValueRegister output,
@@ -303,6 +318,9 @@ class CodeGenerator : public CodeGeneratorSpecific
 
     // Bailout if an element about to be written to is a hole.
     bool emitStoreHoleCheck(Register elements, const LAllocation *index, LSnapshot *snapshot);
+
+    // Script counts created when compiling code with no associated JSScript.
+    IonScriptCounts *unassociatedScriptCounts_;
 };
 
 } // namespace ion

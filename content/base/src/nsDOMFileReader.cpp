@@ -28,7 +28,6 @@
 #include "nsStreamUtils.h"
 #include "nsXPCOM.h"
 #include "nsIDOMEventListener.h"
-#include "nsIJSContextStack.h"
 #include "nsJSEnvironment.h"
 #include "nsIScriptGlobalObject.h"
 #include "nsCExternalHandlerService.h"
@@ -95,7 +94,7 @@ void
 nsDOMFileReader::RootResultArrayBuffer()
 {
   nsContentUtils::PreserveWrapper(
-    static_cast<nsIDOMEventTarget*>(
+    static_cast<EventTarget*>(
       static_cast<nsDOMEventTargetHelper*>(this)), this);
 }
 
@@ -104,7 +103,7 @@ nsDOMFileReader::RootResultArrayBuffer()
 nsDOMFileReader::nsDOMFileReader()
   : mFileData(nullptr),
     mDataLen(0), mDataFormat(FILE_AS_BINARY),
-    mResultArrayBuffer(nullptr)     
+    mResultArrayBuffer(nullptr)
 {
   nsLayoutStatics::AddRef();
   SetDOMStringToNull(mResult);
@@ -118,20 +117,25 @@ nsDOMFileReader::~nsDOMFileReader()
   nsLayoutStatics::Release();
 }
 
+
+/**
+ * This Init method is called from the factory constructor.
+ */
 nsresult
 nsDOMFileReader::Init()
 {
-  nsDOMEventTargetHelper::Init();
-
-  nsIScriptSecurityManager *secMan = nsContentUtils::GetSecurityManager();
-  nsCOMPtr<nsIPrincipal> subjectPrincipal;
+  nsIScriptSecurityManager* secMan = nsContentUtils::GetSecurityManager();
+  nsCOMPtr<nsIPrincipal> principal;
   if (secMan) {
-    nsresult rv = secMan->GetSubjectPrincipal(getter_AddRefs(subjectPrincipal));
-    NS_ENSURE_SUCCESS(rv, rv);
+    secMan->GetSystemPrincipal(getter_AddRefs(principal));
   }
-  NS_ENSURE_STATE(subjectPrincipal);
-  mPrincipal.swap(subjectPrincipal);
+  NS_ENSURE_STATE(principal);
+  mPrincipal.swap(principal);
 
+  // Instead of grabbing some random global from the context stack,
+  // let's use the default one (junk drawer) for now.
+  // We should move away from this Init...
+  BindToOwner(xpc::GetNativeForGlobal(xpc::GetJunkScope()));
   return NS_OK;
 }
 
@@ -552,7 +556,7 @@ nsDOMFileReader::ConvertStream(const char *aFileData,
 }
 
 /* virtual */ JSObject*
-nsDOMFileReader::WrapObject(JSContext* aCx, JSObject* aScope)
+nsDOMFileReader::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aScope)
 {
   return FileReaderBinding::Wrap(aCx, aScope, this);
 }
