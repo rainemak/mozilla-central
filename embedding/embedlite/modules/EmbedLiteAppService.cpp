@@ -232,7 +232,6 @@ NS_IMETHODIMP EmbedLiteAppService::LeaveSecureJSContext()
   }
 
   DebugOnly<JSContext*> stackTop;
-  MOZ_ASSERT(mPushedContext == nsContentUtils::GetCurrentJSContext());
   xpc::danger::PopJSContext();
   mPushedSomething--;
   return NS_OK;

@@ -45,8 +45,7 @@ XPCOM_MAX( const T& a, const T& b )
     return a > b ? a : b;
   }
 
-#if (defined(_MSC_VER) && (_MSC_VER < 1600)) || \
-    (defined(_GLIBCXX_USE_LONG_LONG) && (!_GLIBCXX_USE_C99 || _GLIBCXX_USE_C99_LONG_LONG_DYNAMIC))
+#if defined(_MSC_VER) && (_MSC_VER < 1600)
 namespace std {
 inline
 long long
