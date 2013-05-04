@@ -20,6 +20,7 @@
 #include "nsIServiceManager.h"
 #include "mozilla/Preferences.h"
 #include "BasicLayers.h"
+#include "ClientLayerManager.h"
 #include "LayerManagerOGL.h"
 #include "mozilla/layers/Compositor.h"
 #include "nsIXULRuntime.h"
@@ -878,7 +879,7 @@ void nsBaseWidget::CreateCompositor(int aWidth, int aHeight)
 {
   mCompositorParent = NewCompositorParent(aWidth, aHeight);
   AsyncChannel *parentChannel = mCompositorParent->GetIPCChannel();
-  LayerManager* lm = CreateBasicLayerManager();
+  LayerManager* lm = new ClientLayerManager(this);
   MessageLoop *childMessageLoop = CompositorParent::CompositorLoop();
   mCompositorChild = new CompositorChild(lm);
   AsyncChannel::Side childSide = mozilla::ipc::AsyncChannel::Child;
@@ -886,7 +887,16 @@ void nsBaseWidget::CreateCompositor(int aWidth, int aHeight)
 
   TextureFactoryIdentifier textureFactoryIdentifier;
   PLayerTransactionChild* shadowManager;
-  mozilla::layers::LayersBackend backendHint = mozilla::layers::LAYERS_OPENGL;
+  mozilla::layers::LayersBackend backendHint;
+  // We need a separate preference here (instead of using mUseLayersAcceleration)
+  // because we force enable accelerated layers with e10s. Once the BasicCompositor
+  // is stable enough to be used for Ripc/Cipc, then we can remove that and this
+  // pref.
+  if (Preferences::GetBool("layers.offmainthreadcomposition.prefer-basic", false)) {
+    backendHint = mozilla::layers::LAYERS_BASIC;
+  } else {
+    backendHint = mozilla::layers::LAYERS_OPENGL;
+  }
   shadowManager = mCompositorChild->SendPLayerTransactionConstructor(
     backendHint, 0, &textureFactoryIdentifier);
 
@@ -966,7 +976,7 @@ LayerManager* nsBaseWidget::GetLayerManager(PLayerTransactionChild* aShadowManag
 
 BasicLayerManager* nsBaseWidget::CreateBasicLayerManager()
 {
-      return new BasicShadowLayerManager(this);
+  return new BasicLayerManager(this);
 }
 
 CompositorChild* nsBaseWidget::GetRemoteRenderer()

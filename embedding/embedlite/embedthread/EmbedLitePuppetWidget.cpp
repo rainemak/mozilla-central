@@ -22,6 +22,7 @@
 
 #include "Layers.h"
 #include "BasicLayers.h"
+#include "ClientLayerManager.h"
 #include "LayerManagerOGL.h"
 #include "GLContext.h"
 #include "GLContextProvider.h"
@@ -542,7 +543,7 @@ void EmbedLitePuppetWidget::CreateCompositor(int aWidth, int aHeight)
     new EmbedLiteCompositorParent(this, true, aWidth, aHeight, mId);
   mCompositorParent = parent;
   AsyncChannel* parentChannel = mCompositorParent->GetIPCChannel();
-  LayerManager* lm = CreateBasicLayerManager();
+  LayerManager* lm = new ClientLayerManager(this);
   MessageLoop* childMessageLoop = CompositorParent::CompositorLoop();
   mCompositorChild = new CompositorChild(lm);
   parent->SetChildCompositor(mCompositorChild, MessageLoop::current());

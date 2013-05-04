@@ -439,7 +439,6 @@ SurfaceStream_TripleBuffer::SwapConsumer_NoWait()
 SurfaceStream_TripleBuffer_Async::SurfaceStream_TripleBuffer_Async(SurfaceStream* prevStream)
     : SurfaceStream_TripleBuffer(SurfaceStreamType::TripleBuffer_Async, prevStream)
 {
-    mType = SurfaceStreamType::TripleBuffer_Async;
 }
 
 SurfaceStream_TripleBuffer_Async::~SurfaceStream_TripleBuffer_Async()

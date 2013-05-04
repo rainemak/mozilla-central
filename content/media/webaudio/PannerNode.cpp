@@ -174,7 +174,10 @@ public:
 };
 
 PannerNode::PannerNode(AudioContext* aContext)
-  : AudioNode(aContext)
+  : AudioNode(aContext,
+              2,
+              ChannelCountMode::Clamped_max,
+              ChannelInterpretation::Speakers)
   // Please keep these default values consistent with PannerNodeEngine::PannerNodeEngine above.
   , mPanningModel(PanningModelTypeValues::HRTF)
   , mDistanceModel(DistanceModelTypeValues::Inverse)
@@ -479,9 +482,6 @@ PannerNode::FindConnectedSources()
   mSources.Clear();
   std::set<AudioNode*> cycleSet;
   FindConnectedSources(this, mSources, cycleSet);
-  for (unsigned i = 0; i < mSources.Length(); i++) {
-    mSources[i]->RegisterPannerNode(this);
-  }
 }
 
 void
