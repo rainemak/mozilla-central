@@ -23,6 +23,8 @@ BuildRequires:  pkgconfig(nspr) >= 4.9.6
 BuildRequires:  pkgconfig(nss) >= 3.14.3
 BuildRequires:  autoconf213
 BuildRequires:  python
+BuildRequires:  python-devel
+BuildRequires:  hunspell-devel
 BuildRequires:  zip
 BuildRequires:  unzip
 %ifarch i586 i486 i386
@@ -62,6 +64,12 @@ echo "ac_add_options --with-thumb=toolchain-default" >> mozconfig
 %endif
 echo "mk_add_options MOZ_MAKE_FLAGS='-j%jobs'" >> mozconfig
 echo "export LD=ld.gold" >> mozconfig
+echo "ac_add_options --enable-system-hunspell" >> mozconfig
+echo "ac_add_options --disable-strip" >> mozconfig
+echo "ac_add_options --disable-mochitest" >> mozconfig
+echo "ac_add_options --disable-installer" >> mozconfig
+echo "ac_add_options --disable-javaxpcom" >> mozconfig
+echo "ac_add_options --disable-crashreporter" >> mozconfig
 
 export MOZCONFIG=mozconfig
 %{__make} -f client.mk build_all %{?jobs:MOZ_MAKE_FLAGS="-j%jobs"}
@@ -76,6 +84,9 @@ for i in $(find %{buildroot}%{_libdir}/xulrunner-devel-%{greversion}/sdk/lib -na
   ln -s %{_libdir}/xulrunner-%{greversion}/$BASENAMEF %{buildroot}%{_libdir}/xulrunner-devel-%{greversion}/sdk/lib/$BASENAMEF
 done
 %{__chmod} -x %{buildroot}%{_libdir}/xulrunner-%{greversion}/*.so
+# Use the system hunspell dictionaries
+%{__rm} -rf ${RPM_BUILD_ROOT}%{_libdir}/xulrunner-%{greversion}/dictionaries
+ln -s %{_datadir}/myspell ${RPM_BUILD_ROOT}%{_libdir}/xulrunner-%{greversion}/dictionaries
 
 %files
 %defattr(-,root,root,-)
