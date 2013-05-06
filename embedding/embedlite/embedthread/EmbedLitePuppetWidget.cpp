@@ -529,6 +529,13 @@ EmbedLitePuppetWidget::GetLayerManager(PLayerTransactionChild* aShadowManager,
   return mLayerManager;
 }
 
+CompositorParent*
+EmbedLitePuppetWidget::NewCompositorParent(int aSurfaceWidth, int aSurfaceHeight)
+{
+  gfxPlatform::GetPlatform();
+  return new EmbedLiteCompositorParent(this, true, aSurfaceWidth, aSurfaceHeight, mId);
+}
+
 void EmbedLitePuppetWidget::CreateCompositor()
 {
   gfxSize glSize = mEmbed->GetGLViewSize();
@@ -537,23 +544,27 @@ void EmbedLitePuppetWidget::CreateCompositor()
 
 void EmbedLitePuppetWidget::CreateCompositor(int aWidth, int aHeight)
 {
-  LOGF();
-  gfxPlatform::GetPlatform();
-  EmbedLiteCompositorParent* parent =
-    new EmbedLiteCompositorParent(this, true, aWidth, aHeight, mId);
-  mCompositorParent = parent;
+  mCompositorParent = NewCompositorParent(aWidth, aHeight);
   AsyncChannel* parentChannel = mCompositorParent->GetIPCChannel();
   LayerManager* lm = new ClientLayerManager(this);
   MessageLoop* childMessageLoop = CompositorParent::CompositorLoop();
   mCompositorChild = new CompositorChild(lm);
-  parent->SetChildCompositor(mCompositorChild, MessageLoop::current());
   AsyncChannel::Side childSide = mozilla::ipc::AsyncChannel::Child;
+  static_cast<EmbedLiteCompositorParent*>(mCompositorParent.get())->SetChildCompositor(mCompositorChild, MessageLoop::current());
   mCompositorChild->Open(parentChannel, childMessageLoop, childSide);
 
   TextureFactoryIdentifier textureFactoryIdentifier;
   PLayerTransactionChild* shadowManager;
-  mozilla::layers::LayersBackend backendHint =
-    mUseLayersAcceleration ? mozilla::layers::LAYERS_OPENGL : mozilla::layers::LAYERS_BASIC;
+  mozilla::layers::LayersBackend backendHint;
+  // We need a separate preference here (instead of using mUseLayersAcceleration)
+  // because we force enable accelerated layers with e10s. Once the BasicCompositor
+  // is stable enough to be used for Ripc/Cipc, then we can remove that and this
+  // pref.
+  if (Preferences::GetBool("layers.offmainthreadcomposition.prefer-basic", false) || !mUseLayersAcceleration) {
+    backendHint = mozilla::layers::LAYERS_BASIC;
+  } else {
+    backendHint = mozilla::layers::LAYERS_OPENGL;
+  }
 
   shadowManager = mCompositorChild->SendPLayerTransactionConstructor(
     backendHint, 0, &textureFactoryIdentifier);
