@@ -151,6 +151,7 @@ pref("media.volume_scale", "1.0");
 
 #ifdef MOZ_WMF
 pref("media.windows-media-foundation.enabled", true);
+pref("media.windows-media-foundation.use-dxva", true);
 #endif
 #ifdef MOZ_RAW
 pref("media.raw.enabled", true);
@@ -4067,6 +4068,7 @@ pref("dom.sms.enabled", false);
 // Enable Latin characters replacement with corresponding ones in GSM SMS
 // 7-bit default alphabet.
 pref("dom.sms.strict7BitEncoding", false);
+pref("dom.sms.requestStatusReport", false);
 
 // WebContacts
 pref("dom.mozContacts.enabled", false);

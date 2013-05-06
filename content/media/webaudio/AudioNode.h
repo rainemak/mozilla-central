@@ -59,6 +59,44 @@ private:
   bool mHeld;
 };
 
+template<class T>
+class SelfCountedReference {
+public:
+  SelfCountedReference() : mRefCnt(0) {}
+  ~SelfCountedReference()
+  {
+    NS_ASSERTION(mRefCnt == 0, "Forgot to drop the self reference?");
+  }
+
+  void Take(T* t)
+  {
+    if (mRefCnt++ == 0) {
+      t->AddRef();
+    }
+  }
+  void Drop(T* t)
+  {
+    if (mRefCnt > 0) {
+      --mRefCnt;
+      if (mRefCnt == 0) {
+        t->Release();
+      }
+    }
+  }
+  void ForceDrop(T* t)
+  {
+    if (mRefCnt > 0) {
+      mRefCnt = 0;
+      t->Release();
+    }
+  }
+
+  operator bool() const { return mRefCnt > 0; }
+
+private:
+  nsrefcnt mRefCnt;
+};
+
 /**
  * The DOM object representing a Web Audio AudioNode.
  *
@@ -117,8 +155,8 @@ public:
   // The following two virtual methods must be implemented by each node type
   // to provide their number of input and output ports. These numbers are
   // constant for the lifetime of the node. Both default to 1.
-  virtual uint32_t NumberOfInputs() const { return 1; }
-  virtual uint32_t NumberOfOutputs() const { return 1; }
+  virtual uint16_t NumberOfInputs() const { return 1; }
+  virtual uint16_t NumberOfOutputs() const { return 1; }
 
   uint32_t ChannelCount() const { return mChannelCount; }
   void SetChannelCount(uint32_t aChannelCount)
