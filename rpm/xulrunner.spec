@@ -60,7 +60,7 @@ export PYTHONPATH=$PWD/python:$PWD/config:$PWD/build:$PWD/xpcom/typelib/xpt/tool
 for i in $(find $PWD/python $PWD/testing/mozbase -mindepth 1 -maxdepth 1 -type d); do
   export PYTHONPATH+=:$i
 done
-SBOX_REDIRECT_FORCE=/usr/bin/python
+export SBOX_REDIRECT_FORCE=/usr/bin/python
 # hack for when not using virtualenv
 ln -sf $PWD/obj-build-mer-qt-xr/config.status $PWD/build/config.status
 
