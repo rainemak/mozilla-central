@@ -299,8 +299,8 @@ TabChildHelper::DoSendAsyncMessage(const nsAString& aMessage,
                                    const mozilla::dom::StructuredCloneData& aData)
 {
   if (!mView->HasMessageListener(aMessage)) {
-    LOGE("Message not registered msg:%s\n", NS_ConvertUTF16toUTF8(aMessage).get());
-    return false;
+    LOGW("Message not registered msg:%s\n", NS_ConvertUTF16toUTF8(aMessage).get());
+    return true;
   }
 
   NS_ENSURE_TRUE(InitTabChildGlobal(), false);
