@@ -426,11 +426,11 @@ TabChildHelper::ConvertMutiTouchInputToEvent(const mozilla::MultiTouchInput& aDa
     nsIntPoint tpt = ToWidgetPoint(pt.x, pt.y, offset, presContext);
     tpt.x -= diff.x;
     tpt.y -= diff.y;
-    nsCOMPtr<nsIDOMTouch> t(new Touch(data.mIdentifier,
-                                      tpt,
-                                      data.mRadius,
-                                      data.mRotationAngle,
-                                      data.mForce));
+    nsRefPtr<Touch> t = new Touch(data.mIdentifier,
+                                  tpt,
+                                  data.mRadius,
+                                  data.mRotationAngle,
+                                  data.mForce);
     aEvent.touches.AppendElement(t);
   }
 
