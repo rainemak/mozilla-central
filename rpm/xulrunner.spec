@@ -23,11 +23,14 @@ BuildRequires:  pkgconfig(nspr) >= 4.9.6
 BuildRequires:  pkgconfig(nss) >= 3.14.3
 BuildRequires:  autoconf213
 BuildRequires:  python
+BuildRequires:  python-devel
 BuildRequires:  zip
 BuildRequires:  unzip
+BuildRequires:  hunspell-devel
 %ifarch i586 i486 i386
 BuildRequires:  yasm
 %endif
+BuildRequires:  fdupes
 
 %description
 Mozilla XUL runner
@@ -52,6 +55,15 @@ Tests and misc files for xulrunner
 %setup -q -n %{name}-%{version}
 
 %build
+export DONT_POPULATE_VIRTUALENV=1
+export PYTHONPATH=$PWD/python:$PWD/config:$PWD/build:$PWD/xpcom/typelib/xpt/tools
+for i in $(find $PWD/python $PWD/testing/mozbase -mindepth 1 -maxdepth 1 -type d); do
+  export PYTHONPATH+=:$i
+done
+export SBOX_REDIRECT_FORCE=/usr/bin/python
+# hack for when not using virtualenv
+ln -sf $PWD/obj-build-mer-qt-xr/config.status $PWD/build/config.status
+
 cp -rf embedding/embedlite/config/mozconfig.merqtxulrunner mozconfig
 
 %ifarch %arm
@@ -62,23 +74,41 @@ echo "ac_add_options --with-thumb=toolchain-default" >> mozconfig
 %endif
 echo "mk_add_options MOZ_MAKE_FLAGS='-j%jobs'" >> mozconfig
 echo "export LD=ld.gold" >> mozconfig
-
+echo "ac_add_options --disable-tests" >> mozconfig
+echo "ac_add_options --enable-system-hunspell" >> mozconfig
+echo "ac_add_options --disable-strip" >> mozconfig
+echo "ac_add_options --disable-mochitest" >> mozconfig
+echo "ac_add_options --disable-installer" >> mozconfig
+echo "ac_add_options --disable-javaxpcom" >> mozconfig
+echo "ac_add_options --disable-crashreporter" >> mozconfig
 export MOZCONFIG=mozconfig
-%{__make} -f client.mk build_all %{?jobs:MOZ_MAKE_FLAGS="-j%jobs"}
+%{__make} -f client.mk build STRIP="/bin/true" %{?jobs:MOZ_MAKE_FLAGS="-j%jobs"}
 
 %install
+export DONT_POPULATE_VIRTUALENV=1
+export PYTHONPATH=$PWD/python:$PWD/config:$PWD/build:$PWD/xpcom/typelib/xpt/tools
+for i in $(find $PWD/python $PWD/testing/mozbase -mindepth 1 -maxdepth 1 -type d); do
+  export PYTHONPATH+=:$i
+done
+export SBOX_REDIRECT_FORCE=/usr/bin/python
+
 export MOZCONFIG=mozconfig
 %{__make} -f client.mk install DESTDIR=%{buildroot}
 %{__chmod} +x %{buildroot}%{_libdir}/xulrunner-%{greversion}/*.so
+%fdupes -s %{buildroot}%{_includedir}
+%fdupes -s %{buildroot}%{_libdir}
+chmod +x %{buildroot}%{_libdir}/xulrunner-%{greversion}/*.so
+# Use the system hunspell dictionaries
+%{__rm} -rf ${RPM_BUILD_ROOT}%{_libdir}/xulrunner-%{greversion}/dictionaries
+#ln -s %{_datadir}/myspell ${RPM_BUILD_ROOT}%{_libdir}/xulrunner-%{greversion}/dictionaries
 
 %files
 %defattr(-,root,root,-)
 %attr(755,-,-) %{_bindir}/*
-%dir %{_libdir}/xulrunner-%{greversion}/dictionaries
 %{_libdir}/xulrunner-%{greversion}/*.so
 %{_libdir}/xulrunner-%{greversion}/omni.ja
 %{_libdir}/xulrunner-%{greversion}/dependentlibs.list
-%{_libdir}/xulrunner-%{greversion}/dictionaries/*
+# %{_libdir}/xulrunner-%{greversion}/dictionaries
 
 %files devel
 %defattr(-,root,root,-)
@@ -93,4 +123,3 @@ export MOZCONFIG=mozconfig
 %exclude %{_libdir}/xulrunner-%{greversion}/*.so
 %exclude %{_libdir}/xulrunner-%{greversion}/omni.ja
 %exclude %{_libdir}/xulrunner-%{greversion}/dependentlibs.list
-%exclude %{_libdir}/xulrunner-%{greversion}/dictionaries/*

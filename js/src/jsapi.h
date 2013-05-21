@@ -117,7 +117,6 @@ class JS_PUBLIC_API(AutoGCRooter) {
         SHAPEVECTOR =  -4, /* js::AutoShapeVector */
         IDARRAY =      -6, /* js::AutoIdArray */
         DESCRIPTORS =  -7, /* js::AutoPropDescArrayRooter */
-        OBJECT =       -8, /* js::AutoObjectRooter */
         ID =           -9, /* js::AutoIdRooter */
         VALVECTOR =   -10, /* js::AutoValueVector */
         DESCRIPTOR =  -11, /* js::AutoPropertyDescriptorRooter */
@@ -145,35 +144,6 @@ class JS_PUBLIC_API(AutoGCRooter) {
     /* No copy or assignment semantics. */
     AutoGCRooter(AutoGCRooter &ida) MOZ_DELETE;
     void operator=(AutoGCRooter &ida) MOZ_DELETE;
-};
-
-class AutoObjectRooter : private AutoGCRooter
-{
-  public:
-    AutoObjectRooter(JSContext *cx, JSObject *obj = NULL
-                     MOZ_GUARD_OBJECT_NOTIFIER_PARAM)
-      : AutoGCRooter(cx, OBJECT), obj_(obj)
-    {
-        MOZ_GUARD_OBJECT_NOTIFIER_INIT;
-    }
-
-    void setObject(JSObject *obj) {
-        obj_ = obj;
-    }
-
-    JSObject * object() const {
-        return obj_;
-    }
-
-    JSObject ** addr() {
-        return &obj_;
-    }
-
-    friend void AutoGCRooter::trace(JSTracer *trc);
-
-  private:
-    JSObject *obj_;
-    MOZ_DECL_USE_GUARD_OBJECT_NOTIFIER
 };
 
 class AutoStringRooter : private AutoGCRooter {
@@ -587,6 +557,19 @@ class AutoIdVector : public AutoVectorRooter<jsid>
     explicit AutoIdVector(JSContext *cx
                           MOZ_GUARD_OBJECT_NOTIFIER_PARAM)
         : AutoVectorRooter<jsid>(cx, IDVECTOR)
+    {
+        MOZ_GUARD_OBJECT_NOTIFIER_INIT;
+    }
+
+    MOZ_DECL_USE_GUARD_OBJECT_NOTIFIER
+};
+
+class AutoObjectVector : public AutoVectorRooter<JSObject *>
+{
+  public:
+    explicit AutoObjectVector(JSContext *cx
+                              MOZ_GUARD_OBJECT_NOTIFIER_PARAM)
+        : AutoVectorRooter<JSObject *>(cx, OBJVECTOR)
     {
         MOZ_GUARD_OBJECT_NOTIFIER_INIT;
     }
@@ -1317,7 +1300,7 @@ JSID_TO_GCTHING(jsid id)
  */
 
 static JS_ALWAYS_INLINE JSBool
-JSID_IS_VOID(const js::RawId id)
+JSID_IS_VOID(const jsid id)
 {
     JS_ASSERT_IF(((size_t)JSID_BITS(id) & JSID_TYPE_MASK) == JSID_TYPE_VOID,
                  JSID_BITS(id) == JSID_TYPE_VOID);
@@ -1325,7 +1308,7 @@ JSID_IS_VOID(const js::RawId id)
 }
 
 static JS_ALWAYS_INLINE JSBool
-JSID_IS_EMPTY(const js::RawId id)
+JSID_IS_EMPTY(const jsid id)
 {
     return ((size_t)JSID_BITS(id) == JSID_TYPE_OBJECT);
 }
@@ -5015,6 +4998,9 @@ JS_DecodeInterpretedFunction(JSContext *cx, const void *data, uint32_t length,
 
 namespace JS {
 
+extern JS_PUBLIC_DATA(const HandleValue) NullHandleValue;
+extern JS_PUBLIC_DATA(const HandleValue) UndefinedHandleValue;
+
 extern JS_PUBLIC_DATA(const HandleId) JSID_VOIDHANDLE;
 extern JS_PUBLIC_DATA(const HandleId) JSID_EMPTYHANDLE;
 
@@ -5051,11 +5037,11 @@ using JS::Latin1CharsZ;
 
 using JS::AutoIdVector;
 using JS::AutoValueVector;
+using JS::AutoObjectVector;
 using JS::AutoScriptVector;
 using JS::AutoIdArray;
 
 using JS::AutoGCRooter;
-using JS::AutoObjectRooter;
 using JS::AutoArrayRooter;
 using JS::AutoVectorRooter;
 using JS::AutoHashMapRooter;

@@ -31,6 +31,8 @@ webidl_files = \
   CaretPosition.webidl \
   CDATASection.webidl \
   CFStateChangeEvent.webidl \
+  ChannelMergerNode.webidl \
+  ChannelSplitterNode.webidl \
   CharacterData.webidl \
   ChildNode.webidl \
   ClientRect.webidl \
@@ -172,6 +174,7 @@ webidl_files = \
   NodeIterator.webidl \
   NodeList.webidl \
   Notification.webidl \
+  NotifyAudioAvailableEvent.webidl \
   NotifyPaintEvent.webidl \
   PaintRequest.webidl \
   PaintRequestList.webidl \

@@ -1830,15 +1830,13 @@ nsChildView::CreateCompositor()
     Compositor *compositor = manager->GetCompositor();
 
     LayersBackend backend = compositor->GetBackend();
-    if (backend != LAYERS_OPENGL) {
-      NS_RUNTIMEABORT("Unexpected OMTC backend");
+    if (backend == LAYERS_OPENGL) {
+      CompositorOGL *compositorOGL = static_cast<CompositorOGL*>(compositor);
+
+      NSOpenGLContext *glContext = (NSOpenGLContext *)compositorOGL->gl()->GetNativeData(GLContext::NativeGLContext);
+
+      [(ChildView *)mView setGLContext:glContext];
     }
-
-    CompositorOGL *compositorOGL = static_cast<CompositorOGL*>(compositor);
-
-    NSOpenGLContext *glContext = (NSOpenGLContext *)compositorOGL->gl()->GetNativeData(GLContext::NativeGLContext);
-
-    [(ChildView *)mView setGLContext:glContext];
     [(ChildView *)mView setUsingOMTCompositor:true];
   }
 }
@@ -1874,11 +1872,11 @@ nsChildView::CleanupWindowEffects()
 void
 nsChildView::DrawWindowOverlay(LayerManager* aManager, nsIntRect aRect)
 {
-  if (!aManager) {
+  nsAutoPtr<GLManager> manager(GLManager::CreateGLManager(aManager));
+  if (!manager) {
     return;
   }
 
-  nsAutoPtr<GLManager> manager(GLManager::CreateGLManager(aManager));
   MaybeDrawResizeIndicator(manager, aRect);
   MaybeDrawRoundedBottomCorners(manager, aRect);
 }
@@ -2250,6 +2248,11 @@ NSEvent* gLastDragMouseDownEvent = nil;
   [[NSNotificationCenter defaultCenter] addObserver:self
                                            selector:@selector(systemMetricsChanged)
                                                name:NSSystemColorsDidChangeNotification
+                                             object:nil];
+  // TODO: replace the string with the constant once we build with the 10.7 SDK
+  [[NSNotificationCenter defaultCenter] addObserver:self
+                                           selector:@selector(systemMetricsChanged)
+                                               name:@"NSPreferredScrollerStyleDidChangeNotification"
                                              object:nil];
   [[NSDistributedNotificationCenter defaultCenter] addObserver:self
                                                       selector:@selector(systemMetricsChanged)
@@ -2832,7 +2835,7 @@ NSEvent* gLastDragMouseDownEvent = nil;
 
   nsAutoRetainCocoaObject kungFuDeathGrip(self);
   bool painted;
-  {
+  if (mGeckoChild->GetLayerManager()->GetBackendType() == LAYERS_BASIC) {
     nsBaseWidget::AutoLayerManagerSetup
       setupLayerManager(mGeckoChild, targetContext, BUFFER_NONE);
     painted = mGeckoChild->PaintWindow(region, aIsAlternate);

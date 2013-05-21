@@ -185,7 +185,7 @@ public:
       TrackTicks tick = aStream->GetCurrentPosition();
       for (size_t counter = 0; counter < WEBAUDIO_BLOCK_SIZE; ++counter) {
         computedDelay[counter] = std::max(0.0, std::min(mMaxDelay,
-                                   double(mDelay.GetValueAtTime<TrackTicks>(tick + counter))));
+                                   double(mDelay.GetValueAtTime(tick, counter))));
       }
     }
 
@@ -271,7 +271,10 @@ public:
 };
 
 DelayNode::DelayNode(AudioContext* aContext, double aMaxDelay)
-  : AudioNode(aContext)
+  : AudioNode(aContext,
+              2,
+              ChannelCountMode::Max,
+              ChannelInterpretation::Speakers)
   , mDelay(new AudioParam(this, SendDelayToStream, 0.0f))
 {
   DelayNodeEngine* engine = new DelayNodeEngine(this, aContext->Destination());

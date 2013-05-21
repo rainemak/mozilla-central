@@ -20,11 +20,15 @@
 #include "DynamicsCompressorNode.h"
 #include "BiquadFilterNode.h"
 #include "ScriptProcessorNode.h"
+#include "ChannelMergerNode.h"
+#include "ChannelSplitterNode.h"
 #include "nsNetUtil.h"
 
 // Note that this number is an arbitrary large value to protect against OOM
 // attacks.
 const unsigned MAX_SCRIPT_PROCESSOR_CHANNELS = 10000;
+const unsigned MAX_CHANNEL_SPLITTER_OUTPUTS = UINT16_MAX;
+const unsigned MAX_CHANNEL_MERGER_INPUTS = UINT16_MAX;
 
 namespace mozilla {
 namespace dom {
@@ -110,6 +114,32 @@ AudioContext::CreateBuffer(JSContext* aJSContext, uint32_t aNumberOfChannels,
   return buffer.forget();
 }
 
+already_AddRefed<AudioBuffer>
+AudioContext::CreateBuffer(JSContext* aJSContext, ArrayBuffer& aBuffer,
+                          bool aMixToMono, ErrorResult& aRv)
+{
+  // Sniff the content of the media.
+  // Failed type sniffing will be handled by SyncDecodeMedia.
+  nsAutoCString contentType;
+  NS_SniffContent(NS_DATA_SNIFFER_CATEGORY, nullptr,
+                  aBuffer.Data(), aBuffer.Length(),
+                  contentType);
+
+  WebAudioDecodeJob job(contentType, aBuffer, this);
+
+  if (mDecoder.SyncDecodeMedia(contentType.get(),
+                               job.mBuffer, job.mLength, job) &&
+      job.mOutput) {
+    nsRefPtr<AudioBuffer> buffer = job.mOutput.forget();
+    if (aMixToMono) {
+      buffer->MixToMono(aJSContext);
+    }
+    return buffer.forget();
+  }
+
+  return nullptr;
+}
+
 namespace {
 
 bool IsValidBufferSize(uint32_t aBufferSize) {
@@ -184,6 +214,34 @@ AudioContext::CreatePanner()
   return pannerNode.forget();
 }
 
+already_AddRefed<ChannelSplitterNode>
+AudioContext::CreateChannelSplitter(uint32_t aNumberOfOutputs, ErrorResult& aRv)
+{
+  if (aNumberOfOutputs == 0 ||
+      aNumberOfOutputs > MAX_CHANNEL_SPLITTER_OUTPUTS) {
+    aRv.Throw(NS_ERROR_DOM_INDEX_SIZE_ERR);
+    return nullptr;
+  }
+
+  nsRefPtr<ChannelSplitterNode> splitterNode =
+    new ChannelSplitterNode(this, aNumberOfOutputs);
+  return splitterNode.forget();
+}
+
+already_AddRefed<ChannelMergerNode>
+AudioContext::CreateChannelMerger(uint32_t aNumberOfInputs, ErrorResult& aRv)
+{
+  if (aNumberOfInputs == 0 ||
+      aNumberOfInputs > MAX_CHANNEL_MERGER_INPUTS) {
+    aRv.Throw(NS_ERROR_DOM_INDEX_SIZE_ERR);
+    return nullptr;
+  }
+
+  nsRefPtr<ChannelMergerNode> mergerNode =
+    new ChannelMergerNode(this, aNumberOfInputs);
+  return mergerNode.forget();
+}
+
 already_AddRefed<DynamicsCompressorNode>
 AudioContext::CreateDynamicsCompressor()
 {
@@ -244,6 +302,7 @@ void
 AudioContext::UnregisterAudioBufferSourceNode(AudioBufferSourceNode* aNode)
 {
   mAudioBufferSourceNodes.RemoveEntry(aNode);
+  UpdatePannerSource();
 }
 
 void
@@ -259,13 +318,6 @@ AudioContext::UnregisterScriptProcessorNode(ScriptProcessorNode* aNode)
 }
 
 static PLDHashOperator
-UnregisterPannerNodeOn(nsPtrHashKey<AudioBufferSourceNode>* aEntry, void* aData)
-{
-  aEntry->GetKey()->UnregisterPannerNode();
-  return PL_DHASH_NEXT;
-}
-
-static PLDHashOperator
 FindConnectedSourcesOn(nsPtrHashKey<PannerNode>* aEntry, void* aData)
 {
   aEntry->GetKey()->FindConnectedSources();
@@ -275,7 +327,6 @@ FindConnectedSourcesOn(nsPtrHashKey<PannerNode>* aEntry, void* aData)
 void
 AudioContext::UpdatePannerSource()
 {
-  mAudioBufferSourceNodes.EnumerateEntries(UnregisterPannerNodeOn, nullptr);
   mPannerNodes.EnumerateEntries(FindConnectedSourcesOn, nullptr);
 }
 
@@ -297,19 +348,20 @@ AudioContext::CurrentTime() const
   return MediaTimeToSeconds(Destination()->Stream()->GetCurrentTime());
 }
 
+template <class T>
 static PLDHashOperator
-StopAudioBufferSourceNode(nsPtrHashKey<AudioBufferSourceNode>* aEntry, void* aData)
+GetHashtableEntry(nsPtrHashKey<T>* aEntry, void* aData)
 {
-  ErrorResult rv;
-  aEntry->GetKey()->Stop(0.0, rv);
+  nsTArray<T*>* array = static_cast<nsTArray<T*>*>(aData);
+  array->AppendElement(aEntry->GetKey());
   return PL_DHASH_NEXT;
 }
 
-static PLDHashOperator
-StopScriptProcessorNode(nsPtrHashKey<ScriptProcessorNode>* aEntry, void* aData)
+template <class T>
+static void
+GetHashtableElements(nsTHashtable<nsPtrHashKey<T> >& aHashtable, nsTArray<T*>& aArray)
 {
-  aEntry->GetKey()->Stop();
-  return PL_DHASH_NEXT;
+  aHashtable.EnumerateEntries(&GetHashtableEntry<T>, &aArray);
 }
 
 void
@@ -320,10 +372,23 @@ AudioContext::Shutdown()
 
   // Stop all audio buffer source nodes, to make sure that they release
   // their self-references.
-  mAudioBufferSourceNodes.EnumerateEntries(StopAudioBufferSourceNode, nullptr);
+  // We first gather an array of the nodes and then call Stop on each one,
+  // since Stop may delete the object and therefore trigger a re-entrant
+  // hashtable call to remove the pointer from the hashtable, which is
+  // not safe.
+  nsTArray<AudioBufferSourceNode*> sourceNodes;
+  GetHashtableElements(mAudioBufferSourceNodes, sourceNodes);
+  for (uint32_t i = 0; i < sourceNodes.Length(); ++i) {
+    ErrorResult rv;
+    sourceNodes[i]->Stop(0.0, rv);
+  }
   // Stop all script processor nodes, to make sure that they release
   // their self-references.
-  mScriptProcessorNodes.EnumerateEntries(StopScriptProcessorNode, nullptr);
+  nsTArray<ScriptProcessorNode*> spNodes;
+  GetHashtableElements(mScriptProcessorNodes, spNodes);
+  for (uint32_t i = 0; i < spNodes.Length(); ++i) {
+    spNodes[i]->Stop();
+  }
 }
 
 void

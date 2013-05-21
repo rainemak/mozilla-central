@@ -33,13 +33,21 @@ CPPSRCS = \
         BasicLayerManager.cpp \
         BasicCanvasLayer.cpp \
         BasicColorLayer.cpp \
+        BasicCompositor.cpp \
         BasicContainerLayer.cpp \
         BasicImageLayer.cpp \
         BasicLayersImpl.cpp \
         BasicThebesLayer.cpp \
-        BasicTiledThebesLayer.cpp \
+        ClientCanvasLayer.cpp \
+        ClientColorLayer.cpp \
+        ClientContainerLayer.cpp \
+        ClientImageLayer.cpp \
+        ClientLayerManager.cpp \
+        ClientThebesLayer.cpp \
+        ClientTiledThebesLayer.cpp \
         CompositableHost.cpp \
         CompositableTransactionParent.cpp \
+		CopyableCanvasLayer.cpp \
         ImageContainer.cpp \
         Layers.cpp \
         LayersLogging.cpp \
@@ -70,6 +78,9 @@ GTEST_CPPSRCS = \
         $(NULL)
 
 ifeq ($(MOZ_WIDGET_TOOLKIT),windows)
+CPPSRCS += \
+        D3D9SurfaceImage.cpp \
+        $(NULL)
 ifdef MOZ_ENABLE_D3D9_LAYER
 CPPSRCS += \
         LayerManagerD3D9.cpp \

@@ -1410,13 +1410,13 @@ TabChild::DispatchMessageManagerMessage(const nsAString& aMessageName,
                                         const nsACString& aJSONData)
 {
     JSAutoRequest ar(mCx);
-    JS::Value json = JSVAL_NULL;
+    JS::Rooted<JS::Value> json(mCx, JSVAL_NULL);
     StructuredCloneData cloneData;
     JSAutoStructuredCloneBuffer buffer;
     if (JS_ParseJSON(mCx,
                       static_cast<const jschar*>(NS_ConvertUTF8toUTF16(aJSONData).get()),
                       aJSONData.Length(),
-                      &json)) {
+                      json.address())) {
         WriteStructuredClone(mCx, json, buffer, cloneData.mClosure);
         cloneData.mData = buffer.data();
         cloneData.mDataLength = buffer.nbytes();
@@ -2087,10 +2087,9 @@ TabChild::InitRenderingState()
     static_cast<PuppetWidget*>(mWidget.get())->InitIMEState();
 
     uint64_t id;
-    TextureFactoryIdentifier textureFactoryIdentifier;
     RenderFrameChild* remoteFrame =
         static_cast<RenderFrameChild*>(SendPRenderFrameConstructor(
-                                         &mScrolling, &textureFactoryIdentifier, &id));
+                                         &mScrolling, &mTextureFactoryIdentifier, &id));
     if (!remoteFrame) {
       NS_WARNING("failed to construct RenderFrame");
       return false;
@@ -2106,8 +2105,8 @@ TabChild::InitRenderingState()
           return false;
         }
         shadowManager =
-            compositorChild->SendPLayerTransactionConstructor(textureFactoryIdentifier.mParentBackend,
-                                                              id, &textureFactoryIdentifier);
+            compositorChild->SendPLayerTransactionConstructor(mTextureFactoryIdentifier.mParentBackend,
+                                                              id, &mTextureFactoryIdentifier);
     } else {
         // Pushing transactions to the parent content.
         shadowManager = remoteFrame->SendPLayerTransactionConstructor();
@@ -2121,11 +2120,11 @@ TabChild::InitRenderingState()
     }
 
     ShadowLayerForwarder* lf =
-        mWidget->GetLayerManager(shadowManager, textureFactoryIdentifier.mParentBackend)
+        mWidget->GetLayerManager(shadowManager, mTextureFactoryIdentifier.mParentBackend)
                ->AsShadowForwarder();
     NS_ABORT_IF_FALSE(lf && lf->HasShadowManager(),
                       "PuppetWidget should have shadow manager");
-    lf->IdentifyTextureHost(textureFactoryIdentifier);
+    lf->IdentifyTextureHost(mTextureFactoryIdentifier);
 
     mRemoteFrame = remoteFrame;
 
@@ -2171,9 +2170,24 @@ TabChild::GetDPI(float* aDPI)
 }
 
 void
+TabChild::GetDefaultScale(double* aScale)
+{
+    *aScale = -1.0;
+    if (!mRemoteFrame) {
+        return;
+    }
+
+    SendGetDefaultScale(aScale);
+}
+
+void
 TabChild::NotifyPainted()
 {
-    if (UseDirectCompositor() && !mNotified) {
+    // Normally we only need to notify the content process once, but with BasicCompositor
+    // we need to notify content every change so that it can compute an invalidation
+    // region and send that to the widget.
+    if (UseDirectCompositor() &&
+        (!mNotified || mTextureFactoryIdentifier.mParentBackend == LAYERS_BASIC)) {
         mRemoteFrame->SendNotifyCompositorTransaction();
         mNotified = true;
     }

@@ -60,7 +60,7 @@ public:
   virtual void ProduceAudioBlock(AudioNodeStream* aStream,
                                  const AudioChunk& aInput,
                                  AudioChunk* aOutput,
-                                 bool* aFinished)
+                                 bool* aFinished) MOZ_OVERRIDE
   {
     *aOutput = aInput;
 
@@ -75,7 +75,10 @@ public:
 };
 
 AnalyserNode::AnalyserNode(AudioContext* aContext)
-  : AudioNode(aContext)
+  : AudioNode(aContext,
+              1,
+              ChannelCountMode::Explicit,
+              ChannelInterpretation::Speakers)
   , mFFTSize(2048)
   , mMinDecibels(-100.)
   , mMaxDecibels(-30.)

@@ -22,6 +22,7 @@ DISABLED_XPCSHELL_TESTS = \
 MOCHITEST_BROWSER_FILES = \
 	head.js \
 	browser_capabilities.js \
+	browser_dying_cache.js \
 	browser_form_restore_events.js \
 	browser_form_restore_events_sample.html \
 	browser_formdata_format.js \
@@ -139,6 +140,7 @@ MOCHITEST_BROWSER_FILES = \
 	browser_739531_sample.html \
 	browser_739805.js \
 	browser_819510_perwindowpb.js \
+	browser_833286_atomic_backup.js \
 	$(filter disabled-for-intermittent-failures--bug-766044, browser_459906_empty.html) \
 	$(filter disabled-for-intermittent-failures--bug-766044, browser_459906_sample.html) \
 	$(filter disabled-for-intermittent-failures--bug-765389, browser_461743_sample.html) \

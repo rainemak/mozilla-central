@@ -86,9 +86,6 @@ pref("dom.workers.enabled", true);
 // The number of workers per domain allowed to run concurrently.
 pref("dom.workers.maxPerDomain", 20);
 
-// Whether window.performance is enabled
-pref("dom.enable_performance", true);
-
 // Fastback caching - if this pref is negative, then we calculate the number
 // of content viewers to cache based on the amount of available memory.
 pref("browser.sessionhistory.max_total_viewers", -1);
@@ -154,6 +151,7 @@ pref("media.volume_scale", "1.0");
 
 #ifdef MOZ_WMF
 pref("media.windows-media-foundation.enabled", true);
+pref("media.windows-media-foundation.use-dxva", true);
 #endif
 #ifdef MOZ_RAW
 pref("media.raw.enabled", true);
@@ -739,9 +737,6 @@ pref("dom.min_timeout_value", 4);
 // And for background windows
 pref("dom.min_background_timeout_value", 1000);
 
-// Run content XBL in a separate scope.
-pref("dom.xbl_scopes", true);
-
 // Stop defining the Components object in content.
 pref("dom.omit_components_in_content", true);
 
@@ -782,8 +777,8 @@ pref("javascript.options.strict",           false);
 #ifdef DEBUG
 pref("javascript.options.strict.debug",     true);
 #endif
-pref("javascript.options.methodjit.content", true);
-pref("javascript.options.methodjit.chrome",  true);
+pref("javascript.options.methodjit.content", false);
+pref("javascript.options.methodjit.chrome",  false);
 pref("javascript.options.baselinejit.content", true);
 pref("javascript.options.baselinejit.chrome",  true);
 pref("javascript.options.ion.content",      true);
@@ -3968,6 +3963,8 @@ pref("layers.acceleration.force-enabled", false);
 
 pref("layers.acceleration.draw-fps", false);
 
+pref("layers.draw-borders", false);
+
 pref("layers.offmainthreadcomposition.enabled", false);
 // same effect as layers.offmainthreadcomposition.enabled, but specifically for
 // use with tests.
@@ -4071,6 +4068,7 @@ pref("dom.sms.enabled", false);
 // Enable Latin characters replacement with corresponding ones in GSM SMS
 // 7-bit default alphabet.
 pref("dom.sms.strict7BitEncoding", false);
+pref("dom.sms.requestStatusReport", false);
 
 // WebContacts
 pref("dom.mozContacts.enabled", false);
@@ -4204,4 +4202,10 @@ pref("memory_info_dumper.watch_fifo", false);
 pref("captivedetect.maxWaitingTime", 5000);
 pref("captivedetect.pollingTime", 3000);
 pref("captivedetect.maxRetryCount", 5);
+#endif
+
+#ifdef RELEASE_BUILD
+pref("dom.forms.inputmode", false);
+#else
+pref("dom.forms.inputmode", true);
 #endif
