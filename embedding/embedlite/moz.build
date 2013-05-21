@@ -7,8 +7,8 @@ TOOL_DIRS += ['tests']
 
 XPIDL_SOURCES += [
     'nsIEmbedAppService.idl',
-    'nsIEmbedLiteJSON.idl',
     'nsIEmbedBrowserChromeListener.idl',
+    'nsIEmbedLiteJSON.idl',
 ]
 
 XPIDL_MODULE = 'embedLite'

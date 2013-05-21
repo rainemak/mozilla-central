@@ -314,6 +314,7 @@ CellBroadcastEtwsInfo.prototype = {
 function RILContentHelper() {
   this.rilContext = {
     cardState:            RIL.GECKO_CARDSTATE_UNKNOWN,
+    retryCount:           0,
     networkSelectionMode: RIL.GECKO_NETWORK_SELECTION_UNKNOWN,
     iccInfo:              new MobileICCInfo(),
     voiceConnectionInfo:  new MobileConnectionInfo(),
@@ -406,6 +407,7 @@ RILContentHelper.prototype = {
       return;
     }
     this.rilContext.cardState = rilContext.cardState;
+    this.rilContext.retryCount = rilContext.retryCount;
     this.rilContext.networkSelectionMode = rilContext.networkSelectionMode;
     this.updateInfo(rilContext.iccInfo, this.rilContext.iccInfo);
     this.updateConnectionInfo(rilContext.voice, this.rilContext.voiceConnectionInfo);
@@ -415,23 +417,33 @@ RILContentHelper.prototype = {
   },
 
   get iccInfo() {
-    return this.getRilContext().iccInfo;
+    let context = this.getRilContext();
+    return context && context.iccInfo;
   },
 
   get voiceConnectionInfo() {
-    return this.getRilContext().voiceConnectionInfo;
+    let context = this.getRilContext();
+    return context && context.voiceConnectionInfo;
   },
 
   get dataConnectionInfo() {
-    return this.getRilContext().dataConnectionInfo;
+    let context = this.getRilContext();
+    return context && context.dataConnectionInfo;
   },
 
   get cardState() {
-    return this.getRilContext().cardState;
+    let context = this.getRilContext();
+    return context && context.cardState;
+  },
+
+  get retryCount() {
+    let context = this.getRilContext();
+    return context && context.retryCount;
   },
 
   get networkSelectionMode() {
-    return this.getRilContext().networkSelectionMode;
+    let context = this.getRilContext();
+    return context && context.networkSelectionMode;
   },
 
   /**
@@ -700,6 +712,14 @@ RILContentHelper.prototype = {
 
     if (contact.tel) {
       iccContact.number = contact.tel[0].value;
+    }
+
+    if (contact.email) {
+      iccContact.email = contact.email[0].value;
+    }
+
+    if (contact.tel.length > 1) {
+      iccContact.anr = contact.tel.slice(1);
     }
 
     cpmm.sendAsyncMessage("RIL:UpdateIccContact", {requestId: requestId,
@@ -978,7 +998,6 @@ RILContentHelper.prototype = {
     if (topic == "xpcom-shutdown") {
       this.removeMessageListener();
       Services.obs.removeObserver(this, "xpcom-shutdown");
-      cpmm = null;
     }
   },
 
@@ -1037,6 +1056,7 @@ RILContentHelper.prototype = {
     debug("Received message '" + msg.name + "': " + JSON.stringify(msg.json));
     switch (msg.name) {
       case "RIL:CardStateChanged":
+        this.rilContext.retryCount = msg.json.retryCount;
         if (this.rilContext.cardState != msg.json.cardState) {
           this.rilContext.cardState = msg.json.cardState;
           this._deliverEvent("_mobileConnectionListeners",
@@ -1082,7 +1102,8 @@ RILContentHelper.prototype = {
         this._deliverEvent("_telephonyListeners",
                            "callStateChanged",
                            [msg.json.callIndex, msg.json.state,
-                            msg.json.number, msg.json.isActive]);
+                            msg.json.number, msg.json.isActive,
+                            msg.json.isOutgoing, msg.json.isEmergency]);
         break;
       case "RIL:CallError":
         this._deliverEvent("_telephonyListeners",
@@ -1191,7 +1212,8 @@ RILContentHelper.prototype = {
       try {
         keepGoing =
           callback.enumerateCallState(call.callIndex, call.state, call.number,
-                                      call.isActive);
+                                      call.isActive, call.isOutgoing,
+                                      call.isEmergency);
       } catch (e) {
         debug("callback handler for 'enumerateCallState' threw an " +
               " exception: " + e);
@@ -1320,6 +1342,9 @@ RILContentHelper.prototype = {
     if (this.voicemailStatus.messageCount != message.msgCount) {
       changed = true;
       this.voicemailStatus.messageCount = message.msgCount;
+    } else if (message.msgCount == -1) {
+      // For MWI using DCS the message count is not available
+      changed = true;
     }
 
     if (this.voicemailStatus.returnNumber != message.returnNumber) {

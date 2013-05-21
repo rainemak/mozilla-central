@@ -608,13 +608,6 @@ class JS_PUBLIC_API(CustomAutoRooter) : private AutoGCRooter
     /* Supplied by derived class to trace roots. */
     virtual void trace(JSTracer *trc) = 0;
 
-    /* Methods for trace() to call to mark roots, for external clients. */
-    static void traceObject(JSTracer *trc, JSObject **thingp, const char *name);
-    static void traceScript(JSTracer *trc, JSScript **thingp, const char *name);
-    static void traceString(JSTracer *trc, JSString **thingp, const char *name);
-    static void traceId(JSTracer *trc, jsid *thingp, const char *name);
-    static void traceValue(JSTracer *trc, JS::Value *thingp, const char *name);
-
   private:
     MOZ_DECL_USE_GUARD_OBJECT_NOTIFIER
 };
@@ -907,8 +900,8 @@ typedef JSBool
 /*
  * Function type for trace operation of the class called to enumerate all
  * traceable things reachable from obj's private data structure. For each such
- * thing, a trace implementation must call one of the |JS_Call<Type>Tracer|
- * variants on the thing.
+ * thing, a trace implementation must call one of the JS_Call*Tracer variants
+ * on the thing.
  *
  * JSTraceOp implementation can assume that no other threads mutates object
  * state. It must not change state of the object or corresponding native
@@ -1135,7 +1128,7 @@ typedef JSObject *(*ReadStructuredCloneOp)(JSContext *cx, JSStructuredCloneReade
  * Return true on success, false on error/exception.
  */
 typedef JSBool (*WriteStructuredCloneOp)(JSContext *cx, JSStructuredCloneWriter *w,
-                                         JSObject *obj, void *closure);
+                                         JS::Handle<JSObject*> obj, void *closure);
 
 /*
  * This is called when JS_WriteStructuredClone is given an invalid transferable.
@@ -1164,7 +1157,7 @@ JS_NumberValue(double d)
 {
     int32_t i;
     d = JS_CANONICALIZE_NAN(d);
-    if (MOZ_DOUBLE_IS_INT32(d, &i))
+    if (mozilla::DoubleIsInt32(d, &i))
         return INT_TO_JSVAL(i);
     return DOUBLE_TO_JSVAL(d);
 }
@@ -1543,7 +1536,7 @@ ToBoolean(const Value &v)
         return false;
     if (v.isDouble()) {
         double d = v.toDouble();
-        return !MOZ_DOUBLE_IS_NaN(d) && d != 0;
+        return !mozilla::IsNaN(d) && d != 0;
     }
 
     /* The slow path handles strings and objects. */
@@ -2159,6 +2152,13 @@ JS_GetFunctionPrototype(JSContext *cx, JSObject *forObj);
 extern JS_PUBLIC_API(JSObject *)
 JS_GetObjectPrototype(JSContext *cx, JSObject *forObj);
 
+/*
+ * Returns the original value of |Array.prototype| from the global object in
+ * which |forObj| was created.
+ */
+extern JS_PUBLIC_API(JSObject *)
+JS_GetArrayPrototype(JSContext *cx, JSObject *forObj);
+
 extern JS_PUBLIC_API(JSObject *)
 JS_GetGlobalForObject(JSContext *cx, JSObject *obj);
 
@@ -2511,23 +2511,56 @@ struct JSTracer {
 # define JS_SET_TRACING_NAME(trc, name)                                       \
     JS_SET_TRACING_DETAILS(trc, NULL, name, (size_t)-1)
 
+/*
+ * The JS_Call*Tracer family of functions traces the given GC thing reference.
+ * This performs the tracing action configured on the given JSTracer:
+ * typically calling the JSTracer::callback or marking the thing as live.
+ *
+ * The argument to JS_Call*Tracer is an in-out param: when the function
+ * returns, the garbage collector might have moved the GC thing. In this case,
+ * the reference passed to JS_Call*Tracer will be updated to the object's new
+ * location. Callers of this method are responsible for updating any state
+ * that is dependent on the object's address. For example, if the object's
+ * address is used as a key in a hashtable, then the object must be removed
+ * and re-inserted with the correct hash.
+ */
 extern JS_PUBLIC_API(void)
-JS_CallValueTracer(JSTracer *trc, JS::Value value, const char *name);
+JS_CallValueTracer(JSTracer *trc, JS::Value *valuep, const char *name);
 
 extern JS_PUBLIC_API(void)
-JS_CallIdTracer(JSTracer *trc, jsid id, const char *name);
+JS_CallIdTracer(JSTracer *trc, jsid *idp, const char *name);
 
 extern JS_PUBLIC_API(void)
-JS_CallObjectTracer(JSTracer *trc, JSObject *obj, const char *name);
+JS_CallObjectTracer(JSTracer *trc, JSObject **objp, const char *name);
 
 extern JS_PUBLIC_API(void)
-JS_CallStringTracer(JSTracer *trc, JSString *str, const char *name);
+JS_CallStringTracer(JSTracer *trc, JSString **strp, const char *name);
 
 extern JS_PUBLIC_API(void)
-JS_CallScriptTracer(JSTracer *trc, JSScript *script, const char *name);
+JS_CallScriptTracer(JSTracer *trc, JSScript **scriptp, const char *name);
 
 extern JS_PUBLIC_API(void)
 JS_CallGenericTracer(JSTracer *trc, void *gcthing, const char *name);
+
+template <typename HashSetEnum>
+inline void
+JS_CallHashSetObjectTracer(JSTracer *trc, HashSetEnum &e, JSObject *const &key, const char *name)
+{
+    JSObject *updated = key;
+    JS_SET_TRACING_LOCATION(trc, reinterpret_cast<void *>(&const_cast<JSObject *&>(key)));
+    JS_CallObjectTracer(trc, &updated, name);
+    if (updated != key)
+        e.rekeyFront(key, updated);
+}
+
+/*
+ * The JS_CallMaskedObjectTracer variant traces a JSObject* that is stored
+ * with flags embedded in the low bits of the word. The flagMask parameter
+ * expects |*objp & flagMask| to yield the flags with the pointer value
+ * stripped and |*objp & ~flagMask| to yield a valid GC pointer.
+ */
+extern JS_PUBLIC_API(void)
+JS_CallMaskedObjectTracer(JSTracer *trc, uintptr_t *objp, uintptr_t flagMask, const char *name);
 
 /*
  * API for JSTraceCallback implementations.
@@ -3571,12 +3604,19 @@ JS_StealArrayBufferContents(JSContext *cx, JSObject *obj, void **contents,
  * required. The pointer to pass to JS_NewArrayBufferWithContents is returned
  * in |contents|. The pointer to the |nbytes| of usable memory is returned in
  * |data|. (*|contents| will contain a header before |data|.) The only legal
- * operations on *|contents| is to free it or pass it to
- * JS_NewArrayBufferWithContents.
+ * operations on *|contents| is to free it, or pass it to
+ * JS_NewArrayBufferWithContents or JS_ReallocateArrayBufferContents.
  */
 extern JS_PUBLIC_API(JSBool)
 JS_AllocateArrayBufferContents(JSContext *cx, uint32_t nbytes, void **contents, uint8_t **data);
 
+/*
+ * Reallocate memory allocated by JS_AllocateArrayBufferContents, growing or shrinking it
+ * as appropriate.  The new data pointer will be returned in data.  If *contents is NULL,
+ * behaves like JS_AllocateArrayBufferContents.
+ */
+extern JS_PUBLIC_API(JSBool)
+JS_ReallocateArrayBufferContents(JSContext *cx, uint32_t nbytes, void **contents, uint8_t **data);
 
 extern JS_PUBLIC_API(JSIdArray *)
 JS_Enumerate(JSContext *cx, JSObject *obj);
@@ -3844,6 +3884,7 @@ struct JS_PUBLIC_API(CompileOptions) {
     const char *filename;
     unsigned lineno;
     bool compileAndGo;
+    bool forEval;
     bool noScriptRval;
     bool selfHostingMode;
     bool userBit;
@@ -3862,6 +3903,7 @@ struct JS_PUBLIC_API(CompileOptions) {
         filename = f; lineno = l; return *this;
     }
     CompileOptions &setCompileAndGo(bool cng) { compileAndGo = cng; return *this; }
+    CompileOptions &setForEval(bool eval) { forEval = eval; return *this; }
     CompileOptions &setNoScriptRval(bool nsr) { noScriptRval = nsr; return *this; }
     CompileOptions &setSelfHostingMode(bool shm) { selfHostingMode = shm; return *this; }
     CompileOptions &setUserBit(bool bit) { userBit = bit; return *this; }

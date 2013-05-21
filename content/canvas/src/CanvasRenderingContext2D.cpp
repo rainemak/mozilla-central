@@ -441,6 +441,11 @@ public:
       static_cast<CanvasRenderingContext2DUserData*>(aData);
     CanvasRenderingContext2D* context = self->mContext;
     if (self->mContext && context->mGLContext) {
+      if (self->mContext->mTarget != nullptr) {
+        // Since SkiaGL default to store drawing command until flush
+        // We will have to flush it before present.
+        self->mContext->mTarget->Flush();
+      }
       context->mGLContext->MakeCurrent();
       context->mGLContext->PublishFrame();
     }
@@ -797,7 +802,12 @@ CanvasRenderingContext2D::EnsureTarget()
                                                                                  size.height),
                                                                       caps,
                                                                       mozilla::gl::GLContext::ContextFlagsNone);
-         mTarget = gfxPlatform::GetPlatform()->CreateDrawTargetForFBO(0, mGLContext, size, format);
+
+         if (mGLContext) {
+           mTarget = gfxPlatform::GetPlatform()->CreateDrawTargetForFBO(0, mGLContext, size, format);
+         } else {
+           mTarget = layerManager->CreateDrawTarget(size, format);
+         }
        } else
 #endif
          mTarget = layerManager->CreateDrawTarget(size, format);
@@ -1154,11 +1164,12 @@ MatrixToJSObject(JSContext* cx, const Matrix& matrix, ErrorResult& error)
   return obj;
 }
 
-bool
-ObjectToMatrix(JSContext* cx, JSObject& obj, Matrix& matrix, ErrorResult& error)
+static bool
+ObjectToMatrix(JSContext* cx, JS::Handle<JSObject*> obj, Matrix& matrix,
+               ErrorResult& error)
 {
   uint32_t length;
-  if (!JS_GetArrayLength(cx, &obj, &length) || length != 6) {
+  if (!JS_GetArrayLength(cx, obj, &length) || length != 6) {
     // Not an array-like thing or wrong size
     error.Throw(NS_ERROR_INVALID_ARG);
     return false;
@@ -1167,9 +1178,9 @@ ObjectToMatrix(JSContext* cx, JSObject& obj, Matrix& matrix, ErrorResult& error)
   Float* elts[] = { &matrix._11, &matrix._12, &matrix._21, &matrix._22,
                     &matrix._31, &matrix._32 };
   for (uint32_t i = 0; i < 6; ++i) {
-    JS::Value elt;
+    JS::Rooted<JS::Value> elt(cx);
     double d;
-    if (!JS_GetElement(cx, &obj, i, &elt)) {
+    if (!JS_GetElement(cx, obj, i, elt.address())) {
       error.Throw(NS_ERROR_FAILURE);
       return false;
     }
@@ -1188,7 +1199,7 @@ ObjectToMatrix(JSContext* cx, JSObject& obj, Matrix& matrix, ErrorResult& error)
 
 void
 CanvasRenderingContext2D::SetMozCurrentTransform(JSContext* cx,
-                                                 JSObject& currentTransform,
+                                                 JS::Handle<JSObject*> currentTransform,
                                                  ErrorResult& error)
 {
   EnsureTarget();
@@ -1212,7 +1223,7 @@ CanvasRenderingContext2D::GetMozCurrentTransform(JSContext* cx,
 
 void
 CanvasRenderingContext2D::SetMozCurrentTransformInverse(JSContext* cx,
-                                                        JSObject& currentTransform,
+                                                        JS::Handle<JSObject*> currentTransform,
                                                         ErrorResult& error)
 {
   EnsureTarget();
@@ -1296,19 +1307,19 @@ WrapStyle(JSContext* cx, JSObject* objArg,
           CanvasRenderingContext2D::CanvasMultiGetterType type,
           nsAString& str, nsISupports* supports, ErrorResult& error)
 {
-  JS::Value v;
+  JS::Rooted<JS::Value> v(cx);
   bool ok;
   switch (type) {
     case CanvasRenderingContext2D::CMG_STYLE_STRING:
     {
-      ok = xpc::StringToJsval(cx, str, &v);
+      ok = xpc::StringToJsval(cx, str, v.address());
       break;
     }
     case CanvasRenderingContext2D::CMG_STYLE_PATTERN:
     case CanvasRenderingContext2D::CMG_STYLE_GRADIENT:
     {
       JS::Rooted<JSObject*> obj(cx, objArg);
-      ok = dom::WrapObject(cx, obj, supports, &v);
+      ok = dom::WrapObject(cx, obj, supports, v.address());
       break;
     }
     default:
@@ -1869,7 +1880,7 @@ void
 CanvasRenderingContext2D::EnsureUserSpacePath(const CanvasWindingRule& winding)
 {
   FillRule fillRule = CurrentState().fillRule;
-  if(winding == CanvasWindingRuleValues::Evenodd)
+  if(winding == CanvasWindingRule::Evenodd)
     fillRule = FILL_EVEN_ODD;
 
   if (!mPath && !mPathBuilder && !mDSPathBuilder) {
@@ -3376,8 +3387,8 @@ CanvasRenderingContext2D::GetImageData(JSContext* aCx, double aSx,
     h = 1;
   }
 
-  JSObject* array;
-  error = GetImageDataArray(aCx, x, y, w, h, &array);
+  JS::Rooted<JSObject*> array(aCx);
+  error = GetImageDataArray(aCx, x, y, w, h, array.address());
   if (error.Failed()) {
     return nullptr;
   }

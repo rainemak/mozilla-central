@@ -249,17 +249,18 @@ class BaseShape : public js::gc::Cell
          * changes.
          */
 
-        DELEGATE           =    0x8,
-        NOT_EXTENSIBLE     =   0x10,
-        INDEXED            =   0x20,
-        BOUND_FUNCTION     =   0x40,
-        VAROBJ             =   0x80,
-        WATCHED            =  0x100,
-        ITERATED_SINGLETON =  0x200,
-        NEW_TYPE_UNKNOWN   =  0x400,
-        UNCACHEABLE_PROTO  =  0x800,
+        DELEGATE            =    0x8,
+        NOT_EXTENSIBLE      =   0x10,
+        INDEXED             =   0x20,
+        BOUND_FUNCTION      =   0x40,
+        VAROBJ              =   0x80,
+        WATCHED             =  0x100,
+        ITERATED_SINGLETON  =  0x200,
+        NEW_TYPE_UNKNOWN    =  0x400,
+        UNCACHEABLE_PROTO   =  0x800,
+        HAD_ELEMENTS_ACCESS = 0x1000,
 
-        OBJECT_FLAG_MASK   = 0x1ff8
+        OBJECT_FLAG_MASK    = 0x1ff8
     };
 
   private:
@@ -437,14 +438,7 @@ struct StackBaseShape
         }
 
       private:
-        virtual void trace(JSTracer *trc) {
-            if (base->parent)
-                traceObject(trc, (JSObject**)&base->parent, "StackBaseShape::AutoRooter parent");
-            if ((base->flags & BaseShape::HAS_GETTER_OBJECT) && base->rawGetter)
-                traceObject(trc, (JSObject**)&base->rawGetter, "StackBaseShape::AutoRooter getter");
-            if ((base->flags & BaseShape::HAS_SETTER_OBJECT) && base->rawSetter)
-                traceObject(trc, (JSObject**)&base->rawSetter, "StackBaseShape::AutoRooter setter");
-        }
+        virtual void trace(JSTracer *trc);
 
         const StackBaseShape *base;
         SkipRoot skip;
@@ -455,6 +449,7 @@ struct StackBaseShape
 typedef HashSet<ReadBarriered<UnownedBaseShape>,
                 StackBaseShape,
                 SystemAllocPolicy> BaseShapeSet;
+
 
 class Shape : public js::gc::Cell
 {
@@ -873,12 +868,7 @@ class AutoRooterGetterSetter
         }
 
       private:
-        virtual void trace(JSTracer *trc) {
-            if ((attrs & JSPROP_GETTER) && *pgetter)
-                traceObject(trc, (JSObject**) pgetter, "AutoRooterGetterSetter getter");
-            if ((attrs & JSPROP_SETTER) && *psetter)
-                traceObject(trc, (JSObject**) psetter, "AutoRooterGetterSetter setter");
-        }
+        virtual void trace(JSTracer *trc);
 
         uint8_t attrs;
         PropertyOp *pgetter;

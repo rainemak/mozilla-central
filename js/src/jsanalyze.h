@@ -25,9 +25,6 @@
 
 class JSScript;
 
-/* Forward declaration of downstream register allocations computed for join points. */
-namespace js { namespace mjit { struct RegisterAllocation; } }
-
 namespace js {
 namespace analyze {
 
@@ -122,18 +119,8 @@ class Bytecode
 
   private:
 
-    union {
-        /* If this is a JOF_TYPESET opcode, index into the observed types for the op. */
-        types::StackTypeSet *observedTypes;
-
-        /* If this is a JSOP_LOOPHEAD or JSOP_LOOPENTRY, information about the loop. */
-        LoopAnalysis *loop;
-    };
-
-    /* --------- Lifetime analysis --------- */
-
-    /* Any allocation computed downstream for this bytecode. */
-    mjit::RegisterAllocation *allocation;
+    /* If this is a JSOP_LOOPHEAD or JSOP_LOOPENTRY, information about the loop. */
+    LoopAnalysis *loop;
 
     /* --------- SSA analysis --------- */
 
@@ -335,22 +322,6 @@ BytecodeUpdatesSlot(JSOp op)
     return (op == JSOP_SETARG || op == JSOP_SETLOCAL);
 }
 
-static inline int32_t
-GetBytecodeInteger(jsbytecode *pc)
-{
-    switch (JSOp(*pc)) {
-      case JSOP_ZERO:   return 0;
-      case JSOP_ONE:    return 1;
-      case JSOP_UINT16: return GET_UINT16(pc);
-      case JSOP_UINT24: return GET_UINT24(pc);
-      case JSOP_INT8:   return GET_INT8(pc);
-      case JSOP_INT32:  return GET_INT32(pc);
-      default:
-        JS_NOT_REACHED("Bad op");
-        return 0;
-    }
-}
-
 /*
  * Information about the lifetime of a local or argument. These form a linked
  * list describing successive intervals in the program where the variable's
@@ -518,7 +489,7 @@ struct LifetimeVariable
         return offset;
     }
 
-#ifdef JS_METHODJIT_SPEW
+#ifdef DEBUG
     void print() const;
 #endif
 };
@@ -886,11 +857,6 @@ class ScriptAnalysis
         return (cs->format & JOF_POST) && !popGuaranteed(pc);
     }
 
-    types::StackTypeSet *bytecodeTypes(const jsbytecode *pc) {
-        JS_ASSERT(js_CodeSpec[*pc].format & JOF_TYPESET);
-        return getCode(pc).observedTypes;
-    }
-
     const SSAValue &poppedValue(uint32_t offset, uint32_t which) {
         JS_ASSERT(offset < script_->length);
         JS_ASSERT(which < GetUseCount(script_, offset) +
@@ -1005,14 +971,6 @@ class ScriptAnalysis
         return v.phiNode()->uses;
     }
 
-    mjit::RegisterAllocation *&getAllocation(uint32_t offset) {
-        JS_ASSERT(offset < script_->length);
-        return getCode(offset).allocation;
-    }
-    mjit::RegisterAllocation *&getAllocation(const jsbytecode *pc) {
-        return getAllocation(pc - script_->code);
-    }
-
     LoopAnalysis *getLoop(uint32_t offset) {
         JS_ASSERT(offset < script_->length);
         return getCode(offset).loop;
@@ -1060,8 +1018,6 @@ class ScriptAnalysis
 
     void printSSA(JSContext *cx);
     void printTypes(JSContext *cx);
-
-    void clearAllocations();
 
   private:
     void setOOM(JSContext *cx) {

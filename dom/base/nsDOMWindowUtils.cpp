@@ -71,6 +71,7 @@
 #include "nsPrintfCString.h"
 #include "nsViewportInfo.h"
 #include "nsIFormControl.h"
+#include "nsIScriptError.h"
 
 using namespace mozilla;
 using namespace mozilla::dom;
@@ -292,31 +293,36 @@ MaybeReflowForInflationScreenWidthChange(nsPresContext *aPresContext)
 {
   if (aPresContext) {
     nsIPresShell* presShell = aPresContext->GetPresShell();
-    if (presShell && nsLayoutUtils::FontSizeInflationEnabled(aPresContext) &&
+    bool fontInflationWasEnabled = presShell->FontSizeInflationEnabled();
+    presShell->NotifyFontSizeInflationEnabledIsDirty();
+    bool changed = false;
+    if (presShell && presShell->FontSizeInflationEnabled() &&
         presShell->FontSizeInflationMinTwips() != 0) {
-      bool changed;
       aPresContext->ScreenWidthInchesForFontInflation(&changed);
-      if (changed) {
-        nsCOMPtr<nsISupports> container = aPresContext->GetContainer();
-        nsCOMPtr<nsIDocShell> docShell = do_QueryInterface(container);
-        if (docShell) {
-          nsCOMPtr<nsIContentViewer> cv;
-          docShell->GetContentViewer(getter_AddRefs(cv));
-          nsCOMPtr<nsIMarkupDocumentViewer> mudv = do_QueryInterface(cv);
-          if (mudv) {
-            nsTArray<nsCOMPtr<nsIMarkupDocumentViewer> > array;
-            mudv->AppendSubtree(array);
-            for (uint32_t i = 0, iEnd = array.Length(); i < iEnd; ++i) {
-              nsCOMPtr<nsIPresShell> shell;
-              nsCOMPtr<nsIContentViewer> cv = do_QueryInterface(array[i]);
-              cv->GetPresShell(getter_AddRefs(shell));
-              if (shell) {
-                nsIFrame *rootFrame = shell->GetRootFrame();
-                if (rootFrame) {
-                  shell->FrameNeedsReflow(rootFrame,
-                                          nsIPresShell::eStyleChange,
-                                          NS_FRAME_IS_DIRTY);
-                }
+    }
+
+    changed = changed ||
+      (fontInflationWasEnabled != presShell->FontSizeInflationEnabled());
+    if (changed) {
+      nsCOMPtr<nsISupports> container = aPresContext->GetContainer();
+      nsCOMPtr<nsIDocShell> docShell = do_QueryInterface(container);
+      if (docShell) {
+        nsCOMPtr<nsIContentViewer> cv;
+        docShell->GetContentViewer(getter_AddRefs(cv));
+        nsCOMPtr<nsIMarkupDocumentViewer> mudv = do_QueryInterface(cv);
+        if (mudv) {
+          nsTArray<nsCOMPtr<nsIMarkupDocumentViewer> > array;
+          mudv->AppendSubtree(array);
+          for (uint32_t i = 0, iEnd = array.Length(); i < iEnd; ++i) {
+            nsCOMPtr<nsIPresShell> shell;
+            nsCOMPtr<nsIContentViewer> cv = do_QueryInterface(array[i]);
+            cv->GetPresShell(getter_AddRefs(shell));
+            if (shell) {
+              nsIFrame *rootFrame = shell->GetRootFrame();
+              if (rootFrame) {
+                shell->FrameNeedsReflow(rootFrame,
+                                        nsIPresShell::eStyleChange,
+                                        NS_FRAME_IS_DIRTY);
               }
             }
           }
@@ -850,11 +856,11 @@ nsDOMWindowUtils::SendTouchEvent(const nsAString& aType,
   event.touches.SetCapacity(aCount);
   for (uint32_t i = 0; i < aCount; ++i) {
     nsIntPoint pt = ToWidgetPoint(aXs[i], aYs[i], offset, presContext);
-    nsCOMPtr<nsIDOMTouch> t(new Touch(aIdentifiers[i],
-                                      pt,
-                                      nsIntPoint(aRxs[i], aRys[i]),
-                                      aRotationAngles[i],
-                                      aForces[i]));
+    nsRefPtr<Touch> t = new Touch(aIdentifiers[i],
+                                  pt,
+                                  nsIntPoint(aRxs[i], aRys[i]),
+                                  aRotationAngles[i],
+                                  aForces[i]);
     event.touches.AppendElement(t);
   }
 
@@ -1214,8 +1220,12 @@ nsDOMWindowUtils::SendSimpleGestureEvent(const nsAString& aType,
     msg = NS_SIMPLE_GESTURE_TAP;
   else if (aType.EqualsLiteral("MozPressTapGesture"))
     msg = NS_SIMPLE_GESTURE_PRESSTAP;
-  else if (aType.EqualsLiteral("MozEdgeUIGesture"))
-    msg = NS_SIMPLE_GESTURE_EDGEUI;
+  else if (aType.EqualsLiteral("MozEdgeUIStarted"))
+    msg = NS_SIMPLE_GESTURE_EDGE_STARTED;
+  else if (aType.EqualsLiteral("MozEdgeUICanceled"))
+    msg = NS_SIMPLE_GESTURE_EDGE_CANCELED;
+  else if (aType.EqualsLiteral("MozEdgeUICompleted"))
+    msg = NS_SIMPLE_GESTURE_EDGE_COMPLETED;
   else
     return NS_ERROR_FAILURE;
  
@@ -2514,6 +2524,13 @@ nsDOMWindowUtils::GetOuterWindowWithId(uint64_t aWindowID,
     return NS_ERROR_DOM_SECURITY_ERR;
   }
 
+  // XXX This method is deprecated.  See bug 865664.
+  nsContentUtils::ReportToConsole(nsIScriptError::warningFlag,
+                                  "DOM",
+                                  nsContentUtils::GetDocumentFromCaller(),
+                                  nsContentUtils::eDOM_PROPERTIES,
+                                  "GetWindowWithOuterIdWarning");
+
   *aWindow = nsGlobalWindow::GetOuterWindowWithId(aWindowID);
   NS_IF_ADDREF(*aWindow);
   return NS_OK;
@@ -3080,6 +3097,8 @@ nsDOMWindowUtils::SelectAtPoint(float aX, float aY, uint32_t aSelectBehavior,
     case nsIDOMWindowUtils::SELECT_WORDNOSPACE:
       amount = eSelectWordNoSpace;
     break;
+    default:
+      return NS_ERROR_INVALID_ARG;
   }
 
   nsIPresShell* presShell = GetPresShell();

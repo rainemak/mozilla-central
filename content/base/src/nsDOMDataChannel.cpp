@@ -22,7 +22,6 @@ extern PRLogModuleInfo* GetDataChannelLog();
 #include "nsIDOMFile.h"
 #include "nsIJSNativeInitializer.h"
 #include "nsIDOMDataChannel.h"
-#include "nsIDOMRTCPeerConnection.h"
 #include "nsIDOMMessageEvent.h"
 #include "nsDOMClassInfo.h"
 #include "nsDOMEventTargetHelper.h"
@@ -114,11 +113,6 @@ private:
 };
 
 DOMCI_DATA(DataChannel, nsDOMDataChannel)
-// A bit of a hack for RTCPeerConnection, since it doesn't have a .cpp file of
-// its own.  Note that it's not castable to anything in particular other than
-// nsIDOMRTCPeerConnection, so we can just use nsIDOMRTCPeerConnection as the
-// "class".
-DOMCI_DATA(RTCPeerConnection, nsIDOMRTCPeerConnection)
 
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INHERITED(nsDOMDataChannel,
                                                   nsDOMEventTargetHelper)
@@ -166,10 +160,6 @@ nsDOMDataChannel::Init(nsPIDOMWindow* aDOMWindow)
   // Attempt to kill "ghost" DataChannel (if one can happen): but usually too early for check to fail
   rv = CheckInnerWindowCorrectness();
   NS_ENSURE_SUCCESS(rv,rv);
-
-  // See bug 696085
-  // We don't need to observe for window destroyed or frozen; but PeerConnection needs
-  // to not allow itself to be bfcached (and get destroyed on navigation).
 
   rv = nsContentUtils::GetUTFOrigin(principal,mOrigin);
   LOG(("%s: origin = %s\n",__FUNCTION__,NS_LossyConvertUTF16toASCII(mOrigin).get()));
@@ -338,10 +328,11 @@ nsDOMDataChannel::GetSendParams(nsIVariant* aData, nsCString& aStringOut,
 
     nsMemory::Free(iid);
 
+    AutoSafeJSContext cx;
     // ArrayBuffer?
-    JS::Value realVal;
-    JSObject* obj;
-    nsresult rv = aData->GetAsJSVal(&realVal);
+    JS::Rooted<JS::Value> realVal(cx);
+    JS::Rooted<JSObject*> obj(cx);
+    nsresult rv = aData->GetAsJSVal(realVal.address());
     if (NS_SUCCEEDED(rv) && !JSVAL_IS_PRIMITIVE(realVal) &&
         (obj = JSVAL_TO_OBJECT(realVal)) &&
         (JS_IsArrayBufferObject(obj))) {
@@ -414,15 +405,15 @@ nsDOMDataChannel::DoOnMessageAvailable(const nsACString& aData,
   NS_ENSURE_TRUE(cx, NS_ERROR_FAILURE);
 
   JSAutoRequest ar(cx);
-  JS::Value jsData;
+  JS::Rooted<JS::Value> jsData(cx);
 
   if (aBinary) {
     if (mBinaryType == DC_BINARY_TYPE_BLOB) {
-      rv = nsContentUtils::CreateBlobBuffer(cx, aData, jsData);
+      rv = nsContentUtils::CreateBlobBuffer(cx, aData, &jsData);
       NS_ENSURE_SUCCESS(rv, rv);
     } else if (mBinaryType == DC_BINARY_TYPE_ARRAYBUFFER) {
-      JSObject* arrayBuf;
-      rv = nsContentUtils::CreateArrayBuffer(cx, aData, &arrayBuf);
+      JS::Rooted<JSObject*> arrayBuf(cx);
+      rv = nsContentUtils::CreateArrayBuffer(cx, aData, arrayBuf.address());
       NS_ENSURE_SUCCESS(rv, rv);
       jsData = OBJECT_TO_JSVAL(arrayBuf);
     } else {

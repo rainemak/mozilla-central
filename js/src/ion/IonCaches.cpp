@@ -370,7 +370,7 @@ DispatchIonCache::updateBaseAddress(IonCode *code, MacroAssembler &masm)
 }
 
 void
-IonCache::attachStub(MacroAssembler &masm, StubAttacher &attacher, IonCode *code)
+IonCache::attachStub(MacroAssembler &masm, StubAttacher &attacher, Handle<IonCode *> code)
 {
     JS_ASSERT(canAttachStub());
     incrementStubCount();
@@ -391,8 +391,8 @@ bool
 IonCache::linkAndAttachStub(JSContext *cx, MacroAssembler &masm, StubAttacher &attacher,
                             IonScript *ion, const char *attachKind)
 {
-    IonCode *code = NULL;
-    LinkStatus status = linkCode(cx, masm, ion, &code);
+    Rooted<IonCode *> code(cx);
+    LinkStatus status = linkCode(cx, masm, ion, code.address());
     if (status != LINK_GOOD)
         return status != LINK_ERROR;
 
@@ -1193,8 +1193,13 @@ IsIdempotentAndMaybeHasHooks(IonCache &cache, JSObject *obj)
     return cache.idempotent() && !obj->hasIdempotentProtoChain();
 }
 
+/*
+ * The receiver is the object the get is actually happening on, and what should
+ * be used for missing-property checks.  The checkObj is the object that we want
+ * to do the get on if the property is present on it.
+ */
 static bool
-DetermineGetPropKind(JSContext *cx, IonCache &cache,
+DetermineGetPropKind(JSContext *cx, IonCache &cache, JSObject *receiver,
                      JSObject *checkObj, JSObject *holder, HandleShape shape,
                      TypedOrValueRegister output, bool allowGetters,
                      bool *readSlot, bool *callGetter)
@@ -1209,7 +1214,7 @@ DetermineGetPropKind(JSContext *cx, IonCache &cache,
     cache.getScriptedLocation(&script, &pc);
 
     if (IsCacheableGetPropReadSlot(checkObj, holder, shape) ||
-        IsCacheableNoProperty(checkObj, holder, shape, pc, output))
+        IsCacheableNoProperty(receiver, holder, shape, pc, output))
     {
         // With Proxies, we cannot garantee any property access as the proxy can
         // mask any property from the prototype chain.
@@ -1288,7 +1293,7 @@ TryAttachNativeGetPropStub(JSContext *cx, IonScript *ion,
 
     bool readSlot;
     bool callGetter;
-    if (!DetermineGetPropKind(cx, cache, checkObj, holder, shape, cache.output(),
+    if (!DetermineGetPropKind(cx, cache, obj, checkObj, holder, shape, cache.output(),
                               cache.allowGetters(), &readSlot, &callGetter))
     {
         return true;
@@ -1468,7 +1473,7 @@ ParallelGetPropertyIC::canAttachReadSlot(LockedJSContext &cx, JSObject *obj,
     // side-effects, so only check if we can cache slot reads.
     bool readSlot;
     bool callGetter;
-    if (!DetermineGetPropKind(cx, *this, obj, holder, shape, output(), false,
+    if (!DetermineGetPropKind(cx, *this, obj, obj, holder, shape, output(), false,
                               &readSlot, &callGetter) || !readSlot)
     {
         return false;
@@ -2381,7 +2386,8 @@ GetElementIC::update(JSContext *cx, size_t cacheIndex, HandleObject obj,
             if (!cache.attachArgumentsElement(cx, ion, obj))
                 return false;
             attachedStub = true;
-        } else if (obj->isNative() && cache.monitoredResult()) {
+        }
+        if (!attachedStub && obj->isNative() && cache.monitoredResult()) {
             uint32_t dummy;
             if (idval.isString() && JSID_IS_ATOM(id) && !JSID_TO_ATOM(id)->isIndex(&dummy)) {
                 RootedPropertyName name(cx, JSID_TO_ATOM(id)->asPropertyName());
@@ -2389,11 +2395,13 @@ GetElementIC::update(JSContext *cx, size_t cacheIndex, HandleObject obj,
                     return false;
                 attachedStub = true;
             }
-        } else if (!cache.hasDenseStub() && obj->isNative() && idval.isInt32()) {
+        }
+        if (!attachedStub && !cache.hasDenseStub() && obj->isNative() && idval.isInt32()) {
             if (!cache.attachDenseElement(cx, ion, obj, idval))
                 return false;
             attachedStub = true;
-        } else if (obj->isTypedArray()) {
+        }
+        if (!attachedStub && obj->isTypedArray()) {
             if ((idval.isInt32()) ||
                 (idval.isString() && GetIndexFromString(idval.toString()) != UINT32_MAX))
             {

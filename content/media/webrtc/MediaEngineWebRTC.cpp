@@ -41,7 +41,7 @@ namespace mozilla {
 void
 MediaEngineWebRTC::EnumerateVideoDevices(nsTArray<nsRefPtr<MediaEngineVideoSource> >* aVSources)
 {
-#ifdef MOZ_WIDGET_GONK
+#ifdef MOZ_B2G_CAMERA
   MutexAutoLock lock(mMutex);
   if (!mCameraManager) {
     return;
@@ -97,7 +97,10 @@ MediaEngineWebRTC::EnumerateVideoDevices(nsTArray<nsRefPtr<MediaEngineVideoSourc
   JNIEnv *env;
   jint res = jvm->AttachCurrentThread(&env, NULL);
 
-  webrtc::VideoEngine::SetAndroidObjects(jvm, (void*)context);
+  if (webrtc::VideoEngine::SetAndroidObjects(jvm, (void*)context) != 0) {
+    LOG(("VieCapture:SetAndroidObjects Failed"));
+    return;
+  }
 
   env->DeleteGlobalRef(context);
 #endif
@@ -230,7 +233,10 @@ MediaEngineWebRTC::EnumerateAudioDevices(nsTArray<nsRefPtr<MediaEngineAudioSourc
   JNIEnv *env;
   jvm->AttachCurrentThread(&env, NULL);
 
-  webrtc::VoiceEngine::SetAndroidObjects(jvm, (void*)context);
+  if (webrtc::VoiceEngine::SetAndroidObjects(jvm, (void*)context) != 0) {
+    LOG(("VoiceEngine:SetAndroidObjects Failed"));
+    return;
+  }
 
   env->DeleteGlobalRef(context);
 #endif

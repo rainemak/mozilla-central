@@ -18,7 +18,6 @@ class TabChildHelper;
 class EmbedTabChildGlobal : public nsDOMEventTargetHelper,
                             public nsIContentFrameMessageManager,
                             public nsIScriptObjectPrincipal,
-                            public nsIScriptContextPrincipal,
                             public nsITabChild
 {
 public:

@@ -22,6 +22,7 @@ BuildRequires:  pkgconfig(gstreamer-plugins-base-0.10)
 BuildRequires:  pkgconfig(nspr) >= 4.9.6
 BuildRequires:  pkgconfig(nss) >= 3.14.3
 BuildRequires:  autoconf213
+BuildRequires:  automake
 BuildRequires:  python
 BuildRequires:  python-devel
 BuildRequires:  zip

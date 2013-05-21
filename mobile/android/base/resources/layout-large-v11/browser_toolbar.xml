@@ -69,7 +69,7 @@
                                   android:contentDescription="@string/back"
                                   android:background="@drawable/address_bar_nav_button"/>
 
-    <LinearLayout android:id="@+id/awesome_bar_content"
+    <LinearLayout android:id="@+id/awesome_bar_display_container"
                   style="@style/AddressBar.Button.Container"
                   android:layout_toRightOf="@id/back"
                   android:layout_toLeftOf="@id/menu_items">
@@ -133,13 +133,17 @@
                        style="@style/AddressBar.ImageButton"
                        android:layout_width="56dip"
                        android:layout_alignParentRight="true"
-                       android:gravity="center_vertical"
-                       android:src="@drawable/menu_level"
                        android:contentDescription="@string/menu"
                        android:background="@drawable/action_bar_button"
-                       android:paddingLeft="14dip"
-                       android:paddingRight="14dip"
                        android:visibility="gone"/>
+
+    <Gecko.ImageView android:id="@+id/menu_icon"
+                     style="@style/AddressBar.ImageButton"
+                     android:layout_alignLeft="@id/menu"
+                     android:layout_alignRight="@id/menu"
+                     android:gravity="center_vertical"
+                     android:src="@drawable/menu_level"
+                     android:visibility="gone"/>
 
     <ImageView android:id="@+id/shadow"
                android:layout_width="fill_parent"

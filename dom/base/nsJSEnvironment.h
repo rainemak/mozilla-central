@@ -44,10 +44,8 @@ public:
   NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS_AMBIGUOUS(nsJSContext,
                                                          nsIScriptContext)
 
-  virtual nsIScriptObjectPrincipal* GetObjectPrincipal();
-
   virtual nsresult EvaluateString(const nsAString& aScript,
-                                  JSObject& aScopeObject,
+                                  JS::Handle<JSObject*> aScopeObject,
                                   JS::CompileOptions &aOptions,
                                   bool aCoerceToString,
                                   JS::Value* aRetValue);
@@ -64,8 +62,8 @@ public:
                                  JSObject* aScopeObject);
 
   virtual nsresult BindCompiledEventHandler(nsISupports *aTarget,
-                                            JSObject *aScope,
-                                            JSObject* aHandler,
+                                            JS::Handle<JSObject*> aScope,
+                                            JS::Handle<JSObject*> aHandler,
                                             JS::MutableHandle<JSObject*> aBoundHandler);
 
   virtual nsIScriptGlobalObject *GetGlobalObject();
@@ -82,14 +80,14 @@ public:
   virtual bool GetScriptsEnabled();
   virtual void SetScriptsEnabled(bool aEnabled, bool aFireTimeouts);
 
-  virtual nsresult SetProperty(JSObject* aTarget, const char* aPropName, nsISupports* aVal);
+  virtual nsresult SetProperty(JS::Handle<JSObject*> aTarget, const char* aPropName, nsISupports* aVal);
 
   virtual bool GetProcessingScriptTag();
   virtual void SetProcessingScriptTag(bool aResult);
 
   virtual bool GetExecutingScript();
 
-  virtual nsresult InitClasses(JSObject* aGlobalObj);
+  virtual nsresult InitClasses(JS::Handle<JSObject*> aGlobalObj);
 
   virtual void WillInitializeContext();
   virtual void DidInitializeContext();
@@ -131,7 +129,7 @@ public:
   // called even if the previous collection was GC.
   static void CycleCollectNow(nsICycleCollectorListener *aListener = nullptr,
                               int32_t aExtraForgetSkippableCalls = 0,
-                              bool aForced = true);
+                              bool aManuallyTriggered = true);
 
   static void PokeGC(JS::gcreason::Reason aReason, int aDelay = 0);
   static void KillGCTimer();
@@ -328,7 +326,7 @@ JSObject* NS_DOMReadStructuredClone(JSContext* cx,
 
 JSBool NS_DOMWriteStructuredClone(JSContext* cx,
                                   JSStructuredCloneWriter* writer,
-                                  JSObject* obj, void *closure);
+                                  JS::Handle<JSObject*> obj, void *closure);
 
 void NS_DOMStructuredCloneError(JSContext* cx, uint32_t errorid);
 

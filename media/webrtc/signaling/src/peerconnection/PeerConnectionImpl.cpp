@@ -230,14 +230,7 @@ public:
           if (!stream) {
             CSFLogError(logTag, "%s: GetMediaStream returned NULL", __FUNCTION__);
           } else {
-            // We provide a type field because it is in the IDL
-            // and we want code that looks at it not to crash.
-            // We use "video" so that if an app looks for
-            // that string it has some chance of working.
-            // TODO(ekr@rtfm.com): Bug 834847
-            // The correct way for content JS to know stream type
-            // is via get{Audio,Video}Tracks. See Bug 834835.
-            mObserver->OnAddStream(stream, "video");
+            mObserver->OnAddStream(stream);
           }
           break;
         }
@@ -297,7 +290,7 @@ PeerConnectionImpl::~PeerConnectionImpl()
   }
 
   CSFLogInfo(logTag, "%s: PeerConnectionImpl destructor invoked", __FUNCTION__);
-  CloseInt(false);
+  CloseInt();
 
 #ifdef MOZILLA_INTERNAL_API
   // Deregister as an NSS Shutdown Object
@@ -389,7 +382,6 @@ PeerConnectionImpl::ConvertRTCConfiguration(const JS::Value& aSrc,
     return NS_ERROR_FAILURE;
   }
   for (uint32_t i = 0; i < config.mIceServers.Value().Length(); i++) {
-    // XXXbz once this moves to WebIDL, remove RTCConfiguration in DummyBinding.webidl.
     RTCIceServer& server = config.mIceServers.Value()[i];
     if (!server.mUrl.WasPassed()) {
       return NS_ERROR_FAILURE;
@@ -683,6 +675,8 @@ PeerConnectionImpl::InitializeDataChannel(int track_id,
         return NS_OK;
       }
     }
+    // If we inited the DataConnection, call Destroy() before releasing it
+    mDataConnection->Destroy();
   }
   mDataConnection = nullptr;
 #endif
@@ -1200,17 +1194,17 @@ PeerConnectionImpl::CheckApiState(bool assert_ice_ready) const
 }
 
 NS_IMETHODIMP
-PeerConnectionImpl::Close(bool aIsSynchronous)
+PeerConnectionImpl::Close()
 {
   CSFLogDebug(logTag, "%s", __FUNCTION__);
   PC_AUTO_ENTER_API_CALL_NO_CHECK();
 
-  return CloseInt(aIsSynchronous);
+  return CloseInt();
 }
 
 
 nsresult
-PeerConnectionImpl::CloseInt(bool aIsSynchronous)
+PeerConnectionImpl::CloseInt()
 {
   PC_AUTO_ENTER_API_CALL_NO_CHECK();
 
@@ -1226,7 +1220,7 @@ PeerConnectionImpl::CloseInt(bool aIsSynchronous)
   }
 #endif
 
-  ShutdownMedia(aIsSynchronous);
+  ShutdownMedia();
 
   // DataConnection will need to stay alive until all threads/runnables exit
 
@@ -1234,7 +1228,7 @@ PeerConnectionImpl::CloseInt(bool aIsSynchronous)
 }
 
 void
-PeerConnectionImpl::ShutdownMedia(bool aIsSynchronous)
+PeerConnectionImpl::ShutdownMedia()
 {
   PC_AUTO_ENTER_API_CALL_NO_CHECK();
 

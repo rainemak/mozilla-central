@@ -528,7 +528,7 @@ IsOrderLEQWithDOMFallback(nsIFrame* aFrame1,
     return order1 < order2;
   }
 
-  // If either frame is for generated content from :before or ::after, then
+  // If either frame is for generated content from ::before or ::after, then
   // we can't use nsContentUtils::PositionIsBefore(), since that method won't
   // recognize generated content as being an actual sibling of other nodes.
   // We know where ::before and ::after nodes *effectively* insert in the DOM
@@ -1054,6 +1054,26 @@ nsIAtom*
 nsFlexContainerFrame::GetType() const
 {
   return nsGkAtoms::flexContainerFrame;
+}
+
+/* virtual */
+int
+nsFlexContainerFrame::GetSkipSides() const
+{
+  // (same as nsBlockFrame's GetSkipSides impl)
+  if (IS_TRUE_OVERFLOW_CONTAINER(this)) {
+    return (1 << NS_SIDE_TOP) | (1 << NS_SIDE_BOTTOM);
+  }
+
+  int skip = 0;
+  if (GetPrevInFlow()) {
+    skip |= 1 << NS_SIDE_TOP;
+  }
+  nsIFrame* nif = GetNextInFlow();
+  if (nif && !IS_TRUE_OVERFLOW_CONTAINER(nif)) {
+    skip |= 1 << NS_SIDE_BOTTOM;
+  }
+  return skip;
 }
 
 #ifdef DEBUG

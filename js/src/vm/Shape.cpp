@@ -473,6 +473,18 @@ JSObject::addProperty(JSContext *cx, HandleObject obj, HandleId id,
                                spp, allowDictionary);
 }
 
+static bool
+ShouldConvertToDictionary(JSObject *obj)
+{
+    /*
+     * Use a lower limit if this object is likely a hashmap (SETELEM was used
+     * to set properties).
+     */
+    if (obj->hadElementsAccess())
+        return obj->lastProperty()->entryCount() >= PropertyTree::MAX_HEIGHT_WITH_ELEMENTS_ACCESS;
+    return obj->lastProperty()->entryCount() >= PropertyTree::MAX_HEIGHT;
+}
+
 /* static */ Shape *
 JSObject::addPropertyInternal(JSContext *cx, HandleObject obj, HandleId id,
                               PropertyOp getter, StrictPropertyOp setter,
@@ -492,7 +504,8 @@ JSObject::addPropertyInternal(JSContext *cx, HandleObject obj, HandleId id,
             (slot == obj->lastProperty()->maybeSlot() + 1);
         JS_ASSERT_IF(!allowDictionary, stableSlot);
         if (allowDictionary &&
-            (!stableSlot || obj->lastProperty()->entryCount() >= PropertyTree::MAX_HEIGHT)) {
+            (!stableSlot || ShouldConvertToDictionary(obj)))
+        {
             if (!obj->toDictionaryMode(cx))
                 return NULL;
             table = &obj->lastProperty()->table();
@@ -1156,6 +1169,23 @@ StackBaseShape::match(UnownedBaseShape *key, const StackBaseShape *lookup)
         && key->rawSetter == lookup->rawSetter;
 }
 
+void
+StackBaseShape::AutoRooter::trace(JSTracer *trc)
+{
+    if (base->parent) {
+        gc::MarkObjectRoot(trc, (JSObject**)&base->parent,
+                           "StackBaseShape::AutoRooter parent");
+    }
+    if ((base->flags & BaseShape::HAS_GETTER_OBJECT) && base->rawGetter) {
+        gc::MarkObjectRoot(trc, (JSObject**)&base->rawGetter,
+                           "StackBaseShape::AutoRooter getter");
+    }
+    if ((base->flags & BaseShape::HAS_SETTER_OBJECT) && base->rawSetter) {
+        gc::MarkObjectRoot(trc, (JSObject**)&base->rawSetter,
+                           "StackBaseShape::AutoRooter setter");
+    }
+}
+
 /* static */ UnownedBaseShape*
 BaseShape::getUnowned(JSContext *cx, const StackBaseShape &base)
 {
@@ -1400,3 +1430,11 @@ JSCompartment::sweepInitialShapeTable()
     }
 }
 
+void
+AutoRooterGetterSetter::Inner::trace(JSTracer *trc)
+{
+    if ((attrs & JSPROP_GETTER) && *pgetter)
+        gc::MarkObjectRoot(trc, (JSObject**) pgetter, "AutoRooterGetterSetter getter");
+    if ((attrs & JSPROP_SETTER) && *psetter)
+        gc::MarkObjectRoot(trc, (JSObject**) psetter, "AutoRooterGetterSetter setter");
+}

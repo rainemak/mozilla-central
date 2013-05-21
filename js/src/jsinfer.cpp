@@ -26,8 +26,6 @@
 #endif
 #include "gc/Marking.h"
 #include "js/MemoryMetrics.h"
-#include "methodjit/MethodJIT.h"
-#include "methodjit/Retcon.h"
 #include "vm/Shape.h"
 
 #include "jsatominlines.h"
@@ -1274,7 +1272,7 @@ PropertyAccess(JSContext *cx, JSScript *script, jsbytecode *pc, TypeObject *obje
         target->addSubset(cx, types);
     } else {
         JS_ASSERT_IF(script->hasAnalysis(),
-                     target == script->analysis()->bytecodeTypes(pc));
+                     target == TypeScript::BytecodeTypes(script, pc));
         if (!types->hasPropagatedProperty())
             object->getFromPrototypes(cx, id, types);
         if (UsePropertyTypeBarrier(pc)) {
@@ -1421,7 +1419,7 @@ TypeConstraintCall::newType(JSContext *cx, TypeSet *source, Type type)
     jsbytecode *pc = callsite->pc;
 
     JS_ASSERT_IF(script->hasAnalysis(),
-                 callsite->returnTypes == script->analysis()->bytecodeTypes(pc));
+                 callsite->returnTypes == TypeScript::BytecodeTypes(script, pc));
 
     if (type.isUnknown() || type.isAnyObject()) {
         /* Monitor calls on unknown functions. */
@@ -2343,32 +2341,6 @@ JITCodeHasCheck(JSScript *script, jsbytecode *pc, RecompileKind kind)
     if (kind == RECOMPILE_NONE)
         return false;
 
-#ifdef JS_METHODJIT
-    for (int constructing = 0; constructing <= 1; constructing++) {
-        for (int barriers = 0; barriers <= 1; barriers++) {
-            mjit::JITScript *jit = script->getJIT((bool) constructing, (bool) barriers);
-            if (!jit)
-                continue;
-            mjit::JITChunk *chunk = jit->chunk(pc);
-            if (!chunk)
-                continue;
-            bool found = false;
-            uint32_t count = (kind == RECOMPILE_CHECK_MONITORED)
-                             ? chunk->nMonitoredBytecodes
-                             : chunk->nTypeBarrierBytecodes;
-            uint32_t *bytecodes = (kind == RECOMPILE_CHECK_MONITORED)
-                                  ? chunk->monitoredBytecodes()
-                                  : chunk->typeBarrierBytecodes();
-            for (size_t i = 0; i < count; i++) {
-                if (bytecodes[i] == uint32_t(pc - script->code))
-                    found = true;
-            }
-            if (!found)
-                return false;
-        }
-    }
-#endif
-
     if (script->hasAnyIonScript() || script->isIonCompilingOffThread())
         return false;
 
@@ -2404,8 +2376,6 @@ AddPendingRecompile(JSContext *cx, JSScript *script, jsbytecode *pc,
             return;
         }
         switch (co->kind()) {
-          case CompilerOutput::MethodJIT:
-            break;
           case CompilerOutput::Ion:
           case CompilerOutput::ParallelIon:
             if (co->script == script)
@@ -2467,10 +2437,12 @@ TypeZone::init(JSContext *cx)
         !cx->hasOption(JSOPTION_TYPE_INFERENCE) ||
         !cx->runtime->jitSupportsFloatingPoint)
     {
+        jaegerCompilationAllowed = true;
         return;
     }
 
     inferenceEnabled = true;
+    jaegerCompilationAllowed = cx->hasOption(JSOPTION_METHODJIT);
 }
 
 TypeObject *
@@ -2692,13 +2664,28 @@ types::UseNewTypeForInitializer(JSContext *cx, JSScript *script, jsbytecode *pc,
     if (key != JSProto_Object && !(key >= JSProto_Int8Array && key <= JSProto_Uint8ClampedArray))
         return GenericObject;
 
-    AutoEnterAnalysis enter(cx);
+    /*
+     * All loops in the script will have a JSTRY_ITER or JSTRY_LOOP try note
+     * indicating their boundary.
+     */
 
-    if (!script->ensureRanAnalysis(cx))
-        return GenericObject;
+    if (!script->hasTrynotes())
+        return SingletonObject;
 
-    if (script->analysis()->getCode(pc).inLoop)
-        return GenericObject;
+    unsigned offset = pc - script->code;
+
+    JSTryNote *tn = script->trynotes()->vector;
+    JSTryNote *tnlimit = tn + script->trynotes()->length;
+    for (; tn < tnlimit; tn++) {
+        if (tn->kind != JSTRY_ITER && tn->kind != JSTRY_LOOP)
+            continue;
+
+        unsigned startOffset = script->mainOffset + tn->start;
+        unsigned endOffset = startOffset + tn->length;
+
+        if (offset >= startOffset && offset < endOffset)
+            return GenericObject;
+    }
 
     return SingletonObject;
 }
@@ -2801,19 +2788,10 @@ TypeCompartment::processPendingRecompiles(FreeOp *fop)
 
     JS_ASSERT(!pending->empty());
 
-#ifdef JS_METHODJIT
-
-    mjit::ExpandInlineFrames(compartment()->zone());
-
+#ifdef JS_ION
     for (unsigned i = 0; i < pending->length(); i++) {
         CompilerOutput &co = *(*pending)[i].compilerOutput(*this);
         switch (co.kind()) {
-          case CompilerOutput::MethodJIT:
-            JS_ASSERT(co.isValid());
-            mjit::Recompiler::clearStackReferences(fop, co.script);
-            co.mjit()->destroyChunk(fop, co.chunkIndex);
-            JS_ASSERT(co.script == NULL);
-            break;
           case CompilerOutput::Ion:
           case CompilerOutput::ParallelIon:
 # ifdef JS_THREADSAFE
@@ -2831,10 +2809,8 @@ TypeCompartment::processPendingRecompiles(FreeOp *fop)
         }
     }
 
-# ifdef JS_ION
     ion::Invalidate(*this, fop, *pending);
-# endif
-#endif /* JS_METHODJIT */
+#endif /* JS_ION */
 
     fop->delete_(pending);
 }
@@ -2881,23 +2857,16 @@ TypeZone::nukeTypes(FreeOp *fop)
 
     inferenceEnabled = false;
 
-#ifdef JS_METHODJIT
-    mjit::ExpandInlineFrames(zone());
-    mjit::ClearAllFrames(zone());
-# ifdef JS_ION
+#ifdef JS_ION
     ion::InvalidateAll(fop, zone());
-# endif
 
     /* Throw away all JIT code in the compartment, but leave everything else alone. */
 
     for (gc::CellIter i(zone(), gc::FINALIZE_SCRIPT); !i.done(); i.next()) {
         JSScript *script = i.get<JSScript>();
-        mjit::ReleaseScriptCode(fop, script);
-# ifdef JS_ION
         ion::FinishInvalidation(fop, script);
-# endif
     }
-#endif /* JS_METHODJIT */
+#endif /* JS_ION */
 
     pendingNukeTypes = false;
 }
@@ -2920,15 +2889,8 @@ TypeCompartment::addPendingRecompile(JSContext *cx, const RecompileInfo &info)
         return;
     }
 
-#ifdef JS_METHODJIT
-    mjit::JITScript *jit = co->script->getJIT(co->constructing, co->barriers);
-    bool hasJITCode = jit && jit->chunkDescriptor(co->chunkIndex).chunk;
-
-# if defined(JS_ION)
-    hasJITCode |= !!co->script->hasAnyIonScript();
-# endif
-
-    if (!hasJITCode) {
+#if defined(JS_ION)
+    if (!co->script->hasAnyIonScript()) {
         /* Scripts which haven't been compiled yet don't need to be recompiled. */
         return;
     }
@@ -2964,29 +2926,7 @@ TypeCompartment::addPendingRecompile(JSContext *cx, JSScript *script, jsbytecode
     if (!constrainedOutputs)
         return;
 
-#ifdef JS_METHODJIT
-    for (int constructing = 0; constructing <= 1; constructing++) {
-        for (int barriers = 0; barriers <= 1; barriers++) {
-            mjit::JITScript *jit = script->getJIT((bool) constructing, (bool) barriers);
-            if (!jit)
-                continue;
-
-            if (pc) {
-                unsigned int chunkIndex = jit->chunkIndex(pc);
-                mjit::JITChunk *chunk = jit->chunkDescriptor(chunkIndex).chunk;
-                if (chunk)
-                    addPendingRecompile(cx, chunk->recompileInfo);
-            } else {
-                for (size_t chunkIndex = 0; chunkIndex < jit->nchunks; chunkIndex++) {
-                    mjit::JITChunk *chunk = jit->chunkDescriptor(chunkIndex).chunk;
-                    if (chunk)
-                        addPendingRecompile(cx, chunk->recompileInfo);
-                }
-            }
-        }
-    }
-
-# ifdef JS_ION
+#ifdef JS_ION
     CancelOffThreadIonCompile(cx->compartment, script);
 
     // Let the script warm up again before attempting another compile.
@@ -2998,7 +2938,6 @@ TypeCompartment::addPendingRecompile(JSContext *cx, JSScript *script, jsbytecode
 
     if (script->hasParallelIonScript())
         addPendingRecompile(cx, script->parallelIonScript()->recompileInfo());
-# endif
 #endif
 }
 
@@ -4297,7 +4236,7 @@ ScriptAnalysis::analyzeTypesBytecode(JSContext *cx, unsigned offset, TypeInferen
       case JSOP_CALLGNAME: {
         jsid id = GetAtomId(cx, script, pc, 0);
 
-        StackTypeSet *seen = bytecodeTypes(pc);
+        StackTypeSet *seen = TypeScript::BytecodeTypes(script, pc);
         seen->addSubset(cx, &pushed[0]);
 
         /*
@@ -4329,7 +4268,7 @@ ScriptAnalysis::analyzeTypesBytecode(JSContext *cx, unsigned offset, TypeInferen
       case JSOP_GETINTRINSIC:
       case JSOP_CALLNAME:
       case JSOP_CALLINTRINSIC: {
-        StackTypeSet *seen = bytecodeTypes(pc);
+        StackTypeSet *seen = TypeScript::BytecodeTypes(script, pc);
         addTypeBarrier(cx, pc, seen, Type::UnknownType());
         seen->addSubset(cx, &pushed[0]);
         break;
@@ -4358,7 +4297,7 @@ ScriptAnalysis::analyzeTypesBytecode(JSContext *cx, unsigned offset, TypeInferen
         break;
 
       case JSOP_GETXPROP: {
-        StackTypeSet *seen = bytecodeTypes(pc);
+        StackTypeSet *seen = TypeScript::BytecodeTypes(script, pc);
         addTypeBarrier(cx, pc, seen, Type::UnknownType());
         seen->addSubset(cx, &pushed[0]);
         break;
@@ -4412,7 +4351,7 @@ ScriptAnalysis::analyzeTypesBytecode(JSContext *cx, unsigned offset, TypeInferen
          * there is little benefit to maintaining a TypeSet for the aliased
          * variable. Instead, we monitor/barrier all reads unconditionally.
          */
-        bytecodeTypes(pc)->addSubset(cx, &pushed[0]);
+        TypeScript::BytecodeTypes(script, pc)->addSubset(cx, &pushed[0]);
         break;
 
       case JSOP_SETALIASEDVAR:
@@ -4428,7 +4367,7 @@ ScriptAnalysis::analyzeTypesBytecode(JSContext *cx, unsigned offset, TypeInferen
         break;
 
       case JSOP_REST: {
-        StackTypeSet *types = script->analysis()->bytecodeTypes(pc);
+        StackTypeSet *types = TypeScript::BytecodeTypes(script, pc);
         if (script->compileAndGo) {
             TypeObject *rest = TypeScript::InitObject(cx, script, pc, JSProto_Array);
             if (!rest)
@@ -4462,7 +4401,7 @@ ScriptAnalysis::analyzeTypesBytecode(JSContext *cx, unsigned offset, TypeInferen
       case JSOP_GETPROP:
       case JSOP_CALLPROP: {
         jsid id = GetAtomId(cx, script, pc, 0);
-        StackTypeSet *seen = script->analysis()->bytecodeTypes(pc);
+        StackTypeSet *seen = TypeScript::BytecodeTypes(script, pc);
 
         HeapTypeSet *input = &script->types->propertyReadTypes[state.propertyReadIndex++];
         poppedTypes(pc, 0)->addSubset(cx, input);
@@ -4491,7 +4430,7 @@ ScriptAnalysis::analyzeTypesBytecode(JSContext *cx, unsigned offset, TypeInferen
 
       case JSOP_GETELEM:
       case JSOP_CALLELEM: {
-        StackTypeSet *seen = script->analysis()->bytecodeTypes(pc);
+        StackTypeSet *seen = TypeScript::BytecodeTypes(script, pc);
 
         /* Don't try to compute a precise callee for CALLELEM. */
         if (op == JSOP_CALLELEM)
@@ -4579,7 +4518,7 @@ ScriptAnalysis::analyzeTypesBytecode(JSContext *cx, unsigned offset, TypeInferen
       case JSOP_FUNCALL:
       case JSOP_FUNAPPLY:
       case JSOP_NEW: {
-        StackTypeSet *seen = script->analysis()->bytecodeTypes(pc);
+        StackTypeSet *seen = TypeScript::BytecodeTypes(script, pc);
         seen->addSubset(cx, &pushed[0]);
 
         /* Construct the base call information about this site. */
@@ -4627,7 +4566,7 @@ ScriptAnalysis::analyzeTypesBytecode(JSContext *cx, unsigned offset, TypeInferen
       case JSOP_NEWINIT:
       case JSOP_NEWARRAY:
       case JSOP_NEWOBJECT: {
-        StackTypeSet *types = script->analysis()->bytecodeTypes(pc);
+        StackTypeSet *types = TypeScript::BytecodeTypes(script, pc);
         types->addSubset(cx, &pushed[0]);
 
         bool isArray = (op == JSOP_NEWARRAY || (op == JSOP_NEWINIT && GET_UINT8(pc) == JSProto_Array));
@@ -4859,6 +4798,9 @@ ScriptAnalysis::analyzeTypes(JSContext *cx)
         if (failed())
             return;
     }
+
+    if (!script_->ensureHasBytecodeTypeMap(cx))
+        return;
 
     /*
      * Set this early to avoid reentrance. Any failures are OOMs, and will nuke
@@ -5269,7 +5211,7 @@ AnalyzePoppedThis(JSContext *cx, SSAUseChain *use,
         Shape *shape = type->proto ? type->proto->nativeLookup(cx, id) : NULL;
         if (shape && shape->hasSlot()) {
             Value protov = type->proto->getSlot(shape->slot());
-            TypeSet *types = script->analysis()->bytecodeTypes(pc);
+            TypeSet *types = TypeScript::BytecodeTypes(script, pc);
             types->addType(cx, GetValueType(cx, protov));
         }
 
@@ -5561,7 +5503,7 @@ ScriptAnalysis::printTypes(JSContext *cx)
             continue;
 
         if (js_CodeSpec[*pc].format & JOF_TYPESET) {
-            TypeSet *types = script_->analysis()->bytecodeTypes(pc);
+            TypeSet *types = TypeScript::BytecodeTypes(script_, pc);
             printf("  typeset %d:", (int) (types - script_->types->typeArray()));
             types->print();
             printf("\n");
@@ -5612,6 +5554,11 @@ types::MarkIteratorUnknownSlow(JSContext *cx)
         return;
 
     AutoEnterAnalysis enter(cx);
+
+    if (!script->ensureHasTypes(cx)) {
+        cx->compartment->types.setPendingNukeTypes(cx);
+        return;
+    }
 
     /*
      * This script is iterating over an actual Iterator or Generator object, or
@@ -5696,15 +5643,16 @@ void
 types::TypeDynamicResult(JSContext *cx, JSScript *script, jsbytecode *pc, Type type)
 {
     JS_ASSERT(cx->typeInferenceEnabled());
+
     AutoEnterAnalysis enter(cx);
 
     /* Directly update associated type sets for applicable bytecodes. */
     if (js_CodeSpec[*pc].format & JOF_TYPESET) {
-        if (!script->ensureRanAnalysis(cx)) {
+        if (!script->ensureHasBytecodeTypeMap(cx)) {
             cx->compartment->types.setPendingNukeTypes(cx);
             return;
         }
-        TypeSet *types = script->analysis()->bytecodeTypes(pc);
+        TypeSet *types = TypeScript::BytecodeTypes(script, pc);
         if (!types->hasType(type)) {
             InferSpew(ISpewOps, "externalType: monitorResult #%u:%05u: %s",
                       script->id(), pc - script->code, TypeString(type));
@@ -5803,13 +5751,13 @@ types::TypeMonitorResult(JSContext *cx, JSScript *script, jsbytecode *pc, const 
 
     AutoEnterAnalysis enter(cx);
 
-    if (!script->ensureRanAnalysis(cx)) {
+    if (!script->ensureHasBytecodeTypeMap(cx)) {
         cx->compartment->types.setPendingNukeTypes(cx);
         return;
     }
 
     Type type = GetValueType(cx, rval);
-    TypeSet *types = script->analysis()->bytecodeTypes(pc);
+    TypeSet *types = TypeScript::BytecodeTypes(script, pc);
     if (types->hasType(type))
         return;
 
@@ -5906,7 +5854,7 @@ JSScript::makeTypes(JSContext *cx)
             return false;
         }
         new(types) TypeScript();
-        return true;
+        return analyzedArgsUsage() || ensureRanAnalysis(cx);
     }
 
     AutoEnterAnalysis enter(cx);
@@ -5975,6 +5923,36 @@ JSScript::makeTypes(JSContext *cx)
                   i, id());
     }
 #endif
+
+    return analyzedArgsUsage() || ensureRanAnalysis(cx);
+}
+
+bool
+JSScript::makeBytecodeTypeMap(JSContext *cx)
+{
+    JS_ASSERT(cx->typeInferenceEnabled());
+    JS_ASSERT(types && !types->bytecodeMap);
+
+    types->bytecodeMap = cx->analysisLifoAlloc().newArrayUninitialized<uint32_t>(nTypeSets + 1);
+
+    if (!types->bytecodeMap)
+        return false;
+
+    uint32_t added = 0;
+    for (jsbytecode *pc = code; pc < code + length; pc += GetBytecodeLength(pc)) {
+        JSOp op = JSOp(*pc);
+        if (js_CodeSpec[op].format & JOF_TYPESET) {
+            types->bytecodeMap[added++] = pc - code;
+            if (added == nTypeSets)
+                break;
+        }
+    }
+
+    JS_ASSERT(added == nTypeSets);
+
+    // The last entry in the last index found, and is used to avoid binary
+    // searches for the sought entry when queries are in linear order.
+    types->bytecodeMap[nTypeSets] = 0;
 
     return true;
 }
@@ -6875,7 +6853,8 @@ TypeCompartment::maybePurgeAnalysis(JSContext *cx, bool force)
             return;
         }
 
-        cx->runtime->analysisPurgeCallback(cx->runtime, &desc->asFlat());
+        JS::Rooted<JSFlatString*> flat(cx, &desc->asFlat());
+        cx->runtime->analysisPurgeCallback(cx->runtime, flat);
     }
 }
 

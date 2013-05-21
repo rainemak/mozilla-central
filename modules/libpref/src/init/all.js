@@ -86,6 +86,9 @@ pref("dom.workers.enabled", true);
 // The number of workers per domain allowed to run concurrently.
 pref("dom.workers.maxPerDomain", 20);
 
+// Whether nonzero values can be returned from performance.timing.*
+pref("dom.enable_performance", true);
+
 // Fastback caching - if this pref is negative, then we calculate the number
 // of content viewers to cache based on the amount of available memory.
 pref("browser.sessionhistory.max_total_viewers", -1);
@@ -724,7 +727,7 @@ pref("dom.allow_scripts_to_close_windows",          false);
 
 pref("dom.disable_open_during_load",                false);
 pref("dom.popup_maximum",                           20);
-pref("dom.popup_allowed_events", "change click dblclick mouseup reset submit");
+pref("dom.popup_allowed_events", "change click dblclick mouseup reset submit touchend");
 pref("dom.disable_open_click_delay", 1000);
 
 pref("dom.storage.enabled", true);
@@ -782,11 +785,7 @@ pref("javascript.options.methodjit.chrome",  false);
 pref("javascript.options.baselinejit.content", true);
 pref("javascript.options.baselinejit.chrome",  true);
 pref("javascript.options.ion.content",      true);
-#ifdef RELEASE_BUILD
-pref("javascript.options.experimental_asmjs", false);
-#else
-pref("javascript.options.experimental_asmjs", true);
-#endif
+pref("javascript.options.asmjs",            true);
 pref("javascript.options.ion.parallel_compilation", true);
 pref("javascript.options.pccounts.content", false);
 pref("javascript.options.pccounts.chrome",  false);
@@ -1000,6 +999,10 @@ pref("network.http.rendering-critical-requests-prioritization", true);
 // IPv6 connectivity.
 pref("network.http.fast-fallback-to-IPv4", true);
 
+// The maximum amount of time the cache session lock can be held
+// before a new transaction bypasses the cache. In milliseconds.
+pref("network.http.bypass-cachelock-threshold", 250);
+
 // Try and use SPDY when using SSL
 pref("network.http.spdy.enabled", true);
 pref("network.http.spdy.enabled.v2", true);
@@ -1015,13 +1018,7 @@ pref("network.http.spdy.send-buffer-size", 131072);
 
 pref("network.http.diagnostics", false);
 
-#ifdef RELEASE_BUILD
-pref("network.http.pacing.requests.enabled", false);
-pref("network.http.pacing.requests.abtest", false);
-#else
 pref("network.http.pacing.requests.enabled", true);
-pref("network.http.pacing.requests.abtest", true);
-#endif
 pref("network.http.pacing.requests.min-parallelism", 6);
 pref("network.http.pacing.requests.hz", 100);
 pref("network.http.pacing.requests.burst", 32);
@@ -1742,6 +1739,19 @@ pref("layout.css.supports-rule.enabled", true);
 // Is support for CSS Flexbox enabled?
 pref("layout.css.flexbox.enabled", true);
 
+// Is support for CSS3 Fonts features enabled?
+// (includes font-variant-*, font-kerning, font-synthesis
+// and the @font-feature-values rule)
+// Note: with this enabled, font-feature-settings is aliased
+// to -moz-font-feature-settings.  When unprefixing, this should
+// be reversed, -moz-font-feature-settings should alias to
+// font-feature-settings.
+#ifdef RELEASE_BUILD
+pref("layout.css.font-features.enabled", false);
+#else
+pref("layout.css.font-features.enabled", true);
+#endif
+
 // Are sets of prefixed properties supported?
 pref("layout.css.prefixes.border-image", true);
 pref("layout.css.prefixes.transforms", true);
@@ -1815,6 +1825,8 @@ pref("hangmonitor.timeout", 0);
 pref("plugins.load_appdir_plugins", false);
 // If true, plugins will be click to play
 pref("plugins.click_to_play", false);
+// The default value for nsIPluginTag.enabledState (STATE_ENABLED = 2)
+pref("plugin.default.state", 2);
 
 #ifndef DEBUG
 // How long a plugin is allowed to process a synchronous IPC message
@@ -3282,7 +3294,7 @@ pref("font.name.serif.ko", "Charis SIL Compact");
 pref("font.name.sans-serif.ko", "Open Sans");
 pref("font.name.monospace.ko", "Droid Sans Mono");
 pref("font.name-list.serif.ko", "HYSerif");
-pref("font.name-list.sans-serif.ko", "SmartGothic, DroidSansFallback, Droid Sans Fallback");
+pref("font.name-list.sans-serif.ko", "SmartGothic, NanumGothic, DroidSansFallback, Droid Sans Fallback");
 
 pref("font.name.serif.th", "Charis SIL Compact");
 pref("font.name.sans-serif.th", "Open Sans");
@@ -3974,9 +3986,6 @@ pref("layers.offmainthreadcomposition.animate-opacity", false);
 pref("layers.offmainthreadcomposition.animate-transform", false);
 pref("layers.offmainthreadcomposition.log-animations", false);
 
-// Whether to (try) to use a Composer2D if available on this platform.
-pref("layers.composer2d.enabled", false);
-
 #ifdef MOZ_X11
 #ifdef MOZ_WIDGET_GTK2
 pref("gfx.xrender.enabled",true);
@@ -4068,10 +4077,12 @@ pref("dom.sms.enabled", false);
 // Enable Latin characters replacement with corresponding ones in GSM SMS
 // 7-bit default alphabet.
 pref("dom.sms.strict7BitEncoding", false);
-pref("dom.sms.requestStatusReport", false);
+pref("dom.sms.requestStatusReport", true);
 
 // WebContacts
 pref("dom.mozContacts.enabled", false);
+pref("dom.navigator-property.disable.mozContacts", true);
+pref("dom.global-constructor.disable.mozContact", true);
 
 // WebAlarms
 pref("dom.mozAlarms.enabled", false);
@@ -4084,6 +4095,7 @@ pref("dom.mozNetworkStats.enabled", false);
 
 // WebSettings
 pref("dom.mozSettings.enabled", false);
+pref("dom.navigator-property.disable.mozSettings", true);
 pref("dom.mozPermissionSettings.enabled", false);
 
 // W3C touch events
@@ -4187,6 +4199,9 @@ pref("dom.mms.sendRetryInterval", 300000);
 
 pref("dom.mms.retrievalRetryCount", 4);
 pref("dom.mms.retrievalRetryIntervals", "60000,300000,600000,1800000");
+
+// Debug enabler for MMS.
+pref("mms.debugging.enabled", false);
 
 // If the user puts a finger down on an element and we think the user
 // might be executing a pan gesture, how long do we wait before

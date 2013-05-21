@@ -804,6 +804,10 @@ nsObjectLoadingContent::InstantiatePluginInstance(bool aIsLoading)
   nsIFrame* frame = thisContent->GetPrimaryFrame();
   if (frame && mInstanceOwner) {
     mInstanceOwner->SetFrame(static_cast<nsObjectFrame*>(frame));
+
+    // Bug 870216 - Adobe Reader renders with incorrect dimensions until it gets
+    // a second SetWindow call. This is otherwise redundant.
+    mInstanceOwner->CallSetWindow();
   }
 
   // Set up scripting interfaces.
@@ -2848,7 +2852,7 @@ nsObjectLoadingContent::GetContentDocument()
 
 JS::Value
 nsObjectLoadingContent::LegacyCall(JSContext* aCx,
-                                   JS::Value aThisVal,
+                                   JS::Handle<JS::Value> aThisVal,
                                    const Sequence<JS::Value>& aArguments,
                                    ErrorResult& aRv)
 {
@@ -2885,7 +2889,8 @@ nsObjectLoadingContent::LegacyCall(JSContext* aCx,
     }
   }
 
-  if (!JS_WrapValue(aCx, &aThisVal)) {
+  JS::Rooted<JS::Value> thisVal(aCx, aThisVal);
+  if (!JS_WrapValue(aCx, thisVal.address())) {
     aRv.Throw(NS_ERROR_UNEXPECTED);
     return JS::UndefinedValue();
   }
@@ -2903,10 +2908,10 @@ nsObjectLoadingContent::LegacyCall(JSContext* aCx,
     return JS::UndefinedValue();
   }
 
-  JSObject *pi_obj;
-  JSObject *pi_proto;
+  JS::Rooted<JSObject*> pi_obj(aCx);
+  JS::Rooted<JSObject*> pi_proto(aCx);
 
-  rv = GetPluginJSObject(aCx, obj, pi, &pi_obj, &pi_proto);
+  rv = GetPluginJSObject(aCx, obj, pi, pi_obj.address(), pi_proto.address());
   if (NS_FAILED(rv)) {
     aRv.Throw(rv);
     return JS::UndefinedValue();
@@ -2917,9 +2922,9 @@ nsObjectLoadingContent::LegacyCall(JSContext* aCx,
     return JS::UndefinedValue();
   }
 
-  JS::Value retval;
-  bool ok = ::JS::Call(aCx, aThisVal, pi_obj, args.Length(),
-                       args.Elements(), &retval);
+  JS::Rooted<JS::Value> retval(aCx);
+  bool ok = ::JS::Call(aCx, thisVal, pi_obj, args.Length(),
+                       args.Elements(), retval.address());
   if (!ok) {
     aRv.Throw(NS_ERROR_FAILURE);
     return JS::UndefinedValue();
@@ -2970,10 +2975,10 @@ nsObjectLoadingContent::SetupProtoChain(JSContext* aCx,
     return;
   }
 
-  JSObject *pi_obj; // XPConnect-wrapped peer object, when we get it.
-  JSObject *pi_proto; // 'pi.__proto__'
+  JS::Rooted<JSObject*> pi_obj(aCx); // XPConnect-wrapped peer object, when we get it.
+  JS::Rooted<JSObject*> pi_proto(aCx); // 'pi.__proto__'
 
-  rv = GetPluginJSObject(aCx, aObject, pi, &pi_obj, &pi_proto);
+  rv = GetPluginJSObject(aCx, aObject, pi, pi_obj.address(), pi_proto.address());
   if (NS_FAILED(rv)) {
     return;
   }
@@ -3057,7 +3062,8 @@ nsObjectLoadingContent::SetupProtoChain(JSContext* aCx,
 
 // static
 nsresult
-nsObjectLoadingContent::GetPluginJSObject(JSContext *cx, JSObject *obj,
+nsObjectLoadingContent::GetPluginJSObject(JSContext *cx,
+                                          JS::Handle<JSObject*> obj,
                                           nsNPAPIPluginInstance *plugin_inst,
                                           JSObject **plugin_obj,
                                           JSObject **plugin_proto)

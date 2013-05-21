@@ -54,10 +54,10 @@
     [
       "SET_REMOTE_DESCRIPTION",
       function (test) {
-        var osd = new mozRTCSessionDescription(offer);
-        test.pcLocal.setRemoteDescription(osd, function () {
-          test.next();
-        });
+        test.pcLocal.setRemoteDescription(new mozRTCSessionDescription(offer),
+                                          function () {
+                                            test.next();
+                                          });
       }
     ],
     [
@@ -112,7 +112,7 @@
     test.setMediaConstraints([{audio: true, video: true}], [ ]);
     test.chain.replaceAfter("PC_LOCAL_GUM", steps);
     test.run();
-  }, true);
+  });
 </script>
 </pre>
 </body>

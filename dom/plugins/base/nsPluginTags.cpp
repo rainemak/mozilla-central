@@ -216,7 +216,7 @@ static nsresult ConvertToUTF8(nsIUnicodeDecoder *aUnicodeDecoder,
   nsresult rv = aUnicodeDecoder->GetMaxLength(aString.get(), numberOfBytes,
                                               &outUnicodeLen);
   NS_ENSURE_SUCCESS(rv, rv);
-  if (!EnsureStringLength(buffer, outUnicodeLen))
+  if (!buffer.SetLength(outUnicodeLen, fallible_t()))
     return NS_ERROR_OUT_OF_MEMORY;
   rv = aUnicodeDecoder->Convert(aString.get(), &numberOfBytes,
                                 buffer.BeginWriting(), &outUnicodeLen);
@@ -377,9 +377,25 @@ nsPluginTag::GetClicktoplay(bool *aClicktoplay)
 
 NS_IMETHODIMP
 nsPluginTag::GetEnabledState(uint32_t *aEnabledState) {
-  *aEnabledState = Preferences::GetInt(GetStatePrefNameForPlugin(this).get(),
-                                       ePluginState_Enabled);
-  return NS_OK;
+  int32_t enabledState;
+  nsresult rv = Preferences::GetInt(GetStatePrefNameForPlugin(this).get(),
+                                    &enabledState);
+  if (NS_SUCCEEDED(rv) &&
+      enabledState >= nsIPluginTag::STATE_DISABLED &&
+      enabledState <= nsIPluginTag::STATE_ENABLED) {
+    *aEnabledState = (uint32_t)enabledState;
+    return rv;
+  }
+
+  enabledState = Preferences::GetInt("plugin.default.state",
+                                     nsIPluginTag::STATE_ENABLED);
+  if (enabledState >= nsIPluginTag::STATE_DISABLED &&
+      enabledState <= nsIPluginTag::STATE_ENABLED) {
+    *aEnabledState = (uint32_t)enabledState;
+    return NS_OK;
+  }
+
+  return NS_ERROR_UNEXPECTED;
 }
 
 NS_IMETHODIMP

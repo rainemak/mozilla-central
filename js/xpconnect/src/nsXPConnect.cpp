@@ -22,6 +22,7 @@
 #include "nsIURI.h"
 #include "nsJSEnvironment.h"
 #include "nsThreadUtils.h"
+#include "nsDOMJSUtils.h"
 
 #include "XrayWrapper.h"
 #include "WrapperFactory.h"
@@ -533,6 +534,36 @@ nsXPConnect::NotifyEnterMainThread()
 {
     NS_ABORT_IF_FALSE(NS_IsMainThread(), "Off main thread");
     JS_SetRuntimeThread(mRuntime->GetJSRuntime());
+}
+
+/*
+ * Return true if there exists a JSContext with a default global whose current
+ * inner is gray. The intent is to look for JS Object windows. We don't merge
+ * system compartments, so we don't use them to trigger merging CCs.
+ */
+bool
+nsXPConnect::UsefulToMergeZones()
+{
+    JSContext *iter = nullptr;
+    JSContext *cx;
+    while ((cx = JS_ContextIterator(GetRuntime()->GetJSRuntime(), &iter))) {
+        // Skip anything without an nsIScriptContext, as well as any scx whose
+        // NativeGlobal() is not an outer window (this happens with XUL Prototype
+        // compilation scopes, for example, which we're not interested in).
+        nsIScriptContext *scx = GetScriptContextFromJSContext(cx);
+        JS::RootedObject global(cx, scx ? scx->GetNativeGlobal() : nullptr);
+        if (!global || !js::GetObjectParent(global)) {
+            continue;
+        }
+        // Grab the inner from the outer.
+        global = JS_ObjectToInnerObject(cx, global);
+        MOZ_ASSERT(!js::GetObjectParent(global));
+        if (JS::GCThingIsMarkedGray(global) &&
+            !js::IsSystemCompartment(js::GetObjectCompartment(global))) {
+            return true;
+        }
+    }
+    return false;
 }
 
 class nsXPConnectParticipant: public nsCycleCollectionParticipant
@@ -1836,7 +1867,6 @@ NS_IMETHODIMP
 nsXPConnect::JSToVariant(JSContext* ctx, const jsval &value, nsIVariant** _retval)
 {
     NS_PRECONDITION(ctx, "bad param");
-    NS_PRECONDITION(value != JSVAL_NULL, "bad param");
     NS_PRECONDITION(_retval, "bad param");
 
     XPCCallContext ccx(NATIVE_CALLER, ctx);
@@ -2031,7 +2061,7 @@ xpc_ActivateDebugMode()
 JSContext*
 nsXPConnect::GetCurrentJSContext()
 {
-    JSContext *cx = XPCJSRuntime::Get()->GetJSContextStack()->Peek();
+    JSContext *cx = GetRuntime()->GetJSContextStack()->Peek();
     return xpc_UnmarkGrayContext(cx);
 }
 
@@ -2039,7 +2069,7 @@ nsXPConnect::GetCurrentJSContext()
 JSContext*
 nsXPConnect::GetSafeJSContext()
 {
-    return XPCJSRuntime::Get()->GetJSContextStack()->GetSafeJSContext();
+    return GetRuntime()->GetJSContextStack()->GetSafeJSContext();
 }
 
 namespace xpc {
@@ -2373,14 +2403,14 @@ nsXPConnect::SetDebugModeWhenPossible(bool mode, bool allowSyncDisable)
 NS_IMETHODIMP
 nsXPConnect::GetTelemetryValue(JSContext *cx, jsval *rval)
 {
-    JSObject *obj = JS_NewObject(cx, NULL, NULL, NULL);
+    RootedObject obj(cx, JS_NewObject(cx, NULL, NULL, NULL));
     if (!obj)
         return NS_ERROR_OUT_OF_MEMORY;
 
     unsigned attrs = JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT;
 
     size_t i = JS_SetProtoCalled(cx);
-    jsval v = DOUBLE_TO_JSVAL(i);
+    RootedValue v(cx, DOUBLE_TO_JSVAL(i));
     if (!JS_DefineProperty(cx, obj, "setProto", v, NULL, NULL, attrs))
         return NS_ERROR_OUT_OF_MEMORY;
 

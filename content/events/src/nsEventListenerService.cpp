@@ -22,7 +22,7 @@
 #include "nsDOMClassInfoID.h"
 
 using namespace mozilla::dom;
-using mozilla::SafeAutoJSContext;
+using mozilla::AutoSafeJSContext;
 
 NS_IMPL_CYCLE_COLLECTION_1(nsEventListenerInfo, mListener)
 
@@ -95,7 +95,7 @@ nsEventListenerInfo::GetJSVal(JSContext* aCx,
 
   nsCOMPtr<nsIJSEventListener> jsl = do_QueryInterface(mListener);
   if (jsl) {
-    JSObject *handler = jsl->GetHandler().Ptr()->Callable();
+    JS::Handle<JSObject*> handler(jsl->GetHandler().Ptr()->Callable());
     if (handler) {
       aAc.construct(aCx, handler);
       *aJSVal = OBJECT_TO_JSVAL(handler);
@@ -110,7 +110,7 @@ nsEventListenerInfo::ToSource(nsAString& aResult)
 {
   aResult.SetIsVoid(true);
 
-  SafeAutoJSContext cx;
+  AutoSafeJSContext cx;
   {
     // Extra block to finish the auto request before calling pop
     JSAutoRequest ar(cx);
@@ -144,7 +144,7 @@ nsEventListenerInfo::GetDebugObject(nsISupports** aRetVal)
   jsd->GetIsOn(&isOn);
   NS_ENSURE_TRUE(isOn, NS_OK);
 
-  SafeAutoJSContext cx;
+  AutoSafeJSContext cx;
   {
     // Extra block to finish the auto request before calling pop
     JSAutoRequest ar(cx);

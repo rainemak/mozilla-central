@@ -101,10 +101,6 @@ class RootedBase<TaggedProto> : public TaggedProtoOperations<Rooted<TaggedProto>
 
 class CallObject;
 
-namespace mjit {
-    struct JITScript;
-}
-
 namespace ion {
     struct IonScript;
 }
@@ -1177,6 +1173,12 @@ class TypeScript
     /* Analysis information for the script, cleared on each GC. */
     analyze::ScriptAnalysis *analysis;
 
+    /*
+     * List mapping indexes of bytecode type sets to the offset of the opcode
+     * they correspond to. Cleared on each GC.
+     */
+    uint32_t *bytecodeMap;
+
   public:
     /* Dynamic types generated at points within this script. */
     TypeResult *dynamicList;
@@ -1200,6 +1202,9 @@ class TypeScript
 
     /* Follows slot layout in jsanalyze.h, can get this/arg/local type sets. */
     static inline StackTypeSet *SlotTypes(JSScript *script, unsigned slot);
+
+    /* Get the type set for values observed at an opcode. */
+    static inline StackTypeSet *BytecodeTypes(JSScript *script, jsbytecode *pc);
 
     /* Get the default 'new' object for a given standard class, per the script's global. */
     static inline TypeObject *StandardType(JSContext *cx, JSProtoKey kind);
@@ -1271,7 +1276,6 @@ typedef HashMap<AllocationSiteKey,ReadBarriered<TypeObject>,AllocationSiteKey,Sy
 struct CompilerOutput
 {
     enum Kind {
-        MethodJIT,
         Ion,
         ParallelIon
     };
@@ -1292,7 +1296,6 @@ struct CompilerOutput
     Kind kind() const { return static_cast<Kind>(kindInt); }
     void setKind(Kind k) { kindInt = k; }
 
-    mjit::JITScript *mjit() const;
     ion::IonScript *ion() const;
 
     bool isValid() const;
@@ -1465,6 +1468,13 @@ struct TypeZone
 
     /* Whether type inference is enabled in this compartment. */
     bool                         inferenceEnabled;
+
+    /*
+     * JM compilation is allowed only if script analysis has been used to
+     * monitor the behavior of all scripts in this zone since its creation.
+     * OSR in JM requires this property.
+     */
+    bool jaegerCompilationAllowed;
 
     TypeZone(JS::Zone *zone);
     ~TypeZone();

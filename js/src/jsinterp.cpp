@@ -38,10 +38,6 @@
 #include "vm/Debugger.h"
 #include "vm/Shape.h"
 
-#ifdef JS_METHODJIT
-#include "methodjit/MethodJIT.h"
-#include "methodjit/Logging.h"
-#endif
 #include "ion/Ion.h"
 #include "ion/BaselineJIT.h"
 
@@ -298,9 +294,6 @@ js::RunScript(JSContext *cx, StackFrame *fp)
 
     JS_ASSERT_IF(!fp->isGeneratorFrame(), cx->regs().pc == script->code);
     JS_ASSERT_IF(fp->isEvalFrame(), script->isActiveEval);
-#ifdef JS_METHODJIT_SPEW
-    JMCheckLogging();
-#endif
 
     JS_CHECK_RECURSION(cx, return false);
 
@@ -308,15 +301,13 @@ js::RunScript(JSContext *cx, StackFrame *fp)
     if (fp->isFunctionFrame() && fp->isConstructing() && !fp->isGeneratorFrame() &&
         cx->typeInferenceEnabled())
     {
-        StackIter iter(cx);
+        ScriptFrameIter iter(cx);
         if (!iter.done()) {
             ++iter;
-            if (iter.isScript()) {
-                JSScript *script = iter.script();
-                jsbytecode *pc = iter.pc();
-                if (UseNewType(cx, script, pc))
-                    fp->setUseNewType();
-            }
+            JSScript *script = iter.script();
+            jsbytecode *pc = iter.pc();
+            if (UseNewType(cx, script, pc))
+                fp->setUseNewType();
         }
     }
 
@@ -371,17 +362,6 @@ js::RunScript(JSContext *cx, StackFrame *fp)
     }
 #endif
 
-#ifdef JS_METHODJIT
-    mjit::CompileStatus status;
-    status = mjit::CanMethodJIT(cx, script, script->code, fp->isConstructing(),
-                                mjit::CompileRequest_Interpreter, fp);
-    if (status == mjit::Compile_Error)
-        return false;
-
-    if (status == mjit::Compile_Okay)
-        return mjit::JaegerStatusToSuccess(mjit::JaegerShot(cx, false));
-#endif
-
     return Interpret(cx, fp) != Interpret_Error;
 }
 
@@ -392,7 +372,7 @@ js::RunScript(JSContext *cx, StackFrame *fp)
  * when done.  Then push the return value.
  */
 bool
-js::InvokeKernel(JSContext *cx, CallArgs args, MaybeConstruct construct)
+js::Invoke(JSContext *cx, CallArgs args, MaybeConstruct construct)
 {
     JS_ASSERT(args.length() <= StackSpace::ARGS_LENGTH_MAX);
     JS_ASSERT(!cx->compartment->activeAnalysis);
@@ -480,7 +460,7 @@ js::Invoke(JSContext *cx, const Value &thisv, const Value &fval, unsigned argc, 
 }
 
 bool
-js::InvokeConstructorKernel(JSContext *cx, CallArgs args)
+js::InvokeConstructor(JSContext *cx, CallArgs args)
 {
     JS_ASSERT(!FunctionClass.construct);
 
@@ -501,7 +481,7 @@ js::InvokeConstructorKernel(JSContext *cx, CallArgs args)
         if (!fun->isInterpretedConstructor())
             return ReportIsNotFunction(cx, args.calleev().get(), args.length() + 1, CONSTRUCT);
 
-        if (!InvokeKernel(cx, args, CONSTRUCT))
+        if (!Invoke(cx, args, CONSTRUCT))
             return false;
 
         JS_ASSERT(args.rval().isObject());
@@ -565,7 +545,7 @@ js::ExecuteKernel(JSContext *cx, HandleScript script, JSObject &scopeChainArg, c
     if (!cx->stack.pushExecuteFrame(cx, script, thisv, scopeChain, type, evalInFrame, &efg))
         return false;
 
-    if (!script->ensureRanAnalysis(cx))
+    if (!script->ensureHasTypes(cx))
         return false;
     TypeScript::SetThis(cx, script, efg.fp()->thisValue());
 
@@ -729,13 +709,13 @@ js::StrictlyEqual(JSContext *cx, const Value &lref, const Value &rref, bool *equ
 static inline bool
 IsNegativeZero(const Value &v)
 {
-    return v.isDouble() && MOZ_DOUBLE_IS_NEGATIVE_ZERO(v.toDouble());
+    return v.isDouble() && mozilla::IsNegativeZero(v.toDouble());
 }
 
 static inline bool
 IsNaN(const Value &v)
 {
-    return v.isDouble() && MOZ_DOUBLE_IS_NaN(v.toDouble());
+    return v.isDouble() && mozilla::IsNaN(v.toDouble());
 }
 
 bool
@@ -1084,25 +1064,6 @@ js::Interpret(JSContext *cx, StackFrame *entryFrame, InterpMode interpMode, bool
 #define LOAD_DOUBLE(PCOFF, dbl)                                               \
     (dbl = script->getConst(GET_UINT32_INDEX(regs.pc + (PCOFF))).toDouble())
 
-#ifdef JS_METHODJIT
-
-#define CHECK_PARTIAL_METHODJIT(status)                                       \
-    JS_BEGIN_MACRO                                                            \
-        switch (status) {                                                     \
-          case mjit::Jaeger_UnfinishedAtTrap:                                 \
-            interpMode = JSINTERP_SKIP_TRAP;                                  \
-            /* FALLTHROUGH */                                                 \
-          case mjit::Jaeger_Unfinished:                                       \
-            op = (JSOp) *regs.pc;                                             \
-            SET_SCRIPT(regs.fp()->script());                                  \
-            if (cx->isExceptionPending())                                     \
-                goto error;                                                   \
-            DO_OP();                                                          \
-          default:;                                                           \
-        }                                                                     \
-    JS_END_MACRO
-#endif
-
     /*
      * Prepare to call a user-supplied branch handler, and abort the script
      * if it returns false.
@@ -1145,11 +1106,6 @@ js::Interpret(JSContext *cx, StackFrame *entryFrame, InterpMode interpMode, bool
     JSRuntime *const rt = cx->runtime;
     RootedScript script(cx);
     SET_SCRIPT(regs.fp()->script());
-
-#ifdef JS_METHODJIT
-    /* Reset the loop count on the script we're entering. */
-    script->resetLoopCount();
-#endif
 
 #if JS_TRACE_LOGGING
     AutoTraceLog logger(TraceLogging::defaultLogger(),
@@ -1383,10 +1339,6 @@ ADD_EMPTY_CASE(JSOP_TRY)
 END_EMPTY_CASES
 
 BEGIN_CASE(JSOP_LOOPHEAD)
-
-#ifdef JS_METHODJIT
-    script->incrLoopCount();
-#endif
 END_CASE(JSOP_LOOPHEAD)
 
 BEGIN_CASE(JSOP_LABEL)
@@ -1395,35 +1347,6 @@ END_CASE(JSOP_LABEL)
 check_backedge:
 {
     CHECK_BRANCH();
-    if (op != JSOP_LOOPHEAD)
-        DO_OP();
-
-#ifdef JS_METHODJIT
-    // Attempt on-stack replacement with JaegerMonkey code, which is keyed to
-    // the interpreter state at the JSOP_LOOPHEAD at the start of the loop.
-    // Unlike IonMonkey, this requires two different code fragments to perform
-    // hoisting.
-    mjit::CompileStatus status =
-        mjit::CanMethodJIT(cx, script, regs.pc, regs.fp()->isConstructing(),
-                           mjit::CompileRequest_Interpreter, regs.fp());
-    if (status == mjit::Compile_Error)
-        goto error;
-    if (status == mjit::Compile_Okay) {
-        void *ncode =
-            script->nativeCodeForPC(regs.fp()->isConstructing(), regs.pc);
-        JS_ASSERT(ncode);
-        mjit::JaegerStatus status = mjit::JaegerShotAtSafePoint(cx, ncode, true);
-        if (status == mjit::Jaeger_ThrowBeforeEnter)
-            goto error;
-        CHECK_PARTIAL_METHODJIT(status);
-        interpReturnOK = (status == mjit::Jaeger_Returned);
-        if (entryFrame != regs.fp())
-            goto jit_return;
-        regs.fp()->setFinishedInInterpreter();
-        goto leave_on_safe_point;
-    }
-#endif /* JS_METHODJIT */
-
     DO_OP();
 }
 
@@ -1567,13 +1490,11 @@ BEGIN_CASE(JSOP_STOP)
             Probes::exitScript(cx, script, script->function(), regs.fp());
 
         /* The JIT inlines the epilogue. */
-#if defined(JS_METHODJIT) || defined(JS_ION)
+#if defined(JS_ION)
   jit_return:
 #endif
 
         /* The results of lowered call/apply frames need to be shifted. */
-        bool shiftResult = regs.fp()->loweredCallOrApply();
-
         cx->stack.popInlineFrame(regs);
         SET_SCRIPT(regs.fp()->script());
 
@@ -1582,11 +1503,6 @@ BEGIN_CASE(JSOP_STOP)
         /* Resume execution in the calling frame. */
         if (JS_LIKELY(interpReturnOK)) {
             TypeScript::Monitor(cx, script, regs.pc, regs.sp[-1]);
-
-            if (shiftResult) {
-                regs.sp[-2] = regs.sp[-1];
-                regs.sp--;
-            }
 
             len = JSOP_CALL_LENGTH;
             DO_NEXT_OP(len);
@@ -2351,7 +2267,7 @@ BEGIN_CASE(JSOP_EVAL)
         if (!DirectEval(cx, args))
             goto error;
     } else {
-        if (!InvokeKernel(cx, args))
+        if (!Invoke(cx, args))
             goto error;
     }
     regs.sp = args.spAfterCall();
@@ -2398,10 +2314,10 @@ BEGIN_CASE(JSOP_FUNCALL)
     /* Don't bother trying to fast-path calls to scripted non-constructors. */
     if (!isFunction || !fun->isInterpretedConstructor()) {
         if (construct) {
-            if (!InvokeConstructorKernel(cx, args))
+            if (!InvokeConstructor(cx, args))
                 goto error;
         } else {
-            if (!InvokeKernel(cx, args))
+            if (!Invoke(cx, args))
                 goto error;
         }
         Value *newsp = args.spAfterCall();
@@ -2424,9 +2340,6 @@ BEGIN_CASE(JSOP_FUNCALL)
         regs.fp()->setUseNewType();
 
     SET_SCRIPT(regs.fp()->script());
-#ifdef JS_METHODJIT
-    script->resetLoopCount();
-#endif
 
 #ifdef JS_ION
     if (!newType && ion::IsEnabled(cx)) {
@@ -2462,24 +2375,6 @@ BEGIN_CASE(JSOP_FUNCALL)
             JS_ASSERT(exec != ion::IonExec_Bailout);
 
             interpReturnOK = !IsErrorStatus(exec);
-            goto jit_return;
-        }
-    }
-#endif
-
-#ifdef JS_METHODJIT
-    if (!newType && cx->methodJitEnabled) {
-        /* Try to ensure methods are method JIT'd.  */
-        mjit::CompileStatus status = mjit::CanMethodJIT(cx, script, script->code,
-                                                        construct,
-                                                        mjit::CompileRequest_Interpreter,
-                                                        regs.fp());
-        if (status == mjit::Compile_Error)
-            goto error;
-        if (status == mjit::Compile_Okay) {
-            mjit::JaegerStatus status = mjit::JaegerShot(cx, true);
-            CHECK_PARTIAL_METHODJIT(status);
-            interpReturnOK = mjit::JaegerStatusToSuccess(status);
             goto jit_return;
         }
     }
@@ -2647,7 +2542,7 @@ BEGIN_CASE(JSOP_TABLESWITCH)
         i = rref.toInt32();
     } else {
         double d;
-        /* Don't use MOZ_DOUBLE_IS_INT32; treat -0 (double) as 0. */
+        /* Don't use mozilla::DoubleIsInt32; treat -0 (double) as 0. */
         if (!rref.isDouble() || (d = rref.toDouble()) != (i = int32_t(rref.toDouble())))
             DO_NEXT_OP(len);
     }
@@ -3366,7 +3261,11 @@ END_CASE(JSOP_ARRAYPUSH)
                 regs.sp -= 1;
                 if (!ok)
                     goto error;
+                break;
               }
+
+              case JSTRY_LOOP:
+                break;
            }
         }
 
@@ -3406,7 +3305,7 @@ END_CASE(JSOP_ARRAYPUSH)
 
     gc::MaybeVerifyBarriers(cx, true);
 
-#ifdef JS_METHODJIT
+#ifdef JS_ION
     /*
      * This path is used when it's guaranteed the method can be finished
      * inside the JIT.
@@ -3482,7 +3381,7 @@ js::GetScopeNameForTypeOf(JSContext *cx, HandleObject scopeChain, HandleProperty
 JSObject *
 js::Lambda(JSContext *cx, HandleFunction fun, HandleObject parent)
 {
-    RootedObject clone(cx, CloneFunctionObjectIfNotSingleton(cx, fun, parent));
+    RootedObject clone(cx, CloneFunctionObjectIfNotSingleton(cx, fun, parent, TenuredObject));
     if (!clone)
         return NULL;
 

@@ -241,6 +241,9 @@ EmbedLitePuppetWidget::Resize(double aWidth,
   nsIntRect oldBounds = mBounds;
   LOGF("sz[%i,%i]->[%g,%g]", oldBounds.width, oldBounds.height, aWidth, aHeight);
   mBounds.SizeTo(nsIntSize(NSToIntRound(aWidth), NSToIntRound(aHeight)));
+  nsIWidget* topWidget = GetTopLevelWidget();
+  if (topWidget)
+    static_cast<EmbedLitePuppetWidget*>(topWidget)->mBounds = mBounds;
 
   if (mChild) {
     return mChild->Resize(aWidth, aHeight, aRepaint);

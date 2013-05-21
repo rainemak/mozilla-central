@@ -38,9 +38,6 @@ DOMCI_CLASS(DeviceMotionEvent)
 DOMCI_CLASS(DeviceAcceleration)
 DOMCI_CLASS(DeviceRotationRate)
 
-// HTML classes
-DOMCI_CLASS(HTMLDocument)
-
 // HTML element classes
 DOMCI_CLASS(HTMLFormElement)
 
@@ -82,8 +79,6 @@ DOMCI_CLASS(CSSRect)
 // DOM Chrome Window class, almost identical to Window
 DOMCI_CLASS(ChromeWindow)
 
-DOMCI_CLASS(ImageDocument)
-
 #ifdef MOZ_XUL
 DOMCI_CLASS(XULTemplateBuilder)
 DOMCI_CLASS(XULTreeBuilder)
@@ -107,11 +102,9 @@ DOMCI_CLASS(TimeEvent)
 DOMCI_CLASS(SVGAnimatedEnumeration)
 DOMCI_CLASS(SVGAnimatedInteger)
 DOMCI_CLASS(SVGAnimatedNumber)
-DOMCI_CLASS(SVGAnimatedRect)
 DOMCI_CLASS(SVGAnimatedString)
 DOMCI_CLASS(SVGLength)
 DOMCI_CLASS(SVGNumber)
-DOMCI_CLASS(SVGRect)
 
 // Canvas
 DOMCI_CLASS(MozCanvasPrintState)
@@ -241,11 +234,12 @@ DOMCI_CLASS(AsyncScrollEventDetail)
 
 DOMCI_CLASS(LockedFile)
 
+DOMCI_CLASS(CSSFontFeatureValuesRule)
+
 #ifdef MOZ_TIME_MANAGER
 DOMCI_CLASS(MozTimeManager)
 #endif
 
 #ifdef MOZ_WEBRTC
 DOMCI_CLASS(DataChannel)
-DOMCI_CLASS(RTCPeerConnection)
 #endif

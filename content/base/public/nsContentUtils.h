@@ -184,8 +184,6 @@ public:
 
   static bool LookupBindingMember(JSContext* aCx, nsIContent *aContent,
                                   JS::HandleId aId, JSPropertyDescriptor* aDesc);
-  static bool IsBindingField(JSContext* aCx, nsIContent* aContent,
-                             JS::HandleId aId);
 
   /**
    * Returns the parent node of aChild crossing document boundaries.
@@ -1726,7 +1724,7 @@ public:
 
   static nsresult CreateBlobBuffer(JSContext* aCx,
                                    const nsACString& aData,
-                                   JS::Value& aBlob);
+                                   JS::MutableHandle<JS::Value> aBlob);
 
   static void StripNullChars(const nsAString& aInStr, nsAString& aOutStr);
 
@@ -1776,14 +1774,14 @@ public:
    * getting generic data like a device context or widget from it is OK, but it
    * might not be this document's actual presentation.
    */
-  static nsIPresShell* FindPresShellForDocument(nsIDocument* aDoc);
+  static nsIPresShell* FindPresShellForDocument(const nsIDocument* aDoc);
 
   /**
    * Returns the widget for this document if there is one. Looks at all ancestor
    * documents to try to find a widget, so for example this can still find a
    * widget for documents in display:none frames that have no presentation.
    */
-  static nsIWidget* WidgetForDocument(nsIDocument* aDoc);
+  static nsIWidget* WidgetForDocument(const nsIDocument* aDoc);
 
   /**
    * Returns a layer manager to use for the given document. Basically we
@@ -1796,7 +1794,7 @@ public:
    * layer manager should be used for retained layers
    */
   static already_AddRefed<mozilla::layers::LayerManager>
-  LayerManagerForDocument(nsIDocument *aDoc, bool *aAllowRetaining = nullptr);
+  LayerManagerForDocument(const nsIDocument *aDoc, bool *aAllowRetaining = nullptr);
 
   /**
    * Returns a layer manager to use for the given document. Basically we
@@ -1866,6 +1864,14 @@ public:
    * Returns true if the idle observers API is enabled.
    */
   static bool IsIdleObserverAPIEnabled() { return sIsIdleObserverAPIEnabled; }
+
+  /*
+   * Returns true if the performance timing APIs are enabled.
+   */
+  static bool IsPerformanceTimingEnabled()
+  {
+    return sIsPerformanceTimingEnabled;
+  }
   
   /**
    * Returns true if the doc tree branch which contains aDoc contains any
@@ -2230,6 +2236,7 @@ private:
   static bool sFullscreenApiIsContentOnly;
   static uint32_t sHandlingInputTimeout;
   static bool sIsIdleObserverAPIEnabled;
+  static bool sIsPerformanceTimingEnabled;
 
   static nsHtml5StringParser* sHTMLFragmentParser;
   static nsIParser* sXMLFragmentParser;
@@ -2361,12 +2368,12 @@ private:
 };
 
 /**
- * SafeAutoJSContext is similar to AutoJSContext but will only return the safe
+ * AutoSafeJSContext is similar to AutoJSContext but will only return the safe
  * JS context. That means it will never call ::GetCurrentJSContext().
  */
-class MOZ_STACK_CLASS SafeAutoJSContext : public AutoJSContext {
+class MOZ_STACK_CLASS AutoSafeJSContext : public AutoJSContext {
 public:
-  SafeAutoJSContext(MOZ_GUARD_OBJECT_NOTIFIER_ONLY_PARAM);
+  AutoSafeJSContext(MOZ_GUARD_OBJECT_NOTIFIER_ONLY_PARAM);
 };
 
 /**

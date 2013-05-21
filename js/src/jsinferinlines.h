@@ -91,31 +91,19 @@ namespace types {
 inline
 CompilerOutput::CompilerOutput()
   : script(NULL),
-    kindInt(MethodJIT),
+    kindInt(Ion),
     constructing(false),
     barriers(false),
     chunkIndex(false)
 {
 }
 
-inline mjit::JITScript *
-CompilerOutput::mjit() const
-{
-#ifdef JS_METHODJIT
-    JS_ASSERT(kind() == MethodJIT && isValid());
-    return script->getJIT(constructing, barriers);
-#else
-    return NULL;
-#endif
-}
-
 inline ion::IonScript *
 CompilerOutput::ion() const
 {
 #ifdef JS_ION
-    JS_ASSERT(kind() != MethodJIT && isValid());
+    JS_ASSERT(isValid());
     switch (kind()) {
-      case MethodJIT: break;
       case Ion: return script->ionScript();
       case ParallelIon: return script->parallelIonScript();
     }
@@ -130,24 +118,11 @@ CompilerOutput::isValid() const
     if (!script)
         return false;
 
-#if defined(DEBUG) && (defined(JS_METHODJIT) || defined(JS_ION))
+#if defined(DEBUG) && defined(JS_ION)
     TypeCompartment &types = script->compartment()->types;
 #endif
 
     switch (kind()) {
-      case MethodJIT: {
-#ifdef JS_METHODJIT
-        mjit::JITScript *jit = script->getJIT(constructing, barriers);
-        if (!jit)
-            return false;
-        mjit::JITChunk *chunk = jit->chunkDescriptor(chunkIndex).chunk;
-        if (!chunk)
-            return false;
-        JS_ASSERT(this == chunk->recompileInfo.compilerOutput(types));
-        return true;
-#endif
-      }
-
       case Ion:
 #ifdef JS_ION
         if (script->hasIonScript()) {
@@ -586,7 +561,7 @@ TypeMonitorCall(JSContext *cx, const js::CallArgs &args, bool constructing)
     if (args.callee().isFunction()) {
         JSFunction *fun = args.callee().toFunction();
         if (fun->isInterpreted()) {
-            if (!fun->nonLazyScript()->ensureRanAnalysis(cx))
+            if (!fun->nonLazyScript()->ensureHasTypes(cx))
                 return false;
             if (cx->typeInferenceEnabled())
                 TypeMonitorCallSlow(cx, &args.callee(), args, constructing);
@@ -856,6 +831,49 @@ TypeScript::SlotTypes(JSScript *script, unsigned slot)
     JS_ASSERT(slot < js::analyze::TotalSlots(script));
     TypeSet *types = script->types->typeArray() + script->nTypeSets + slot;
     return types->toStackTypeSet();
+}
+
+/* static */ inline StackTypeSet *
+TypeScript::BytecodeTypes(JSScript *script, jsbytecode *pc)
+{
+    JS_ASSERT(js_CodeSpec[*pc].format & JOF_TYPESET);
+    JS_ASSERT(script->types && script->types->bytecodeMap);
+    uint32_t *bytecodeMap = script->types->bytecodeMap;
+    uint32_t *hint = bytecodeMap + script->nTypeSets;
+    uint32_t offset = pc - script->code;
+    JS_ASSERT(offset < script->length);
+
+    // See if this pc is the next typeset opcode after the last one looked up.
+    if (bytecodeMap[*hint + 1] == offset && (*hint + 1) < script->nTypeSets) {
+        (*hint)++;
+        return script->types->typeArray()->toStackTypeSet() + *hint;
+    }
+
+    // See if this pc is the same as the last one looked up.
+    if (bytecodeMap[*hint] == offset)
+        return script->types->typeArray()->toStackTypeSet() + *hint;
+
+    // Fall back to a binary search.
+    size_t bottom = 0;
+    size_t top = script->nTypeSets - 1;
+    size_t mid = (bottom + top) / 2;
+    while (mid < top) {
+        if (bytecodeMap[mid] < offset)
+            bottom = mid + 1;
+        else if (bytecodeMap[mid] > offset)
+            top = mid;
+        else
+            break;
+        mid = (bottom + top) / 2;
+    }
+
+    // We should have have zeroed in on either the exact offset, unless there
+    // are more JOF_TYPESET opcodes than nTypeSets in the script (as can happen
+    // if the script is very long).
+    JS_ASSERT(bytecodeMap[mid] == offset || mid == top);
+
+    *hint = mid;
+    return script->types->typeArray()->toStackTypeSet() + *hint;
 }
 
 /* static */ inline TypeObject *
@@ -1783,6 +1801,12 @@ JSScript::ensureHasTypes(JSContext *cx)
 }
 
 inline bool
+JSScript::ensureHasBytecodeTypeMap(JSContext *cx)
+{
+    return ensureHasTypes(cx) && (types->bytecodeMap || makeBytecodeTypeMap(cx));
+}
+
+inline bool
 JSScript::ensureRanAnalysis(JSContext *cx)
 {
     js::types::AutoEnterAnalysis aea(cx);
@@ -1823,8 +1847,10 @@ JSScript::analysis()
 inline void
 JSScript::clearAnalysis()
 {
-    if (types)
+    if (types) {
         types->analysis = NULL;
+        types->bytecodeMap = NULL;
+    }
 }
 
 inline void

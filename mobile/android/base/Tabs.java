@@ -155,6 +155,15 @@ public class Tabs implements GeckoEventListener {
         return count;
     }
 
+    public synchronized int isOpen(String url) {
+        for (Tab tab : mOrder) {
+            if (tab.getURL().equals(url)) {
+                return tab.getId();
+            }
+        }
+        return -1;
+    }
+
     // Must be synchronized to avoid racing on mContentObserver.
     private void lazyRegisterBookmarkObserver() {
         if (mContentObserver == null) {
@@ -284,13 +293,13 @@ public class Tabs implements GeckoEventListener {
         if (tab == null)
             return;
 
+        int tabId = tab.getId();
+        removeTab(tabId);
+
         if (nextTab == null)
             nextTab = loadUrl("about:home", LOADURL_NEW_TAB);
 
         selectTab(nextTab.getId());
-
-        int tabId = tab.getId();
-        removeTab(tabId);
 
         tab.onDestroy();
 
@@ -311,7 +320,11 @@ public class Tabs implements GeckoEventListener {
         if (nextTab == null && getPrivate) {
             // If there are no private tabs remaining, get the last normal tab
             Tab lastTab = mOrder.get(mOrder.size() - 1);
-            nextTab = getPreviousTabFrom(lastTab, false);
+            if (!lastTab.isPrivate()) {
+                nextTab = lastTab;
+            } else {
+                nextTab = getPreviousTabFrom(lastTab, false);
+            }
         }
 
         Tab parent = getTab(tab.getParentId());
@@ -612,7 +625,9 @@ public class Tabs implements GeckoEventListener {
         JSONObject args = new JSONObject();
         Tab added = null;
         boolean delayLoad = (flags & LOADURL_DELAY_LOAD) != 0;
-        boolean background = (flags & LOADURL_BACKGROUND) != 0;
+
+        // delayLoad implies background tab
+        boolean background = delayLoad || (flags & LOADURL_BACKGROUND) != 0;
 
         try {
             boolean isPrivate = (flags & LOADURL_PRIVATE) != 0;

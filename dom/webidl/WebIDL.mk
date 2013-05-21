@@ -48,6 +48,7 @@ webidl_files = \
   CSSStyleSheet.webidl \
   CSSValue.webidl \
   CSSValueList.webidl \
+  DataContainerEvent.webidl \
   DelayNode.webidl \
   DesktopNotification.webidl \
   DeviceMotionEvent.webidl \
@@ -153,13 +154,15 @@ webidl_files = \
   IDBFactory.webidl \
   IDBVersionChangeEvent.webidl \
   ImageData.webidl \
+  ImageDocument.webidl \
   InspectorUtils.webidl \
-  KeyEvent.webidl \
+  KeyboardEvent.webidl \
   LinkStyle.webidl \
   LocalMediaStream.webidl \
   Location.webidl \
   MediaError.webidl \
   MediaStream.webidl \
+  MediaStreamEvent.webidl \
   MediaStreamTrack.webidl \
   MessageEvent.webidl \
   MouseEvent.webidl \
@@ -176,6 +179,8 @@ webidl_files = \
   Notification.webidl \
   NotifyAudioAvailableEvent.webidl \
   NotifyPaintEvent.webidl \
+  OfflineAudioCompletionEvent.webidl \
+  OfflineAudioContext.webidl \
   PaintRequest.webidl \
   PaintRequestList.webidl \
   PannerNode.webidl \
@@ -189,6 +194,11 @@ webidl_files = \
   Rect.webidl \
   RGBColor.webidl \
   RTCConfiguration.webidl \
+  RTCDataChannelEvent.webidl \
+  RTCIceCandidate.webidl \
+  RTCPeerConnection.webidl \
+  RTCPeerConnectionIceEvent.webidl \
+  RTCSessionDescription.webidl \
   Screen.webidl \
   ScriptProcessorNode.webidl \
   ScrollAreaEvent.webidl \
@@ -205,6 +215,7 @@ webidl_files = \
   SVGAnimatedPathData.webidl \
   SVGAnimatedPoints.webidl \
   SVGAnimatedPreserveAspectRatio.webidl \
+  SVGAnimatedRect.webidl \
   SVGAnimatedTransformList.webidl \
   SVGAnimateElement.webidl \
   SVGAnimateMotionElement.webidl \
@@ -313,6 +324,7 @@ webidl_files = \
   URLUtils.webidl \
   USSDReceivedEvent.webidl \
   VideoStreamTrack.webidl \
+  WaveShaperNode.webidl \
   Window.webidl \
   XMLDocument.webidl \
   XMLHttpRequest.webidl \
@@ -361,6 +373,12 @@ endif
 ifdef MOZ_GAMEPAD
 webidl_files += \
   Gamepad.webidl \
+  $(NULL)
+endif
+
+ifdef MOZ_B2G_RIL
+webidl_files += \
+  MozStkCommandEvent.webidl \
   $(NULL)
 endif
 

@@ -19,7 +19,6 @@
 #include "EdgeCaseAnalysis.h"
 #include "RangeAnalysis.h"
 #include "LinearScan.h"
-#include "vm/ParallelDo.h"
 #include "ParallelArrayAnalysis.h"
 #include "jscompartment.h"
 #include "vm/ThreadPool.h"
@@ -46,7 +45,6 @@
 #include "vm/Stack-inl.h"
 #include "ion/IonFrames-inl.h"
 #include "ion/CompilerRoot.h"
-#include "methodjit/Retcon.h"
 #include "ExecutionModeInlines.h"
 
 #if JS_TRACE_LOGGING
@@ -100,6 +98,12 @@ IonContext *
 ion::GetIonContext()
 {
     JS_ASSERT(CurrentIonContext());
+    return CurrentIonContext();
+}
+
+IonContext *
+ion::MaybeGetIonContext()
+{
     return CurrentIonContext();
 }
 
@@ -550,6 +554,7 @@ IonScript::IonScript()
     deoptTable_(NULL),
     osrPc_(NULL),
     osrEntryOffset_(0),
+    skipArgCheckEntryOffset_(0),
     invalidateEpilogueOffset_(0),
     invalidateEpilogueDataOffset_(0),
     numBailouts_(0),
@@ -717,7 +722,7 @@ IonScript::copyBailoutTable(const SnapshotOffset *table)
 }
 
 void
-IonScript::copyConstants(const HeapValue *vp)
+IonScript::copyConstants(const Value *vp)
 {
     for (size_t i = 0; i < constantEntries_; i++)
         constants()[i].init(vp[i]);
@@ -1288,10 +1293,7 @@ AttachFinishedCompilations(JSContext *cx)
                 success = codegen->link();
             }
 
-            if (success) {
-                if (script->hasIonScript())
-                    mjit::DisableScriptCodeForIon(script, script->ionScript()->osrPc());
-            } else {
+            if (!success) {
                 // Silently ignore OOM during code generation, we're at an
                 // operation callback and can't propagate failures.
                 cx->clearPendingException();
@@ -1584,8 +1586,8 @@ Compile(JSContext *cx, HandleScript script, AbstractFramePtr fp, jsbytecode *osr
     }
 
     if (executionMode == SequentialExecution) {
-        if (cx->methodJitEnabled || IsBaselineEnabled(cx)) {
-            // If JM is enabled we use getUseCount instead of incUseCount to avoid
+        if (IsBaselineEnabled(cx)) {
+            // If Baseline is enabled we use getUseCount instead of incUseCount to avoid
             // bumping the use count twice.
             if (script->getUseCount() < js_IonOptions.usesBeforeCompile)
                 return Method_Skipped;
@@ -2074,7 +2076,7 @@ ion::SideCannon(JSContext *cx, StackFrame *fp, jsbytecode *pc)
 }
 
 IonExecStatus
-ion::FastInvoke(JSContext *cx, HandleFunction fun, CallArgsList &args)
+ion::FastInvoke(JSContext *cx, HandleFunction fun, CallArgs &args)
 {
     JS_CHECK_RECURSION(cx, return IonExec_Error);
 
@@ -2116,10 +2118,8 @@ ion::FastInvoke(JSContext *cx, HandleFunction fun, CallArgsList &args)
     JS_ASSERT(args.length() >= fun->nargs);
 
     JSAutoResolveFlags rf(cx, RESOLVE_INFER);
-    args.setActive();
     enter(jitcode, args.length() + 1, args.array() - 1, fp, calleeToken,
           /* scopeChain = */ NULL, 0, result.address());
-    args.setInactive();
 
     if (clearCallingIntoIon)
         fp->clearCallingIntoIon();
@@ -2293,8 +2293,6 @@ ion::Invalidate(types::TypeCompartment &types, FreeOp *fop,
     for (size_t i = 0; i < invalid.length(); i++) {
         const types::CompilerOutput &co = *invalid[i].compilerOutput(types);
         switch (co.kind()) {
-          case types::CompilerOutput::MethodJIT:
-            break;
           case types::CompilerOutput::Ion:
           case types::CompilerOutput::ParallelIon:
             JS_ASSERT(co.isValid());
@@ -2324,8 +2322,6 @@ ion::Invalidate(types::TypeCompartment &types, FreeOp *fop,
         types::CompilerOutput &co = *invalid[i].compilerOutput(types);
         ExecutionMode executionMode = SequentialExecution;
         switch (co.kind()) {
-          case types::CompilerOutput::MethodJIT:
-            continue;
           case types::CompilerOutput::Ion:
             break;
           case types::CompilerOutput::ParallelIon:
@@ -2491,17 +2487,15 @@ ion::UsesBeforeIonRecompile(JSScript *script, jsbytecode *pc)
     JS_ASSERT(pc == script->code || JSOp(*pc) == JSOP_LOOPENTRY);
 
     uint32_t minUses = js_IonOptions.usesBeforeCompile;
-    if (JSOp(*pc) != JSOP_LOOPENTRY || !script->hasAnalysis() || js_IonOptions.eagerCompilation)
-        return minUses;
-
-    analyze::LoopAnalysis *loop = script->analysis()->getLoop(pc);
-    if (!loop)
+    if (JSOp(*pc) != JSOP_LOOPENTRY || js_IonOptions.eagerCompilation)
         return minUses;
 
     // It's more efficient to enter outer loops, rather than inner loops, via OSR.
     // To accomplish this, we use a slightly higher threshold for inner loops.
-    // Note that we use +1 to prefer non-OSR over OSR.
-    return minUses + (loop->depth + 1) * 100;
+    // Note that the loop depth is always > 0 so we will prefer non-OSR over OSR.
+    uint32_t loopDepth = GET_UINT8(pc);
+    JS_ASSERT(loopDepth > 0);
+    return minUses + loopDepth * 100;
 }
 
 void

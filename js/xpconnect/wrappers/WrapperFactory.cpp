@@ -11,6 +11,7 @@
 #include "AccessCheck.h"
 #include "XPCWrapper.h"
 #include "ChromeObjectWrapper.h"
+#include "WrapperFactory.h"
 
 #include "xpcprivate.h"
 #include "XPCMaps.h"
@@ -156,6 +157,41 @@ WrapperFactory::PrepareForWrapping(JSContext *cx, HandleObject scope,
     if (IS_SLIM_WRAPPER(obj) && !MorphSlimWrapper(cx, obj))
         return nullptr;
 
+    // If the object being wrapped is a prototype for a standard class and the
+    // wrapper does not subsumes the wrappee, use the one from the content
+    // compartment. This is generally safer all-around, and in the COW case this
+    // lets us safely take advantage of things like .forEach() via the
+    // ChromeObjectWrapper machinery.
+    //
+    // If the prototype chain of chrome object |obj| looks like this:
+    //
+    // obj => foo => bar => chromeWin.StandardClass.prototype
+    //
+    // The prototype chain of COW(obj) looks lke this:
+    //
+    // COW(obj) => COW(foo) => COW(bar) => contentWin.StandardClass.prototype
+    //
+    // NB: We now remap all non-subsuming access of standard prototypes.
+    bool subsumes = AccessCheck::subsumes(js::GetContextCompartment(cx),
+                                          js::GetObjectCompartment(obj));
+    XrayType xrayType = GetXrayType(obj);
+    if (!subsumes && xrayType == NotXray) {
+        JSProtoKey key = JSProto_Null;
+        {
+            JSAutoCompartment ac(cx, obj);
+            key = JS_IdentifyClassPrototype(cx, obj);
+        }
+        if (key != JSProto_Null) {
+            RootedObject homeProto(cx);
+            if (!JS_GetClassPrototype(cx, key, homeProto.address()))
+                return nullptr;
+            MOZ_ASSERT(homeProto);
+            // No need to double-wrap here. We should never have waivers to
+            // COWs.
+            return homeProto;
+        }
+    }
+
     // Now, our object is ready to be wrapped, but several objects (notably
     // nsJSIIDs) have a wrapper per scope. If we are about to wrap one of
     // those objects in a security wrapper, then we need to hand back the
@@ -283,19 +319,15 @@ WrapperFactory::PrepareForWrapping(JSContext *cx, HandleObject scope,
 
 #ifdef DEBUG
 static void
-DEBUG_CheckUnwrapSafety(JSObject *obj, js::Wrapper *handler,
+DEBUG_CheckUnwrapSafety(HandleObject obj, js::Wrapper *handler,
                         JSCompartment *origin, JSCompartment *target)
 {
     if (AccessCheck::isChrome(target) || xpc::IsUniversalXPConnectEnabled(target)) {
         // If the caller is chrome (or effectively so), unwrap should always be allowed.
         MOZ_ASSERT(handler->isSafeToUnwrap());
-    } else if (WrapperFactory::IsComponentsObject(obj))
-    {
+    } else if (WrapperFactory::IsComponentsObject(obj)) {
         // The Components object that is restricted regardless of origin.
         MOZ_ASSERT(!handler->isSafeToUnwrap());
-    } else if (AccessCheck::needsSystemOnlyWrapper(obj)) {
-        // SOWs have a dynamic unwrap check, so we can't really say anything useful
-        // about them here :-(
     } else if (handler == &FilteringWrapper<CrossCompartmentSecurityWrapper, GentlyOpaque>::singleton) {
         // We explicitly use a SecurityWrapper to protect privileged callers from
         // less-privileged objects that they should never see. Skip the check in
@@ -392,15 +424,16 @@ WrapperFactory::Rewrap(JSContext *cx, HandleObject existing, HandleObject obj,
         wrapper = &ChromeObjectWrapper::singleton;
 
     // If content is accessing a Components object or NAC, we need a special filter,
-    // even if the object is same origin.
+    // even if the object is same origin. Note that we allow access to NAC for
+    // remote-XUL whitelisted domains, since they don't have XBL scopes.
     } else if (IsComponentsObject(obj) && !AccessCheck::isChrome(target)) {
         wrapper = &FilteringWrapper<CrossCompartmentSecurityWrapper,
                                     ComponentsObjectPolicy>::singleton;
     } else if (AccessCheck::needsSystemOnlyWrapper(obj) &&
+               xpc::AllowXBLScope(target) &&
                !(targetIsChrome || (targetSubsumesOrigin && nsContentUtils::IsCallerXBL())))
     {
-        wrapper = &FilteringWrapper<CrossCompartmentSecurityWrapper,
-                                    OnlyIfSubjectIsSystem>::singleton;
+        wrapper = &FilteringWrapper<CrossCompartmentSecurityWrapper, Opaque>::singleton;
     }
 
     // Normally, a non-xrayable non-waived content object that finds itself in
@@ -444,41 +477,7 @@ WrapperFactory::Rewrap(JSContext *cx, HandleObject existing, HandleObject obj,
         wrapper = SelectWrapper(securityWrapper, wantXrays, xrayType, waiveXrays);
     }
 
-
-
-    // If the prototype of a chrome object being wrapped in content is a prototype
-    // for a standard class, use the one from the content compartment so
-    // that we can safely take advantage of things like .forEach().
-    //
-    // If the prototype chain of chrome object |obj| looks like this:
-    //
-    // obj => foo => bar => chromeWin.StandardClass.prototype
-    //
-    // The prototype chain of COW(obj) looks lke this:
-    //
-    // COW(obj) => COW(foo) => COW(bar) => contentWin.StandardClass.prototype
     if (wrapper == &ChromeObjectWrapper::singleton) {
-        JSProtoKey key = JSProto_Null;
-        {
-            JSAutoCompartment ac(cx, obj);
-            RootedObject unwrappedProto(cx);
-            if (!js::GetObjectProto(cx, obj, &unwrappedProto))
-                return NULL;
-            if (unwrappedProto && IsCrossCompartmentWrapper(unwrappedProto))
-                unwrappedProto = Wrapper::wrappedObject(unwrappedProto);
-            if (unwrappedProto) {
-                JSAutoCompartment ac2(cx, unwrappedProto);
-                key = JS_IdentifyClassPrototype(cx, unwrappedProto);
-            }
-        }
-        if (key != JSProto_Null) {
-            RootedObject homeProto(cx);
-            if (!JS_GetClassPrototype(cx, key, homeProto.address()))
-                return NULL;
-            MOZ_ASSERT(homeProto);
-            proxyProto = homeProto;
-        }
-
         // This shouldn't happen, but do a quick check to make some dumb addon
         // doesn't expose chrome eval or Function().
         JSFunction *fun = JS_GetObjectFunction(obj);
@@ -550,7 +549,17 @@ WrapperFactory::WaiveXrayAndWrap(JSContext *cx, jsval *vp)
         return true;
     }
 
-    obj = WaiveXray(cx, obj);
+    // Even though waivers have no effect on access by scopes that don't subsume
+    // the underlying object, good defense-in-depth dictates that we should avoid
+    // handing out waivers to callers that can't use them. The transitive waiving
+    // machinery unconditionally calls WaiveXrayAndWrap on return values from
+    // waived functions, even though the return value might be not be same-origin
+    // with the function. So if we find ourselves trying to create a waiver for
+    // |cx|, we should check whether the caller has any business with waivers
+    // to things in |obj|'s compartment.
+    JSCompartment *target = js::GetContextCompartment(cx);
+    JSCompartment *origin = js::GetObjectCompartment(obj);
+    obj = AccessCheck::subsumes(target, origin) ? WaiveXray(cx, obj) : obj;
     if (!obj)
         return false;
 
@@ -563,12 +572,17 @@ WrapperFactory::WrapSOWObject(JSContext *cx, JSObject *objArg)
 {
     RootedObject obj(cx, objArg);
     RootedObject proto(cx);
+
+    // If we're not allowing XBL scopes, that means we're running as a remote
+    // XUL domain, in which we can't have SOWs. We should never be called in
+    // that case.
+    MOZ_ASSERT(xpc::AllowXBLScope(js::GetContextCompartment(cx)));
     if (!JS_GetPrototype(cx, obj, proto.address()))
         return NULL;
     JSObject *wrapperObj =
         Wrapper::New(cx, obj, proto, JS_GetGlobalForObject(cx, obj),
                      &FilteringWrapper<SameCompartmentSecurityWrapper,
-                     OnlyIfSubjectIsSystem>::singleton);
+                     Opaque>::singleton);
     return wrapperObj;
 }
 

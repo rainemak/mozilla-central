@@ -2305,6 +2305,9 @@ nsXULPrototypeElement::SetAttrAt(uint32_t aPos, const nsAString& aValue,
         nsCSSParser parser;
 
         // XXX Get correct Base URI (need GetBaseURI on *prototype* element)
+        // TODO: If we implement Content Security Policy for chrome documents
+        // as has been discussed, the CSP should be checked here to see if
+        // inline styles are allowed to be applied.
         parser.ParseStyleAttribute(aValue, aDocumentURI, aDocumentURI,
                                    // This is basically duplicating what
                                    // nsINode::NodePrincipal() does
@@ -2340,10 +2343,7 @@ nsXULPrototypeElement::TraceAllScripts(JSTracer* aTrc)
         if (child->mType == nsXULPrototypeNode::eType_Element) {
             static_cast<nsXULPrototypeElement*>(child)->TraceAllScripts(aTrc);
         } else if (child->mType == nsXULPrototypeNode::eType_Script) {
-            JSScript* script = static_cast<nsXULPrototypeScript*>(child)->GetScriptObject();
-            if (script) {
-                JS_CallScriptTracer(aTrc, script, "active window XUL prototype script");
-            }
+            static_cast<nsXULPrototypeScript*>(child)->TraceScriptObject(aTrc);
         }
     }
 }

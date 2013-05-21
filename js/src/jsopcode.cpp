@@ -1314,32 +1314,8 @@ ExpressionDecompiler::decompilePC(jsbytecode *pc)
       case JSOP_INT8:
       case JSOP_UINT16:
       case JSOP_UINT24:
-      case JSOP_INT32: {
-        int32_t i;
-        switch (op) {
-          case JSOP_ZERO:
-            i = 0;
-            break;
-          case JSOP_ONE:
-            i = 1;
-            break;
-          case JSOP_INT8:
-            i = GET_INT8(pc);
-            break;
-          case JSOP_UINT16:
-            i = GET_UINT16(pc);
-            break;
-          case JSOP_UINT24:
-            i = GET_UINT24(pc);
-            break;
-          case JSOP_INT32:
-            i = GET_INT32(pc);
-            break;
-          default:
-            JS_NOT_REACHED("wat?");
-        }
-        return sprinter.printf("%d", i) >= 0;
-      }
+      case JSOP_INT32:
+        return sprinter.printf("%d", GetBytecodeInteger(pc)) >= 0;
       case JSOP_STRING:
         return quote(loadAtom(pc), '"');
       case JSOP_UNDEFINED:
@@ -1492,9 +1468,6 @@ FindStartPC(JSContext *cx, ScriptFrameIter &iter, int spindex, int skipStackHits
     if (iter.isIonOptimizedJS())
         return true;
 
-    if (!iter.isIonBaselineJS() && iter.interpFrame()->jitRevisedStack())
-        return true;
-
     *valuepc = NULL;
 
     PCStack pcstack;
@@ -1627,9 +1600,7 @@ DecompileArgumentFromStack(JSContext *cx, int formalIndex, char **res)
      * Settle on the nearest script frame, which should be the builtin that
      * called the intrinsic.
      */
-    StackIter frameIter(cx);
-    while (!frameIter.done() && !frameIter.isScript())
-        ++frameIter;
+    ScriptFrameIter frameIter(cx);
     JS_ASSERT(!frameIter.done());
 
     /*
@@ -1637,9 +1608,7 @@ DecompileArgumentFromStack(JSContext *cx, int formalIndex, char **res)
      * intrinsic.
      */
     ++frameIter;
-
-    /* If this frame isn't a script, we can't decompile. */
-    if (frameIter.done() || !frameIter.isScript())
+    if (frameIter.done())
         return true;
 
     RootedScript script(cx, frameIter.script());
