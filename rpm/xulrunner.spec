@@ -101,7 +101,7 @@ export MOZCONFIG=mozconfig
 chmod +x %{buildroot}%{_libdir}/xulrunner-%{greversion}/*.so
 # Use the system hunspell dictionaries
 %{__rm} -rf ${RPM_BUILD_ROOT}%{_libdir}/xulrunner-%{greversion}/dictionaries
-#ln -s %{_datadir}/myspell ${RPM_BUILD_ROOT}%{_libdir}/xulrunner-%{greversion}/dictionaries
+ln -s %{_datadir}/myspell ${RPM_BUILD_ROOT}%{_libdir}/xulrunner-%{greversion}/dictionaries
 
 %files
 %defattr(-,root,root,-)
@@ -109,7 +109,7 @@ chmod +x %{buildroot}%{_libdir}/xulrunner-%{greversion}/*.so
 %{_libdir}/xulrunner-%{greversion}/*.so
 %{_libdir}/xulrunner-%{greversion}/omni.ja
 %{_libdir}/xulrunner-%{greversion}/dependentlibs.list
-# %{_libdir}/xulrunner-%{greversion}/dictionaries
+%{_libdir}/xulrunner-%{greversion}/dictionaries
 
 %files devel
 %defattr(-,root,root,-)
