@@ -74,6 +74,8 @@ public:
   virtual void* PostTask(EMBEDTaskCallback callback, void* userData, int timeout = 0);
   virtual void CancelTask(void* aTask);
 
+  // Setup profile path for embedding, or null if embedding supposed to be profile-less
+  virtual void SetProfilePath(const char* aPath);
   // Start UI embedding loop merged with Gecko GFX, blocking call until Stop() called
   virtual bool Start(EmbedType aEmbedType);
   // Exit from UI embedding loop started with Start()
@@ -142,6 +144,7 @@ private:
   uint32_t mViewCreateID;
   bool mDestroying;
   RenderType mRenderType;
+  char* mProfilePath;
 };
 
 } // namespace embedlite

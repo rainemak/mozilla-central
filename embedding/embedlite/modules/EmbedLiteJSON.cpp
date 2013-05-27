@@ -217,7 +217,7 @@ EmbedLiteJSON::CreateJSON(nsIPropertyBag* aRoot, nsAString& outJson)
   JSContext* cx = stack->GetSafeJSContext();
   NS_ENSURE_TRUE(cx, NS_ERROR_FAILURE);
 
-  JSObject* global = JS_GetGlobalObject(cx);
+  JSObject* global = js::GetDefaultGlobalForContext(cx);
   JSAutoCompartment ac(cx, global);
 
   JSAutoRequest ar(cx);

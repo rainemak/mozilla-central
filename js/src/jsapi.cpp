@@ -1764,12 +1764,6 @@ JS_RefreshCrossCompartmentWrappers(JSContext *cx, JSObject *objArg)
     return RemapAllWrappersForObject(cx, obj, obj);
 }
 
-JS_PUBLIC_API(JSObject *)
-JS_GetGlobalObject(JSContext *cx)
-{
-    return cx->maybeDefaultCompartmentObject();
-}
-
 JS_PUBLIC_API(void)
 JS_SetGlobalObject(JSContext *cx, JSObject *obj)
 {
@@ -5262,7 +5256,6 @@ JS::CompileOptions::CompileOptions(JSContext *cx)
       forEval(false),
       noScriptRval(cx->hasOption(JSOPTION_NO_SCRIPT_RVAL)),
       selfHostingMode(false),
-      userBit(false),
       sourcePolicy(SAVE_SOURCE)
 {
 }

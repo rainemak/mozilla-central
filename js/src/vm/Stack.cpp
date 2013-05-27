@@ -13,7 +13,6 @@
 #include "ion/BaselineFrame.h"
 #include "ion/IonFrames.h"
 #include "ion/IonCompartment.h"
-#include "ion/Bailouts.h"
 #endif
 #include "Stack.h"
 #include "ForkJoin.h"
@@ -102,7 +101,6 @@ StackFrame::initExecuteFrame(JSScript *script, StackFrame *prevLink, AbstractFra
 #endif
 
 #ifdef DEBUG
-    ncode_ = (void *)0xbad;
     Debug_SetValueRangeToCrashOnTouch(&rval_, 1);
     hookData_ = (void *)0xbad;
 #endif
@@ -223,27 +221,9 @@ StackFrame::copyRawFrameSlots(AutoValueVector *vec)
 {
     if (!vec->resize(numFormalArgs() + script()->nfixed))
         return false;
-    PodCopy(vec->begin(), formals(), numFormalArgs());
+    PodCopy(vec->begin(), argv(), numFormalArgs());
     PodCopy(vec->begin() + numFormalArgs(), slots(), script()->nfixed);
     return true;
-}
-
-static void
-CleanupTornValue(StackFrame *fp, Value *vp)
-{
-    if (vp->isObject() && !vp->toGCThing())
-        vp->setObject(fp->global());
-    if (vp->isString() && !vp->toGCThing())
-        vp->setString(fp->compartment()->rt->emptyString);
-}
-
-void
-StackFrame::cleanupTornValues()
-{
-    for (size_t i = 0; i < numFormalArgs(); i++)
-        CleanupTornValue(this, &formals()[i]);
-    for (size_t i = 0; i < script()->nfixed; i++)
-        CleanupTornValue(this, &slots()[i]);
 }
 
 static inline void
@@ -387,19 +367,6 @@ StackFrame::epilogue(JSContext *cx)
 
     if (isConstructing() && thisValue().isObject() && returnValue().isPrimitive())
         setReturnValue(ObjectValue(constructorThis()));
-}
-
-bool
-StackFrame::jitStrictEvalPrologue(JSContext *cx)
-{
-    JS_ASSERT(isStrictEvalFrame());
-    CallObject *callobj = CallObject::createForStrictEval(cx, this);
-    if (!callobj)
-        return false;
-
-    pushOnScopeChain(*callobj);
-    flags_ |= HAS_CALL_OBJ;
-    return true;
 }
 
 bool
@@ -720,15 +687,6 @@ StackSpace::ensureSpaceSlow(JSContext *cx, MaybeReportError report, Value *from,
     return true;
 }
 
-bool
-StackSpace::tryBumpLimit(JSContext *cx, Value *from, unsigned nvals, Value **limit)
-{
-    if (!ensureSpace(cx, REPORT_ERROR, from, nvals))
-        return false;
-    *limit = conservativeEnd_;
-    return true;
-}
-
 size_t
 StackSpace::sizeOf()
 {
@@ -1008,35 +966,6 @@ ContextStack::pushExecuteFrame(JSContext *cx, HandleScript script, const Value &
     efg->setPushed(*this);
     return true;
 }
-
-#ifdef JS_ION
-bool
-ContextStack::pushBailoutArgs(JSContext *cx, const ion::IonBailoutIterator &it, InvokeArgsGuard *iag)
-{
-    unsigned argc = it.numActualArgs();
-
-    if (!pushInvokeArgs(cx, argc, iag, DONT_REPORT_ERROR))
-        return false;
-
-    ion::SnapshotIterator s(it);
-    JSFunction *fun = it.callee();
-    iag->setCallee(ObjectValue(*fun));
-
-    CopyTo dst(iag->array());
-    Value *src = it.actualArgs();
-    Value thisv = iag->thisv();
-    s.readFrameArgs(dst, src, NULL, &thisv, 0, fun->nargs, argc, it.script());
-    return true;
-}
-
-StackFrame *
-ContextStack::pushBailoutFrame(JSContext *cx, const ion::IonBailoutIterator &it,
-                               const CallArgs &args, BailoutFrameGuard *bfg)
-{
-    JSFunction *fun = it.callee();
-    return pushInvokeFrame(cx, DONT_REPORT_ERROR, args, fun, INITIAL_NONE, bfg);
-}
-#endif
 
 void
 ContextStack::popFrame(const FrameGuard &fg)

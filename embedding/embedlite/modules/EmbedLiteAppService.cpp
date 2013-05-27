@@ -28,6 +28,9 @@
 #include "nsIWebBrowser.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
 #include "mozilla/embedlite/EmbedLog.h"
+#include "nsCxPusher.h"
+#include "xpcprivate.h"
+#include "nsPIDOMWindow.h"
 
 using namespace mozilla;
 using namespace mozilla::embedlite;
@@ -216,7 +219,7 @@ NS_IMETHODIMP EmbedLiteAppService::EnterSecureJSContext()
     MOZ_CRASH();
   }
 
-  if (!xpc::danger::PushJSContext(nullptr)) {
+  if (!xpc::PushJSContext(nullptr)) {
     MOZ_CRASH();
   }
 
@@ -232,7 +235,7 @@ NS_IMETHODIMP EmbedLiteAppService::LeaveSecureJSContext()
   }
 
   DebugOnly<JSContext*> stackTop;
-  xpc::danger::PopJSContext();
+  xpc::PopJSContext();
   mPushedSomething--;
   return NS_OK;
 }

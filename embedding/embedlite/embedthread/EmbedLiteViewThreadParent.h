@@ -126,6 +126,7 @@ protected:
                                    const nsString& aActionHint,
                                    const int32_t& aCause,
                                    const int32_t& aFocusChange);
+  virtual bool RecvGetGLViewSize(gfxSize* aSize);
 
 private:
   friend class EmbedContentController;

@@ -25,6 +25,8 @@
 #include "nsPIWindowRoot.h"
 #include "StructuredCloneUtils.h"
 #include "mozilla/Preferences.h"
+#include "nsIFrame.h"
+#include "nsView.h"
 
 static const char CANCEL_DEFAULT_PAN_ZOOM[] = "cancel-default-pan-zoom";
 static const char BROWSER_ZOOM_TO_RECT[] = "browser-zoom-to-rect";
@@ -350,8 +352,8 @@ TabChildHelper::RecvAsyncMessage(const nsAString& aMessageName,
 
   nsRefPtr<nsFrameMessageManager> mm =
     static_cast<nsFrameMessageManager*>(mTabChildGlobal->mMessageManager.get());
-  mm->ReceiveMessage(static_cast<nsIDOMEventTarget*>(mTabChildGlobal),
-                     aMessageName, false, &cloneData, nullptr, nullptr);
+  mm->ReceiveMessage(static_cast<EventTarget*>(mTabChildGlobal),
+                     aMessageName, false, &cloneData, JS::NullPtr(), nullptr);
   return true;
 }
 

@@ -493,6 +493,8 @@ MOCHITEST_FILES_B = \
 		accesscontrol.resource^headers^ \
 		invalid_accesscontrol.resource \
 		invalid_accesscontrol.resource^headers^ \
+		file_bug869432.eventsource \
+		file_bug869432.eventsource^headers^ \
 		$(NULL)
 
 MOCHITEST_FILES_C= \
@@ -624,6 +626,8 @@ MOCHITEST_FILES_C= \
 		badMessageEvent2.eventsource^headers^ \
 		test_object.html \
 		test_bug869006.html \
+		test_bug868999.html \
+		test_bug869000.html \
 		$(NULL)
 
 # OOP tests don't work on Windows (bug 763081) or native-fennec

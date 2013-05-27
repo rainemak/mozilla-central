@@ -6,7 +6,7 @@
 #include "TextureHostOGL.h"
 #include "ipc/AutoOpenSurface.h"
 #include "gfx2DGlue.h"
-#include "ShmemYCbCrImage.h"
+#include "mozilla/layers/YCbCrImageDataSerializer.h"
 #include "GLContext.h"
 #include "gfxImageSurface.h"
 #include "SurfaceStream.h"
@@ -491,11 +491,10 @@ YCbCrTextureHostOGL::UpdateImpl(const SurfaceDescriptor& aImage,
   }
   NS_ASSERTION(aImage.type() == SurfaceDescriptor::TYCbCrImage, "SurfaceDescriptor mismatch");
 
-  ShmemYCbCrImage shmemImage(aImage.get_YCbCrImage().data(),
-                             aImage.get_YCbCrImage().offset());
+  YCbCrImageDataDeserializer deserializer(aImage.get_YCbCrImage().data().get<uint8_t>());
 
-  gfxIntSize gfxSize = shmemImage.GetYSize();
-  gfxIntSize gfxCbCrSize = shmemImage.GetCbCrSize();
+  gfxIntSize gfxSize = deserializer.GetYSize();
+  gfxIntSize gfxCbCrSize = deserializer.GetCbCrSize();
 
   if (!mYTexture->mTexImage || mYTexture->mTexImage->GetSize() != gfxSize) {
     mYTexture->mTexImage = CreateBasicTextureImage(mGL,
@@ -519,14 +518,14 @@ YCbCrTextureHostOGL::UpdateImpl(const SurfaceDescriptor& aImage,
                                                     FlagsToGLFlags(mFlags));
   }
 
-  RefPtr<gfxImageSurface> tempY = new gfxImageSurface(shmemImage.GetYData(),
-                                      gfxSize, shmemImage.GetYStride(),
-                                      gfxASurface::ImageFormatA8);
-  RefPtr<gfxImageSurface> tempCb = new gfxImageSurface(shmemImage.GetCbData(),
-                                       gfxCbCrSize, shmemImage.GetCbCrStride(),
+  RefPtr<gfxImageSurface> tempY = new gfxImageSurface(deserializer.GetYData(),
+                                       gfxSize, deserializer.GetYStride(),
                                        gfxASurface::ImageFormatA8);
-  RefPtr<gfxImageSurface> tempCr = new gfxImageSurface(shmemImage.GetCrData(),
-                                       gfxCbCrSize, shmemImage.GetCbCrStride(),
+  RefPtr<gfxImageSurface> tempCb = new gfxImageSurface(deserializer.GetCbData(),
+                                       gfxCbCrSize, deserializer.GetCbCrStride(),
+                                       gfxASurface::ImageFormatA8);
+  RefPtr<gfxImageSurface> tempCr = new gfxImageSurface(deserializer.GetCrData(),
+                                       gfxCbCrSize, deserializer.GetCbCrStride(),
                                        gfxASurface::ImageFormatA8);
 
   nsIntRegion yRegion(nsIntRect(0, 0, gfxSize.width, gfxSize.height));
@@ -839,6 +838,19 @@ GrallocTextureHostOGL::Unlock()
    * i.e. before the next time that we will try to acquire a write lock on the same buffer,
    * because read and write locks on gralloc buffers are mutually exclusive.
    */
+  if (mGL->Renderer() == GLContext::RendererAdrenoTM205) {
+    /* XXX This is working around a driver bug exhibited on at least the
+     * Geeksphone Peak, where retargeting to a different EGL image is very
+     * slow. See Bug 869696.
+     */
+    if (mGLTexture) {
+      mGL->MakeCurrent();
+      mGL->fDeleteTextures(1, &mGLTexture);
+      mGLTexture = 0;
+    }
+    return;
+  }
+
   mGL->MakeCurrent();
   mGL->fActiveTexture(LOCAL_GL_TEXTURE0);
   mGL->fBindTexture(mTextureTarget, mGLTexture);
@@ -852,7 +864,7 @@ GrallocTextureHostOGL::GetFormat() const
 }
 
 void
-GrallocTextureHostOGL::SetBuffer(SurfaceDescriptor* aBuffer, ISurfaceAllocator* aAllocator) MOZ_OVERRIDE
+GrallocTextureHostOGL::SetBuffer(SurfaceDescriptor* aBuffer, ISurfaceAllocator* aAllocator)
 {
   MOZ_ASSERT(!mBuffer, "Will leak the old mBuffer");
   mBuffer = aBuffer;

@@ -99,6 +99,7 @@
 namespace js {
 
 class Module;
+class ScriptSourceObject;
 
 template <typename T>
 struct RootMethods {};
@@ -230,9 +231,13 @@ class MOZ_STACK_CLASS Handle : public js::HandleBase<T>
            typename mozilla::EnableIf<mozilla::IsConvertible<S, T>::value, int>::Type dummy = 0);
 
     const T *address() const { return ptr; }
-    T get() const { return *ptr; }
+    const T& get() const { return *ptr; }
 
-    operator T() const { return get(); }
+    /*
+     * Return a reference so passing a Handle<T> to something that
+     * takes a |const T&| is not a GC hazard.
+     */
+    operator const T&() const { return get(); }
     T operator->() const { return get(); }
 
     bool operator!=(const T &other) { return *ptr != other; }
@@ -247,13 +252,14 @@ class MOZ_STACK_CLASS Handle : public js::HandleBase<T>
     void operator=(S v) MOZ_DELETE;
 };
 
-typedef Handle<JSObject*>    HandleObject;
-typedef Handle<js::Module*>  HandleModule;
-typedef Handle<JSFunction*>  HandleFunction;
-typedef Handle<JSScript*>    HandleScript;
-typedef Handle<JSString*>    HandleString;
-typedef Handle<jsid>         HandleId;
-typedef Handle<Value>        HandleValue;
+typedef Handle<JSObject*>                   HandleObject;
+typedef Handle<js::Module*>                 HandleModule;
+typedef Handle<js::ScriptSourceObject *>    HandleScriptSource;
+typedef Handle<JSFunction*>                 HandleFunction;
+typedef Handle<JSScript*>                   HandleScript;
+typedef Handle<JSString*>                   HandleString;
+typedef Handle<jsid>                        HandleId;
+typedef Handle<Value>                       HandleValue;
 
 /*
  * Similar to a handle, but the underlying storage can be changed. This is
@@ -463,7 +469,11 @@ class MOZ_STACK_CLASS Rooted : public js::RootedBase<T>
     Rooted<T> *previous() { return prev; }
 #endif
 
-    operator T() const { return ptr; }
+    /*
+     * Important: Return a reference here so passing a Rooted<T> to
+     * something that takes a |const T&| is not a GC hazard.
+     */
+    operator const T&() const { return ptr; }
     T operator->() const { return ptr; }
     T *address() { return &ptr; }
     const T *address() const { return &ptr; }
@@ -523,13 +533,14 @@ template <>
 class Rooted<JSStableString *>;
 #endif
 
-typedef Rooted<JSObject*>    RootedObject;
-typedef Rooted<js::Module*>  RootedModule;
-typedef Rooted<JSFunction*>  RootedFunction;
-typedef Rooted<JSScript*>    RootedScript;
-typedef Rooted<JSString*>    RootedString;
-typedef Rooted<jsid>         RootedId;
-typedef Rooted<JS::Value>    RootedValue;
+typedef Rooted<JSObject*>                   RootedObject;
+typedef Rooted<js::Module*>                 RootedModule;
+typedef Rooted<js::ScriptSourceObject *>    RootedScriptSource;
+typedef Rooted<JSFunction*>                 RootedFunction;
+typedef Rooted<JSScript*>                   RootedScript;
+typedef Rooted<JSString*>                   RootedString;
+typedef Rooted<jsid>                        RootedId;
+typedef Rooted<JS::Value>                   RootedValue;
 
 } /* namespace JS */
 

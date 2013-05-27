@@ -624,6 +624,13 @@ EmbedLiteViewThreadParent::SetViewSize(int width, int height)
   }
 }
 
+bool
+EmbedLiteViewThreadParent::RecvGetGLViewSize(gfxSize* aSize)
+{
+  *aSize = mGLViewPortSize;
+  return true;
+}
+
 void
 EmbedLiteViewThreadParent::SetGLViewPortSize(int width, int height)
 {

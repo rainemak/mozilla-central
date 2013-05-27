@@ -55,7 +55,7 @@ public:
   nsresult GetBrowserChrome(nsIWebBrowserChrome** outChrome);
   nsresult GetBrowser(nsIWebBrowser** outBrowser);
   uint32_t GetID() { return mId; }
-  gfxSize GetGLViewSize() { return mGLViewSize; }
+  gfxSize GetGLViewSize();
 
   virtual bool RecvAsyncMessage(const nsString& aMessage,
                                 const nsString& aData);

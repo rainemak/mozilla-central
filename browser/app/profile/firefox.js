@@ -120,6 +120,7 @@ pref("app.update.cert.maxErrors", 5);
 // |app.update.url.override| user preference has been set for testing updates or
 // when the |app.update.cert.checkAttributes| preference is set to false. Also,
 // the |app.update.url.override| preference should ONLY be used for testing.
+// IMPORTANT! metro.js should also be updated for updates to certs.X.issuerName
 pref("app.update.certs.1.issuerName", "OU=Equifax Secure Certificate Authority,O=Equifax,C=US");
 pref("app.update.certs.1.commonName", "aus3.mozilla.org");
 
@@ -1155,6 +1156,11 @@ pref("devtools.editor.component", "orion");
 
 // Enable the Font Inspector
 pref("devtools.fontinspector.enabled", true);
+
+// Pref to store the browser version at the time of a telemetry ping for an
+// opened developer tool. This allows us to ping telemetry just once per browser
+// version for each user.
+pref("devtools.telemetry.tools.opened.version", "{}");
 
 // Whether the character encoding menu is under the main Firefox button. This
 // preference is a string so that localizers can alter it.

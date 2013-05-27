@@ -31,6 +31,7 @@ struct ID3D10Texture2D;
 struct IDWriteRenderingParams;
 
 class GrContext;
+class gfxFont;
 
 namespace mozilla {
 
@@ -923,6 +924,9 @@ public:
   static TemporaryRef<DrawTarget>
     CreateSkiaDrawTargetForFBO(unsigned int aFBOID, GrContext *aContext, const IntSize &aSize, SurfaceFormat aFormat);
 #endif
+
+ static TemporaryRef<ScaledFont>
+   GetScaledFontForFontWithCairoSkia(DrawTarget* aTarget, gfxFont *aFont);
 
 #ifdef WIN32
   static TemporaryRef<DrawTarget> CreateDrawTargetForD3D10Texture(ID3D10Texture2D *aTexture, SurfaceFormat aFormat);

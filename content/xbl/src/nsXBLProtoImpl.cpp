@@ -9,6 +9,7 @@
 #include "nsIContent.h"
 #include "nsIDocument.h"
 #include "nsContentUtils.h"
+#include "nsCxPusher.h"
 #include "nsIScriptGlobalObject.h"
 #include "nsIScriptGlobalObjectOwner.h"
 #include "nsIScriptContext.h"
@@ -83,11 +84,10 @@ nsXBLProtoImpl::InstallImplementation(nsXBLPrototypeBinding* aPrototypeBinding,
   if (!targetObjectIsNew)
     return NS_OK;
 
-  JS::Rooted<JSObject*> targetScriptObject(context->GetNativeContext());
-  holder->GetJSObject(targetScriptObject.address());
+  JS::Rooted<JSObject*> targetScriptObject(context->GetNativeContext(),
+                                           holder->GetJSObject());
 
   AutoPushJSContext cx(context->GetNativeContext());
-  JSAutoRequest ar(cx);
   JSAutoCompartment ac(cx, targetClassObject);
   AutoVersionChecker avc(cx);
 

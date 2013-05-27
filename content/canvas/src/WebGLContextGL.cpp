@@ -38,6 +38,9 @@ using namespace mozilla::dom;
 static bool BaseTypeAndSizeFromUniformType(WebGLenum uType, WebGLenum *baseType, WebGLint *unitSize);
 static WebGLenum InternalFormatForFormatAndType(WebGLenum format, WebGLenum type, bool isGLES2);
 
+// For a Tegra workaround.
+static const int MAX_DRAW_CALLS_SINCE_FLUSH = 100;
+
 //
 //  WebGL API
 //
@@ -1477,6 +1480,17 @@ WebGLContext::DrawArrays(GLenum mode, WebGLint first, WebGLsizei count)
         mShouldPresent = true;
         mIsScreenCleared = false;
     }
+
+    if (gl->WorkAroundDriverBugs()) {
+        if (gl->Renderer() == gl::GLContext::RendererTegra) {
+            mDrawCallsSinceLastFlush++;
+
+            if (mDrawCallsSinceLastFlush >= MAX_DRAW_CALLS_SINCE_FLUSH) {
+                gl->fFlush();
+                mDrawCallsSinceLastFlush = 0;
+            }
+        }
+    }
 }
 
 void
@@ -1575,6 +1589,17 @@ WebGLContext::DrawElements(WebGLenum mode, WebGLsizei count, WebGLenum type,
         Invalidate();
         mShouldPresent = true;
         mIsScreenCleared = false;
+    }
+
+    if (gl->WorkAroundDriverBugs()) {
+        if (gl->Renderer() == gl::GLContext::RendererTegra) {
+            mDrawCallsSinceLastFlush++;
+
+            if (mDrawCallsSinceLastFlush >= MAX_DRAW_CALLS_SINCE_FLUSH) {
+                gl->fFlush();
+                mDrawCallsSinceLastFlush = 0;
+            }
+        }
     }
 }
 
@@ -4292,13 +4317,10 @@ WebGLContext::CompileShader(WebGLShader *shader)
         int compileOptions = SH_ATTRIBUTES_UNIFORMS |
                              SH_ENFORCE_PACKING_RESTRICTIONS;
 
-        // we want to do this everywhere, but:
-//TODO: Enable on windows:
-#ifndef XP_WIN // to do this on Windows, we need ANGLE r1719, 1733, 1734.
-#ifndef XP_MACOSX // to do this on Mac, we need to do it only on Mac OSX > 10.6 as this
+        // We want to do this everywhere, but:
+#ifndef XP_MACOSX // To do this on Mac, we need to do it only on Mac OSX > 10.6 as this
                   // causes the shader compiler in 10.6 to crash
         compileOptions |= SH_CLAMP_INDIRECT_ARRAY_BOUNDS;
-#endif
 #endif
 
         if (useShaderSourceTranslation) {

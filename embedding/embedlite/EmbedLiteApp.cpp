@@ -50,6 +50,7 @@ EmbedLiteApp::EmbedLiteApp()
   , mViewCreateID(0)
   , mDestroying(false)
   , mRenderType(RENDER_AUTO)
+  , mProfilePath(strdup("mozembed"))
 {
   LOGT();
   sSingleton = this;
@@ -61,6 +62,10 @@ EmbedLiteApp::~EmbedLiteApp()
   NS_ASSERTION(!mUILoop, "Main Loop not stopped before destroy");
   NS_ASSERTION(!mSubThread, "Thread not stopped/destroyed before destroy");
   sSingleton = NULL;
+  if (mProfilePath) {
+    free(mProfilePath);
+    mProfilePath = nullptr;
+  }
 }
 
 void
@@ -104,6 +109,16 @@ EmbedLiteApp::StartChild(EmbedLiteApp* aApp)
       }
     }
   }
+}
+
+void
+EmbedLiteApp::SetProfilePath(const char* aPath)
+{
+  NS_ASSERTION(mEmbedType == EMBED_INVALID, "SetProfilePath must be called before Start");
+  if (mProfilePath)
+    free(mProfilePath);
+
+  mProfilePath = aPath ? strdup(aPath) : nullptr;
 }
 
 bool
@@ -153,7 +168,7 @@ EmbedLiteApp::StartChildThread()
                           getter_AddRefs(f));
     XRE_AddManifestLocation(NS_COMPONENT_LOCATION, f);
   }
-  GeckoLoader::InitEmbedding("mozembed");
+  GeckoLoader::InitEmbedding(mProfilePath);
   mAppThread = new EmbedLiteAppThread(mUILoop);
   return true;
 }

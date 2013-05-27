@@ -66,6 +66,17 @@ endif
 USE_AUTOTARGETS_MK = 1
 include $(topsrcdir)/config/makefiles/makeutils.mk
 
+# Only build with Pymake (not GNU make) on Windows.
+ifeq ($(HOST_OS_ARCH),WINNT)
+ifndef L10NBASEDIR
+ifndef .PYMAKE
+$(error Pymake is required to build on Windows. Run |./mach build| to \
+automatically use pymake or invoke pymake directly via \
+|python build/pymake/make.py|.)
+endif
+endif
+endif
+
 ifdef SDK_HEADERS
 _EXTRA_EXPORTS := $(filter-out $(EXPORTS),$(SDK_HEADERS))
 EXPORTS += $(_EXTRA_EXPORTS)
@@ -414,6 +425,14 @@ define SUBMAKE # $(call SUBMAKE,target,directory)
 
 endef # The extra line is important here! don't delete it
 
+define TIER_DIR_SUBMAKE
+@echo "BUILDSTATUS TIERDIR_START $(2)"
+$(call SUBMAKE,$(1),$(2))
+@echo "BUILDSTATUS TIERDIR_FINISH $(2)"
+
+endef # Ths empty line is important.
+
+
 ifneq (,$(strip $(DIRS)))
 LOOP_OVER_DIRS = \
   $(foreach dir,$(DIRS),$(call SUBMAKE,$@,$(dir)))
@@ -615,8 +634,24 @@ endif
 # per traversal, hence the ifdef and the export. This rule needs to come before
 # other rules for the default target or else it may not run in time.
 ifndef MOZBUILD_BACKEND_CHECKED
-default::
-	$(MAKE) -C $(DEPTH) backend.RecursiveMakeBackend.built
+
+# Since Makefile is listed as a global dependency, this has the
+# unfortunate side-effect of invalidating all targets if it is executed.
+# So e.g. if you are in /dom/bindings and /foo/moz.build changes,
+# /dom/bindings will get invalidated. The upside is if the current
+# Makefile/backend.mk is updated as a result of backend regeneration, we
+# actually pick up the changes. This should reduce the amount of
+# required clobbers and is thus the lesser evil.
+Makefile: $(DEPTH)/backend.RecursiveMakeBackend.built
+	@$(TOUCH) $@
+
+$(DEPTH)/backend.RecursiveMakeBackend.built:
+	@echo "Build configuration changed. Regenerating backend."
+	@cd $(DEPTH) && $(PYTHON) ./config.status
+
+include $(DEPTH)/backend.RecursiveMakeBackend.built.pp
+
+default:: $(DEPTH)/backend.RecursiveMakeBackend.built
 
 export MOZBUILD_BACKEND_CHECKED=1
 endif
@@ -633,6 +668,7 @@ SUBMAKEFILES += $(addsuffix /Makefile, $(DIRS) $(TOOL_DIRS) $(PARALLEL_DIRS))
 ifndef SUPPRESS_DEFAULT_RULES
 ifdef TIERS
 default all alldep::
+	@echo "BUILDSTATUS TIERS $(TIERS)"
 	$(foreach tier,$(TIERS),$(call SUBMAKE,tier_$(tier)))
 else
 
@@ -662,14 +698,44 @@ ECHO := true
 QUIET := -q
 endif
 
-MAKE_TIER_SUBMAKEFILES = +$(if $(tier_$*_dirs),$(MAKE) $(addsuffix /Makefile,$(tier_$*_dirs)))
+# This function is called and evaluated to produce the rule to build the
+# specified tier. Each tier begins by building the "static" directories.
+# The BUILDSTATUS echo commands are used to faciliate easier parsing
+# of build output. Build drivers are encouraged to filter these lines
+# from the user.
+define CREATE_TIER_RULE
+tier_$(1)::
+	@echo "BUILDSTATUS TIER_START $(1)"
+	@printf "BUILDSTATUS SUBTIERS"
+ifneq (,$(tier_$(1)_staticdirs))
+	@printf " static"
+endif
+ifneq (,$(tier_$(1)_dirs))
+	@printf " export libs tools"
+endif
+	@printf "\n"
+	@echo "BUILDSTATUS STATICDIRS $$($$@_staticdirs)"
+	@echo "BUILDSTATUS DIRS $$($$@_dirs)"
+ifneq (,$(tier_$(1)_staticdirs))
+	@echo "BUILDSTATUS SUBTIER_START $(1) static"
+	$$(foreach dir,$$($$@_staticdirs),$$(call TIER_DIR_SUBMAKE,,$$(dir)))
+	@echo "BUILDSTATUS SUBTIER_FINISH $(1) static"
+endif
+ifneq (,$(tier_$(1)_dirs))
+	@echo "BUILDSTATUS SUBTIER_START $(1) export"
+	$$(MAKE) export_$$@
+	@echo "BUILDSTATUS SUBTIER_FINISH $(1) export"
+	@echo "BUILDSTATUS SUBTIER_START $(1) libs"
+	$$(MAKE) libs_$$@
+	@echo "BUILDSTATUS SUBTIER_FINISH $(1) libs"
+	@echo "BUILDSTATUS SUBTIER_START $(1) tools"
+	$$(MAKE) tools_$$@
+	@echo "BUILDSTATUS SUBTIER_FINISH $(1) tools"
+	@echo "BUILDSTATUS TIER_FINISH $(1)"
+endif
+endef
 
-$(foreach tier,$(TIERS),tier_$(tier))::
-	@$(ECHO) "$@: $($@_staticdirs) $($@_dirs)"
-	$(foreach dir,$($@_staticdirs),$(call SUBMAKE,,$(dir)))
-	$(MAKE) export_$@
-	$(MAKE) libs_$@
-	$(MAKE) tools_$@
+$(foreach tier,$(TIERS),$(eval $(call CREATE_TIER_RULE,$(tier))))
 
 # Do everything from scratch
 everything::
@@ -1599,7 +1665,7 @@ endif
 #   it.
 
 ifneq (,$(filter-out all chrome default export realchrome tools clean clobber clobber_all distclean realclean,$(MAKECMDGOALS)))
-MDDEPEND_FILES		:= $(strip $(wildcard $(foreach file,$(OBJS) $(PROGOBJS) $(HOST_OBJS) $(HOST_PROGOBJS) $(TARGETS) $(XPIDLSRCS:.idl=.h) $(XPIDLSRCS:.idl=.xpt),$(MDDEPDIR)/$(notdir $(file)).pp) $(addprefix $(MDDEPDIR)/,$(EXTRA_MDDEPEND_FILES))))
+MDDEPEND_FILES		:= $(strip $(wildcard $(foreach file,$(sort $(OBJS) $(PROGOBJS) $(HOST_OBJS) $(HOST_PROGOBJS) $(TARGETS) $(XPIDLSRCS:.idl=.h) $(XPIDLSRCS:.idl=.xpt)),$(MDDEPDIR)/$(notdir $(file)).pp) $(addprefix $(MDDEPDIR)/,$(EXTRA_MDDEPEND_FILES))))
 
 ifneq (,$(MDDEPEND_FILES))
 ifdef .PYMAKE
@@ -1610,6 +1676,21 @@ endif
 endif
 
 endif
+
+
+ifneq (,$(filter export,$(MAKECMDGOALS)))
+MDDEPEND_FILES		:= $(strip $(wildcard $(addprefix $(MDDEPDIR)/,$(EXTRA_EXPORT_MDDEPEND_FILES))))
+
+ifneq (,$(MDDEPEND_FILES))
+ifdef .PYMAKE
+includedeps $(MDDEPEND_FILES)
+else
+include $(MDDEPEND_FILES)
+endif
+endif
+
+endif
+
 #############################################################################
 
 -include $(topsrcdir)/$(MOZ_BUILD_APP)/app-rules.mk

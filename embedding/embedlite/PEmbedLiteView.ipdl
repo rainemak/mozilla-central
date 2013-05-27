@@ -77,6 +77,8 @@ parent:
     async CancelDefaultPanZoom();
     ContentReceivedTouch(bool aPreventDefault);
     async DetectScrollableSubframe();
+    sync GetGLViewSize()
+      returns (gfxSize aSize);
 
     sync SyncMessage(nsString aMessage, nsString aJSON)
       returns (nsString[] retval);

@@ -471,6 +471,15 @@ EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
   return true;
 }
 
+gfxSize
+EmbedLiteViewThreadChild::GetGLViewSize()
+{
+  if (mGLViewSize.IsEmpty()) {
+    SendGetGLViewSize(&mGLViewSize);
+  }
+  return mGLViewSize;
+}
+
 bool
 EmbedLiteViewThreadChild::RecvSetGLViewSize(const gfxSize& aSize)
 {

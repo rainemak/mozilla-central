@@ -251,7 +251,7 @@ void SystemMessageHandledObserver::Init()
         mozilla::services::GetObserverService();
 
     if (os) {
-        os->AddObserver(this, "SystemMessageManager:HandleMessageDone",
+        os->AddObserver(this, "handle-system-messages-done",
                         /* ownsWeak */ false);
     }
 }
@@ -1026,7 +1026,7 @@ ContentChild::RecvAsyncMessage(const nsString& aMsg,
   if (cpm) {
     StructuredCloneData cloneData = ipc::UnpackClonedMessageDataForChild(aData);
     cpm->ReceiveMessage(static_cast<nsIContentFrameMessageManager*>(cpm.get()),
-                        aMsg, false, &cloneData, nullptr, nullptr);
+                        aMsg, false, &cloneData, JS::NullPtr(), nullptr);
   }
   return true;
 }
