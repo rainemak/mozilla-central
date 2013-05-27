@@ -198,7 +198,7 @@ GeckoLoader::InitEmbedding(const char* aProfilePath)
 
   // init embedding
   rv = XRE_InitEmbedding2(xuldir, appdir,
-                          aProfilePath ? const_cast<DirProvider*>(&kDirectoryProvider) : nullptr);
+                          const_cast<DirProvider*>(&kDirectoryProvider));
   if (NS_FAILED(rv)) {
     LOGE("XRE_InitEmbedding2 failed.");
     return false;

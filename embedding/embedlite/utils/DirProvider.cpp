@@ -44,9 +44,13 @@ DirProvider::GetFile(const char* aKey, bool* aPersist,
     }
   }
 
-  if (sGREDir && !strcmp(aKey, NS_GRE_DIR)) {
+  if (sGREDir && !strcmp(aKey, NS_GRE_DIR) || !strcmp(aKey, NS_XPCOM_CURRENT_PROCESS_DIR)) {
     *aPersist = true;
     return sGREDir->Clone(aResult);
+  }
+
+  if (!sProfileDir) {
+    return NS_ERROR_NOT_IMPLEMENTED;
   }
 
   if (sProfileDir && !strcmp(aKey, NS_APP_USER_PROFILE_50_DIR)) {
@@ -82,8 +86,7 @@ DirProvider::GetFile(const char* aKey, bool* aPersist,
     }
   }
 
-  LOGT("Failed to GetFile: key:%s\n", aKey);
-  return NS_ERROR_FAILURE;
+  return NS_ERROR_NOT_IMPLEMENTED;
 }
 
 NS_IMETHODIMP
@@ -94,8 +97,7 @@ DirProvider::GetFiles(const char* aKey,
   dp2(do_QueryInterface(sAppFileLocProvider));
 
   if (!dp2) {
-    LOGT("Failed to GetFiles: key:%s\n", aKey);
-    return NS_ERROR_FAILURE;
+    return NS_ERROR_NOT_IMPLEMENTED;
   }
 
   return dp2->GetFiles(aKey, aResult);

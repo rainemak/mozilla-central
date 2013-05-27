@@ -24,6 +24,7 @@ using namespace mozilla::embedlite;
 
 static bool sDoExit = getenv("NORMAL_EXIT");
 static bool sDoExitSeq = getenv("NORMAL_EXIT_SEQ");
+static bool sNoProfile = getenv("NO_PROFILE") != 0;
 
 class MyListener : public EmbedLiteAppListener, public EmbedLiteViewListener
 {
@@ -150,6 +151,9 @@ int main(int argc, char** argv)
     EmbedLiteApp* mapp = XRE_GetEmbedLite();
     MyListener* listener = new MyListener(mapp);
     mapp->SetListener(listener);
+    if (sNoProfile) {
+      mapp->SetProfilePath(nullptr);
+    }
     bool res = mapp->Start(EmbedLiteApp::EMBED_THREAD);
     printf("XUL Symbols loaded: init res:%i\n", res);
     delete listener;

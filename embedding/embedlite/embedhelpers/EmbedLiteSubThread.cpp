@@ -11,6 +11,7 @@
 #include "EmbedLiteSubThread.h"
 #include "GeckoLoader.h"
 #include "EmbedLiteApp.h"
+#include "GeckoProfiler.h"
 
 namespace mozilla {
 namespace embedlite {
@@ -42,11 +43,13 @@ void EmbedLiteSubThread::CleanUp()
 {
   LOGT();
   mApp->StopChildThread();
+  profiler_shutdown();
 }
 
 bool EmbedLiteSubThread::StartEmbedThread()
 {
   LOGT();
+  profiler_init();
   return StartWithOptions(Thread::Options(MessageLoop::TYPE_MOZILLA_CHILD, 0));
 }
 
