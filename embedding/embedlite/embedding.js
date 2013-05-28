@@ -292,7 +292,7 @@ pref("dom.event.touch.coalescing.enabled", false);
 
 // On memory pressure, release dirty but unused pages held by jemalloc
 // back to the system.
-pref("memory.free_dirty_pages", true);
+pref("memory.free_dirty_pages", false);
 
 pref("layout.imagevisibility.enabled", false);
 
