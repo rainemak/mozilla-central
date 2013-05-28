@@ -140,6 +140,8 @@ public:
 
   virtual void AddMessageListener(const char* aMessageName);
   virtual void RemoveMessageListener(const char* aMessageName);
+  virtual void AddMessageListeners(const nsTArray<nsString>& aMessageNames);
+  virtual void RemoveMessageListeners(const nsTArray<nsString>& aMessageNames);
   virtual void SendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage);
 
   virtual uint32_t GetUniqueID();

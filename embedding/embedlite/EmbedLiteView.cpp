@@ -162,6 +162,18 @@ EmbedLiteView::RemoveMessageListener(const char* aName)
   mViewImpl->RemoveMessageListener(aName);
 }
 
+void EmbedLiteView::AddMessageListeners(const nsTArray<nsString>& aMessageNames)
+{
+  NS_ENSURE_TRUE(mViewImpl, );
+  mViewImpl->AddMessageListeners(aMessageNames);
+}
+
+void EmbedLiteView::RemoveMessageListeners(const nsTArray<nsString>& aMessageNames)
+{
+  NS_ENSURE_TRUE(mViewImpl, );
+  mViewImpl->RemoveMessageListeners(aMessageNames);
+}
+
 void
 EmbedLiteView::SendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage)
 {

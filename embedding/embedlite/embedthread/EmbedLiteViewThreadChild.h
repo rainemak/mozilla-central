@@ -104,6 +104,12 @@ protected:
 
   void RequestHasHWAcceleratedContextLooped();
 
+  virtual bool
+  RecvAddMessageListeners(const InfallibleTArray<nsString>& messageNames);
+
+  virtual bool
+  RecvRemoveMessageListeners(const InfallibleTArray<nsString>& messageNames);
+
 private:
   friend class TabChildHelper;
   friend class EmbedLiteAppService;

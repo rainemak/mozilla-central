@@ -525,6 +525,18 @@ EmbedLiteViewThreadParent::RemoveMessageListener(const char* aMessageName)
   unused << SendRemoveMessageListener(nsDependentCString(aMessageName));
 }
 
+void
+EmbedLiteViewThreadParent::AddMessageListeners(const nsTArray<nsString>& aMessageNames)
+{
+  unused << SendAddMessageListeners(aMessageNames);
+}
+
+void
+EmbedLiteViewThreadParent::RemoveMessageListeners(const nsTArray<nsString>& aMessageNames)
+{
+  unused << SendRemoveMessageListeners(aMessageNames);
+}
+
 bool
 EmbedLiteViewThreadParent::RecvAsyncMessage(const nsString& aMessage,
                                             const nsString& aData)

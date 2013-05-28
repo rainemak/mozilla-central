@@ -28,6 +28,8 @@ class EmbedLiteViewImplIface
     virtual void DoSendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage) {}
     virtual void AddMessageListener(const char* aMessageName) {}
     virtual void RemoveMessageListener(const char* aMessageName) {}
+    virtual void AddMessageListeners(const nsTArray<nsString>&) {}
+    virtual void RemoveMessageListeners(const nsTArray<nsString>&) {}
     virtual bool RenderToImage(unsigned char* aData, int imgW, int imgH, int stride, int depth) { return false; }
     virtual bool RenderGL() { return false; }
     virtual void SetIsActive(bool) {}

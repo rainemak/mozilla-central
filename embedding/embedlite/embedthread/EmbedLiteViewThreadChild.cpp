@@ -455,6 +455,24 @@ EmbedLiteViewThreadChild::RecvRemoveMessageListener(const nsCString& name)
 }
 
 bool
+EmbedLiteViewThreadChild::RecvAddMessageListeners(const InfallibleTArray<nsString>& messageNames)
+{
+  for (unsigned int i = 0; i < messageNames.Length(); i++) {
+    mRegisteredMessages.Put(messageNames[i], 1);
+  }
+  return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvRemoveMessageListeners(const InfallibleTArray<nsString>& messageNames)
+{
+  for (unsigned int i = 0; i < messageNames.Length(); i++) {
+    mRegisteredMessages.Remove(messageNames[i]);
+  }
+  return true;
+}
+
+bool
 EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
 {
   mViewSize = aSize;

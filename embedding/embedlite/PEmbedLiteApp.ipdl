@@ -26,6 +26,8 @@ child:
   async AddObserver(nsCString topic);
   async RemoveObserver(nsCString topic);
   async LoadComponentManifest(nsCString manifest);
+  async AddObservers(nsCString [] observers);
+  async RemoveObservers(nsCString [] observers);
 both:
   async Observe(nsCString topic, nsString data);
 };

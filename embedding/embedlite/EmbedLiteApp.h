@@ -111,6 +111,8 @@ public:
   virtual void SendObserve(const char* aMessageName, const PRUnichar* aMessage);
   virtual void AddObserver(const char* aMessageName);
   virtual void RemoveObserver(const char* aMessageName);
+  virtual void AddObservers(nsTArray<nsCString>& observersList);
+  virtual void RemoveObservers(nsTArray<nsCString>& observersList);
 
   // Internal
   EmbedLiteAppListener* GetListener() {

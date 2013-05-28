@@ -292,6 +292,39 @@ EmbedLiteAppThreadChild::RecvRemoveObserver(const nsCString& topic)
   return true;
 }
 
+bool
+EmbedLiteAppThreadChild::RecvAddObservers(const InfallibleTArray<nsCString>& observers)
+{
+  nsCOMPtr<nsIObserverService> observerService =
+    do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
+
+  if (observerService) {
+    for (unsigned int i = 0; i < observers.Length(); i++) {
+      observerService->AddObserver(this,
+                                   observers[i].get(),
+                                   false);
+    }
+  }
+
+  return true;
+}
+
+bool
+EmbedLiteAppThreadChild::RecvRemoveObservers(const InfallibleTArray<nsCString>& observers)
+{
+  nsCOMPtr<nsIObserverService> observerService =
+    do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
+
+  if (observerService) {
+    for (unsigned int i = 0; i < observers.Length(); i++) {
+      observerService->RemoveObserver(this,
+                                      observers[i].get());
+    }
+  }
+
+  return true;
+}
+
 } // namespace embedlite
 } // namespace mozilla
 

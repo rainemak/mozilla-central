@@ -54,6 +54,8 @@ child:
     InputDataTouchMoveEvent(MultiTouchInput event, gfxSize res, gfxPoint diff) compress;
     AddMessageListener(nsCString name);
     RemoveMessageListener(nsCString name);
+    AddMessageListeners(nsString [] messageNames);
+    RemoveMessageListeners(nsString [] messageNames);
 
     async Destroy();
 

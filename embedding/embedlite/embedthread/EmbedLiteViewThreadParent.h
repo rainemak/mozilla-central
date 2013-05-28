@@ -57,6 +57,8 @@ public:
   virtual uint32_t GetUniqueID();
   virtual void AddMessageListener(const char* aMessageName);
   virtual void RemoveMessageListener(const char* aMessageName);
+  virtual void AddMessageListeners(const nsTArray<nsString>&);
+  virtual void RemoveMessageListeners(const nsTArray<nsString>&);
 
   mozilla::layers::AsyncPanZoomController* GetDefaultPanZoomController();
 

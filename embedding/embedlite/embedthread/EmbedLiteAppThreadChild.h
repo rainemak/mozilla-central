@@ -54,6 +54,8 @@ protected:
                            const nsString& data);
   virtual bool RecvAddObserver(const nsCString&);
   virtual bool RecvRemoveObserver(const nsCString&);
+  virtual bool RecvAddObservers(const InfallibleTArray<nsCString>& observers);
+  virtual bool RecvRemoveObservers(const InfallibleTArray<nsCString>& observers);
 
   virtual PEmbedLiteViewChild* AllocPEmbedLiteView(const uint32_t&, const uint32_t& parentId);
   virtual bool DeallocPEmbedLiteView(PEmbedLiteViewChild*);

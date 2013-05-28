@@ -262,6 +262,16 @@ EmbedLiteApp::RemoveObserver(const char* aMessageName)
   unused << STHREADAPP()->SendRemoveObserver(nsDependentCString(aMessageName));
 }
 
+void EmbedLiteApp::AddObservers(nsTArray<nsCString>& observersList)
+{
+  unused << STHREADAPP()->SendAddObservers(observersList);
+}
+
+void EmbedLiteApp::RemoveObservers(nsTArray<nsCString>& observersList)
+{
+  unused << STHREADAPP()->SendRemoveObservers(observersList);
+}
+
 EmbedLiteView*
 EmbedLiteApp::CreateView(uint32_t aParent)
 {
