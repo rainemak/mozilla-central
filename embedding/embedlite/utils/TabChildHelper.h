@@ -52,6 +52,8 @@ public:
   bool RecvAsyncMessage(const nsAString& aMessage,
                         const nsAString& aData);
 
+  const mozilla::layers::FrameMetrics& LastFrameMetrics() const { return mLastMetrics; }
+
 protected:
   nsIWidget* GetWidget(nsPoint* aOffset);
   nsPresContext* GetPresContext();

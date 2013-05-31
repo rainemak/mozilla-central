@@ -29,6 +29,7 @@
 #include "nsIScriptSecurityManager.h"
 #include "mozilla/Preferences.h"
 #include "EmbedLiteAppService.h"
+#include "mozilla/gfx/Tools.h"
 
 using namespace mozilla::layers;
 using namespace mozilla::widget;
@@ -77,6 +78,7 @@ EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(const uint32_t& aId, const ui
   , mViewSize(0, 0)
   , mDispatchSynthMouseEvents(true)
   , mIMEComposing(false)
+  , mLastAPZCTo(-1, -1)
 {
   LOGT("id:%u, parentID:%u", aId, parentId);
   AddRef();
@@ -588,6 +590,8 @@ EmbedLiteViewThreadChild::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
 
   bool ret = true;
   if (sHandleDefaultAZPC.viewport) {
+    const mozilla::layers::FrameMetrics& prevMetrics = mHelper->LastFrameMetrics();
+    mLastAPZCTo = nsIntPoint(aFrameMetrics.mScrollOffset.x, aFrameMetrics.mScrollOffset.y);
     ret = mHelper->RecvUpdateFrame(aFrameMetrics);
   }
 
@@ -896,7 +900,14 @@ EmbedLiteViewThreadChild::OnScrolledAreaChanged(uint32_t aWidth, uint32_t aHeigh
 NS_IMETHODIMP
 EmbedLiteViewThreadChild::OnScrollChanged(int32_t offSetX, int32_t offSetY)
 {
-  return SendOnScrollChanged(offSetX, offSetY) ? NS_OK : NS_ERROR_FAILURE;
+  bool apzcScroll = false;
+  if (gfx::FuzzyEqual(mLastAPZCTo.x, offSetX, 1) &&
+      gfx::FuzzyEqual(mLastAPZCTo.y, offSetY, 1))
+  {
+    apzcScroll = true;
+    mLastAPZCTo = nsIntPoint(-1, -1);
+  }
+  return SendOnScrollChanged(offSetX, offSetY, apzcScroll) ? NS_OK : NS_ERROR_FAILURE;
 }
 
 NS_IMETHODIMP

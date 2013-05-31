@@ -99,7 +99,8 @@ protected:
   virtual bool
   RecvOnScrollChanged(
     const int32_t& offSetX,
-    const int32_t& offSetY);
+    const int32_t& offSetY,
+    const bool& aFromApzc);
 
   virtual bool
   RecvOnTitleChanged(const nsString& aTitle);

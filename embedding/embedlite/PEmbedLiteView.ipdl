@@ -71,7 +71,7 @@ parent:
     async OnSecurityChanged(nsCString aStatus, uint32_t aState);
     async OnFirstPaint(int32_t aX, int32_t aY);
     async OnScrolledAreaChanged(uint32_t aWidth, uint32_t aHeight);
-    async OnScrollChanged(int32_t offSetX, int32_t offSetY);
+    async OnScrollChanged(int32_t offSetX, int32_t offSetY, bool fromApzc);
     async OnTitleChanged(nsString aTitle);
     UpdateZoomConstraints(bool aAllowZoom, float aMinZoom, float aMaxZoom);
     ZoomToRect(gfxRect aRect);

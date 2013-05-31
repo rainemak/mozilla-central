@@ -1330,6 +1330,7 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aViewportFr
     case WAITING_LISTENERS: {
       if (mContentScrollHappend) {
         mFrameMetrics.mScrollOffset = aViewportFrame.mScrollOffset;
+        mContentScrollHappend = false;
       }
       break;
     }
@@ -1340,7 +1341,6 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aViewportFr
   }
 
   mWaitingForContentToPaint = mPaintThrottler.TaskComplete();
-  mContentScrollHappend = false;
   bool needContentRepaint = false;
   if (aViewportFrame.mCompositionBounds.width == mFrameMetrics.mCompositionBounds.width &&
       aViewportFrame.mCompositionBounds.height == mFrameMetrics.mCompositionBounds.height) {

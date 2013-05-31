@@ -361,7 +361,8 @@ EmbedLiteViewThreadParent::RecvOnScrolledAreaChanged(const uint32_t& aWidth,
 
 bool
 EmbedLiteViewThreadParent::RecvOnScrollChanged(const int32_t& offSetX,
-                                               const int32_t& offSetY)
+                                               const int32_t& offSetY,
+                                               const bool& aFromApzc)
 {
   LOGNI("off[%i,%i]", offSetX, offSetY);
   if (mViewAPIDestroyed) {
@@ -369,7 +370,7 @@ EmbedLiteViewThreadParent::RecvOnScrollChanged(const int32_t& offSetX,
   }
 
   NS_ENSURE_TRUE(mView, false);
-  if (mController) {
+  if (mController && !aFromApzc) {
     mController->ContentScrollPerformed();
   }
   mView->GetListener()->OnScrollChanged(offSetX, offSetY);

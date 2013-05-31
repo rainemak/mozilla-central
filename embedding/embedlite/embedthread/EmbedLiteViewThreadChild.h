@@ -136,6 +136,7 @@ private:
 
   nsDataHashtable<nsStringHashKey, bool/*start with key*/> mRegisteredMessages;
   nsTArray<mozilla::layers::GeckoContentController*> mControllerListeners;
+  nsIntPoint mLastAPZCTo;
 
   DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadChild);
 };
