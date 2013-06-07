@@ -54,7 +54,7 @@ public:
   virtual void SendAsyncScrollDOMEvent(const gfx::Rect &aContentRect,
                                        const gfx::Size &aScrollableSize) = 0;
 
-  virtual void ScrollUpdate(const gfx::Point& aPosition, const float aResolution) = 0;
+  virtual void ScrollUpdate(const CSSPoint& aPosition, const float aResolution) = 0;
 
   /**
    * Schedules a runnable to run on the controller/UI thread at some time

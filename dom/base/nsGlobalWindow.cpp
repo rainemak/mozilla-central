@@ -17,7 +17,6 @@
 #include "nsHistory.h"
 #include "nsPerformance.h"
 #include "nsDOMNavigationTiming.h"
-#include "nsBarProps.h"
 #include "nsIDOMStorage.h"
 #include "nsIDOMStorageManager.h"
 #include "DOMStorage.h"
@@ -61,6 +60,7 @@
 #include "nsPluginHost.h"
 #include "nsIPluginInstanceOwner.h"
 #include "nsGeolocation.h"
+#include "mozilla/dom/BarProps.h"
 #include "mozilla/dom/DesktopNotification.h"
 #include "nsContentCID.h"
 #include "nsLayoutStatics.h"
@@ -1678,6 +1678,13 @@ NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INTERNAL(nsGlobalWindow)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mFrameElement)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mFocusedNode)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mAudioContexts)
+
+  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mMenubar)
+  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mToolbar)
+  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mLocationbar)
+  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mPersonalbar)
+  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mStatusbar)
+  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mScrollbars)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
 
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(nsGlobalWindow)
@@ -1724,29 +1731,33 @@ NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(nsGlobalWindow)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mFrameElement)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mFocusedNode)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mAudioContexts)
+
+  NS_IMPL_CYCLE_COLLECTION_UNLINK(mMenubar)
+  NS_IMPL_CYCLE_COLLECTION_UNLINK(mToolbar)
+  NS_IMPL_CYCLE_COLLECTION_UNLINK(mLocationbar)
+  NS_IMPL_CYCLE_COLLECTION_UNLINK(mPersonalbar)
+  NS_IMPL_CYCLE_COLLECTION_UNLINK(mStatusbar)
+  NS_IMPL_CYCLE_COLLECTION_UNLINK(mScrollbars)
 NS_IMPL_CYCLE_COLLECTION_UNLINK_END
 
 struct TraceData
 {
-  TraceData(TraceCallback& aCallback, void* aClosure) :
-    callback(aCallback), closure(aClosure) {}
-
-  TraceCallback& callback;
+  const TraceCallbacks& callbacks;
   void* closure;
 };
 
 static PLDHashOperator
-TraceXBLHandlers(nsXBLPrototypeHandler* aKey, JSObject* aData, void* aClosure)
+TraceXBLHandlers(nsXBLPrototypeHandler* aKey, JSObject*& aData, void* aClosure)
 {
   TraceData* data = static_cast<TraceData*>(aClosure);
-  data->callback(aData, "Cached XBL prototype handler", data->closure);
+  data->callbacks.Trace(&aData, "Cached XBL prototype handler", data->closure);
   return PL_DHASH_NEXT;
 }
 
 NS_IMPL_CYCLE_COLLECTION_TRACE_BEGIN(nsGlobalWindow)
   if (tmp->mCachedXBLPrototypeHandlers.IsInitialized()) {
-    TraceData data(aCallback, aClosure);
-    tmp->mCachedXBLPrototypeHandlers.EnumerateRead(TraceXBLHandlers, &data);
+    TraceData data = { aCallbacks, aClosure };
+    tmp->mCachedXBLPrototypeHandlers.Enumerate(TraceXBLHandlers, &data);
   }
 NS_IMPL_CYCLE_COLLECTION_TRACE_END
 
@@ -3589,14 +3600,14 @@ nsGlobalWindow::GetPrompter(nsIPrompt** aPrompt)
 }
 
 NS_IMETHODIMP
-nsGlobalWindow::GetMenubar(nsIDOMBarProp** aMenubar)
+nsGlobalWindow::GetMenubar(nsISupports** aMenubar)
 {
   FORWARD_TO_OUTER(GetMenubar, (aMenubar), NS_ERROR_NOT_INITIALIZED);
 
   *aMenubar = nullptr;
 
   if (!mMenubar) {
-    mMenubar = new nsMenubarProp(this);
+    mMenubar = new MenubarProp(this);
     if (!mMenubar) {
       return NS_ERROR_OUT_OF_MEMORY;
     }
@@ -3608,14 +3619,14 @@ nsGlobalWindow::GetMenubar(nsIDOMBarProp** aMenubar)
 }
 
 NS_IMETHODIMP
-nsGlobalWindow::GetToolbar(nsIDOMBarProp** aToolbar)
+nsGlobalWindow::GetToolbar(nsISupports** aToolbar)
 {
   FORWARD_TO_OUTER(GetToolbar, (aToolbar), NS_ERROR_NOT_INITIALIZED);
 
   *aToolbar = nullptr;
 
   if (!mToolbar) {
-    mToolbar = new nsToolbarProp(this);
+    mToolbar = new ToolbarProp(this);
     if (!mToolbar) {
       return NS_ERROR_OUT_OF_MEMORY;
     }
@@ -3627,14 +3638,14 @@ nsGlobalWindow::GetToolbar(nsIDOMBarProp** aToolbar)
 }
 
 NS_IMETHODIMP
-nsGlobalWindow::GetLocationbar(nsIDOMBarProp** aLocationbar)
+nsGlobalWindow::GetLocationbar(nsISupports** aLocationbar)
 {
   FORWARD_TO_OUTER(GetLocationbar, (aLocationbar), NS_ERROR_NOT_INITIALIZED);
 
   *aLocationbar = nullptr;
 
   if (!mLocationbar) {
-    mLocationbar = new nsLocationbarProp(this);
+    mLocationbar = new LocationbarProp(this);
     if (!mLocationbar) {
       return NS_ERROR_OUT_OF_MEMORY;
     }
@@ -3646,14 +3657,14 @@ nsGlobalWindow::GetLocationbar(nsIDOMBarProp** aLocationbar)
 }
 
 NS_IMETHODIMP
-nsGlobalWindow::GetPersonalbar(nsIDOMBarProp** aPersonalbar)
+nsGlobalWindow::GetPersonalbar(nsISupports** aPersonalbar)
 {
   FORWARD_TO_OUTER(GetPersonalbar, (aPersonalbar), NS_ERROR_NOT_INITIALIZED);
 
   *aPersonalbar = nullptr;
 
   if (!mPersonalbar) {
-    mPersonalbar = new nsPersonalbarProp(this);
+    mPersonalbar = new PersonalbarProp(this);
     if (!mPersonalbar) {
       return NS_ERROR_OUT_OF_MEMORY;
     }
@@ -3665,14 +3676,14 @@ nsGlobalWindow::GetPersonalbar(nsIDOMBarProp** aPersonalbar)
 }
 
 NS_IMETHODIMP
-nsGlobalWindow::GetStatusbar(nsIDOMBarProp** aStatusbar)
+nsGlobalWindow::GetStatusbar(nsISupports** aStatusbar)
 {
   FORWARD_TO_OUTER(GetStatusbar, (aStatusbar), NS_ERROR_NOT_INITIALIZED);
 
   *aStatusbar = nullptr;
 
   if (!mStatusbar) {
-    mStatusbar = new nsStatusbarProp(this);
+    mStatusbar = new StatusbarProp(this);
     if (!mStatusbar) {
       return NS_ERROR_OUT_OF_MEMORY;
     }
@@ -3683,22 +3694,22 @@ nsGlobalWindow::GetStatusbar(nsIDOMBarProp** aStatusbar)
   return NS_OK;
 }
 
+mozilla::dom::BarProp*
+nsGlobalWindow::Scrollbars()
+{
+  if (!mScrollbars) {
+    mScrollbars = new ScrollbarsProp(this);
+  }
+
+  return mScrollbars;
+}
+
 NS_IMETHODIMP
-nsGlobalWindow::GetScrollbars(nsIDOMBarProp** aScrollbars)
+nsGlobalWindow::GetScrollbars(nsISupports** aScrollbars)
 {
   FORWARD_TO_OUTER(GetScrollbars, (aScrollbars), NS_ERROR_NOT_INITIALIZED);
 
-  *aScrollbars = nullptr;
-
-  if (!mScrollbars) {
-    mScrollbars = new nsScrollbarsProp(this);
-    if (!mScrollbars) {
-      return NS_ERROR_OUT_OF_MEMORY;
-    }
-  }
-
-  NS_ADDREF(*aScrollbars = mScrollbars);
-
+  NS_ADDREF(*aScrollbars = Scrollbars());
   return NS_OK;
 }
 
@@ -4432,13 +4443,19 @@ nsGlobalWindow::RequestAnimationFrame(const JS::Value& aCallback,
 NS_IMETHODIMP
 nsGlobalWindow::MozCancelRequestAnimationFrame(int32_t aHandle)
 {
-  return MozCancelAnimationFrame(aHandle);
+  return CancelAnimationFrame(aHandle);
 }
 
 NS_IMETHODIMP
 nsGlobalWindow::MozCancelAnimationFrame(int32_t aHandle)
 {
-  FORWARD_TO_INNER(MozCancelAnimationFrame, (aHandle),
+  return CancelAnimationFrame(aHandle);
+}
+
+NS_IMETHODIMP
+nsGlobalWindow::CancelAnimationFrame(int32_t aHandle)
+{
+  FORWARD_TO_INNER(CancelAnimationFrame, (aHandle),
                    NS_ERROR_NOT_INITIALIZED);
 
   if (!mDoc) {
@@ -7069,8 +7086,9 @@ nsGlobalWindow::FinalClose()
   //   round-trips to the event loop before the call to ReallyCloseWindow. This
   //   allows setTimeout handlers that are set after FinalClose() is called to
   //   run before the window is torn down.
-  bool indirect = nsContentUtils::GetCurrentJSContext() ==
-                  GetContextInternal()->GetNativeContext();
+  bool indirect = GetContextInternal() && // Occasionally null. See bug 877390.
+                  (nsContentUtils::GetCurrentJSContext() ==
+                   GetContextInternal()->GetNativeContext());
   if ((!indirect && nsContentUtils::IsCallerChrome()) ||
       NS_FAILED(nsCloseEvent::PostCloseEvent(this, indirect))) {
     ReallyCloseWindow();

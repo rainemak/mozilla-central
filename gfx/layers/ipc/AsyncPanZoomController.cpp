@@ -866,7 +866,7 @@ void AsyncPanZoomController::ScrollBy(const gfx::Point& aOffset) {
   gfx::Point newOffset(mFrameMetrics.mScrollOffset.x + aOffset.x,
                        mFrameMetrics.mScrollOffset.y + aOffset.y);
   FrameMetrics metrics(mFrameMetrics);
-  metrics.mScrollOffset = newOffset;
+  metrics.mScrollOffset = CSSPoint::FromUnknownPoint(newOffset);
   mFrameMetrics = metrics;
   if (mGeckoContentController) {
     gfxSize resolution = CalculateResolution(mFrameMetrics);
@@ -982,7 +982,7 @@ const gfx::Rect AsyncPanZoomController::CalculatePendingDisplayPort(
       scrollableRect.height = compositionBounds.height;
   }
 
-  gfx::Point scrollOffset = aFrameMetrics.mScrollOffset;
+  CSSPoint scrollOffset = aFrameMetrics.mScrollOffset;
 
   gfx::Rect displayPort(0, 0,
                         compositionBounds.width * gXStationarySizeMultiplier,
@@ -1029,7 +1029,7 @@ const gfx::Rect AsyncPanZoomController::CalculatePendingDisplayPort(
 
   gfx::Rect shiftedDisplayPort = displayPort;
   shiftedDisplayPort.MoveBy(scrollOffset.x, scrollOffset.y);
-  displayPort = shiftedDisplayPort.Intersect(scrollableRect);
+  displayPort = scrollableRect.ClampRect(shiftedDisplayPort);
   displayPort.MoveBy(-scrollOffset.x, -scrollOffset.y);
 
   return displayPort;
@@ -1108,8 +1108,8 @@ void AsyncPanZoomController::RequestContentRepaint() {
                                 GetAccelerationVector(),
                                 estimatedPaintDuration);
 
-  gfx::Point oldScrollOffset = mLastPaintRequestMetrics.mScrollOffset,
-             newScrollOffset = mFrameMetrics.mScrollOffset;
+  CSSPoint oldScrollOffset = mLastPaintRequestMetrics.mScrollOffset,
+           newScrollOffset = mFrameMetrics.mScrollOffset;
 
   // If we're trying to paint what we already think is painted, discard this
   // request since it's a pointless paint.
@@ -1123,6 +1123,8 @@ void AsyncPanZoomController::RequestContentRepaint() {
       fabsf(oldDisplayPort.y - newDisplayPort.y) < EPSILON &&
       fabsf(oldDisplayPort.width - newDisplayPort.width) < EPSILON &&
       fabsf(oldDisplayPort.height - newDisplayPort.height) < EPSILON &&
+      fabsf(oldScrollOffset.x - newScrollOffset.x) < EPSILON &&
+      fabsf(oldScrollOffset.y - newScrollOffset.y) < EPSILON &&
       mFrameMetrics.mResolution.width == mLastPaintRequestMetrics.mResolution.width) {
     return;
   }
@@ -1215,12 +1217,12 @@ bool AsyncPanZoomController::SampleContentTransformForFrame(const TimeStamp& aSa
                               startZoom * (1 - sampledPosition));
       mFrameMetrics.mZoom = gfxSize(sampledZoom, sampledZoom);
 
-      mFrameMetrics.mScrollOffset = gfx::Point(
+      mFrameMetrics.mScrollOffset = CSSPoint::FromUnknownPoint(gfx::Point(
         mEndZoomToMetrics.mScrollOffset.x * sampledPosition +
           mStartZoomToMetrics.mScrollOffset.x * (1 - sampledPosition),
         mEndZoomToMetrics.mScrollOffset.y * sampledPosition +
           mStartZoomToMetrics.mScrollOffset.y * (1 - sampledPosition)
-      );
+      ));
 
       requestAnimationFrame = true;
 
@@ -1249,7 +1251,7 @@ bool AsyncPanZoomController::SampleContentTransformForFrame(const TimeStamp& aSa
     }
 
     scrollOffset = gfxPoint(mFrameMetrics.mScrollOffset.x, mFrameMetrics.mScrollOffset.y);
-    mCurrentAsyncScrollOffset = mFrameMetrics.mScrollOffset;
+    mCurrentAsyncScrollOffset = mFrameMetrics.mScrollOffset.ToUnknownPoint();
   }
 
   // Cancel the mAsyncScrollTimeoutTask because we will fire a
@@ -1293,7 +1295,7 @@ bool AsyncPanZoomController::SampleContentTransformForFrame(const TimeStamp& aSa
 gfxPoint
 AsyncPanZoomController::GetTempScrollOffset()
 {
-  gfx::Point diff;
+  CSSPoint diff;
   {
     MonitorAutoLock monitor(mMonitor);
     diff = mLastContentPaintMetrics.mScrollOffset - mFrameMetrics.mScrollOffset;
@@ -1418,7 +1420,7 @@ void AsyncPanZoomController::ZoomToRect(const gfxRect& aRect) {
 
     nsIntRect compositionBounds = mFrameMetrics.mCompositionBounds;
     gfx::Rect cssPageRect = mFrameMetrics.mScrollableRect;
-    gfx::Point scrollOffset = mFrameMetrics.mScrollOffset;
+    CSSPoint scrollOffset = mFrameMetrics.mScrollOffset;
     gfxSize resolution = CalculateResolution(mFrameMetrics);
     gfxSize currentZoom = mFrameMetrics.mZoom;
     float targetZoom;
@@ -1492,7 +1494,8 @@ void AsyncPanZoomController::ZoomToRect(const gfxRect& aRect) {
     }
 
     mStartZoomToMetrics = mFrameMetrics;
-    mEndZoomToMetrics.mScrollOffset = gfx::Point(zoomToRect.x, zoomToRect.y);
+    mEndZoomToMetrics.mScrollOffset = CSSPoint::FromUnknownPoint(
+      gfx::Point(zoomToRect.x, zoomToRect.y));
 
     mAnimationStartTime = TimeStamp::Now();
 

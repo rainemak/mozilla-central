@@ -31,44 +31,6 @@ ifndef _MSC_VER
 FAIL_ON_WARNINGS := 1
 endif # !_MSC_VER
 
-EXPORTS_NAMESPACES = mozilla/embedlite IPC
-EXPORTS_mozilla/embedlite = \
-    EmbedInitGlue.h \
-    EmbedLiteAPI.h \
-    EmbedLiteApp.h \
-    EmbedLiteView.h \
-    EmbedLog.h \
-    $(NULL)
-
-EXPORTS_IPC = \
-    InputDataIPC.h \
-    $(NULL)
-
-CPPSRCS = \
-    EmbedLiteApp.cpp \
-    EmbedLiteUILoop.cpp \
-    EmbedLiteSubThread.cpp \
-    EmbedLiteAppThread.cpp \
-    EmbedLiteAppThreadParent.cpp \
-    EmbedLiteAppThreadChild.cpp \
-    EmbedLiteView.cpp \
-    EmbedLiteViewThreadParent.cpp \
-    EmbedLiteViewThreadChild.cpp \
-    EmbedLitePuppetWidget.cpp \
-    EmbedLiteCompositorParent.cpp \
-    TabChildHelper.cpp \
-    EmbedTabChildGlobal.cpp \
-    WebBrowserChrome.cpp \
-    GeckoLoader.cpp \
-    DirProvider.cpp \
-    WindowCreator.cpp \
-    EmbedLog.cpp \
-    EmbedLiteAppService.cpp \
-    EmbedLiteJSON.cpp \
-    EmbedLiteModulesService.cpp \
-    EmbedLiteXulAppInfo.cpp \
-    $(NULL)
-
 LOCAL_INCLUDES += \
     -I$(srcdir)/utils \
     -I$(srcdir)/modules \

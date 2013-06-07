@@ -149,11 +149,7 @@ NS_IMETHODIMP nsWifiMonitor::Run()
 
   PR_SetCurrentThreadName("Wifi Monitor");
 
-#ifdef HAS_WIFI_SCANNER
   nsresult rv = DoScan();
-#else
-  nsresult rv = NS_ERROR_NOT_IMPLEMENTED;
-#endif
 
   if (mKeepGoing && NS_FAILED(rv)) {
     nsAutoPtr<WifiListenerArray> currentListeners(

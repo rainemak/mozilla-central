@@ -105,7 +105,7 @@ class EmbedContentController : public GeckoContentController
       }
     }
 
-    virtual void ScrollUpdate(const gfx::Point& aPosition, const float aResolution)
+    virtual void ScrollUpdate(const CSSPoint& aPosition, const float aResolution)
     {
       EmbedLiteViewListener* listener = GetListener();
       if (listener) {

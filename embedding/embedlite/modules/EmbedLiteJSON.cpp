@@ -158,7 +158,7 @@ EmbedLiteJSON::ParseJSON(nsAString const& aJson, nsIPropertyBag2** aRoot)
   NS_ENSURE_TRUE(cx, NS_ERROR_FAILURE);
 
   JSAutoRequest ar(cx);
-  jsval json = JSVAL_NULL;
+  JS::Rooted<JS::Value> json(cx, JS::NullValue());
   if (!JS_ParseJSON(cx,
                     static_cast<const jschar*>(aJson.BeginReading()),
                     aJson.Length(),
@@ -196,7 +196,6 @@ static bool SetPropFromVariant(nsIProperty* aProp, JSContext* aCx, JSObject* aOb
     return false;
   }
   XPCLazyCallContext lccx(ccx);
-  ccx.SetScopeForNewJSObjects(aObj);
 
   if (!xpc_qsVariantToJsval(lccx, aVariant, &rval)) {
     NS_ERROR("Failed to convert nsIVariant to jsval");

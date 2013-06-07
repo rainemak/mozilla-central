@@ -37,6 +37,7 @@ ac_add_options --x-includes=$TARGET_ROOTFS/usr/include
 ac_add_options --x-libraries=$TARGET_ROOTFS/usr/lib
 
 ac_add_options --enable-cpp-rtti
+ac_add_options --with-linux-headers=$TARGET_ROOTFS/usr/include
 
 export ac_cv_have_usable_wchar_option_v2="no"
 ac_add_options --enable-application=xulrunner

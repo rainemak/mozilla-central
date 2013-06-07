@@ -439,6 +439,7 @@ BluetoothOppManager::AfterFirstPut()
   sSentFileLength = 0;
   sWaitingToSendPutFinal = false;
   mSuccessFlag = false;
+  mBodySegmentLength = 0;
 }
 
 void
@@ -460,6 +461,7 @@ BluetoothOppManager::AfterOppDisconnected()
   mConnected = false;
   mLastCommand = 0;
   mPacketLeftLength = 0;
+  mDsFile = nullptr;
 
   ClearQueue();
 
@@ -493,6 +495,7 @@ BluetoothOppManager::DeleteReceivedFile()
 
   if (mDsFile && mDsFile->mFile) {
     mDsFile->mFile->Remove(false);
+    mDsFile = nullptr;
   }
 }
 
@@ -771,7 +774,7 @@ BluetoothOppManager::ServerDataHandler(UnixSocketRawData* aMessage)
 
     // When we cancel the transfer, delete the file and notify complemention
     if (mAbortFlag) {
-      ReplyToPut(mPutFinalFlag, !mAbortFlag);
+      ReplyToPut(mPutFinalFlag, false);
       sSentFileLength += mBodySegmentLength;
       DeleteReceivedFile();
       FileTransferComplete();

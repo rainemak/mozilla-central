@@ -575,7 +575,7 @@ public:
     MessageLoop::current()->PostDelayedTask(FROM_HERE, aTask, aDelayMs);
   }
 
-  virtual void ScrollUpdate(const gfx::Point& aPosition, const float aResolution)
+  virtual void ScrollUpdate(const CSSPoint& aPosition, const float aResolution)
   {
   }
 

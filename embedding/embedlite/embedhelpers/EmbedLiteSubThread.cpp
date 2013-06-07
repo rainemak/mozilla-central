@@ -49,7 +49,8 @@ void EmbedLiteSubThread::CleanUp()
 bool EmbedLiteSubThread::StartEmbedThread()
 {
   LOGT();
-  profiler_init();
+  char aLocal;
+  profiler_init(&aLocal);
   return StartWithOptions(Thread::Options(MessageLoop::TYPE_MOZILLA_CHILD, 0));
 }
 

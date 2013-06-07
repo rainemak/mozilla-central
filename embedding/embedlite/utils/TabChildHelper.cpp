@@ -32,6 +32,7 @@ static const char CANCEL_DEFAULT_PAN_ZOOM[] = "cancel-default-pan-zoom";
 static const char BROWSER_ZOOM_TO_RECT[] = "browser-zoom-to-rect";
 static const char DETECT_SCROLLABLE_SUBFRAME[] = "detect-scrollable-subframe";
 
+using namespace mozilla;
 using namespace mozilla::embedlite;
 using namespace mozilla::layers;
 using namespace mozilla::dom;
@@ -192,7 +193,7 @@ TabChildHelper::Observe(nsISupports* aSubject,
 }
 
 static void
-ScrollWindowTo(nsIDOMWindow* aWindow, const mozilla::gfx::Point& aPoint)
+ScrollWindowTo(nsIDOMWindow* aWindow, const CSSPoint& aPoint)
 {
   nsGlobalWindow* window = static_cast<nsGlobalWindow*>(aWindow);
   nsIScrollableFrame* sf = window->GetScrollFrame();
@@ -336,7 +337,7 @@ TabChildHelper::RecvAsyncMessage(const nsAString& aMessageName,
 {
   NS_ENSURE_TRUE(InitTabChildGlobal(), false);
   JSAutoRequest ar(mCx);
-  jsval json = JSVAL_NULL;
+  JS::Rooted<JS::Value> json(mCx, JS::NullValue());
   StructuredCloneData cloneData;
   JSAutoStructuredCloneBuffer buffer;
   if (JS_ParseJSON(mCx,

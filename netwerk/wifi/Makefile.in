@@ -19,35 +19,16 @@ ifneq ($(OS_ARCH),Darwin)
 FAIL_ON_WARNINGS := 1
 endif
 
-ifeq (gonk,$(MOZ_WIDGET_TOOLKIT))
-CPPSRCS += nsWifiMonitorGonk.cpp
-else
-CPPSRCS += nsWifiMonitor.cpp
-endif
-
-CPPSRCS += nsWifiAccessPoint.cpp
-
 ifeq ($(OS_ARCH),Darwin)
-CPPSRCS += nsWifiScannerMac.cpp
 CMMSRCS = osx_corewlan.mm
-DEFINES += -DHAS_WIFI_SCANNER=1
-endif
-
-ifneq (,$(filter WINNT,$(OS_ARCH)))
-CPPSRCS += nsWifiScannerWin.cpp
-DEFINES += -DHAS_WIFI_SCANNER=1
 endif
 
 ifeq ($(OS_ARCH),SunOS)
-CPPSRCS += nsWifiScannerSolaris.cpp
 OS_INCLUDES += $(GLIB_CFLAGS)
-DEFINES += -DHAS_WIFI_SCANNER=1
 endif
 
 ifdef MOZ_ENABLE_DBUS
-CPPSRCS += nsWifiScannerDBus.cpp
 OS_INCLUDES += $(MOZ_DBUS_GLIB_CFLAGS)
-DEFINES += -DHAS_WIFI_SCANNER=1
 endif
 
 include $(topsrcdir)/config/rules.mk

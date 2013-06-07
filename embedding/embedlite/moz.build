@@ -13,3 +13,38 @@ XPIDL_SOURCES += [
 
 XPIDL_MODULE = 'embedLite'
 MODULE = 'embedLite'
+
+EXPORTS.mozilla.embedlite += [
+    'EmbedInitGlue.h',
+    'EmbedLiteAPI.h',
+    'EmbedLiteApp.h',
+    'EmbedLiteView.h',
+    'EmbedLog.h',
+]
+
+EXPORTS.IPC = ['InputDataIPC.h']
+
+CPP_SOURCES += [
+    'EmbedLiteApp.cpp',
+    'EmbedLiteUILoop.cpp',
+    'EmbedLiteSubThread.cpp',
+    'EmbedLiteAppThread.cpp',
+    'EmbedLiteAppThreadParent.cpp',
+    'EmbedLiteAppThreadChild.cpp',
+    'EmbedLiteView.cpp',
+    'EmbedLiteViewThreadParent.cpp',
+    'EmbedLiteViewThreadChild.cpp',
+    'EmbedLitePuppetWidget.cpp',
+    'EmbedLiteCompositorParent.cpp',
+    'TabChildHelper.cpp',
+    'EmbedTabChildGlobal.cpp',
+    'WebBrowserChrome.cpp',
+    'GeckoLoader.cpp',
+    'DirProvider.cpp',
+    'WindowCreator.cpp',
+    'EmbedLog.cpp',
+    'EmbedLiteAppService.cpp',
+    'EmbedLiteJSON.cpp',
+    'EmbedLiteModulesService.cpp',
+    'EmbedLiteXulAppInfo.cpp',
+]
