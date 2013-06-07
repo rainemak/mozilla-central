@@ -336,12 +336,12 @@ void EmbedLiteApp::DestroyView(EmbedLiteView* aView)
   std::map<uint32_t, EmbedLiteView*>::iterator it;
   for (it = mViews.begin(); it != mViews.end(); it++) {
     if (it->second == aView) {
+      EmbedLiteView* view = it->second;
+      delete view;
+      it->second = nullptr;
       break;
     }
   }
-  EmbedLiteView* view = it->second;
-  delete view;
-  it->second = nullptr;
 }
 
 void
