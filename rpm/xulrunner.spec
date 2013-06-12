@@ -74,6 +74,8 @@ echo "ac_add_options --with-float-abi=toolchain-default" >> mozconfig
 echo "ac_add_options --with-thumb=toolchain-default" >> mozconfig
 %endif
 echo "mk_add_options MOZ_MAKE_FLAGS='-j%jobs'" >> mozconfig
+echo "export CFLAGS=\"\$CFLAGS -fuse-ld=gold \"" >> mozconfig
+echo "export CXXFLAGS=\"\$CXXFLAGS -fuse-ld=gold \"" >> mozconfig
 echo "export LD=ld.gold" >> mozconfig
 echo "ac_add_options --disable-tests" >> mozconfig
 echo "ac_add_options --enable-system-hunspell" >> mozconfig
