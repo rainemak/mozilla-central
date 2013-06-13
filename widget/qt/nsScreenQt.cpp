@@ -94,7 +94,11 @@ NS_IMETHODIMP
 nsScreenQt::GetPixelDepth(int32_t *aPixelDepth)
 {
     // #############
+#if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
     *aPixelDepth = (int32_t)QColormap::instance().depth();
+#else
+    *aPixelDepth = QGuiApplication::primaryScreen()->depth();
+#endif
     return NS_OK;
 }
 
