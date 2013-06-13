@@ -38,7 +38,7 @@ Mozilla XUL runner
 
 %package devel
 Group: Development/Tools/Other
-Requires: xulrunner
+Requires: %{name} = %{version}-%{release}
 Summary: Headers for xulrunner
 
 %description devel
@@ -46,7 +46,7 @@ Development files for xulrunner.
 
 %package misc
 Group: Development/Tools/Other
-Requires: xulrunner
+Requires: %{name} = %{version}-%{release}
 Summary: Misc files for xulrunner
 
 %description misc

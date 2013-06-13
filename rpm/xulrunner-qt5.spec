@@ -41,7 +41,7 @@ Mozilla XUL runner
 
 %package devel
 Group: Applications/Internet
-Requires: xulrunner-qt5
+Requires: %{name} = %{version}-%{release}
 Summary: Headers for xulrunner
 
 %description devel
@@ -49,7 +49,7 @@ Development files for xulrunner.
 
 %package misc
 Group: Applications/Internet
-Requires: xulrunner-qt5
+Requires: %{name} = %{version}-%{release}
 Summary: Misc files for xulrunner
 
 %description misc
