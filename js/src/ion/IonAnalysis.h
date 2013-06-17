@@ -48,6 +48,9 @@ bool
 BuildPhiReverseMapping(MIRGraph &graph);
 
 void
+AssertBasicGraphCoherency(MIRGraph &graph);
+
+void
 AssertGraphCoherency(MIRGraph &graph);
 
 void
@@ -55,6 +58,9 @@ AssertExtendedGraphCoherency(MIRGraph &graph);
 
 bool
 EliminateRedundantChecks(MIRGraph &graph);
+
+bool
+UnsplitEdges(LIRGraph *lir);
 
 class MDefinition;
 

@@ -13,7 +13,6 @@
 #include "jsarray.h"
 #include "jsatom.h"
 #include "jscntxt.h"
-#include "jsinterp.h"
 #include "jsnum.h"
 #include "jsobj.h"
 #include "jsonparser.h"
@@ -21,11 +20,11 @@
 #include "jstypes.h"
 #include "jsutil.h"
 
+#include "vm/Interpreter.h"
 #include "vm/StringBuffer.h"
 
 #include "jsatominlines.h"
 #include "jsboolinlines.h"
-#include "jsobjinlines.h"
 
 using namespace js;
 using namespace js::gc;
@@ -634,7 +633,7 @@ js_Stringify(JSContext *cx, MutableHandleValue vp, JSObject *replacer_, Value sp
                 return false;
             space = NumberValue(d);
         } else if (ObjectClassIs(spaceObj, ESClass_String, cx)) {
-            JSString *str = ToStringSlow<CanGC>(cx, space);
+            JSString *str = ToStringSlow<CanGC>(cx, spaceRoot);
             if (!str)
                 return false;
             space = StringValue(str);
@@ -834,7 +833,9 @@ js_json_parse(JSContext *cx, unsigned argc, Value *vp)
     CallArgs args = CallArgsFromVp(argc, vp);
 
     /* Step 1. */
-    JSString *str = (argc >= 1) ? ToString<CanGC>(cx, args[0]) : cx->names().undefined;
+    JSString *str = (args.length() >= 1)
+                    ? ToString<CanGC>(cx, args.handleAt(0))
+                    : cx->names().undefined;
     if (!str)
         return false;
 

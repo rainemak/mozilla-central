@@ -50,9 +50,9 @@ nsScreenQt::GetRect(int32_t *outLeft,int32_t *outTop,
                     int32_t *outWidth,int32_t *outHeight)
 {
 #if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
-    const QRect& r = QApplication::desktop()->screenGeometry(mScreen);
+    QRect r = QApplication::desktop()->screenGeometry(mScreen);
 #else
-    const QRect& r = QGuiApplication::screens()[mScreen]->geometry();
+    QRect r = QGuiApplication::screens()[mScreen]->geometry();
 #endif
 #ifdef MOZ_ENABLE_QTMOBILITY
     r = MozQOrientationSensorFilter::GetRotationTransform().mapRect(r);
@@ -74,9 +74,9 @@ nsScreenQt::GetAvailRect(int32_t *outLeft,int32_t *outTop,
                          int32_t *outWidth,int32_t *outHeight)
 {
 #if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
-    const QRect& r = QApplication::desktop()->screenGeometry(mScreen);
+    QRect r = QApplication::desktop()->screenGeometry(mScreen);
 #else
-    const QRect& r = QGuiApplication::screens()[mScreen]->geometry();
+    QRect r = QGuiApplication::screens()[mScreen]->geometry();
 #endif
 #ifdef MOZ_ENABLE_QTMOBILITY
     r = MozQOrientationSensorFilter::GetRotationTransform().mapRect(r);

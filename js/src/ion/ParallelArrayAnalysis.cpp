@@ -151,6 +151,7 @@ class ParallelArrayVisitor : public MInstructionVisitor
     SPECIALIZED_OP(MinMax, PERMIT_NUMERIC)
     SAFE_OP(Abs)
     SAFE_OP(Sqrt)
+    UNSAFE_OP(Atan2)
     SAFE_OP(MathFunction)
     SPECIALIZED_OP(Add, PERMIT_NUMERIC)
     SPECIALIZED_OP(Sub, PERMIT_NUMERIC)
@@ -855,14 +856,18 @@ GetPossibleCallees(JSContext *cx,
         if (!rootedFun->isInterpreted())
             continue;
 
-        if (rootedFun->nonLazyScript()->shouldCloneAtCallsite) {
+        rootedScript = rootedFun->getOrCreateScript(cx);
+        if (!rootedScript)
+            return false;
+
+        if (rootedScript->shouldCloneAtCallsite) {
             rootedFun = CloneFunctionAtCallsite(cx, rootedFun, script, pc);
             if (!rootedFun)
                 return false;
+            rootedScript = rootedFun->nonLazyScript();
         }
 
         // check if this call target is already known
-        rootedScript = rootedFun->nonLazyScript();
         if (!AddCallTarget(rootedScript, targets))
             return false;
     }

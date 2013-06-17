@@ -24,8 +24,10 @@
 #include "ScriptProcessorNode.h"
 #include "ChannelMergerNode.h"
 #include "ChannelSplitterNode.h"
+#include "MediaStreamAudioDestinationNode.h"
 #include "WaveShaperNode.h"
 #include "WaveTable.h"
+#include "ConvolverNode.h"
 #include "nsNetUtil.h"
 
 namespace mozilla {
@@ -50,6 +52,7 @@ AudioContext::AudioContext(nsPIDOMWindow* aWindow,
   , mDestination(new AudioDestinationNode(this, aIsOffline,
                                           aNumberOfChannels,
                                           aLength, aSampleRate))
+  , mNumberOfChannels(aNumberOfChannels)
   , mIsOffline(aIsOffline)
 {
   // Actually play audio
@@ -202,6 +205,14 @@ bool IsValidBufferSize(uint32_t aBufferSize) {
 
 }
 
+already_AddRefed<MediaStreamAudioDestinationNode>
+AudioContext::CreateMediaStreamDestination()
+{
+  nsRefPtr<MediaStreamAudioDestinationNode> node =
+      new MediaStreamAudioDestinationNode(this);
+  return node.forget();
+}
+
 already_AddRefed<ScriptProcessorNode>
 AudioContext::CreateScriptProcessor(uint32_t aBufferSize,
                                     uint32_t aNumberOfInputChannels,
@@ -261,6 +272,13 @@ AudioContext::CreatePanner()
   nsRefPtr<PannerNode> pannerNode = new PannerNode(this);
   mPannerNodes.PutEntry(pannerNode);
   return pannerNode.forget();
+}
+
+already_AddRefed<ConvolverNode>
+AudioContext::CreateConvolver()
+{
+  nsRefPtr<ConvolverNode> convolverNode = new ConvolverNode(this);
+  return convolverNode.forget();
 }
 
 already_AddRefed<ChannelSplitterNode>
@@ -395,6 +413,12 @@ void
 AudioContext::UpdatePannerSource()
 {
   mPannerNodes.EnumerateEntries(FindConnectedSourcesOn, nullptr);
+}
+
+uint32_t
+AudioContext::MaxChannelCount() const
+{
+  return mIsOffline ? mNumberOfChannels : AudioStream::MaxNumberOfChannels();
 }
 
 MediaStreamGraph*

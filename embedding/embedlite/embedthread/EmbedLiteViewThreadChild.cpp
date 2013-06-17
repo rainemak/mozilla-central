@@ -524,8 +524,8 @@ bool
 EmbedLiteViewThreadChild::RecvAsyncScrollDOMEvent(const gfxRect& contentRect,
                                                   const gfxSize& scrollSize)
 {
-  gfx::Rect rect(contentRect.x, contentRect.y, contentRect.width, contentRect.height);
-  gfx::Size size(scrollSize.width, scrollSize.height);
+  mozilla::CSSRect rect(contentRect.x, contentRect.y, contentRect.width, contentRect.height);
+  mozilla::CSSSize size(scrollSize.width, scrollSize.height);
   for (unsigned int i = 0; i < mControllerListeners.Length(); i++) {
     mControllerListeners[i]->SendAsyncScrollDOMEvent(rect, size);
   }
@@ -554,7 +554,7 @@ EmbedLiteViewThreadChild::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
 
   if (sPostAZPCAsJson.viewport) {
     nsString data;
-    gfxSize resolution = AsyncPanZoomController::CalculateResolution(aFrameMetrics);
+    mozilla::CSSToScreenScale resolution = AsyncPanZoomController::CalculateResolution(aFrameMetrics);
     data.AppendPrintf("{ \"x\" : %d", NS_lround(aFrameMetrics.mScrollOffset.x));
     data.AppendPrintf(", \"y\" : %d", NS_lround(aFrameMetrics.mScrollOffset.y));
     data.AppendPrintf(", \"viewport\" : ");
@@ -580,8 +580,9 @@ EmbedLiteViewThreadChild::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
     data.AppendPrintf(", \"height\" : %f", aFrameMetrics.mScrollableRect.height);
     data.AppendPrintf(" }");
     data.AppendPrintf(", \"resolution\" : ");
-    data.AppendPrintf("{ \"width\" : %f", resolution.width);
-    data.AppendPrintf(", \"height\" : %f", resolution.height);
+    data.AppendPrintf("{ \"width\" : %f", resolution.scale);
+    data.AppendPrintf(", \"height\" : %f", resolution.scale);
+    data.AppendPrintf(", \"scale\" : %f", resolution.scale);
     data.AppendPrintf(" }");
     data.AppendPrintf(" }");
 
@@ -606,7 +607,7 @@ EmbedLiteViewThreadChild::RecvHandleDoubleTap(const nsIntPoint& aPoint)
   }
 
   for (unsigned int i = 0; i < mControllerListeners.Length(); i++) {
-    mControllerListeners[i]->HandleDoubleTap(aPoint);
+    mControllerListeners[i]->HandleDoubleTap(CSSIntPoint(aPoint.x, aPoint.y));
   }
 
   if (sPostAZPCAsJson.doubleTap) {
@@ -633,7 +634,7 @@ EmbedLiteViewThreadChild::RecvHandleSingleTap(const nsIntPoint& aPoint)
   }
 
   for (unsigned int i = 0; i < mControllerListeners.Length(); i++) {
-    mControllerListeners[i]->HandleSingleTap(aPoint);
+    mControllerListeners[i]->HandleSingleTap(CSSIntPoint(aPoint.x, aPoint.y));
   }
 
   if (sPostAZPCAsJson.singleTap) {
@@ -655,7 +656,7 @@ bool
 EmbedLiteViewThreadChild::RecvHandleLongTap(const nsIntPoint& aPoint)
 {
   for (unsigned int i = 0; i < mControllerListeners.Length(); i++) {
-    mControllerListeners[i]->HandleLongTap(aPoint);
+    mControllerListeners[i]->HandleLongTap(CSSIntPoint(aPoint.x, aPoint.y));
   }
 
   if (sPostAZPCAsJson.longTap) {

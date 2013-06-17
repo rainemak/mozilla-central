@@ -195,9 +195,8 @@ static bool SetPropFromVariant(nsIProperty* aProp, JSContext* aCx, JSObject* aOb
   if (!ccx.IsValid()) {
     return false;
   }
-  XPCLazyCallContext lccx(ccx);
 
-  if (!xpc_qsVariantToJsval(lccx, aVariant, &rval)) {
+  if (!xpc_qsVariantToJsval(aCx, aVariant, &rval)) {
     NS_ERROR("Failed to convert nsIVariant to jsval");
     return false;
   }

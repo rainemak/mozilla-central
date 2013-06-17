@@ -28,6 +28,7 @@ webidl_files = \
   BeforeUnloadEvent.webidl \
   BiquadFilterNode.webidl \
   Blob.webidl \
+  CameraManager.webidl \
   CanvasRenderingContext2D.webidl \
   CaretPosition.webidl \
   CDATASection.webidl \
@@ -39,10 +40,10 @@ webidl_files = \
   ClientRect.webidl \
   ClientRectList.webidl \
   ClipboardEvent.webidl \
-  CameraManager.webidl \
   CommandEvent.webidl \
   Comment.webidl \
   CompositionEvent.webidl \
+  ConvolverNode.webidl \
   Coordinates.webidl \
   CSS.webidl \
   CSSPrimitiveValue.webidl \
@@ -79,11 +80,14 @@ webidl_files = \
   File.webidl \
   FileHandle.webidl \
   FileList.webidl \
+  FileMode.webidl \
   FileReader.webidl \
   FileReaderSync.webidl \
   FileRequest.webidl \
+  FocusEvent.webidl \
   FormData.webidl \
   Function.webidl \
+  Future.webidl \
   GainNode.webidl \
   Geolocation.webidl \
   HTMLAnchorElement.webidl \
@@ -169,6 +173,7 @@ webidl_files = \
   Location.webidl \
   MediaError.webidl \
   MediaStream.webidl \
+  MediaStreamAudioDestinationNode.webidl \
   MediaStreamEvent.webidl \
   MediaStreamTrack.webidl \
   MessageEvent.webidl \
@@ -178,6 +183,7 @@ webidl_files = \
   MozActivity.webidl \
   MozMmsMessage.webidl \
   MozNamedAttrMap.webidl \
+  MozTimeManager.webidl \
   MutationEvent.webidl \
   MutationObserver.webidl \
   NetDashboard.webidl \
@@ -226,6 +232,7 @@ webidl_files = \
   SVGAnimatedPoints.webidl \
   SVGAnimatedPreserveAspectRatio.webidl \
   SVGAnimatedRect.webidl \
+  SVGAnimatedString.webidl \
   SVGAnimatedTransformList.webidl \
   SVGAnimateElement.webidl \
   SVGAnimateMotionElement.webidl \

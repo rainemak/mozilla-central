@@ -10,12 +10,12 @@
 #include "jsstr.h"
 
 #include "gc/Marking.h"
-#include "gc/Nursery-inl.h"
+#include "ion/IonCode.h"
 #include "vm/Shape.h"
 
-#include "jsobjinlines.h"
+#include "jscompartmentinlines.h"
 
-#include "ion/IonCode.h"
+#include "gc/Nursery-inl.h"
 #include "vm/Shape-inl.h"
 #include "vm/String-inl.h"
 
@@ -884,6 +884,9 @@ ScanBaseShape(GCMarker *gcmarker, BaseShape *base)
     } else if (GlobalObject *global = base->compartment()->maybeGlobal()) {
         PushMarkStack(gcmarker, global);
     }
+
+    if (JSObject *metadata = base->getObjectMetadata())
+        PushMarkStack(gcmarker, metadata);
 
     /*
      * All children of the owned base shape are consistent with its

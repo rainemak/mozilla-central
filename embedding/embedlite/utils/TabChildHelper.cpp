@@ -207,7 +207,7 @@ bool
 TabChildHelper::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
 {
   LOGF();
-  gfx::Rect cssCompositedRect =
+  mozilla::CSSRect cssCompositedRect =
     AsyncPanZoomController::CalculateCompositedRectInCssPixels(aFrameMetrics);
   // The BrowserElementScrolling helper must know about these updated metrics
   // for other functions it performs, such as double tap handling.
@@ -218,9 +218,8 @@ TabChildHelper::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
   utils->SetScrollPositionClampingScrollPortSize(
     cssCompositedRect.width, cssCompositedRect.height);
   ScrollWindowTo(window, aFrameMetrics.mScrollOffset);
-  gfxSize resolution = AsyncPanZoomController::CalculateResolution(
-                         aFrameMetrics);
-  utils->SetResolution(resolution.width, resolution.height);
+  CSSToScreenScale resolution = AsyncPanZoomController::CalculateResolution(aFrameMetrics);
+  utils->SetResolution(resolution.scale, resolution.scale);
 
   nsCOMPtr<nsIDOMDocument> domDoc;
   nsCOMPtr<nsIDOMElement> docElement;
@@ -431,7 +430,7 @@ TabChildHelper::ConvertMutiTouchInputToEvent(const mozilla::MultiTouchInput& aDa
     tpt.y -= diff.y;
     nsRefPtr<Touch> t = new Touch(data.mIdentifier,
                                   tpt,
-                                  data.mRadius,
+                                  nsIntPoint(data.mRadius.width, data.mRadius.height),
                                   data.mRotationAngle,
                                   data.mForce);
     aEvent.touches.AppendElement(t);

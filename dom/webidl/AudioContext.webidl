@@ -35,6 +35,9 @@ interface AudioContext : EventTarget {
     [Creator]
     AudioBufferSourceNode createBufferSource();
 
+    [Creator]
+    MediaStreamAudioDestinationNode createMediaStreamDestination();
+
     [Creator, Throws]
     ScriptProcessorNode createScriptProcessor(optional unsigned long bufferSize = 0,
                                               optional unsigned long numberOfInputChannels = 2,
@@ -52,6 +55,8 @@ interface AudioContext : EventTarget {
     WaveShaperNode createWaveShaper();
     [Creator]
     PannerNode createPanner();
+    [Creator]
+    ConvolverNode createConvolver();
 
     [Creator, Throws]
     ChannelSplitterNode createChannelSplitter(optional unsigned long numberOfOutputs = 6);

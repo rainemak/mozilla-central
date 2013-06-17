@@ -121,9 +121,7 @@ inline XPCWrappedNativeProto*
 XPCCallContext::GetProto() const
 {
     CHECK_STATE(HAVE_OBJECT);
-    if (mWrapper)
-        return mWrapper->GetProto();
-    return mFlattenedJSObject ? GetSlimWrapperProto(mFlattenedJSObject) : nullptr;
+    return mWrapper ? mWrapper->GetProto() : nullptr;
 }
 
 inline JSBool
@@ -594,27 +592,6 @@ void ThrowBadResult(nsresult result, XPCCallContext& ccx)
 {
     XPCThrower::ThrowBadResult(NS_ERROR_XPC_NATIVE_RETURNED_FAILURE,
                                result, ccx);
-}
-
-inline void
-XPCLazyCallContext::SetWrapper(XPCWrappedNative* wrapper,
-                               XPCWrappedNativeTearOff* tearoff)
-{
-    mWrapper = wrapper;
-    mTearOff = tearoff;
-    if (mTearOff)
-        mFlattenedJSObject = mTearOff->GetJSObject();
-    else
-        mFlattenedJSObject = mWrapper->GetFlatJSObject();
-}
-inline void
-XPCLazyCallContext::SetWrapper(JSObject* flattenedJSObject)
-{
-    NS_ASSERTION(IS_SLIM_WRAPPER_OBJECT(flattenedJSObject),
-                 "What kind of object is this?");
-    mWrapper = nullptr;
-    mTearOff = nullptr;
-    mFlattenedJSObject = flattenedJSObject;
 }
 
 /***************************************************************************/

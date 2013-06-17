@@ -46,8 +46,10 @@ struct ParamTraits<mozilla::MultiTouchInput>
     for (uint32_t i = 0; i < aParam.mTouches.Length(); ++i) {
       const mozilla::SingleTouchData& data = aParam.mTouches[i];
       WriteParam(aMsg, data.mIdentifier);
-      WriteParam(aMsg, data.mScreenPoint);
-      WriteParam(aMsg, data.mRadius);
+      WriteParam(aMsg, data.mScreenPoint.x);
+      WriteParam(aMsg, data.mScreenPoint.y);
+      WriteParam(aMsg, data.mRadius.width);
+      WriteParam(aMsg, data.mRadius.height);
       WriteParam(aMsg, data.mRotationAngle);
       WriteParam(aMsg, data.mForce);
     }
@@ -65,13 +67,15 @@ struct ParamTraits<mozilla::MultiTouchInput>
     aResult->mType = static_cast<mozilla::MultiTouchInput::MultiTouchType>(inputType);
     for (uint32_t i = 0; i < numTouches; ++i) {
       int32_t identifier;
-      nsIntPoint refPoint;
-      nsIntPoint radius;
+      mozilla::ScreenIntPoint refPoint;
+      mozilla::ScreenSize radius;
       float rotationAngle;
       float force;
       if (!ReadParam(aMsg, aIter, &identifier) ||
-          !ReadParam(aMsg, aIter, &refPoint) ||
-          !ReadParam(aMsg, aIter, &radius) ||
+          !ReadParam(aMsg, aIter, &refPoint.x) ||
+          !ReadParam(aMsg, aIter, &refPoint.y) ||
+          !ReadParam(aMsg, aIter, &radius.width) ||
+          !ReadParam(aMsg, aIter, &radius.height) ||
           !ReadParam(aMsg, aIter, &rotationAngle) ||
           !ReadParam(aMsg, aIter, &force)) {
         return false;

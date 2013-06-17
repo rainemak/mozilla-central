@@ -39,7 +39,7 @@ class EmbedContentController : public GeckoContentController
       aFrameMetrics));
     }
 
-    virtual void HandleDoubleTap(const nsIntPoint& aPoint) MOZ_OVERRIDE {
+    virtual void HandleDoubleTap(const CSSIntPoint& aPoint) MOZ_OVERRIDE {
       if (MessageLoop::current() != mUILoop) {
         // We have to send this message from the "UI thread" (main
         // thread).
@@ -50,12 +50,12 @@ class EmbedContentController : public GeckoContentController
         return;
       }
       EmbedLiteViewListener* listener = GetListener();
-      if (listener && !listener->HandleDoubleTap(aPoint)) {
-        unused << mRenderFrame->SendHandleDoubleTap(aPoint);
+      if (listener && !listener->HandleDoubleTap(nsIntPoint(aPoint.x, aPoint.y))) {
+        unused << mRenderFrame->SendHandleDoubleTap(nsIntPoint(aPoint.x, aPoint.y));
       }
     }
 
-    virtual void HandleSingleTap(const nsIntPoint& aPoint) MOZ_OVERRIDE {
+    virtual void HandleSingleTap(const CSSIntPoint& aPoint) MOZ_OVERRIDE {
       if (MessageLoop::current() != mUILoop) {
         // We have to send this message from the "UI thread" (main
         // thread).
@@ -66,12 +66,12 @@ class EmbedContentController : public GeckoContentController
         return;
       }
       EmbedLiteViewListener* listener = GetListener();
-      if (listener && !listener->HandleSingleTap(aPoint)) {
-        unused << mRenderFrame->SendHandleSingleTap(aPoint);
+      if (listener && !listener->HandleSingleTap(nsIntPoint(aPoint.x, aPoint.y))) {
+        unused << mRenderFrame->SendHandleSingleTap(nsIntPoint(aPoint.x, aPoint.y));
       }
     }
 
-    virtual void HandleLongTap(const nsIntPoint& aPoint) MOZ_OVERRIDE {
+    virtual void HandleLongTap(const CSSIntPoint& aPoint) MOZ_OVERRIDE {
       if (MessageLoop::current() != mUILoop) {
         // We have to send this message from the "UI thread" (main
         // thread).
@@ -82,8 +82,8 @@ class EmbedContentController : public GeckoContentController
         return;
       }
       EmbedLiteViewListener* listener = GetListener();
-      if (listener && !listener->HandleLongTap(aPoint)) {
-        unused << mRenderFrame->SendHandleLongTap(aPoint);
+      if (listener && !listener->HandleLongTap(nsIntPoint(aPoint.x, aPoint.y))) {
+        unused << mRenderFrame->SendHandleLongTap(nsIntPoint(aPoint.x, aPoint.y));
       }
     }
 
@@ -92,8 +92,8 @@ class EmbedContentController : public GeckoContentController
      * |aContentRect| is in CSS pixels, relative to the current cssPage.
      * |aScrollableSize| is the current content width/height in CSS pixels.
      */
-    virtual void SendAsyncScrollDOMEvent(const gfx::Rect& aContentRect,
-                                         const gfx::Size& aScrollableSize) {
+    virtual void SendAsyncScrollDOMEvent(const CSSRect& aContentRect,
+                                         const CSSSize& aScrollableSize) {
       LOGNI("contentR[%g,%g,%g,%g], scrSize[%g,%g]",
             aContentRect.x, aContentRect.y, aContentRect.width, aContentRect.height,
             aScrollableSize.width, aScrollableSize.height);
@@ -226,7 +226,7 @@ EmbedLiteViewThreadParent::UpdateScrollController()
     }
     mController = new AsyncPanZoomController(mGeckoController, type);
     mController->SetCompositorParent(mCompositor);
-    mController->UpdateCompositionBounds(nsIntRect(0, 0, mViewSize.width, mViewSize.height));
+    mController->UpdateCompositionBounds(ScreenIntRect(0, 0, mViewSize.width, mViewSize.height));
   }
 }
 
@@ -618,10 +618,6 @@ EmbedLiteViewThreadParent::ScrollBy(int aDX, int aDY, bool aDoOverflow)
 {
   LOGT("d[%i,%i]", aDX, aDY);
   mScrollOffset.MoveBy(-aDX, -aDY);
-  if (mCompositor) {
-    mCompositor->SetTransformation(mLastScale, nsIntPoint(mScrollOffset.x, mScrollOffset.y));
-    mCompositor->ScheduleRenderOnCompositorThread();
-  }
 
   return true;
 }
@@ -633,7 +629,7 @@ EmbedLiteViewThreadParent::SetViewSize(int width, int height)
   mViewSize = gfxSize(width, height);
   unused << SendSetViewSize(mViewSize);
   if (mController) {
-    mController->UpdateCompositionBounds(nsIntRect(0, 0, width, height));
+    mController->UpdateCompositionBounds(ScreenIntRect(0, 0, width, height));
   }
 }
 
@@ -673,9 +669,6 @@ EmbedLiteViewThreadParent::SetViewClipping(const gfxRect& aClipRect)
 void
 EmbedLiteViewThreadParent::SetTransformation(float aScale, nsIntPoint aScrollOffset)
 {
-  if (mCompositor) {
-    mCompositor->SetTransformation(aScale, aScrollOffset);
-  }
 }
 
 void
@@ -693,7 +686,7 @@ EmbedLiteViewThreadParent::ReceiveInputEvent(const InputData& aEvent)
     mController->ReceiveInputEvent(aEvent);
     if (aEvent.mInputType == MULTITOUCH_INPUT) {
       const MultiTouchInput& multiTouchInput = aEvent.AsMultiTouchInput();
-      gfxSize sz = mController->CalculateResolution();
+      mozilla::CSSToScreenScale sz = mController->CalculateResolution();
       if (multiTouchInput.mType == MultiTouchInput::MULTITOUCH_START ||
           multiTouchInput.mType == MultiTouchInput::MULTITOUCH_ENTER) {
         mInTouchProcess = true;
@@ -703,9 +696,9 @@ EmbedLiteViewThreadParent::ReceiveInputEvent(const InputData& aEvent)
       }
       gfxPoint diff = mController->GetTempScrollOffset();
       if (multiTouchInput.mType == MultiTouchInput::MULTITOUCH_MOVE) {
-        unused << SendInputDataTouchMoveEvent(multiTouchInput, sz, diff);
+        unused << SendInputDataTouchMoveEvent(multiTouchInput, gfxSize(sz.scale, sz.scale), diff);
       } else {
-        unused << SendInputDataTouchEvent(multiTouchInput, sz, diff);
+        unused << SendInputDataTouchEvent(multiTouchInput, gfxSize(sz.scale, sz.scale), diff);
       }
     }
   }
@@ -751,8 +744,8 @@ EmbedLiteViewThreadParent::MousePress(int x, int y, int mstime, unsigned int but
   if (mController) {
     MultiTouchInput event(MultiTouchInput::MULTITOUCH_START, mstime);
     event.mTouches.AppendElement(SingleTouchData(0,
-                                                 nsIntPoint(x, y),
-                                                 nsIntPoint(1, 1),
+                                                 mozilla::ScreenIntPoint(x, y),
+                                                 mozilla::ScreenSize(1, 1),
                                                  180.0f,
                                                  1.0f));
     mController->ReceiveInputEvent(event);
@@ -769,8 +762,8 @@ EmbedLiteViewThreadParent::MouseRelease(int x, int y, int mstime, unsigned int b
   if (mController) {
     MultiTouchInput event(MultiTouchInput::MULTITOUCH_END, mstime);
     event.mTouches.AppendElement(SingleTouchData(0,
-                                                 nsIntPoint(x, y),
-                                                 nsIntPoint(1, 1),
+                                                 mozilla::ScreenIntPoint(x, y),
+                                                 mozilla::ScreenSize(1, 1),
                                                  180.0f,
                                                  1.0f));
     mController->ReceiveInputEvent(event);
@@ -787,8 +780,8 @@ EmbedLiteViewThreadParent::MouseMove(int x, int y, int mstime, unsigned int butt
   if (mController) {
     MultiTouchInput event(MultiTouchInput::MULTITOUCH_MOVE, mstime);
     event.mTouches.AppendElement(SingleTouchData(0,
-                                                 nsIntPoint(x, y),
-                                                 nsIntPoint(1, 1),
+                                                 mozilla::ScreenIntPoint(x, y),
+                                                 mozilla::ScreenSize(1, 1),
                                                  180.0f,
                                                  1.0f));
     mController->ReceiveInputEvent(event);

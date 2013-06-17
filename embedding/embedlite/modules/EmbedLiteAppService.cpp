@@ -333,7 +333,7 @@ NS_IMETHODIMP
 EmbedLiteAppService::GetCompositedRectInCSS(const mozilla::layers::FrameMetrics& aFrameMetrics,
                                             float* aX, float* aY, float* aWidth, float* aHeight)
 {
-  mozilla::gfx::Rect cssCompositedRect =
+  mozilla::CSSRect cssCompositedRect =
     mozilla::layers::AsyncPanZoomController::CalculateCompositedRectInCssPixels(aFrameMetrics);
   *aX = cssCompositedRect.x;
   *aY = cssCompositedRect.y;
