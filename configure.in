@@ -4746,16 +4746,18 @@ then
         5.*)
             AC_MSG_RESULT("Using qt5: $QT_VERSION")
             PKG_CHECK_MODULES(MOZ_QT, Qt5Gui Qt5Network Qt5Core Qt5OpenGL Qt5Widgets Qt5PrintSupport, ,
-              [echo "$MOZ_QT_PKG_ERRORS"
-              AC_MSG_ERROR([Need qtbase development packages, (On Ubuntu, you might try installing the packages qtbase5-dev libqt5opengl5-dev.)])])
+            [
+              AC_MSG_ERROR([$MOZ_QT_PKG_ERRORS Need qtbase development packages, (On Ubuntu, you might try installing the packages qtbase5-dev libqt5opengl5-dev.)])
+            ])
             QT5INCDIR=`pkg-config --variable=includedir Qt5Gui`
             MOZ_QT_CFLAGS="$MOZ_QT_CFLAGS -I$QT5INCDIR/QtGui/$QT_VERSION/QtGui"
             ;;
         4.*)
             AC_MSG_RESULT("Using qt4: $QT_VERSION")
             PKG_CHECK_MODULES(MOZ_QT, QtGui QtNetwork QtCore QtOpenGL, ,
-              [echo "$MOZ_QT_PKG_ERRORS"
-              AC_MSG_ERROR([Need qt4 development package, (On Ubuntu, you might try installing the packages libqt4-dev libqt4-opengl-dev.)])])
+            [
+              AC_MSG_ERROR([$MOZ_QT_PKG_ERRORS Need qt4 development package, (On Ubuntu, you might try installing the packages libqt4-dev libqt4-opengl-dev.)])
+            ])
             ;;
         *)
             AC_MSG_ERROR([* * * Unsupported Qt Version: $QT_VERSION])
