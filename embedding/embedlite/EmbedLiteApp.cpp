@@ -309,7 +309,7 @@ EmbedLiteApp::CreateWindowRequested(const uint32_t& chromeFlags, const char* uri
   EmbedLiteView* view = nullptr;
   std::map<uint32_t, EmbedLiteView*>::iterator it;
   for (it = mViews.begin(); it != mViews.end(); it++) {
-    if (it->second->GetUniqueID() == parentId) {
+    if (it->second && it->second->GetUniqueID() == parentId) {
       LOGT("Found parent view:%p", it->second);
       view = it->second;
       break;
@@ -323,7 +323,9 @@ EmbedLiteApp::ViewDestroyed(uint32_t id)
 {
   LOGT("id:%i", id);
   std::map<uint32_t, EmbedLiteView*>::iterator it = mViews.find(id);
-  mViews.erase(it);
+  if (it != mViews.end()) {
+    mViews.erase(it);
+  }
   if (mDestroying && mViews.empty()) {
     mUILoop->PostTask(FROM_HERE,
                       NewRunnableMethod(STHREADAPP(), &EmbedLiteAppThreadParent::SendPreDestroy));
@@ -339,6 +341,7 @@ void EmbedLiteApp::DestroyView(EmbedLiteView* aView)
       EmbedLiteView* view = it->second;
       delete view;
       it->second = nullptr;
+      mViews.erase(it);
       break;
     }
   }
