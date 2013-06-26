@@ -1,4 +1,4 @@
-%define greversion 24.0a1
+%define greversion 25.0a1
 
 Name:       xulrunner
 Summary:    XUL runner

@@ -1168,6 +1168,7 @@ AuthCertificateHook(void *arg, PRFileDesc *fd, PRBool checkSig, PRBool isServer)
   // when calling CreateCertErrorRunnable.
   PRTime now = PR_Now();
   PRBool enabled;
+#if NSS_VERSION_MN >= 15 && NSS_VERSION_MJ >= 3
   if (SECSuccess != SSL_OptionGet(fd, SSL_ENABLE_OCSP_STAPLING, &enabled)) {
     return SECFailure;
   }
@@ -1184,6 +1185,7 @@ AuthCertificateHook(void *arg, PRFileDesc *fd, PRBool checkSig, PRBool isServer)
           }
       }
   }
+#endif
 
   if (BlockServerCertChangeForSpdy(socketInfo, serverCert) != SECSuccess)
     return SECFailure;

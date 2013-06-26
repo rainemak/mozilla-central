@@ -249,6 +249,7 @@ DoCallback()
   fprintf(stderr, "%s\n", buf);
 }
 
+#if NSS_VERSION_MN >= 15 && NSS_VERSION_MJ >= 3
 SECItemArray *
 GetOCSPResponseForType(OCSPStapleResponseType aOSRT, CERTCertificate *aCert,
                        PLArenaPool *aArena)
@@ -413,6 +414,7 @@ GetOCSPResponseForType(OCSPStapleResponseType aOSRT, CERTCertificate *aCert,
 
   return arr;
 }
+#endif
 
 int32_t
 DoSNISocketConfig(PRFileDesc *aFd, const SECItem *aSrvNameArr,
@@ -453,6 +455,7 @@ DoSNISocketConfig(PRFileDesc *aFd, const SECItem *aSrvNameArr,
     return SSL_SNI_SEND_ALERT;
   }
 
+#if NSS_VERSION_MN >= 15 && NSS_VERSION_MJ >= 3
   PLArenaPool arena;
   PL_InitArenaPool(&arena, "OCSP response", 1024, 0);
   // response is contained by the arena - finishing the arena will free it
@@ -468,6 +471,7 @@ DoSNISocketConfig(PRFileDesc *aFd, const SECItem *aSrvNameArr,
     PrintPRError("SSL_SetStapledOCSPResponses failed");
     return SSL_SNI_SEND_ALERT;
   }
+#endif
 
   return 0;
 }
