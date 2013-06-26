@@ -4,9 +4,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef jsion_coderef_h__
-#define jsion_coderef_h__
+#ifndef ion_IonCode_h
+#define ion_IonCode_h
 
+#include "mozilla/MemoryReporting.h"
 #include "mozilla/PodOperations.h"
 
 #include "IonTypes.h"
@@ -435,7 +436,7 @@ struct IonScript
     size_t callTargetEntries() const {
         return callTargetEntries_;
     }
-    size_t sizeOfIncludingThis(JSMallocSizeOfFun mallocSizeOf) const {
+    size_t sizeOfIncludingThis(mozilla::MallocSizeOf mallocSizeOf) const {
         return mallocSizeOf(this);
     }
     EncapsulatedValue &getConstant(size_t index) {
@@ -724,5 +725,4 @@ IsMarked(const ion::VMFunction *)
 
 } // namespace js
 
-#endif // jsion_coderef_h__
-
+#endif /* ion_IonCode_h */

@@ -4,8 +4,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef jsobj_h___
-#define jsobj_h___
+#ifndef jsobj_h
+#define jsobj_h
 
 /*
  * JS object definitions.
@@ -15,6 +15,9 @@
  * values, called slots.  The map/slot pointer pair is GC'ed, while the map
  * is reference counted and the slot vector is malloc'ed.
  */
+
+#include "mozilla/MemoryReporting.h"
+
 #include "jsapi.h"
 #include "jsatom.h"
 #include "jsclass.h"
@@ -34,7 +37,6 @@ namespace js {
 
 class AutoPropDescArrayRooter;
 class BaseProxyHandler;
-class CallObject;
 struct GCMarker;
 struct NativeIterator;
 class Nursery;
@@ -204,60 +206,22 @@ DeleteGeneric(JSContext *cx, HandleObject obj, HandleId id, JSBool *succeeded);
 } /* namespace js::baseops */
 
 extern Class ArrayClass;
-extern Class ArrayBufferClass;
-extern Class BlockClass;
-extern Class BooleanClass;
-extern Class CallableObjectClass;
-extern Class DataViewClass;
 extern Class DateClass;
 extern Class ErrorClass;
-extern Class ElementIteratorClass;
-extern Class GeneratorClass;
 extern Class IntlClass;
 extern Class JSONClass;
-extern Class MapIteratorClass;
 extern Class MathClass;
-extern Class ModuleClass;
-extern Class NumberClass;
-extern Class NormalArgumentsObjectClass;
 extern Class ObjectClass;
 extern Class ProxyClass;
-extern Class RegExpClass;
 extern Class RegExpStaticsClass;
-extern Class SetIteratorClass;
-extern Class ScriptSourceClass;
-extern Class StopIterationClass;
-extern Class StringClass;
-extern Class StrictArgumentsObjectClass;
-extern Class WeakMapClass;
-extern Class WithClass;
 
-class ArgumentsObject;
 class ArrayBufferObject;
-class BlockObject;
-class BooleanObject;
-class ClonedBlockObject;
-class DataViewObject;
-class DebugScopeObject;
-class DeclEnvObject;
-class ElementIteratorObject;
 class GlobalObject;
 class MapObject;
-class MapIteratorObject;
-class Module;
-class NestedScopeObject;
 class NewObjectCache;
 class NormalArgumentsObject;
-class NumberObject;
-class PropertyIteratorObject;
-class ScopeObject;
 class SetObject;
-class SetIteratorObject;
-class StaticBlockObject;
 class StrictArgumentsObject;
-class StringObject;
-class RegExpObject;
-class WithObject;
 
 }  /* namespace js */
 
@@ -375,7 +339,7 @@ class JSObject : public js::ObjectImpl
 
     inline bool hasShapeTable() const;
 
-    void sizeOfExcludingThis(JSMallocSizeOfFun mallocSizeOf, JS::ObjectsExtraSizes *sizes);
+    void sizeOfExcludingThis(mozilla::MallocSizeOf mallocSizeOf, JS::ObjectsExtraSizes *sizes);
 
     bool hasIdempotentProtoChain() const;
 
@@ -510,7 +474,7 @@ class JSObject : public js::ObjectImpl
      *
      * The scope chain of an object is the link in the search path when a
      * script does a name lookup on a scope object. For JS internal scope
-     * objects --- Call, DeclEnv and block --- the chain is stored in
+     * objects --- Call, DeclEnv and Block --- the chain is stored in
      * the first fixed slot of the object, and the object's parent is the
      * associated global. For other scope objects, the chain is stored in the
      * object's parent.
@@ -579,17 +543,8 @@ class JSObject : public js::ObjectImpl
     static const char *className(JSContext *cx, js::HandleObject obj);
 
     /* Accessors for elements. */
-
-    struct MaybeContext {
-        js::Allocator *allocator;
-        JSContext *context;
-
-        MaybeContext(JSContext *cx) : allocator(NULL), context(cx) {}
-        MaybeContext(js::Allocator *alloc) : allocator(alloc), context(NULL) {}
-    };
-
     inline bool ensureElements(JSContext *cx, uint32_t cap);
-    bool growElements(MaybeContext cx, uint32_t newcap);
+    bool growElements(js::ThreadSafeContext *tcx, uint32_t newcap);
     void shrinkElements(JSContext *cx, uint32_t cap);
     inline void setDynamicElements(js::ObjectElements *header);
 
@@ -625,10 +580,10 @@ class JSObject : public js::ObjectImpl
      */
     enum EnsureDenseResult { ED_OK, ED_FAILED, ED_SPARSE };
     inline EnsureDenseResult ensureDenseElements(JSContext *cx, uint32_t index, uint32_t extra);
-    inline EnsureDenseResult parExtendDenseElements(js::Allocator *alloc, js::Value *v,
+    inline EnsureDenseResult parExtendDenseElements(js::ThreadSafeContext *tcx, js::Value *v,
                                                     uint32_t extra);
-    template<typename MallocProviderType>
-    inline EnsureDenseResult extendDenseElements(MallocProviderType *cx,
+
+    inline EnsureDenseResult extendDenseElements(js::ThreadSafeContext *tcx,
                                                  uint32_t requiredCapacity, uint32_t extra);
 
     /* Convert a single dense element to a sparse property. */
@@ -692,15 +647,6 @@ class JSObject : public js::ObjectImpl
 
     inline const js::Value &getDateUTCTime() const;
     inline void setDateUTCTime(const js::Value &pthis);
-
-    /*
-     * Function-specific getters and setters.
-     */
-
-    friend class JSFunction;
-
-    inline JSFunction *toFunction();
-    inline const JSFunction *toFunction() const;
 
   public:
     /*
@@ -944,15 +890,15 @@ class JSObject : public js::ObjectImpl
      * specific types of objects may provide additional operations. To access,
      * these addition operations, callers should use the pattern:
      *
-     *   if (obj.isX()) {
-     *     XObject &x = obj.asX();
+     *   if (obj.is<XObject>()) {
+     *     XObject &x = obj.as<XObject>();
      *     x.foo();
      *   }
      *
      * These XObject classes form a hierarchy. For example, for a cloned block
-     * object, the following predicates are true: isClonedBlock, isBlock,
-     * isNestedScope and isScope. Each of these has a respective class that
-     * derives and adds operations.
+     * object, the following predicates are true: is<ClonedBlockObject>,
+     * is<BlockObject>, is<NestedScopeObject> and is<ScopeObject>. Each of
+     * these has a respective class that derives and adds operations.
      *
      * A class XObject is defined in a vm/XObject{.h, .cpp, -inl.h} file
      * triplet (along with any class YObject that derives XObject).
@@ -961,93 +907,40 @@ class JSObject : public js::ObjectImpl
      * [[Class]] property of object defined by the spec (for this, see
      * js::ObjectClassIs).
      *
-     * SpiderMonkey has not been completely switched to the isX/asX/XObject
+     * SpiderMonkey has not been completely switched to the is/as/XObject
      * pattern so in some cases there is no XObject class and the engine
      * instead pokes directly at reserved slots and getPrivate. In such cases,
      * consider adding the missing XObject class.
      */
 
+    template <class T>
+    inline bool is() const { return getClass() == &T::class_; }
+
+    template <class T>
+    T &as() {
+        JS_ASSERT(is<T>());
+        return *static_cast<T *>(this);
+    }
+
+    template <class T>
+    const T &as() const {
+        JS_ASSERT(is<T>());
+        return *static_cast<const T *>(this);
+    }
+
     /* Direct subtypes of JSObject: */
     inline bool isArray()            const { return hasClass(&js::ArrayClass); }
-    inline bool isArguments()        const { return isNormalArguments() || isStrictArguments(); }
-    inline bool isArrayBuffer()      const { return hasClass(&js::ArrayBufferClass); }
-    inline bool isDataView()         const { return hasClass(&js::DataViewClass); }
     inline bool isDate()             const { return hasClass(&js::DateClass); }
-    inline bool isElementIterator()  const { return hasClass(&js::ElementIteratorClass); }
     inline bool isError()            const { return hasClass(&js::ErrorClass); }
-    inline bool isFunction()         const { return hasClass(&js::FunctionClass); }
-    inline bool isGenerator()        const { return hasClass(&js::GeneratorClass); }
-    inline bool isGlobal()           const;
-    inline bool isMapIterator()      const { return hasClass(&js::MapIteratorClass); }
-    inline bool isModule()           const { return hasClass(&js::ModuleClass); }
     inline bool isObject()           const { return hasClass(&js::ObjectClass); }
-    inline bool isPrimitive()        const { return isNumber() || isString() || isBoolean(); }
-    inline bool isPropertyIterator() const;
     using js::ObjectImpl::isProxy;
-    inline bool isRegExp()           const { return hasClass(&js::RegExpClass); }
     inline bool isRegExpStatics()    const { return hasClass(&js::RegExpStaticsClass); }
-    inline bool isScope()            const { return isCall() || isDeclEnv() || isNestedScope(); }
-    inline bool isScriptSource()     const { return hasClass(&js::ScriptSourceClass); }
-    inline bool isSetIterator()      const { return hasClass(&js::SetIteratorClass); }
-    inline bool isStopIteration()    const { return hasClass(&js::StopIterationClass); }
     inline bool isTypedArray()       const;
-    inline bool isWeakMap()          const { return hasClass(&js::WeakMapClass); }
-
-    /* Subtypes of ScopeObject. */
-    inline bool isBlock()       const { return hasClass(&js::BlockClass); }
-    inline bool isCall()        const { return hasClass(&js::CallClass); }
-    inline bool isDeclEnv()     const { return hasClass(&js::DeclEnvClass); }
-    inline bool isNestedScope() const { return isBlock() || isWith(); }
-    inline bool isWith()        const { return hasClass(&js::WithClass); }
-    inline bool isClonedBlock() const;
-    inline bool isStaticBlock() const;
-
-    /* Subtypes of PrimitiveObject. */
-    inline bool isBoolean() const { return hasClass(&js::BooleanClass); }
-    inline bool isNumber()  const { return hasClass(&js::NumberClass); }
-    inline bool isString()  const { return hasClass(&js::StringClass); }
-
-    /* Subtypes of ArgumentsObject. */
-    inline bool isNormalArguments() const { return hasClass(&js::NormalArgumentsObjectClass); }
-    inline bool isStrictArguments() const { return hasClass(&js::StrictArgumentsObjectClass); }
 
     /* Subtypes of Proxy. */
-    inline bool isDebugScope()              const;
     inline bool isWrapper()                 const;
     inline bool isFunctionProxy()           const { return hasClass(&js::FunctionProxyClass); }
     inline bool isCrossCompartmentWrapper() const;
-
-    inline js::ArgumentsObject &asArguments();
-    inline js::ArrayBufferObject &asArrayBuffer();
-    inline const js::ArgumentsObject &asArguments() const;
-    inline js::BlockObject &asBlock();
-    inline js::BooleanObject &asBoolean();
-    inline js::CallObject &asCall();
-    inline js::ClonedBlockObject &asClonedBlock();
-    inline js::DataViewObject &asDataView();
-    inline js::DeclEnvObject &asDeclEnv();
-    inline js::DebugScopeObject &asDebugScope();
-    inline js::GlobalObject &asGlobal();
-    inline js::MapObject &asMap();
-    inline js::MapIteratorObject &asMapIterator();
-    js::Module &asModule() {
-        JS_ASSERT(isModule());
-        return *reinterpret_cast<js::Module *>(this);
-    }
-    inline js::NestedScopeObject &asNestedScope();
-    inline js::NormalArgumentsObject &asNormalArguments();
-    inline js::NumberObject &asNumber();
-    inline js::PropertyIteratorObject &asPropertyIterator();
-    inline const js::PropertyIteratorObject &asPropertyIterator() const;
-    inline js::RegExpObject &asRegExp();
-    inline js::ScopeObject &asScope();
-    inline js::SetObject &asSet();
-    inline js::SetIteratorObject &asSetIterator();
-    inline js::ScriptSourceObject &asScriptSource();
-    inline js::StrictArgumentsObject &asStrictArguments();
-    inline js::StaticBlockObject &asStaticBlock();
-    inline js::StringObject &asString();
-    inline js::WithObject &asWith();
 
     static inline js::ThingRootKind rootKind() { return js::THING_ROOT_OBJECT; }
 
@@ -1245,12 +1138,11 @@ CloneObject(JSContext *cx, HandleObject obj, Handle<js::TaggedProto> proto, Hand
 /*
  * Flags for the defineHow parameter of js_DefineNativeProperty.
  */
-const unsigned DNP_CACHE_RESULT = 1;   /* an interpreter call from JSOP_INITPROP */
-const unsigned DNP_DONT_PURGE   = 2;   /* suppress js_PurgeScopeChain */
-const unsigned DNP_UNQUALIFIED  = 4;   /* Unqualified property set.  Only used in
+const unsigned DNP_DONT_PURGE   = 1;   /* suppress js_PurgeScopeChain */
+const unsigned DNP_UNQUALIFIED  = 2;   /* Unqualified property set.  Only used in
                                        the defineHow argument of
                                        js_SetPropertyHelper. */
-const unsigned DNP_SKIP_TYPE    = 8;   /* Don't update type information */
+const unsigned DNP_SKIP_TYPE    = 4;   /* Don't update type information */
 
 /*
  * Return successfully added or changed shape or NULL on error.
@@ -1336,9 +1228,6 @@ LookupNameWithGlobalDefault(JSContext *cx, HandlePropertyName name, HandleObject
 
 extern JSObject *
 js_FindVariableScope(JSContext *cx, JSFunction **funp);
-
-/* JSGET_CACHE_RESULT is the analogue of DNP_CACHE_RESULT. */
-const unsigned JSGET_CACHE_RESULT = 1; // from a caching interpreter opcode
 
 /*
  * NB: js_NativeGet and js_NativeSet are called with the scope containing shape
@@ -1522,4 +1411,4 @@ CheckDefineProperty(JSContext *cx, HandleObject obj, HandleId id, HandleValue va
 
 }  /* namespace js */
 
-#endif /* jsobj_h___ */
+#endif /* jsobj_h */

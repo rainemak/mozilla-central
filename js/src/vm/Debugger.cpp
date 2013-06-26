@@ -6,8 +6,6 @@
 
 #include "vm/Debugger.h"
 
-#include <limits.h>
-
 #include "jsapi.h"
 #include "jscntxt.h"
 #include "jscompartment.h"
@@ -24,7 +22,6 @@
 #include "jsopcodeinlines.h"
 
 #include "gc/FindSCCs-inl.h"
-#include "vm/Interpreter-inl.h"
 #include "vm/Stack-inl.h"
 
 using namespace js;
@@ -649,7 +646,7 @@ Debugger::wrapEnvironment(JSContext *cx, Handle<Env*> env, MutableHandleValue rv
      * DebuggerEnv should only wrap a debug scope chain obtained (transitively)
      * from GetDebugScopeFor(Frame|Function).
      */
-    JS_ASSERT(!env->isScope());
+    JS_ASSERT(!env->is<ScopeObject>());
 
     JSObject *envobj;
     ObjectWeakMap::AddPtr p = environments.lookupForAdd(env);
@@ -1917,13 +1914,13 @@ Debugger::unwrapDebuggeeArgument(JSContext *cx, const Value &v)
         return NULL;
 
     /* If that didn't produce a global object, it's an error. */
-    if (!obj->isGlobal()) {
+    if (!obj->is<GlobalObject>()) {
         JS_ReportErrorNumber(cx, js_GetErrorMessage, NULL, JSMSG_UNEXPECTED_TYPE,
                              "argument", "not a global object");
         return NULL;
     }
 
-    return &obj->asGlobal();
+    return &obj->as<GlobalObject>();
 }
 
 JSBool
@@ -2907,7 +2904,7 @@ DebuggerScript_getChildScripts(JSContext *cx, unsigned argc, Value *vp)
         RootedObject obj(cx), s(cx);
         for (uint32_t i = script->innerObjectsStart(); i < objects->length; i++) {
             obj = objects->vector[i];
-            if (obj->isFunction()) {
+            if (obj->is<JSFunction>()) {
                 fun = static_cast<JSFunction *>(obj.get());
                 funScript = fun->nonLazyScript();
                 s = dbg->wrapScript(cx, funScript);
@@ -3856,7 +3853,7 @@ static JSBool
 DebuggerArguments_getArg(JSContext *cx, unsigned argc, Value *vp)
 {
     CallArgs args = CallArgsFromVp(argc, vp);
-    int32_t i = args.callee().toFunction()->getExtendedSlot(0).toInt32();
+    int32_t i = args.callee().as<JSFunction>().getExtendedSlot(0).toInt32();
 
     /* Check that the this value is an Arguments object. */
     if (!args.thisv().isObject()) {
@@ -4134,7 +4131,7 @@ js::EvaluateInEnv(JSContext *cx, Handle<Env*> env, HandleValue thisv, AbstractFr
         return false;
 
     script->isActiveEval = true;
-    ExecuteType type = !frame && env->isGlobal() ? EXECUTE_DEBUG_GLOBAL : EXECUTE_DEBUG;
+    ExecuteType type = !frame && env->is<GlobalObject>() ? EXECUTE_DEBUG_GLOBAL : EXECUTE_DEBUG;
     return ExecuteKernel(cx, script, *env, thisv, type, frame, rval.address());
 }
 
@@ -4145,7 +4142,7 @@ DebuggerGenericEval(JSContext *cx, const char *fullMethodName,
 {
     /* Either we're specifying the frame, or a global. */
     JS_ASSERT_IF(iter, !scope);
-    JS_ASSERT_IF(!iter, scope && scope->isGlobal());
+    JS_ASSERT_IF(!iter, scope && scope->is<GlobalObject>());
 
     /* Check the first argument, the eval code string. */
     if (!code.isString()) {
@@ -4405,12 +4402,12 @@ static JSBool
 DebuggerObject_getName(JSContext *cx, unsigned argc, Value *vp)
 {
     THIS_DEBUGOBJECT_OWNER_REFERENT(cx, argc, vp, "get name", args, dbg, obj);
-    if (!obj->isFunction()) {
+    if (!obj->is<JSFunction>()) {
         args.rval().setUndefined();
         return true;
     }
 
-    JSString *name = obj->toFunction()->atom();
+    JSString *name = obj->as<JSFunction>().atom();
     if (!name) {
         args.rval().setUndefined();
         return true;
@@ -4427,12 +4424,12 @@ static JSBool
 DebuggerObject_getDisplayName(JSContext *cx, unsigned argc, Value *vp)
 {
     THIS_DEBUGOBJECT_OWNER_REFERENT(cx, argc, vp, "get display name", args, dbg, obj);
-    if (!obj->isFunction()) {
+    if (!obj->is<JSFunction>()) {
         args.rval().setUndefined();
         return true;
     }
 
-    JSString *name = obj->toFunction()->displayAtom();
+    JSString *name = obj->as<JSFunction>().displayAtom();
     if (!name) {
         args.rval().setUndefined();
         return true;
@@ -4449,12 +4446,12 @@ static JSBool
 DebuggerObject_getParameterNames(JSContext *cx, unsigned argc, Value *vp)
 {
     THIS_DEBUGOBJECT_REFERENT(cx, argc, vp, "get parameterNames", args, obj);
-    if (!obj->isFunction()) {
+    if (!obj->is<JSFunction>()) {
         args.rval().setUndefined();
         return true;
     }
 
-    RootedFunction fun(cx, obj->toFunction());
+    RootedFunction fun(cx, &obj->as<JSFunction>());
     JSObject *result = NewDenseAllocatedArray(cx, fun->nargs);
     if (!result)
         return false;
@@ -4491,12 +4488,12 @@ DebuggerObject_getScript(JSContext *cx, unsigned argc, Value *vp)
 {
     THIS_DEBUGOBJECT_OWNER_REFERENT(cx, argc, vp, "get script", args, dbg, obj);
 
-    if (!obj->isFunction()) {
+    if (!obj->is<JSFunction>()) {
         args.rval().setUndefined();
         return true;
     }
 
-    RootedFunction fun(cx, obj->toFunction());
+    RootedFunction fun(cx, &obj->as<JSFunction>());
     if (fun->isBuiltin()) {
         args.rval().setUndefined();
         return true;
@@ -4517,7 +4514,7 @@ DebuggerObject_getEnvironment(JSContext *cx, unsigned argc, Value *vp)
     THIS_DEBUGOBJECT_OWNER_REFERENT(cx, argc, vp, "get environment", args, dbg, obj);
 
     /* Don't bother switching compartments just to check obj's type and get its env. */
-    if (!obj->isFunction() || !obj->toFunction()->isInterpreted()) {
+    if (!obj->is<JSFunction>() || !obj->as<JSFunction>().isInterpreted()) {
         args.rval().setUndefined();
         return true;
     }
@@ -4525,7 +4522,7 @@ DebuggerObject_getEnvironment(JSContext *cx, unsigned argc, Value *vp)
     Rooted<Env*> env(cx);
     {
         AutoCompartment ac(cx, obj);
-        RootedFunction fun(cx, obj->toFunction());
+        RootedFunction fun(cx, &obj->as<JSFunction>());
         env = GetDebugScopeForFunction(cx, fun);
         if (!env)
             return false;
@@ -4887,13 +4884,13 @@ ApplyOrCall(JSContext *cx, unsigned argc, Value *vp, ApplyOrCallMode mode)
             RootedObject argsobj(cx, &args[1].toObject());
             if (!GetLengthProperty(cx, argsobj, &callArgc))
                 return false;
-            callArgc = unsigned(Min(callArgc, StackSpace::ARGS_LENGTH_MAX));
+            callArgc = unsigned(Min(callArgc, ARGS_LENGTH_MAX));
             if (!argv.growBy(callArgc) || !GetElements(cx, argsobj, callArgc, argv.begin()))
                 return false;
             callArgv = argv.begin();
         }
     } else {
-        callArgc = argc > 0 ? unsigned(Min(argc - 1, StackSpace::ARGS_LENGTH_MAX)) : 0;
+        callArgc = argc > 0 ? unsigned(Min(argc - 1, ARGS_LENGTH_MAX)) : 0;
         callArgv = args.array() + 1;
     }
 
@@ -4972,11 +4969,11 @@ DebuggerObject_makeDebuggeeValue(JSContext *cx, unsigned argc, Value *vp)
 static bool
 RequireGlobalObject(JSContext *cx, HandleValue dbgobj, HandleObject obj)
 {
-    if (!obj->isGlobal()) {
+    if (!obj->is<GlobalObject>()) {
         /* Help the poor programmer by pointing out wrappers around globals. */
         if (obj->isWrapper()) {
             JSObject *unwrapped = js::UncheckedUnwrap(obj);
-            if (unwrapped->isGlobal()) {
+            if (unwrapped->is<GlobalObject>()) {
                 js_ReportValueErrorFlags(cx, JSREPORT_ERROR, JSMSG_DEBUG_WRAPPER_IN_WAY,
                                          JSDVG_SEARCH_STACK, dbgobj, NullPtr(),
                                          "a global object", NULL);
@@ -5139,7 +5136,7 @@ DebuggerEnv_checkThis(JSContext *cx, const CallArgs &args, const char *fnname)
         return false;                                                         \
     Rooted<Env*> env(cx, static_cast<Env *>(envobj->getPrivate()));           \
     JS_ASSERT(env);                                                           \
-    JS_ASSERT(!env->isScope())
+    JS_ASSERT(!env->is<ScopeObject>())
 
 #define THIS_DEBUGENV_OWNER(cx, argc, vp, fnname, args, envobj, env, dbg)     \
     THIS_DEBUGENV(cx, argc, vp, fnname, args, envobj, env);                   \
@@ -5155,13 +5152,13 @@ DebuggerEnv_construct(JSContext *cx, unsigned argc, Value *vp)
 static bool
 IsDeclarative(Env *env)
 {
-    return env->isDebugScope() && env->asDebugScope().isForDeclarative();
+    return env->is<DebugScopeObject>() && env->as<DebugScopeObject>().isForDeclarative();
 }
 
 static bool
 IsWith(Env *env)
 {
-    return env->isDebugScope() && env->asDebugScope().scope().isWith();
+    return env->is<DebugScopeObject>() && env->as<DebugScopeObject>().scope().is<WithObject>();
 }
 
 static JSBool
@@ -5211,10 +5208,10 @@ DebuggerEnv_getObject(JSContext *cx, unsigned argc, Value *vp)
 
     JSObject *obj;
     if (IsWith(env)) {
-        obj = &env->asDebugScope().scope().asWith().object();
+        obj = &env->as<DebugScopeObject>().scope().as<WithObject>().object();
     } else {
         obj = env;
-        JS_ASSERT(!obj->isDebugScope());
+        JS_ASSERT(!obj->is<DebugScopeObject>());
     }
 
     args.rval().setObject(*obj);
@@ -5230,14 +5227,14 @@ DebuggerEnv_getCallee(JSContext *cx, unsigned argc, Value *vp)
 
     args.rval().setNull();
 
-    if (!env->isDebugScope())
+    if (!env->is<DebugScopeObject>())
         return true;
 
-    JSObject &scope = env->asDebugScope().scope();
-    if (!scope.isCall())
+    JSObject &scope = env->as<DebugScopeObject>().scope();
+    if (!scope.is<CallObject>())
         return true;
 
-    CallObject &callobj = scope.asCall();
+    CallObject &callobj = scope.as<CallObject>();
     if (callobj.isForEval())
         return true;
 
@@ -5414,7 +5411,7 @@ JS_DefineDebuggerObject(JSContext *cx, JSObject *obj_)
         objectProto(cx),
         envProto(cx);
 
-    objProto = obj->asGlobal().getOrCreateObjectPrototype(cx);
+    objProto = obj->as<GlobalObject>().getOrCreateObjectPrototype(cx);
     if (!objProto)
         return false;
 

@@ -110,6 +110,7 @@ var BrowserUI = {
     FlyoutPanelsUI.init();
     PageThumbs.init();
     SettingsCharm.init();
+    NavButtonSlider.init();
 
     // show the right toolbars, awesomescreen, etc for the os viewstate
     BrowserUI._adjustDOMforViewState();
@@ -223,8 +224,13 @@ var BrowserUI = {
       return false;
     if (CrashReporter.enabled) {
       var lastCrashID = Cc["@mozilla.org/xre/app-info;1"].getService(Ci.nsIXULAppInfo).lastRunCrashID;
-      if (lastCrashID.length) {
-        this.CrashSubmit.submit(lastCrashID);
+      if (lastCrashID && lastCrashID.length) {
+        Util.dumpLn("Submitting last crash id:", lastCrashID);
+        try {
+          this.CrashSubmit.submit(lastCrashID);
+        } catch (ex) {
+          Util.dumpLn(ex);
+        }
         return true;
       }
     }
@@ -574,7 +580,7 @@ var BrowserUI = {
             this._sslDiskCacheEnabled = Services.prefs.getBoolPref(aData);
             break;
           case "browser.urlbar.formatting.enabled":
-            this._formattingEnabled = Services.prefs.getBookPref(aData);
+            this._formattingEnabled = Services.prefs.getBoolPref(aData);
             break;
           case "browser.urlbar.trimURLs":
             this._mayTrimURLs = Services.prefs.getBoolPref(aData);
@@ -783,21 +789,15 @@ var BrowserUI = {
     onEvent: function(aEventName) {}
   },
 
-  _urlbarClicked: function _urlbarClicked() {
-    // If the urlbar is not already focused, focus it and select the contents.
-    if (Elements.urlbarState.getAttribute("mode") != "edit")
-      this._editURI(true);
-  },
-
   _editURI: function _editURI(aShouldDismiss) {
-    this._clearURIFormatting();
     this._edit.focus();
     this._edit.select();
 
     Elements.urlbarState.setAttribute("mode", "edit");
     StartUI.show();
-    if (aShouldDismiss)
+    if (aShouldDismiss) {
       ContextUI.dismissTabs();
+    }
   },
 
   formatURI: function formatURI() {

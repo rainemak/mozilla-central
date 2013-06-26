@@ -224,6 +224,9 @@ ClientLayerManager::EndEmptyTransaction(EndTransactionFlags aFlags)
     // EndTransaction will complete it.
     return false;
   }
+  if (mWidget) {
+    mWidget->PrepareWindowEffects();
+  }
   ForwardTransaction();
   MakeSnapshotIfRequired();
   return true;
@@ -258,6 +261,16 @@ ClientLayerManager::MakeSnapshotIfRequired()
     }
   }
   mShadowTarget = nullptr;
+}
+
+void
+ClientLayerManager::FlushRendering()
+{
+  if (mWidget) {
+    if (CompositorChild* remoteRenderer = mWidget->GetRemoteRenderer()) {
+      remoteRenderer->SendFlushRendering();
+    }
+  }
 }
 
 void
@@ -395,8 +408,8 @@ ClientLayerManager::ProgressiveUpdateCallback(bool aHasPendingNewThebesContent,
     // This is derived from the code in
     // gfx/layers/ipc/CompositorParent.cpp::TransformShadowTree.
     const gfx3DMatrix& rootTransform = GetRoot()->GetTransform();
-    CSSToLayerScale paintScale = LayerToCSSScale(rootTransform.GetXScale(),
-                                                 rootTransform.GetYScale()).Inverse();
+    CSSToLayerScale paintScale = metrics.mDevPixelsPerCSSPixel
+        / LayerToLayoutDeviceScale(rootTransform.GetXScale(), rootTransform.GetYScale());
     const CSSRect& metricsDisplayPort =
       (aDrawingCritical && !metrics.mCriticalDisplayPort.IsEmpty()) ?
         metrics.mCriticalDisplayPort : metrics.mDisplayPort;

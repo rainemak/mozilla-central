@@ -47,3 +47,6 @@ else:
     CPP_SOURCES += [
         'nsWifiScannerDummy.cpp',
     ]
+
+LIBRARY_NAME = 'neckowifi_s'
+

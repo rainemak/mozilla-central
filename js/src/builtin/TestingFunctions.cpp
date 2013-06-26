@@ -4,22 +4,21 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "builtin/TestingFunctions.h"
+
 #include "jsapi.h"
-#include "jsbool.h"
 #include "jscntxt.h"
-#include "jscompartment.h"
 #include "jsfriendapi.h"
 #include "jsgc.h"
 #include "jsobj.h"
 #include "jsprf.h"
 #include "jswrapper.h"
 
-#include "builtin/TestingFunctions.h"
+#include "ion/AsmJS.h"
 #include "vm/ForkJoin.h"
+#include "vm/Interpreter.h"
 
-#include "jsobjinlines.h"
-
-#include "vm/Stack-inl.h"
+#include "vm/ObjectImpl-inl.h"
 
 using namespace js;
 using namespace JS;
@@ -885,13 +884,13 @@ static JSBool
 DisplayName(JSContext *cx, unsigned argc, jsval *vp)
 {
     CallArgs args = CallArgsFromVp(argc, vp);
-    if (argc == 0 || !args[0].isObject() || !args[0].toObject().isFunction()) {
+    if (argc == 0 || !args[0].isObject() || !args[0].toObject().is<JSFunction>()) {
         RootedObject arg(cx, &args.callee());
         ReportUsageError(cx, arg, "Must have one function argument");
         return false;
     }
 
-    JSFunction *fun = args[0].toObject().toFunction();
+    JSFunction *fun = &args[0].toObject().as<JSFunction>();
     JSString *str = fun->displayAtom();
     vp->setString(str == NULL ? cx->runtime()->emptyString : str);
     return true;
@@ -909,18 +908,19 @@ js::testingFunc_inParallelSection(JSContext *cx, unsigned argc, jsval *vp)
 
 static JSObject *objectMetadataFunction = NULL;
 
-static JSObject *
-ShellObjectMetadataCallback(JSContext *cx)
+static bool
+ShellObjectMetadataCallback(JSContext *cx, JSObject **pmetadata)
 {
     Value thisv = UndefinedValue();
 
-    Value rval;
-    if (!Invoke(cx, thisv, ObjectValue(*objectMetadataFunction), 0, NULL, &rval)) {
-        cx->clearPendingException();
-        return NULL;
-    }
+    RootedValue rval(cx);
+    if (!Invoke(cx, thisv, ObjectValue(*objectMetadataFunction), 0, NULL, rval.address()))
+        return false;
 
-    return rval.isObject() ? &rval.toObject() : NULL;
+    if (rval.isObject())
+        *pmetadata = &rval.toObject();
+
+    return true;
 }
 
 static JSBool
@@ -930,7 +930,7 @@ SetObjectMetadataCallback(JSContext *cx, unsigned argc, jsval *vp)
 
     args.rval().setUndefined();
 
-    if (argc == 0 || !args[0].isObject() || !args[0].toObject().isFunction()) {
+    if (argc == 0 || !args[0].isObject() || !args[0].toObject().is<JSFunction>()) {
         if (objectMetadataFunction)
             JS_RemoveObjectRoot(cx, &objectMetadataFunction);
         objectMetadataFunction = NULL;

@@ -24,6 +24,7 @@
 #include "nsLayoutUtils.h"
 #include "nsINameSpaceManager.h"
 #include "nsIContent.h"
+#include "mozilla/MemoryReporting.h"
 #include "mozilla/dom/Element.h"
 #include "nsIFrame.h"
 #include "nsView.h"
@@ -731,6 +732,7 @@ nsEventListenerManager::SetEventHandler(nsIAtom *aName,
   nsIScriptContext* context = global->GetScriptContext();
   NS_ENSURE_TRUE(context, NS_ERROR_FAILURE);
 
+  JSAutoRequest ar(context->GetNativeContext());
   JS::Rooted<JSObject*> scope(context->GetNativeContext(),
                               global->GetGlobalJSObject());
 
@@ -1274,7 +1276,7 @@ nsEventListenerManager::GetEventHandlerInternal(nsIAtom *aEventName)
 }
 
 size_t
-nsEventListenerManager::SizeOfIncludingThis(nsMallocSizeOfFun aMallocSizeOf)
+nsEventListenerManager::SizeOfIncludingThis(MallocSizeOf aMallocSizeOf)
   const
 {
   size_t n = aMallocSizeOf(this);

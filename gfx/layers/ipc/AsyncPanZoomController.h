@@ -227,7 +227,7 @@ public:
    * Return the scale factor needed to fit the viewport in |aMetrics|
    * into its composition bounds.
    */
-  static gfxSize CalculateIntrinsicScale(const FrameMetrics& aMetrics);
+  static CSSToScreenScale CalculateIntrinsicScale(const FrameMetrics& aMetrics);
 
   /**
    * Return the resolution that content should be rendered at given
@@ -266,6 +266,13 @@ public:
    * APZC must be notified here about possible scroll update change initiated by content
    */
   void ContentScrollPerformed();
+
+  /**
+   * Sync panning and zooming animation using a fixed frame time.
+   * This will ensure that we animate the APZC correctly with other external
+   * animations to the same timestamp.
+   */
+  static void SetFrameTime(const TimeStamp& aMilliseconds);
 
 protected:
   /**
@@ -472,7 +479,7 @@ protected:
    *
    * *** The monitor must be held while calling this.
    */
-  void SetZoomAndResolution(float aScale);
+  void SetZoomAndResolution(const ScreenToScreenScale& aZoom);
 
   /**
    * Timeout function for mozbrowserasyncscroll event. Because we throttle

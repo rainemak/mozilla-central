@@ -13,14 +13,11 @@
 #include "ion/AsmJS.h"
 #include "vm/GlobalObject.h"
 
-#include "jsinferinlines.h"
 #include "jsobjinlines.h"
 
 #include "frontend/ParseMaps-inl.h"
-#include "frontend/ParseNode-inl.h"
 #include "frontend/Parser-inl.h"
 #include "frontend/SharedContext-inl.h"
-#include "vm/Probes-inl.h"
 
 using namespace js;
 using namespace js::frontend;
@@ -71,6 +68,52 @@ CheckArgumentsWithinEval(JSContext *cx, Parser<FullParseHandler> &parser, Handle
     if (script->isGeneratorExp) {
         parser.report(ParseError, false, NULL, JSMSG_BAD_GENEXP_BODY, js_arguments_str);
         return false;
+    }
+
+    return true;
+}
+
+static bool
+MaybeCheckEvalFreeVariables(JSContext *cx, HandleScript evalCaller, HandleObject scopeChain,
+                            Parser<FullParseHandler> &parser,
+                            ParseContext<FullParseHandler> &pc)
+{
+    if (!evalCaller || !evalCaller->functionOrCallerFunction())
+        return true;
+
+    // Watch for uses of 'arguments' within the evaluated script, both as
+    // free variables and as variables redeclared with 'var'.
+    RootedFunction fun(cx, evalCaller->functionOrCallerFunction());
+    HandlePropertyName arguments = cx->names().arguments;
+    for (AtomDefnRange r = pc.lexdeps->all(); !r.empty(); r.popFront()) {
+        if (r.front().key() == arguments) {
+            if (!CheckArgumentsWithinEval(cx, parser, fun))
+                return false;
+        }
+    }
+    for (AtomDefnListMap::Range r = pc.decls().all(); !r.empty(); r.popFront()) {
+        if (r.front().key() == arguments) {
+            if (!CheckArgumentsWithinEval(cx, parser, fun))
+                return false;
+        }
+    }
+
+    // If the eval'ed script contains any debugger statement, force construction
+    // of arguments objects for the caller script and any other scripts it is
+    // transitively nested inside. The debugger can access any variable on the
+    // scope chain.
+    if (pc.sc->hasDebuggerStatement()) {
+        RootedObject scope(cx, scopeChain);
+        while (scope->is<ScopeObject>() || scope->is<DebugScopeObject>()) {
+            if (scope->is<CallObject>() && !scope->as<CallObject>().isForEval()) {
+                RootedScript script(cx, scope->as<CallObject>().callee().nonLazyScript());
+                if (script->argumentsHasVarBinding()) {
+                    if (!JSScript::argumentsOptimizationFailed(cx, script))
+                        return false;
+                }
+            }
+            scope = scope->enclosingScope();
+        }
     }
 
     return true;
@@ -225,7 +268,7 @@ frontend::CompileScript(JSContext *cx, HandleObject scopeChain,
         TokenStream::Position pos(parser.keepAtoms);
         parser.tokenStream.tell(&pos);
 
-        ParseNode *pn = parser.statement();
+        ParseNode *pn = parser.statement(canHaveDirectives);
         if (!pn) {
             if (parser.hadAbortedSyntaxParse()) {
                 // Parsing inner functions lazily may lead the parser into an
@@ -235,6 +278,12 @@ frontend::CompileScript(JSContext *cx, HandleObject scopeChain,
                 // be ambiguous.
                 parser.clearAbortedSyntaxParse();
                 parser.tokenStream.seek(pos);
+
+                // Destroying the parse context will destroy its free
+                // variables, so check if any deoptimization is needed.
+                if (!MaybeCheckEvalFreeVariables(cx, evalCaller, scopeChain, parser, pc.ref()))
+                    return NULL;
+
                 pc.destroy();
                 pc.construct(&parser, (GenericParseContext *) NULL, &globalsc,
                              staticLevel, /* bodyid = */ 0);
@@ -265,44 +314,11 @@ frontend::CompileScript(JSContext *cx, HandleObject scopeChain,
         parser.handler.freeTree(pn);
     }
 
-    if (!SetSourceMap(cx, parser.tokenStream, ss, script))
+    if (!MaybeCheckEvalFreeVariables(cx, evalCaller, scopeChain, parser, pc.ref()))
         return NULL;
 
-    if (evalCaller && evalCaller->functionOrCallerFunction()) {
-        // Watch for uses of 'arguments' within the evaluated script, both as
-        // free variables and as variables redeclared with 'var'.
-        RootedFunction fun(cx, evalCaller->functionOrCallerFunction());
-        HandlePropertyName arguments = cx->names().arguments;
-        for (AtomDefnRange r = pc.ref().lexdeps->all(); !r.empty(); r.popFront()) {
-            if (r.front().key() == arguments) {
-                if (!CheckArgumentsWithinEval(cx, parser, fun))
-                    return NULL;
-            }
-        }
-        for (AtomDefnListMap::Range r = pc.ref().decls().all(); !r.empty(); r.popFront()) {
-            if (r.front().key() == arguments) {
-                if (!CheckArgumentsWithinEval(cx, parser, fun))
-                    return NULL;
-            }
-        }
-
-        // If the eval'ed script contains any debugger statement, force construction
-        // of arguments objects for the caller script and any other scripts it is
-        // transitively nested inside.
-        if (pc.ref().sc->hasDebuggerStatement()) {
-            RootedObject scope(cx, scopeChain);
-            while (scope->isScope() || scope->isDebugScope()) {
-                if (scope->isCall() && !scope->asCall().isForEval()) {
-                    RootedScript script(cx, scope->asCall().callee().nonLazyScript());
-                    if (script->argumentsHasVarBinding()) {
-                        if (!JSScript::argumentsOptimizationFailed(cx, script))
-                            return NULL;
-                    }
-                }
-                scope = scope->enclosingScope();
-            }
-        }
-    }
+    if (!SetSourceMap(cx, parser.tokenStream, ss, script))
+        return NULL;
 
     /*
      * Nowadays the threaded interpreter needs a stop instruction, so we
@@ -511,7 +527,7 @@ frontend::CompileFunctionBody(JSContext *cx, MutableHandleFunction fun, CompileO
          */
         BytecodeEmitter funbce(/* parent = */ NULL, &parser, funbox, script,
                                /* insideEval = */ false, /* evalCaller = */ NullPtr(),
-                               fun->environment() && fun->environment()->isGlobal(),
+                               fun->environment() && fun->environment()->is<GlobalObject>(),
                                options.lineno);
         if (!funbce.init())
             return false;

@@ -6,10 +6,10 @@
 
 /* Definitions related to javascript type inference. */
 
-#ifndef jsinfer_h___
-#define jsinfer_h___
+#ifndef jsinfer_h
+#define jsinfer_h
 
-#include "mozilla/Attributes.h"
+#include "mozilla/MemoryReporting.h"
 
 #include "jsalloc.h"
 #include "jsfriendapi.h"
@@ -51,14 +51,14 @@ struct RootKind<TaggedProto>
     static ThingRootKind rootKind() { return THING_ROOT_OBJECT; }
 };
 
-template <> struct RootMethods<const TaggedProto>
+template <> struct GCMethods<const TaggedProto>
 {
     static TaggedProto initial() { return TaggedProto(); }
     static ThingRootKind kind() { return THING_ROOT_OBJECT; }
     static bool poisoned(const TaggedProto &v) { return IsPoisonedPtr(v.raw()); }
 };
 
-template <> struct RootMethods<TaggedProto>
+template <> struct GCMethods<TaggedProto>
 {
     static TaggedProto initial() { return TaggedProto(); }
     static ThingRootKind kind() { return THING_ROOT_OBJECT; }
@@ -1088,7 +1088,7 @@ struct TypeObject : gc::Cell
     inline void clearProperties();
     inline void sweep(FreeOp *fop);
 
-    size_t sizeOfExcludingThis(JSMallocSizeOfFun mallocSizeOf);
+    size_t sizeOfExcludingThis(mozilla::MallocSizeOf mallocSizeOf);
 
     /*
      * Type objects don't have explicit finalizers. Memory owned by a type
@@ -1507,4 +1507,4 @@ MOZ_NORETURN void TypeFailure(JSContext *cx, const char *fmt, ...);
 } /* namespace types */
 } /* namespace js */
 
-#endif // jsinfer_h___
+#endif /* jsinfer_h */

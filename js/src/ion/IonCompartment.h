@@ -4,8 +4,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#if !defined(jsion_ion_compartment_h__) && defined(JS_ION)
-#define jsion_ion_compartment_h__
+#ifndef ion_IonCompartment_h
+#define ion_IonCompartment_h
+
+#ifdef JS_ION
+
+#include "mozilla/MemoryReporting.h"
 
 #include "IonCode.h"
 #include "jsweakcache.h"
@@ -24,7 +28,30 @@ enum EnterJitType {
     EnterJitOptimized = 1
 };
 
-typedef void (*EnterIonCode)(void *code, int argc, Value *argv, StackFrame *fp,
+struct EnterJitData
+{
+    explicit EnterJitData(JSContext *cx)
+      : scopeChain(cx),
+        result(cx)
+    {}
+
+    uint8_t *jitcode;
+    StackFrame *osrFrame;
+
+    void *calleeToken;
+
+    Value *maxArgv;
+    unsigned maxArgc;
+    unsigned numActualArgs;
+    unsigned osrNumStackValues;
+
+    RootedObject scopeChain;
+    RootedValue result;
+
+    bool constructing;
+};
+
+typedef void (*EnterIonCode)(void *code, unsigned argc, Value *argv, StackFrame *fp,
                              CalleeToken calleeToken, JSObject *scopeChain,
                              size_t numStackValues, Value *vp);
 
@@ -39,7 +66,7 @@ typedef Vector<IonBuilder*, 0, SystemAllocPolicy> OffThreadCompilationVector;
 // Optimized stubs are allocated per-compartment and are always purged when
 // JIT-code is discarded. Fallback stubs are allocated per BaselineScript and
 // are only destroyed when the BaselineScript is destroyed.
-struct ICStubSpace
+class ICStubSpace
 {
   protected:
     LifoAlloc allocator_;
@@ -55,7 +82,7 @@ struct ICStubSpace
 
     JS_DECLARE_NEW_METHODS(allocate, alloc, inline)
 
-    size_t sizeOfExcludingThis(JSMallocSizeOfFun mallocSizeOf) const {
+    size_t sizeOfExcludingThis(mozilla::MallocSizeOf mallocSizeOf) const {
         return allocator_.sizeOfExcludingThis(mallocSizeOf);
     }
 };
@@ -316,5 +343,6 @@ void FinishInvalidation(FreeOp *fop, JSScript *script);
 } // namespace ion
 } // namespace js
 
-#endif // jsion_ion_compartment_h__
+#endif // JS_ION
 
+#endif /* ion_IonCompartment_h */
