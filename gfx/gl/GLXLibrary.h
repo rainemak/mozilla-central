@@ -7,7 +7,9 @@
 #define GFX_GLXLIBRARY_H
 
 #include "GLContext.h"
+#ifndef GLboolean_defined
 typedef realGLboolean GLboolean;
+#endif
 #include <GL/glx.h>
 
 namespace mozilla {

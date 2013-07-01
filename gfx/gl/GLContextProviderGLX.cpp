@@ -9,6 +9,8 @@
 #define GET_NATIVE_WINDOW(aWidget) GDK_WINDOW_XID((GdkWindow *) aWidget->GetNativeData(NS_NATIVE_WINDOW))
 #elif defined(MOZ_WIDGET_QT)
 #include <QWidget>
+#include <QGLContext>
+#define GLboolean_defined 1
 #define GET_NATIVE_WINDOW(aWidget) static_cast<QWidget*>(aWidget->GetNativeData(NS_NATIVE_SHELLWIDGET))->winId()
 #endif
 
@@ -838,6 +840,9 @@ TRY_AGAIN_NO_SHARING:
     {
         MarkDestroyed();
 
+        if (mPlatformContext)
+            return;
+
         // see bug 659842 comment 76
 #ifdef DEBUG
         bool success =
@@ -881,6 +886,13 @@ TRY_AGAIN_NO_SHARING:
         //     "glXGetCurrentContext returns client-side information.
         //      It does not make a round trip to the server."
         // I assume that it's not worth using our own TLS slot here.
+        if (mPlatformContext) {
+#ifdef MOZ_WIDGET_QT
+           static_cast<QGLContext*>(mPlatformContext)->makeCurrent();
+           succeeded = true;
+#endif
+        }
+        else
         if (aForce || mGLX->xGetCurrentContext() != mContext) {
             succeeded = mGLX->xMakeCurrent(mDisplay, mDrawable, mContext);
             NS_ASSERTION(succeeded, "Failed to make GL context current!");
@@ -918,6 +930,11 @@ TRY_AGAIN_NO_SHARING:
         return mDoubleBuffered;
     }
 
+    void SetPlatformContext(void* aContext)
+    {
+        mPlatformContext = aContext;
+    }
+
     bool SupportsRobustness()
     {
         return mGLX->HasRobustness();
@@ -925,7 +942,7 @@ TRY_AGAIN_NO_SHARING:
 
     bool SwapBuffers()
     {
-        if (!mDoubleBuffered)
+        if (!mDoubleBuffered || mPlatformContext)
             return false;
         mGLX->xSwapBuffers(mDisplay, mDrawable);
         mGLX->xWaitGL();
@@ -964,7 +981,8 @@ private:
           mDoubleBuffered(aDoubleBuffered),
           mLibType(libType),
           mGLX(&sGLXLibrary[libType]),
-          mPixmap(aPixmap)
+          mPixmap(aPixmap),
+          mPlatformContext(nullptr)
     {
         MOZ_ASSERT(mGLX);
     }
@@ -979,6 +997,7 @@ private:
     GLXLibrary* mGLX;
 
     nsRefPtr<gfxXlibSurface> mPixmap;
+    void* mPlatformContext;
 };
 
 class TextureImageGLX : public TextureImage
@@ -1175,6 +1194,8 @@ AreCompatibleVisuals(Visual *one, Visual *two)
     return true;
 }
 
+static nsRefPtr<GLContext> gGlobalContext[GLXLibrary::LIBS_MAX];
+
 already_AddRefed<GLContext>
 GLContextProviderGLX::CreateForWindow(nsIWidget *aWidget)
 {
@@ -1182,6 +1203,50 @@ GLContextProviderGLX::CreateForWindow(nsIWidget *aWidget)
     if (!sDefGLXLib.EnsureInitialized(libType)) {
         return nullptr;
     }
+
+    bool doubleBuffered = true;
+    bool hasNativeContext = aWidget->HasGLContext();
+    GLXContext glxContext = sDefGLXLib.xGetCurrentContext();
+    if (hasNativeContext && glxContext) {
+        void* platformContext = glxContext;
+        SurfaceCaps caps = SurfaceCaps::Any();
+#ifdef MOZ_WIDGET_QT
+        int depth = gfxPlatform::GetPlatform()->GetScreenDepth();
+        QGLContext* context = const_cast<QGLContext*>(QGLContext::currentContext());
+        if (context && context->device()) {
+            depth = context->device()->depth();
+        }
+        const QGLFormat& format = context->format();
+        doubleBuffered = format.doubleBuffer();
+        platformContext = context;
+        caps.bpp16 = depth == 16 ? true : false;
+        caps.alpha = format.rgba();
+        caps.depth = format.depth();
+        caps.stencil = format.stencil();
+#endif
+        nsRefPtr<GLContextGLX> glContext =
+            new GLContextGLX(caps,
+                             nullptr, // SharedContext
+                             false, // Offscreen
+                             (Display*)nullptr, // Display
+                             (GLXDrawable)nullptr, //aDrawable
+                             glxContext,
+                             false, // aDeleteDrawable,
+                             doubleBuffered,
+                             (gfxXlibSurface*)nullptr, // aPixmap
+                             libType);
+
+        if (!glContext->Init())
+            return nullptr;
+
+        glContext->MakeCurrent();
+        glContext->SetPlatformContext(platformContext);
+        gGlobalContext[libType] = glContext;
+        gGlobalContext[libType]->SetIsGlobalSharedContext(true);
+
+        return glContext.forget();
+    }
+
 
     // Currently, we take whatever Visual the window already has, and
     // try to create an fbconfig for that visual.  This isn't
@@ -1431,7 +1496,6 @@ GLContextProviderGLX::GetSharedHandleAsSurface(GLContext::SharedTextureShareType
   return nullptr;
 }
 
-static nsRefPtr<GLContext> gGlobalContext[GLXLibrary::LIBS_MAX];
 // TODO move that out of static initializaion
 static bool gUseContextSharing = getenv("MOZ_DISABLE_CONTEXT_SHARING_GLX") == 0;
 

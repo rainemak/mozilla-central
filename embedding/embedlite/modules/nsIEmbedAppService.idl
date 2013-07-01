@@ -28,7 +28,7 @@
 [ref] native nsConstFrameMetrics(const mozilla::layers::FrameMetrics);
 [ptr] native GeckoContentController(mozilla::layers::GeckoContentController);
 
-[scriptable, uuid(41dc842c-6934-11e2-9124-933bf9a3f6a9)]
+[scriptable, uuid(99d60536-e1a7-11e2-b76e-ff454ce9029f)]
 interface nsIEmbedMessageListener : nsISupports
 {
     void onMessageReceived(in string messageName, in wstring message);
@@ -69,4 +69,5 @@ interface nsIEmbedAppService : nsISupports
     void cancelDefaultPanZoom(in uint32_t aId);
     // Not sure how else to add event listener from js component without browser
     void chromeEventHandler(in nsIDOMWindow aWin, [retval] out nsIDOMEventTarget eventHandler);
+    void getAnyEmbedWindow([optional] in boolean aActive, [retval] out nsIDOMWindow aWin);
 };

@@ -17,6 +17,7 @@
 #endif
 #include "mozilla/Hal.h"
 #include "mozilla/layers/CompositorChild.h"
+#include "mozilla/layers/ImageBridgeChild.h"
 #include "EmbedLitePuppetWidget.h"
 #include "nsIWidgetListener.h"
 
@@ -581,6 +582,7 @@ void EmbedLitePuppetWidget::CreateCompositor(int aWidth, int aHeight)
     }
     lf->SetShadowManager(shadowManager);
     lf->IdentifyTextureHost(textureFactoryIdentifier);
+    ImageBridgeChild::IdentifyCompositorTextureHost(textureFactoryIdentifier);
 
     mLayerManager = lm;
   } else {

@@ -28,6 +28,7 @@
 #include "nsIFrame.h"
 #include "nsView.h"
 
+static const char BEFORE_FIRST_PAINT[] = "before-first-paint";
 static const char CANCEL_DEFAULT_PAN_ZOOM[] = "cancel-default-pan-zoom";
 static const char BROWSER_ZOOM_TO_RECT[] = "browser-zoom-to-rect";
 static const char DETECT_SCROLLABLE_SUBFRAME[] = "detect-scrollable-subframe";
@@ -48,6 +49,9 @@ TabChildHelper::TabChildHelper(EmbedLiteViewThreadChild* aView)
     do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
 
   if (observerService) {
+    observerService->AddObserver(this,
+                                 BEFORE_FIRST_PAINT,
+                                 false);
     observerService->AddObserver(this,
                                  CANCEL_DEFAULT_PAN_ZOOM,
                                  false);
@@ -131,6 +135,7 @@ TabChildHelper::Unload()
   nsCOMPtr<nsIObserverService> observerService =
     do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
 
+  observerService->RemoveObserver(this, BEFORE_FIRST_PAINT);
   observerService->RemoveObserver(this, CANCEL_DEFAULT_PAN_ZOOM);
   observerService->RemoveObserver(this, BROWSER_ZOOM_TO_RECT);
   observerService->RemoveObserver(this, DETECT_SCROLLABLE_SUBFRAME);
@@ -187,6 +192,21 @@ TabChildHelper::Observe(nsISupports* aSubject,
     mView->SendZoomToRect(rect);
   } else if (!strcmp(aTopic, DETECT_SCROLLABLE_SUBFRAME)) {
     mView->SendDetectScrollableSubframe();
+  } else if (!strcmp(aTopic, BEFORE_FIRST_PAINT)) {
+    nsCOMPtr<nsIDocument> subject(do_QueryInterface(aSubject));
+    nsCOMPtr<nsIDOMDocument> domDoc;
+    mView->mWebNavigation->GetDocument(getter_AddRefs(domDoc));
+    nsCOMPtr<nsIDocument> doc(do_QueryInterface(domDoc));
+    if (SameCOMIdentity(subject, doc)) {
+      nsCOMPtr<nsIObserverService> observerService =
+        do_GetService(NS_OBSERVERSERVICE_CONTRACTID);
+      nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mView->mWebNavigation);
+      nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
+      utils->SetIsFirstPaint(true);
+      if (observerService) {
+        observerService->NotifyObservers(aSubject, "embedlite-before-first-paint", nullptr);
+      }
+    }
   }
 
   return NS_OK;

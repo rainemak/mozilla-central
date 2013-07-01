@@ -322,9 +322,11 @@ EmbedLiteAppService::GetContentWindowByID(uint32_t aId, nsIDOMWindow * *outWindo
   EmbedLiteViewThreadChild* view = sGetViewById(aId);
   NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
   nsresult rv;
+  nsCOMPtr<nsIWebBrowser> br;
+  rv = view->GetBrowser(getter_AddRefs(br));
+  NS_ENSURE_TRUE(br, rv);
   nsCOMPtr<nsIDOMWindow> domWindow;
-  rv = view->GetContentDOMWindow(getter_AddRefs(domWindow));
-  NS_ENSURE_TRUE(domWindow, rv);
+  br->GetContentDOMWindow(getter_AddRefs(domWindow));
   domWindow.forget(outWindow);
   return rv;
 }
@@ -360,4 +362,40 @@ EmbedLiteAppService::ChromeEventHandler(nsIDOMWindow *aWin, nsIDOMEventTarget * 
   nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(pidomWindow->GetChromeEventHandler());
   *eventHandler = target.forget().get();
   return NS_OK;
+}
+
+NS_IMETHODIMP
+EmbedLiteAppService::GetAnyEmbedWindow(bool aActive, nsIDOMWindow * *aWin)
+{
+  std::map<uint64_t, uint32_t>::iterator it;
+  for (it = mIDMap.begin(); it != mIDMap.end(); ++it) {
+    EmbedLiteViewThreadChild* view = sGetViewById(it->second);
+    if (view) {
+      if (!aActive) {
+        nsresult rv;
+        nsCOMPtr<nsIWebBrowser> br;
+        rv = view->GetBrowser(getter_AddRefs(br));
+        NS_ENSURE_TRUE(br, rv);
+        nsCOMPtr<nsIDOMWindow> domWindow;
+        br->GetContentDOMWindow(getter_AddRefs(domWindow));
+        *aWin = domWindow.forget().get();
+        return NS_OK;
+      } else {
+        nsresult rv;
+        nsCOMPtr<nsIWebBrowser> br;
+        rv = view->GetBrowser(getter_AddRefs(br));
+        NS_ENSURE_TRUE(br, rv);
+        bool isActive;
+        br->GetIsActive(&isActive);
+        if (isActive) {
+          nsCOMPtr<nsIDOMWindow> domWindow;
+          br->GetContentDOMWindow(getter_AddRefs(domWindow));
+          *aWin = domWindow.forget().get();
+          return NS_OK;
+        }
+      }
+    }
+  }
+
+  return NS_ERROR_NOT_AVAILABLE;
 }

@@ -350,7 +350,7 @@ void EmbedLiteApp::DestroyView(EmbedLiteView* aView)
 void
 EmbedLiteApp::SetIsAccelerated(bool aIsAccelerated)
 {
-#ifdef GL_PROVIDER_EGL
+#if defined(GL_PROVIDER_EGL) || defined(GL_PROVIDER_GLX)
   if (aIsAccelerated) {
     mRenderType = RENDER_HW;
   } else
