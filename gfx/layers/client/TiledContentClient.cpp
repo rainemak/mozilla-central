@@ -314,7 +314,7 @@ BasicTiledLayerBuffer::ComputeProgressiveUpdateRegion(const nsIntRegion& aInvali
   // first, and see if we should just abort this paint. Aborting is usually
   // caused by there being an incoming, more relevant paint.
   gfx::Rect viewport;
-  float scaleX, scaleY;
+  float scaleX = 1.0, scaleY = 1.0;
   if (mManager->ProgressiveUpdateCallback(!staleRegion.Contains(aInvalidRegion),
                                           viewport,
                                           scaleX, scaleY, !drawingLowPrecision)) {
