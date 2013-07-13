@@ -442,6 +442,33 @@ gfxFontEntry::ShareFontTableAndGetBlob(uint32_t aTag,
     return entry->ShareTableAndGetBlob(*aBuffer, &mFontTableCache);
 }
 
+static int
+DirEntryCmp(const void* aKey, const void* aItem)
+{
+    int32_t tag = *static_cast<const int32_t*>(aKey);
+    const TableDirEntry* entry = static_cast<const TableDirEntry*>(aItem);
+    return tag - int32_t(entry->tag);
+}
+
+hb_blob_t*
+gfxFontEntry::GetTableFromFontData(const void* aFontData, uint32_t aTableTag)
+{
+    const SFNTHeader* header =
+        reinterpret_cast<const SFNTHeader*>(aFontData);
+    const TableDirEntry* dir =
+        reinterpret_cast<const TableDirEntry*>(header + 1);
+    dir = static_cast<const TableDirEntry*>
+        (bsearch(&aTableTag, dir, uint16_t(header->numTables),
+                 sizeof(TableDirEntry), DirEntryCmp));
+    if (dir) {
+        return hb_blob_create(reinterpret_cast<const char*>(aFontData) +
+                                  dir->offset, dir->length,
+                              HB_MEMORY_MODE_READONLY, nullptr, nullptr);
+
+    }
+    return nullptr;
+}
+
 hb_blob_t *
 gfxFontEntry::GetFontTable(uint32_t aTag)
 {
@@ -1337,7 +1364,6 @@ gfxFontCache::gfxFontCache()
         obs->AddObserver(new MemoryPressureObserver, "memory-pressure", false);
     }
 
-#if 0 // disabled due to crashiness, see bug 717175
     mWordCacheExpirationTimer = do_CreateInstance("@mozilla.org/timer;1");
     if (mWordCacheExpirationTimer) {
         mWordCacheExpirationTimer->
@@ -1345,7 +1371,6 @@ gfxFontCache::gfxFontCache()
                                  SHAPED_WORD_TIMEOUT_SECONDS * 1000,
                                  nsITimer::TYPE_REPEATING_SLACK);
     }
-#endif
 }
 
 gfxFontCache::~gfxFontCache()

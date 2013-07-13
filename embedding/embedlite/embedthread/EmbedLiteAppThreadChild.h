@@ -57,8 +57,8 @@ protected:
   virtual bool RecvAddObservers(const InfallibleTArray<nsCString>& observers);
   virtual bool RecvRemoveObservers(const InfallibleTArray<nsCString>& observers);
 
-  virtual PEmbedLiteViewChild* AllocPEmbedLiteView(const uint32_t&, const uint32_t& parentId);
-  virtual bool DeallocPEmbedLiteView(PEmbedLiteViewChild*);
+  virtual PEmbedLiteViewChild* AllocPEmbedLiteViewChild(const uint32_t&, const uint32_t& parentId);
+  virtual bool DeallocPEmbedLiteViewChild(PEmbedLiteViewChild*);
 
 private:
   void InitWindowWatcher();

@@ -4,11 +4,12 @@
 
 include protocol PEmbedLiteApp;
 
-include "IPC/nsGUIEventIPC.h";
-include "IPC/InputDataIPC.h";
+include "ipc/nsGUIEventIPC.h";
+include "ipc/InputDataIPC.h";
 
 using gfxSize;
 using gfxRect;
+using CSSRect;
 using gfxPoint;
 using nsIntPoint;
 using mozilla::layers::FrameMetrics;
@@ -74,7 +75,7 @@ parent:
     async OnScrollChanged(int32_t offSetX, int32_t offSetY, bool fromApzc);
     async OnTitleChanged(nsString aTitle);
     UpdateZoomConstraints(bool aAllowZoom, float aMinZoom, float aMaxZoom);
-    ZoomToRect(gfxRect aRect);
+    ZoomToRect(CSSRect aRect);
     async SetBackgroundColor(nscolor color);
     async CancelDefaultPanZoom();
     ContentReceivedTouch(bool aPreventDefault);

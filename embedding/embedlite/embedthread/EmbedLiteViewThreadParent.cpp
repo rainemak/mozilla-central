@@ -108,6 +108,9 @@ class EmbedContentController : public GeckoContentController
     virtual void ScrollUpdate(const CSSPoint& aPosition, const float aResolution)
     {
       EmbedLiteViewListener* listener = GetListener();
+      if (mRenderFrame) {
+        mRenderFrame->UpdateLastResolution(aResolution);
+      }
       if (listener) {
         listener->ScrollUpdate(gfxPoint(aPosition.x, aPosition.y), aResolution);
       }
@@ -153,6 +156,7 @@ EmbedLiteViewThreadParent::EmbedLiteViewThreadParent(const uint32_t& id, const u
   , mInTouchProcess(false)
   , mUILoop(MessageLoop::current())
   , mLastIMEState(0)
+  , mLastResolution(1.0f)
 {
   MOZ_COUNT_CTOR(EmbedLiteViewThreadParent);
   MOZ_ASSERT(mView, "View destroyed during OMTC view construction");
@@ -398,7 +402,7 @@ EmbedLiteViewThreadParent::RecvUpdateZoomConstraints(const bool& val, const floa
 }
 
 bool
-EmbedLiteViewThreadParent::RecvZoomToRect(const gfxRect& aRect)
+EmbedLiteViewThreadParent::RecvZoomToRect(const CSSRect& aRect)
 {
   if (mController) {
     mController->ZoomToRect(aRect);
@@ -686,7 +690,7 @@ EmbedLiteViewThreadParent::ReceiveInputEvent(const InputData& aEvent)
     mController->ReceiveInputEvent(aEvent);
     if (aEvent.mInputType == MULTITOUCH_INPUT) {
       const MultiTouchInput& multiTouchInput = aEvent.AsMultiTouchInput();
-      mozilla::CSSToScreenScale sz = mController->CalculateResolution();
+      mozilla::CSSToScreenScale sz(mLastResolution, mLastResolution);
       if (multiTouchInput.mType == MultiTouchInput::MULTITOUCH_START ||
           multiTouchInput.mType == MultiTouchInput::MULTITOUCH_ENTER) {
         mInTouchProcess = true;
@@ -832,6 +836,11 @@ uint32_t
 EmbedLiteViewThreadParent::GetUniqueID()
 {
   return mId;
+}
+
+void EmbedLiteViewThreadParent::UpdateLastResolution(const float aResolution)
+{
+  mLastResolution = aResolution;
 }
 
 } // namespace embedlite

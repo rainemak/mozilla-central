@@ -112,7 +112,7 @@ protected:
                                InfallibleTArray<nsString>* aJSONRetVal);
   virtual bool
   RecvUpdateZoomConstraints(const bool&, const float&, const float&);
-  virtual bool RecvZoomToRect(const gfxRect& aRect);
+  virtual bool RecvZoomToRect(const CSSRect& aRect);
   virtual bool RecvSetBackgroundColor(const nscolor& aColor);
   virtual bool RecvCancelDefaultPanZoom() MOZ_OVERRIDE;
   virtual bool RecvContentReceivedTouch(const bool& aPreventDefault);
@@ -130,6 +130,7 @@ protected:
                                    const int32_t& aCause,
                                    const int32_t& aFocusChange);
   virtual bool RecvGetGLViewSize(gfxSize* aSize);
+  void UpdateLastResolution(const float aResolution);
 
 private:
   friend class EmbedContentController;
@@ -150,6 +151,7 @@ private:
   bool mInTouchProcess;
   MessageLoop* mUILoop;
   int mLastIMEState;
+  float mLastResolution;
 
   DISALLOW_EVIL_CONSTRUCTORS(EmbedLiteViewThreadParent);
 };

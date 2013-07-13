@@ -48,8 +48,8 @@ public:
 
 protected:
   virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;
-  virtual PEmbedLiteViewParent* AllocPEmbedLiteView(const uint32_t&, const uint32_t&);
-  virtual bool DeallocPEmbedLiteView(PEmbedLiteViewParent*);
+  virtual PEmbedLiteViewParent* AllocPEmbedLiteViewParent(const uint32_t&, const uint32_t&);
+  virtual bool DeallocPEmbedLiteViewParent(PEmbedLiteViewParent*);
 
 private:
   EmbedLiteApp* mApp;

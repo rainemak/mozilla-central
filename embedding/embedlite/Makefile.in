@@ -18,12 +18,9 @@ VPATH += \
 
 include $(DEPTH)/config/autoconf.mk
 
-MODULE_NAME = embedlite
 GRE_MODULE = 1
-
 LIBXUL_LIBRARY = 1
 EXPORT_LIBRARY = 1
-IS_COMPONENT = 1
 
 LIBRARY_NAME = embedlite
 

@@ -20,6 +20,8 @@
 #include "vm/NumericConversions.h"
 #include "vm/String.h"
 
+#define JSSLOT_FREE(clasp)  JSCLASS_RESERVED_SLOTS(clasp)
+
 namespace js {
 
 class Debugger;
@@ -690,7 +692,7 @@ class TypedElementsHeader : public ElementsHeader
 template<typename T> inline void
 TypedElementsHeader<T>::assign(uint32_t index, double d)
 {
-    MOZ_NOT_REACHED("didn't specialize for this element type");
+    MOZ_ASSUME_UNREACHABLE("didn't specialize for this element type");
 }
 
 template<> inline void
@@ -937,6 +939,7 @@ ElementsHeader::asArrayBufferElements()
     return *static_cast<ArrayBufferElementsHeader *>(this);
 }
 
+class ArrayObject;
 class ArrayBufferObject;
 
 /*
@@ -948,8 +951,8 @@ class ArrayBufferObject;
  * to be thrown.
  */
 extern bool
-ArraySetLength(JSContext *cx, HandleObject obj, HandleId id, unsigned attrs, HandleValue value,
-               bool setterIsStrict);
+ArraySetLength(JSContext *cx, Handle<ArrayObject*> obj, HandleId id, unsigned attrs,
+               HandleValue value, bool setterIsStrict);
 
 /*
  * Elements header used for all native objects. The elements component of such
@@ -974,7 +977,7 @@ ArraySetLength(JSContext *cx, HandleObject obj, HandleId id, unsigned attrs, Han
  *
  * We track these pieces of metadata for dense elements:
  *  - The length property as a uint32_t, accessible for array objects with
- *    getArrayLength(), setArrayLength(). This is unused for non-arrays.
+ *    ArrayObject::{length,setLength}().  This is unused for non-arrays.
  *  - The number of element slots (capacity), gettable with
  *    getDenseElementsCapacity().
  *  - The array's initialized length, accessible with
@@ -1035,12 +1038,13 @@ class ObjectElements
   private:
     friend class ::JSObject;
     friend class ObjectImpl;
+    friend class ArrayObject;
     friend class ArrayBufferObject;
     friend class Nursery;
 
     friend bool
-    ArraySetLength(JSContext *cx, HandleObject obj, HandleId id, unsigned attrs, HandleValue value,
-                   bool setterIsStrict);
+    ArraySetLength(JSContext *cx, Handle<ArrayObject*> obj, HandleId id, unsigned attrs,
+                   HandleValue value, bool setterIsStrict);
 
     /* See Flags enum above. */
     uint32_t flags;
@@ -1201,8 +1205,8 @@ class ObjectImpl : public gc::Cell
     HeapSlot *elements;  /* Slots for object elements. */
 
     friend bool
-    ArraySetLength(JSContext *cx, HandleObject obj, HandleId id, unsigned attrs, HandleValue value,
-                   bool setterIsStrict);
+    ArraySetLength(JSContext *cx, Handle<ArrayObject*> obj, HandleId id, unsigned attrs,
+                   HandleValue value, bool setterIsStrict);
 
   private:
     static void staticAsserts() {
@@ -1237,7 +1241,14 @@ class ObjectImpl : public gc::Cell
         return type_->clasp;
     }
 
-    inline bool isExtensible() const;
+    static inline bool
+    isExtensible(ExclusiveContext *cx, Handle<ObjectImpl*> obj, bool *extensible);
+
+    // Indicates whether a non-proxy is extensible.  Don't call on proxies!
+    // This method really shouldn't exist -- but there are a few internal
+    // places that want it (JITs and the like), and it'd be a pain to mark them
+    // all as friends.
+    inline bool nonProxyIsExtensible() const;
 
     // Attempt to change the [[Extensible]] bit on |obj| to false.  Callers
     // must ensure that |obj| is currently extensible before calling this!
@@ -1245,35 +1256,31 @@ class ObjectImpl : public gc::Cell
     preventExtensions(JSContext *cx, Handle<ObjectImpl*> obj);
 
     HeapSlotArray getDenseElements() {
-        assertIsNative();
+        JS_ASSERT(uninlinedIsNative());
         return HeapSlotArray(elements);
     }
     const Value &getDenseElement(uint32_t idx) {
-        assertIsNative();
+        JS_ASSERT(uninlinedIsNative());
         MOZ_ASSERT(idx < getDenseInitializedLength());
         return elements[idx];
     }
     bool containsDenseElement(uint32_t idx) {
-        assertIsNative();
+        JS_ASSERT(uninlinedIsNative());
         return idx < getDenseInitializedLength() && !elements[idx].isMagic(JS_ELEMENTS_HOLE);
     }
     uint32_t getDenseInitializedLength() {
-        assertIsNative();
+        JS_ASSERT(uninlinedIsNative());
         return getElementsHeader()->initializedLength;
     }
     uint32_t getDenseCapacity() {
-        assertIsNative();
+        JS_ASSERT(uninlinedIsNative());
         return getElementsHeader()->capacity;
     }
 
     bool makeElementsSparse(JSContext *cx) {
         NEW_OBJECT_REPRESENTATION_ONLY();
-
-        MOZ_NOT_REACHED("NYI");
-        return false;
+        MOZ_ASSUME_UNREACHABLE("NYI");
     }
-
-    inline bool isProxy() const;
 
   protected:
 #ifdef DEBUG
@@ -1283,18 +1290,19 @@ class ObjectImpl : public gc::Cell
 #endif
 
     Shape *
-    replaceWithNewEquivalentShape(JSContext *cx, Shape *existingShape, Shape *newShape = NULL);
+    replaceWithNewEquivalentShape(ExclusiveContext *cx,
+                                  Shape *existingShape, Shape *newShape = NULL);
 
     enum GenerateShape {
         GENERATE_NONE,
         GENERATE_SHAPE
     };
 
-    bool setFlag(JSContext *cx, /*BaseShape::Flag*/ uint32_t flag,
+    bool setFlag(ExclusiveContext *cx, /*BaseShape::Flag*/ uint32_t flag,
                  GenerateShape generateShape = GENERATE_NONE);
-    bool clearFlag(JSContext *cx, /*BaseShape::Flag*/ uint32_t flag);
+    bool clearFlag(ExclusiveContext *cx, /*BaseShape::Flag*/ uint32_t flag);
 
-    bool toDictionaryMode(JSContext *cx);
+    bool toDictionaryMode(ExclusiveContext *cx);
 
   private:
     /*
@@ -1397,9 +1405,7 @@ class ObjectImpl : public gc::Cell
                                                        uint32_t extra)
     {
         NEW_OBJECT_REPRESENTATION_ONLY();
-
-        MOZ_NOT_REACHED("NYI");
-        return Failure;
+        MOZ_ASSUME_UNREACHABLE("NYI");
     }
 
     /*
@@ -1417,14 +1423,15 @@ class ObjectImpl : public gc::Cell
         return shape_;
     }
 
-    bool generateOwnShape(JSContext *cx, js::Shape *newShape = NULL) {
+    bool generateOwnShape(ExclusiveContext *cx, js::Shape *newShape = NULL) {
         return replaceWithNewEquivalentShape(cx, lastProperty(), newShape);
     }
 
     inline JSCompartment *compartment() const;
 
+    // uninlinedIsNative() is equivalent to isNative(), but isn't inlined.
     inline bool isNative() const;
-    void assertIsNative() const;
+    bool uninlinedIsNative() const;
 
     types::TypeObject *type() const {
         MOZ_ASSERT(!hasLazyType());
@@ -1447,27 +1454,28 @@ class ObjectImpl : public gc::Cell
      */
     bool hasLazyType() const { return type_->lazy(); }
 
+    // uninlinedSlotSpan() is the same as slotSpan(), but isn't inlined.
     inline uint32_t slotSpan() const;
-    void assertSlotIsWithinSpan(uint32_t slot) const;
+    uint32_t uninlinedSlotSpan() const;
 
     /* Compute dynamicSlotsCount() for this object. */
     inline uint32_t numDynamicSlots() const;
 
-    Shape *nativeLookup(JSContext *cx, jsid id);
-    Shape *nativeLookup(JSContext *cx, PropertyId pid) {
+    Shape *nativeLookup(ExclusiveContext *cx, jsid id);
+    Shape *nativeLookup(ExclusiveContext *cx, PropertyId pid) {
         return nativeLookup(cx, pid.asId());
     }
-    Shape *nativeLookup(JSContext *cx, PropertyName *name) {
+    Shape *nativeLookup(ExclusiveContext *cx, PropertyName *name) {
         return nativeLookup(cx, NameToId(name));
     }
 
-    bool nativeContains(JSContext *cx, jsid id) {
+    bool nativeContains(ExclusiveContext *cx, jsid id) {
         return nativeLookup(cx, id) != NULL;
     }
-    bool nativeContains(JSContext *cx, PropertyName* name) {
+    bool nativeContains(ExclusiveContext *cx, PropertyName* name) {
         return nativeLookup(cx, name) != NULL;
     }
-    inline bool nativeContains(JSContext *cx, Shape* shape);
+    inline bool nativeContains(ExclusiveContext *cx, Shape* shape);
 
     /*
      * Contextless; can be called from parallel code. Returns false if the
@@ -1548,13 +1556,11 @@ class ObjectImpl : public gc::Cell
     }
 
     HeapSlot &nativeGetSlotRef(uint32_t slot) {
-        assertIsNative();
-        assertSlotIsWithinSpan(slot);
+        JS_ASSERT(uninlinedIsNative() && slot < uninlinedSlotSpan());
         return getSlotRef(slot);
     }
     const Value &nativeGetSlot(uint32_t slot) const {
-        assertIsNative();
-        assertSlotIsWithinSpan(slot);
+        JS_ASSERT(uninlinedIsNative() && slot < uninlinedSlotSpan());
         return getSlot(slot);
     }
 
@@ -1647,6 +1653,8 @@ class ObjectImpl : public gc::Cell
     static inline void readBarrier(ObjectImpl *obj);
     static inline void writeBarrierPre(ObjectImpl *obj);
     static inline void writeBarrierPost(ObjectImpl *obj, void *addr);
+    static inline void writeBarrierPostRelocate(ObjectImpl *obj, void *addr);
+    static inline void writeBarrierPostRemove(ObjectImpl *obj, void *addr);
     inline void privateWriteBarrierPre(void **oldval);
     inline void privateWriteBarrierPost(void **pprivate);
     void markChildren(JSTracer *trc);

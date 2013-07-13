@@ -22,7 +22,7 @@ EXPORTS.mozilla.embedlite += [
     'EmbedLog.h',
 ]
 
-EXPORTS.IPC = ['InputDataIPC.h']
+EXPORTS.ipc = ['InputDataIPC.h']
 
 CPP_SOURCES += [
     'EmbedLiteApp.cpp',
@@ -47,4 +47,9 @@ CPP_SOURCES += [
     'EmbedLiteJSON.cpp',
     'EmbedLiteModulesService.cpp',
     'EmbedLiteXulAppInfo.cpp',
+]
+
+IPDL_SOURCES += [
+    'PEmbedLiteApp.ipdl',
+    'PEmbedLiteView.ipdl'
 ]

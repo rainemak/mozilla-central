@@ -11,12 +11,10 @@ include $(DEPTH)/config/autoconf.mk
 
 LIBRARY_NAME = $(MODULE)_s
 LIBXUL_LIBRARY = 1
-FORCE_STATIC_LIB = 1
 EXPORT_LIBRARY = 1
 
 IPDLTESTS = \
   TestActorPunning \
-  TestBlockChild \
   TestBridgeMain \
   TestCrashCleanup \
   TestDataStructures \
@@ -45,6 +43,7 @@ IPDLTESTS = \
   TestSyncHang \
   TestSyncWakeup \
   TestBadActor \
+  TestUrgency \
   $(NULL)
 
 ifeq ($(OS_ARCH),Linux)

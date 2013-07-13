@@ -219,7 +219,7 @@ NS_IMETHODIMP EmbedLiteAppService::EnterSecureJSContext()
     MOZ_CRASH();
   }
 
-  if (!xpc::PushJSContext(nullptr)) {
+  if (!xpc::PushJSContextNoScriptContext(nullptr)) {
     MOZ_CRASH();
   }
 
@@ -235,7 +235,7 @@ NS_IMETHODIMP EmbedLiteAppService::LeaveSecureJSContext()
   }
 
   DebugOnly<JSContext*> stackTop;
-  xpc::PopJSContext();
+  xpc::PopJSContextNoScriptContext();
   mPushedSomething--;
   return NS_OK;
 }
@@ -271,7 +271,7 @@ EmbedLiteAppService::ZoomToRect(uint32_t aWinId, float aX, float aY, float aWidt
 {
   EmbedLiteViewThreadChild* view = sGetViewById(aWinId);
   NS_ENSURE_TRUE(view, NS_ERROR_FAILURE);
-  view->SendZoomToRect(gfxRect(aX, aY, aWidth, aHeight));
+  view->SendZoomToRect(CSSRect(aX, aY, aWidth, aHeight));
   return NS_OK;
 }
 
@@ -335,8 +335,7 @@ NS_IMETHODIMP
 EmbedLiteAppService::GetCompositedRectInCSS(const mozilla::layers::FrameMetrics& aFrameMetrics,
                                             float* aX, float* aY, float* aWidth, float* aHeight)
 {
-  mozilla::CSSRect cssCompositedRect =
-    mozilla::layers::AsyncPanZoomController::CalculateCompositedRectInCssPixels(aFrameMetrics);
+  mozilla::CSSRect cssCompositedRect = aFrameMetrics.CalculateCompositedRectInCssPixels();
   *aX = cssCompositedRect.x;
   *aY = cssCompositedRect.y;
   *aWidth = cssCompositedRect.width;

@@ -35,7 +35,7 @@ public:
 
   bool RecvUpdateFrame(const mozilla::layers::FrameMetrics& aFrameMetrics);
 
-  JSContext* GetJSContext() { return mCx; }
+  JSContext* GetJSContext();
 
   nsIWebNavigation* WebNavigation();
 
@@ -51,8 +51,6 @@ public:
 
   bool RecvAsyncMessage(const nsAString& aMessage,
                         const nsAString& aData);
-
-  const mozilla::layers::FrameMetrics& LastFrameMetrics() const { return mLastMetrics; }
 
 protected:
   nsIWidget* GetWidget(nsPoint* aOffset);
@@ -77,7 +75,6 @@ private:
   friend class EmbedLiteViewThreadChild;
   EmbedLiteViewThreadChild* mView;
   bool mContentDocumentIsDisplayed;
-  mozilla::layers::FrameMetrics mLastMetrics;
   nsIntSize mInnerSize;
   float mOldViewportWidth;
   nsRefPtr<EmbedTabChildGlobal> mTabChildGlobal;

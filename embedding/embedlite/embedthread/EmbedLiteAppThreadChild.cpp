@@ -122,7 +122,7 @@ EmbedLiteAppThreadChild::RecvCreateView(const uint32_t& id, const uint32_t& pare
 }
 
 PEmbedLiteViewChild*
-EmbedLiteAppThreadChild::AllocPEmbedLiteView(const uint32_t& id, const uint32_t& parentId)
+EmbedLiteAppThreadChild::AllocPEmbedLiteViewChild(const uint32_t& id, const uint32_t& parentId)
 {
   LOGT("id:%u, parentId:%u", id, parentId);
   EmbedLiteViewThreadChild* view = new EmbedLiteViewThreadChild(id, parentId);
@@ -131,7 +131,7 @@ EmbedLiteAppThreadChild::AllocPEmbedLiteView(const uint32_t& id, const uint32_t&
 }
 
 bool
-EmbedLiteAppThreadChild::DeallocPEmbedLiteView(PEmbedLiteViewChild* actor)
+EmbedLiteAppThreadChild::DeallocPEmbedLiteViewChild(PEmbedLiteViewChild* actor)
 {
   LOGT();
   std::map<uint32_t, EmbedLiteViewThreadChild*>::iterator it;

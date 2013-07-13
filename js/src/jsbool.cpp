@@ -17,6 +17,7 @@
 #include "jsobj.h"
 
 #include "vm/GlobalObject.h"
+#include "vm/ProxyObject.h"
 #include "vm/StringBuffer.h"
 
 #include "jsboolinlines.h"
@@ -124,7 +125,7 @@ Boolean(JSContext *cx, unsigned argc, Value *vp)
 
     bool b = args.length() != 0 ? JS::ToBoolean(args[0]) : false;
 
-    if (IsConstructing(vp)) {
+    if (args.isConstructing()) {
         JSObject *obj = BooleanObject::create(cx, b);
         if (!obj)
             return false;
@@ -178,9 +179,9 @@ js_InitBooleanClass(JSContext *cx, HandleObject obj)
 }
 
 JSString *
-js_BooleanToString(JSContext *cx, JSBool b)
+js_BooleanToString(ExclusiveContext *cx, JSBool b)
 {
-    return b ? cx->runtime()->atomState.true_ : cx->runtime()->atomState.false_;
+    return b ? cx->names().true_ : cx->names().false_;
 }
 
 JS_PUBLIC_API(bool)
@@ -200,7 +201,7 @@ js::ToBooleanSlow(const Value &v)
 bool
 js::BooleanGetPrimitiveValueSlow(HandleObject wrappedBool, JSContext *cx)
 {
-    JS_ASSERT(wrappedBool->isProxy());
+    JS_ASSERT(wrappedBool->is<ProxyObject>());
     JSObject *obj = Wrapper::wrappedObject(wrappedBool);
     JS_ASSERT(obj);
     return obj->as<BooleanObject>().unbox();

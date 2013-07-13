@@ -88,7 +88,7 @@ EmbedLiteAppThreadParent::ActorDestroy(ActorDestroyReason aWhy)
 }
 
 PEmbedLiteViewParent*
-EmbedLiteAppThreadParent::AllocPEmbedLiteView(const uint32_t& id, const uint32_t& parentId)
+EmbedLiteAppThreadParent::AllocPEmbedLiteViewParent(const uint32_t& id, const uint32_t& parentId)
 {
   LOGT("id:%u, parent:%u", id, parentId);
   // Return iv view has been destroyed during creation
@@ -101,7 +101,7 @@ EmbedLiteAppThreadParent::AllocPEmbedLiteView(const uint32_t& id, const uint32_t
 }
 
 bool
-EmbedLiteAppThreadParent::DeallocPEmbedLiteView(PEmbedLiteViewParent* actor)
+EmbedLiteAppThreadParent::DeallocPEmbedLiteViewParent(PEmbedLiteViewParent* actor)
 {
   LOGT();
   delete actor;

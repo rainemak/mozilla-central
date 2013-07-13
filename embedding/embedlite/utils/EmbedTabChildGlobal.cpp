@@ -30,7 +30,6 @@ EmbedTabChildGlobal::Init()
   NS_ASSERTION(!mMessageManager, "Re-initializing?!?");
   mMessageManager = new nsFrameMessageManager(mTabChild,
                                               nullptr,
-                                              mTabChild->GetJSContext(),
                                               mozilla::dom::ipc::MM_CHILD);
 }
 
