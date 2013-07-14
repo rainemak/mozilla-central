@@ -94,10 +94,10 @@ TabChildHelper::Disconnect()
   }
 }
 
-class UnloadScriptEvent : public nsRunnable
+class EmbedUnloadScriptEvent : public nsRunnable
 {
 public:
-  UnloadScriptEvent(TabChildHelper* aTabChild, EmbedTabChildGlobal* aTabChildGlobal)
+  EmbedUnloadScriptEvent(TabChildHelper* aTabChild, EmbedTabChildGlobal* aTabChildGlobal)
     : mTabChild(aTabChild), mTabChildGlobal(aTabChildGlobal)
   { }
 
@@ -127,7 +127,7 @@ TabChildHelper::Unload()
   if (mTabChildGlobal) {
     // Let the frame scripts know the child is being closed
     nsContentUtils::AddScriptRunner(
-      new UnloadScriptEvent(this, mTabChildGlobal)
+      new EmbedUnloadScriptEvent(this, mTabChildGlobal)
     );
   }
   nsCOMPtr<nsIObserverService> observerService =
