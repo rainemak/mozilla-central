@@ -24,6 +24,7 @@ public:
   MOCK_METHOD1(HandleDoubleTap, void(const CSSIntPoint&));
   MOCK_METHOD1(HandleSingleTap, void(const CSSIntPoint&));
   MOCK_METHOD1(HandleLongTap, void(const CSSIntPoint&));
+  MOCK_METHOD2(ScrollUpdate, void(const CSSPoint& aPosition, const float aResolution));
   MOCK_METHOD2(SendAsyncScrollDOMEvent, void(const CSSRect &aContentRect, const CSSSize &aScrollableSize));
   MOCK_METHOD2(PostDelayedTask, void(Task* aTask, int aDelayMs));
 };

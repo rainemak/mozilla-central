@@ -84,6 +84,7 @@ echo "ac_add_options --disable-mochitest" >> mozconfig
 echo "ac_add_options --disable-installer" >> mozconfig
 echo "ac_add_options --disable-javaxpcom" >> mozconfig
 echo "ac_add_options --disable-crashreporter" >> mozconfig
+echo "ac_add_options --with-app-name=%{name}" >> mozconfig
 export MOZCONFIG=mozconfig
 %{__make} -f client.mk build STRIP="/bin/true" %{?jobs:MOZ_MAKE_FLAGS="-j%jobs"}
 
@@ -97,32 +98,32 @@ export SBOX_REDIRECT_FORCE=/usr/bin/python
 
 export MOZCONFIG=mozconfig
 %{__make} -f client.mk install DESTDIR=%{buildroot}
-%{__chmod} +x %{buildroot}%{_libdir}/xulrunner-%{greversion}/*.so
+%{__chmod} +x %{buildroot}%{_libdir}/%{name}-%{greversion}/*.so
 %fdupes -s %{buildroot}%{_includedir}
 %fdupes -s %{buildroot}%{_libdir}
-chmod +x %{buildroot}%{_libdir}/xulrunner-%{greversion}/*.so
+%{__chmod} +x %{buildroot}%{_libdir}/%{name}-%{greversion}/*.so
 # Use the system hunspell dictionaries
-%{__rm} -rf ${RPM_BUILD_ROOT}%{_libdir}/xulrunner-%{greversion}/dictionaries
-ln -s %{_datadir}/myspell ${RPM_BUILD_ROOT}%{_libdir}/xulrunner-%{greversion}/dictionaries
+%{__rm} -rf ${RPM_BUILD_ROOT}%{_libdir}/%{name}-%{greversion}/dictionaries
+ln -s %{_datadir}/myspell ${RPM_BUILD_ROOT}%{_libdir}/%{name}-%{greversion}/dictionaries
 
 %files
 %defattr(-,root,root,-)
 %attr(755,-,-) %{_bindir}/*
-%{_libdir}/xulrunner-%{greversion}/*.so
-%{_libdir}/xulrunner-%{greversion}/omni.ja
-%{_libdir}/xulrunner-%{greversion}/dependentlibs.list
-%{_libdir}/xulrunner-%{greversion}/dictionaries
+%{_libdir}/%{name}-%{greversion}/*.so
+%{_libdir}/%{name}-%{greversion}/omni.ja
+%{_libdir}/%{name}-%{greversion}/dependentlibs.list
+%{_libdir}/%{name}-%{greversion}/dictionaries
 
 %files devel
 %defattr(-,root,root,-)
 %{_datadir}/*
-%{_libdir}/xulrunner-devel-%{greversion}
+%{_libdir}/%{name}-devel-%{greversion}
 %{_libdir}/pkgconfig
 %{_includedir}/*
 
 %files misc
 %defattr(-,root,root,-)
-%{_libdir}/xulrunner-%{greversion}/*
-%exclude %{_libdir}/xulrunner-%{greversion}/*.so
-%exclude %{_libdir}/xulrunner-%{greversion}/omni.ja
-%exclude %{_libdir}/xulrunner-%{greversion}/dependentlibs.list
+%{_libdir}/%{name}-%{greversion}/*
+%exclude %{_libdir}/%{name}-%{greversion}/*.so
+%exclude %{_libdir}/%{name}-%{greversion}/omni.ja
+%exclude %{_libdir}/%{name}-%{greversion}/dependentlibs.list
