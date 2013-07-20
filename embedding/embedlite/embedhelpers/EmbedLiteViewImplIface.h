@@ -33,6 +33,7 @@ class EmbedLiteViewImplIface
     virtual bool RenderToImage(unsigned char* aData, int imgW, int imgH, int stride, int depth) { return false; }
     virtual bool RenderGL() { return false; }
     virtual void SetIsActive(bool) {}
+    virtual void SetIsFocused(bool) {}
     virtual void SuspendTimeouts() {}
     virtual void ResumeTimeouts() {}
     virtual void SetViewSize(int width, int height) {}

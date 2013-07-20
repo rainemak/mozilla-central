@@ -486,6 +486,13 @@ EmbedLiteViewThreadParent::SetIsActive(bool aIsActive)
 }
 
 void
+EmbedLiteViewThreadParent::SetIsFocused(bool aIsFocused)
+{
+  LOGF();
+  unused << SendSetIsFocused(aIsFocused);
+}
+
+void
 EmbedLiteViewThreadParent::SuspendTimeouts()
 {
   LOGF();

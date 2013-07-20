@@ -30,6 +30,7 @@
 #include "mozilla/Preferences.h"
 #include "EmbedLiteAppService.h"
 #include "mozilla/gfx/Tools.h"
+#include "nsIWidgetListener.h"
 
 using namespace mozilla::layers;
 using namespace mozilla::widget;
@@ -336,6 +337,32 @@ EmbedLiteViewThreadChild::RecvSetIsActive(const bool& aIsActive)
     LOGT("Deactivate browser");
   }
   mWebBrowser->SetIsActive(aIsActive);
+  return true;
+}
+
+bool
+EmbedLiteViewThreadChild::RecvSetIsFocused(const bool& aIsFocused)
+{
+  if (!mWebBrowser || !mDOMWindow) {
+    return false;
+  }
+
+  nsCOMPtr<nsIFocusManager> fm = do_GetService(FOCUSMANAGER_CONTRACTID);
+  NS_ENSURE_TRUE(fm, false);
+  nsIWidgetListener* listener = mWidget->GetWidgetListener();
+  if (listener) {
+    if (aIsFocused) {
+      LOGT("Activate browser focus");
+      listener->WindowActivated();
+    }
+    else {
+      listener->WindowDeactivated();
+    }
+  }
+  if (!aIsFocused) {
+    fm->ClearFocus(mDOMWindow);
+    LOGT("Clear browser focus");
+  }
   return true;
 }
 

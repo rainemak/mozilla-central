@@ -99,6 +99,14 @@ EmbedLiteView::SetIsActive(bool aIsActive)
 }
 
 void
+EmbedLiteView::SetIsFocused(bool aIsFocused)
+{
+  LOGT();
+  NS_ENSURE_TRUE(mViewImpl, );
+  mViewImpl->SetIsFocused(aIsFocused);
+}
+
+void
 EmbedLiteView::SuspendTimeouts()
 {
   LOGT();
