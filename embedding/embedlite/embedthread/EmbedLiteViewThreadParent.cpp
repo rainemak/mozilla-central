@@ -94,6 +94,15 @@ class EmbedContentController : public GeckoContentController
      */
     virtual void SendAsyncScrollDOMEvent(const CSSRect& aContentRect,
                                          const CSSSize& aScrollableSize) {
+      if (MessageLoop::current() != mUILoop) {
+        // We have to send this message from the "UI thread" (main
+        // thread).
+        mUILoop->PostTask(
+          FROM_HERE,
+          NewRunnableMethod(this, &EmbedContentController::SendAsyncScrollDOMEvent,
+                            aContentRect, aScrollableSize));
+        return;
+      }
       LOGNI("contentR[%g,%g,%g,%g], scrSize[%g,%g]",
             aContentRect.x, aContentRect.y, aContentRect.width, aContentRect.height,
             aScrollableSize.width, aScrollableSize.height);
@@ -107,6 +116,15 @@ class EmbedContentController : public GeckoContentController
 
     virtual void ScrollUpdate(const CSSPoint& aPosition, const float aResolution)
     {
+      if (MessageLoop::current() != mUILoop) {
+        // We have to send this message from the "UI thread" (main
+        // thread).
+        mUILoop->PostTask(
+          FROM_HERE,
+          NewRunnableMethod(this, &EmbedContentController::ScrollUpdate,
+                            aPosition, aResolution));
+        return;
+      }
       EmbedLiteViewListener* listener = GetListener();
       if (mRenderFrame) {
         mRenderFrame->UpdateLastResolution(aResolution);

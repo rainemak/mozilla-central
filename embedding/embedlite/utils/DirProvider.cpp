@@ -44,7 +44,7 @@ DirProvider::GetFile(const char* aKey, bool* aPersist,
     }
   }
 
-  if (sGREDir && !strcmp(aKey, NS_GRE_DIR) || !strcmp(aKey, NS_XPCOM_CURRENT_PROCESS_DIR)) {
+  if ((sGREDir && !strcmp(aKey, NS_GRE_DIR)) || !strcmp(aKey, NS_XPCOM_CURRENT_PROCESS_DIR)) {
     *aPersist = true;
     return sGREDir->Clone(aResult);
   }

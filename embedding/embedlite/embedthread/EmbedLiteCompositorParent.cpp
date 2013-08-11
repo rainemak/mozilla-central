@@ -46,6 +46,21 @@ EmbedLiteCompositorParent::~EmbedLiteCompositorParent()
   EmbedLiteApp::GetInstance()->ViewDestroyed(mId);
 }
 
+PLayerTransactionParent*
+EmbedLiteCompositorParent::AllocPLayerTransactionParent(const LayersBackend& aBackendHint,
+                                                        const uint64_t& aId,
+                                                        TextureFactoryIdentifier* aTextureFactoryIdentifier)
+{
+  EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
+  EmbedLiteViewListener* list = view ? view->GetListener() : nullptr;
+  if (list) {
+    list->CompositorCreated();
+  }
+  return CompositorParent::AllocPLayerTransactionParent(aBackendHint,
+                                                        aId,
+                                                        aTextureFactoryIdentifier);
+}
+
 bool
 EmbedLiteCompositorParent::IsGLBackend()
 {

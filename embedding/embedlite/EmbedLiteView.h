@@ -43,6 +43,8 @@ public:
   virtual void SetBackgroundColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {}
 
   // Compositor Interface
+  //   Notification about compositor allocation, will be different thread call if compositor created in separate thread
+  virtual void CompositorCreated() { }
   //   Invalidate notification
   virtual bool Invalidate() { return false; }
   virtual void SetFirstPaintViewport(const nsIntPoint& aOffset, float aZoom,

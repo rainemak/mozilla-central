@@ -21,6 +21,9 @@
 #include "EmbedLiteAppThreadParent.h"
 #include "EmbedLiteView.h"
 #include "nsXULAppAPI.h"
+#include "EmbedLiteMessagePump.h"
+
+#include "EmbedLiteCompositorParent.h"
 
 #define STHREADAPP EmbedLiteAppThreadParent::GetInstance
 
@@ -51,6 +54,8 @@ EmbedLiteApp::EmbedLiteApp()
   , mDestroying(false)
   , mRenderType(RENDER_AUTO)
   , mProfilePath(strdup("mozembed"))
+  , mIsAsyncLoop(false)
+  , mIsCompositeInMainThread(true)
 {
   LOGT();
   sSingleton = this;
@@ -121,6 +126,26 @@ EmbedLiteApp::SetProfilePath(const char* aPath)
   mProfilePath = aPath ? strdup(aPath) : nullptr;
 }
 
+EmbedLiteMessagePump*
+EmbedLiteApp::CreateEmbedLiteMessagePump(EmbedLiteMessagePumpListener* aListener)
+{
+  return new EmbedLiteMessagePump(aListener);
+}
+
+bool
+EmbedLiteApp::StartWithCustomPump(EmbedType aEmbedType, EmbedLiteMessagePump* aEventLoop)
+{
+  LOGT("Type: %s", aEmbedType == EMBED_THREAD ? "Thread" : "Process");
+  NS_ASSERTION(!mUILoop, "Start called twice");
+  mEmbedType = aEmbedType;
+  mUILoop = aEventLoop->GetMessageLoop();
+  mUILoop->PostTask(FROM_HERE,
+                    NewRunnableFunction(&EmbedLiteApp::StartChild, this));
+  mUILoop->StartLoop();
+  mIsAsyncLoop = true;
+  return true;
+}
+
 bool
 EmbedLiteApp::Start(EmbedType aEmbedType)
 {
@@ -139,8 +164,10 @@ EmbedLiteApp::Start(EmbedType aEmbedType)
     NS_ABORT_IF_FALSE(mListener->StopChildThread(),
                       "StopChildThread must be implemented when ExecuteChildThread defined");
   }
-  delete mUILoop;
-  mUILoop = NULL;
+  if (mUILoop) {
+    delete mUILoop;
+    mUILoop = NULL;
+  }
   mListener->Destroyed();
   return true;
 }
@@ -162,7 +189,7 @@ EmbedLiteApp::StartChildThread()
   LOGT("mUILoop:%p, current:%p", mUILoop, MessageLoop::current());
   NS_ASSERTION(MessageLoop::current() != mUILoop,
                "Current message loop must be null and not equals to mUILoop");
-  for (int i = 0; i < sComponentDirs.Length(); i++) {
+  for (unsigned int i = 0; i < sComponentDirs.Length(); i++) {
     nsCOMPtr<nsIFile> f;
     NS_NewNativeLocalFile(sComponentDirs[i], true,
                           getter_AddRefs(f));
@@ -213,6 +240,20 @@ EmbedLiteApp::Stop()
   } else {
     NS_ASSERTION(mUILoop, "Start was not called before stop");
     mUILoop->DoQuit();
+    if (mIsAsyncLoop) {
+      if (mSubThread) {
+        mSubThread->Stop();
+        mSubThread = NULL;
+      } else {
+        NS_ABORT_IF_FALSE(mListener->StopChildThread(),
+                          "StopChildThread must be implemented when ExecuteChildThread defined");
+      }
+      if (mUILoop) {
+        delete mUILoop;
+        mUILoop = NULL;
+      }
+      mListener->Destroyed();
+    }
   }
 }
 
@@ -357,6 +398,17 @@ EmbedLiteApp::SetIsAccelerated(bool aIsAccelerated)
 #endif
   {
     mRenderType = RENDER_SW;
+  }
+}
+
+void
+EmbedLiteApp::Initialized()
+{
+  if (mIsCompositeInMainThread) {
+    mozilla::layers::CompositorParent::StartUpWithExistingThread(MessageLoop::current(), PlatformThread::CurrentId());
+  }
+  if (mListener) {
+    mListener->Initialized();
   }
 }
 
