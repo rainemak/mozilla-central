@@ -248,10 +248,10 @@ EmbedLiteApp::Stop()
         NS_ABORT_IF_FALSE(mListener->StopChildThread(),
                           "StopChildThread must be implemented when ExecuteChildThread defined");
       }
-      if (mUILoop) {
+      if (mUILoop && !mIsAsyncLoop) {
         delete mUILoop;
-        mUILoop = NULL;
       }
+      mUILoop = NULL;
       mListener->Destroyed();
     }
   }

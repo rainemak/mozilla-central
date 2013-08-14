@@ -38,7 +38,7 @@ public:
   virtual void LoadFrameScript(const char* aURI);
   virtual void DoSendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage);
   virtual bool RenderToImage(unsigned char* aData, int imgW, int imgH, int stride, int depth);
-  virtual bool RenderGL();
+  virtual bool RenderGL(mozilla::embedlite::EmbedLiteRenderTarget*);
   virtual void SetViewSize(int width, int height);
   virtual void SetGLViewPortSize(int width, int height);
   virtual void SetGLViewTransform(gfxMatrix matrix);
@@ -62,6 +62,7 @@ public:
   virtual void RemoveMessageListeners(const nsTArray<nsString>&);
 
   mozilla::layers::AsyncPanZoomController* GetDefaultPanZoomController();
+  EmbedLiteRenderTarget* CreateEmbedLiteRenderTarget(int width, int height);
 
 protected:
   virtual void ActorDestroy(ActorDestroyReason aWhy) MOZ_OVERRIDE;

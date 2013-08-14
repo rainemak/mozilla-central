@@ -7,6 +7,7 @@
 #include "EmbedLog.h"
 
 #include "EmbedLiteCompositorParent.h"
+#include "EmbedLiteRenderTarget.h"
 #include "LayerManagerOGL.h"
 #include "BasicLayers.h"
 #include "EmbedLiteAppThreadParent.h"
@@ -17,6 +18,7 @@
 #include "mozilla/layers/LayerManagerComposite.h"
 #include "mozilla/layers/AsyncCompositionManager.h"
 #include "mozilla/layers/LayerTransactionParent.h"
+#include "mozilla/layers/CompositorOGL.h"
 #include "gfxUtils.h"
 
 using namespace mozilla::layers;
@@ -83,16 +85,22 @@ bool EmbedLiteCompositorParent::RenderToContext(gfxContext* aContext)
   return true;
 }
 
-bool EmbedLiteCompositorParent::RenderGL()
+bool EmbedLiteCompositorParent::RenderGL(mozilla::embedlite::EmbedLiteRenderTarget* aTarget)
 {
   LOGF();
   bool retval = true;
   NS_ENSURE_TRUE(IsGLBackend(), false);
 
   LayerManagerComposite* mgr = GetLayerManager();
+
+  if (IsGLBackend() && aTarget) {
+    static_cast<CompositorOGL*>(mgr->GetCompositor())->SetUserRenderTarget(aTarget->GetRenderSurface());
+  }
+
   if (!mgr->GetRoot()) {
     retval = false;
   }
+
   if (IsGLBackend()) {
     mgr->SetWorldTransform(mWorldTransform);
   }

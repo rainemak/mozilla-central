@@ -200,10 +200,17 @@ EmbedLiteView::RenderToImage(unsigned char* aData, int imgW, int imgH, int strid
 }
 
 bool
-EmbedLiteView::RenderGL()
+EmbedLiteView::RenderGL(EmbedLiteRenderTarget* aTarget)
 {
   NS_ENSURE_TRUE(mViewImpl, false);
-  return mViewImpl->RenderGL();
+  return mViewImpl->RenderGL(aTarget);
+}
+
+EmbedLiteRenderTarget*
+EmbedLiteView::CreateEmbedLiteRenderTarget(int width, int height)
+{
+  NS_ENSURE_TRUE(mViewImpl, nullptr);
+  return mViewImpl->CreateEmbedLiteRenderTarget(width, height);
 }
 
 char*

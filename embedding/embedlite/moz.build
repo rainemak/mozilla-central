@@ -19,6 +19,7 @@ EXPORTS.mozilla.embedlite += [
     'EmbedLiteAPI.h',
     'EmbedLiteApp.h',
     'EmbedLiteMessagePump.h',
+    'EmbedLiteRenderTarget.h',
     'EmbedLiteView.h',
     'EmbedLog.h',
 ]
@@ -37,6 +38,7 @@ CPP_SOURCES += [
     'EmbedLiteMessagePump.cpp',
     'EmbedLiteModulesService.cpp',
     'EmbedLitePuppetWidget.cpp',
+    'EmbedLiteRenderTarget.cpp',
     'EmbedLiteSubThread.cpp',
     'EmbedLiteUILoop.cpp',
     'EmbedLiteView.cpp',

@@ -17,6 +17,7 @@ namespace embedlite {
 
 class EmbedLiteViewImplIface;
 class EmbedLiteView;
+class EmbedLiteRenderTarget;
 
 class EmbedLiteViewListener
 {
@@ -121,7 +122,7 @@ public:
   virtual bool RenderToImage(unsigned char* aData, int imgW, int imgH, int stride, int depth);
 
   //   GL Rendering setuo
-  virtual bool RenderGL();
+  virtual bool RenderGL(EmbedLiteRenderTarget* aTarget = 0);
   //   Setup renderable GL/EGL window surface size
   virtual void SetGLViewPortSize(int width, int height);
   //   GL world transform offset and simple rotation are allowed (orientation change)
@@ -148,6 +149,7 @@ public:
   virtual void SendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage);
 
   virtual uint32_t GetUniqueID();
+  virtual EmbedLiteRenderTarget* CreateEmbedLiteRenderTarget(int width, int height);
 
 private:
   friend class EmbedLiteViewThreadParent;
