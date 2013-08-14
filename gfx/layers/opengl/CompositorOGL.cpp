@@ -718,10 +718,28 @@ CompositorOGL::SetRenderTarget(CompositingRenderTarget *aSurface)
   }
 }
 
+void
+CompositorOGL::SetUserRenderTarget(CompositingRenderTarget *aSurface)
+{
+  MOZ_ASSERT(aSurface);
+  CompositingRenderTargetOGL* surface
+    = static_cast<CompositingRenderTargetOGL*>(aSurface);
+  if (mUserRenderTarget != surface) {
+    surface->BindRenderTarget();
+    mUserRenderTarget = surface;
+  }
+}
+
 CompositingRenderTarget*
 CompositorOGL::GetCurrentRenderTarget()
 {
   return mCurrentRenderTarget;
+}
+
+CompositingRenderTarget*
+CompositorOGL::GetUserRenderTarget()
+{
+  return mUserRenderTarget;
 }
 
 static GLenum
@@ -806,10 +824,15 @@ CompositorOGL::BeginFrame(const Rect *aClipRectIn, const gfxMatrix& aTransform,
   TexturePoolOGL::Fill(gl());
 #endif
 
-  mCurrentRenderTarget = CompositingRenderTargetOGL::RenderTargetForWindow(this,
-                            IntSize(width, height),
-                            aTransform);
-  mCurrentRenderTarget->BindRenderTarget();
+  if (mUserRenderTarget) {
+    mCurrentRenderTarget = mUserRenderTarget;
+  } else {
+    mCurrentRenderTarget = CompositingRenderTargetOGL::RenderTargetForWindow(this,
+                              IntSize(width, height),
+                              aTransform);
+    mCurrentRenderTarget->BindRenderTarget();
+  }
+
 #ifdef DEBUG
   mWindowRenderTarget = mCurrentRenderTarget;
 #endif

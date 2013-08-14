@@ -30,7 +30,7 @@ public:
   virtual ~EmbedLiteCompositorParent();
 
   bool RenderToContext(gfxContext* aContext);
-  bool RenderGL(mozilla::embedlite::EmbedLiteRenderTargetGL*);
+  bool RenderGL(mozilla::embedlite::EmbedLiteRenderTarget*);
   void SetSurfaceSize(int width, int height);
   void SetWorldTransform(gfxMatrix);
   void SetClipping(const gfxRect& aClipRect);

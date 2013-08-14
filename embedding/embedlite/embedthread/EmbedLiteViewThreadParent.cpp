@@ -11,7 +11,7 @@
 #include "EmbedLiteView.h"
 
 #include "EmbedLiteCompositorParent.h"
-#include "EmbedLiteRenderTargetGL.h"
+#include "EmbedLiteRenderTarget.h"
 #include "mozilla/unused.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
 #include "mozilla/layers/GeckoContentController.h"
@@ -635,7 +635,7 @@ EmbedLiteViewThreadParent::RenderToImage(unsigned char* aData, int imgW, int img
 }
 
 bool
-EmbedLiteViewThreadParent::RenderGL(mozilla::embedlite::EmbedLiteRenderTargetGL* aTarget)
+EmbedLiteViewThreadParent::RenderGL(mozilla::embedlite::EmbedLiteRenderTarget* aTarget)
 {
   if (mCompositor) {
     return mCompositor->RenderGL(aTarget);
@@ -869,10 +869,10 @@ void EmbedLiteViewThreadParent::UpdateLastResolution(const float aResolution)
   mLastResolution = aResolution;
 }
 
-EmbedLiteRenderTargetGL*
-EmbedLiteViewThreadParent::CreateEmbedLiteRenderTargetGL(int width, int height)
+EmbedLiteRenderTarget*
+EmbedLiteViewThreadParent::CreateEmbedLiteRenderTarget(int width, int height)
 {
-  return new EmbedLiteRenderTargetGL(width, height, mCompositor->GetLayerManager());
+  return new EmbedLiteRenderTarget(width, height, mCompositor->GetLayerManager());
 }
 
 
