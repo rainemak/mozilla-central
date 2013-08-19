@@ -56,8 +56,8 @@ public:
   virtual void SetRenderTarget(CompositingRenderTarget *aSurface) MOZ_OVERRIDE;
   virtual CompositingRenderTarget* GetCurrentRenderTarget() MOZ_OVERRIDE;
 
-  virtual void SetUserRenderTarget(CompositingRenderTarget *aSurface) MOZ_OVERRIDE;
-  virtual CompositingRenderTarget* GetUserRenderTarget() MOZ_OVERRIDE;
+  virtual void SetUserRenderTarget(CompositingRenderTarget *aSurface);
+  virtual CompositingRenderTarget* GetUserRenderTarget();
 
   virtual void DrawQuad(const gfx::Rect& aRect, const gfx::Rect& aClipRect,
                         const EffectChain &aEffectChain,
