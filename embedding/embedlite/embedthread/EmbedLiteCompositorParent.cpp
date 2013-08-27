@@ -108,6 +108,11 @@ bool EmbedLiteCompositorParent::RenderGL(mozilla::embedlite::EmbedLiteRenderTarg
     mgr->GetRoot()->SetClipRect(&mActiveClipping);
   }
   CompositorParent::Composite();
+
+  if (IsGLBackend() && aTarget) {
+    static_cast<CompositorOGL*>(mgr->GetCompositor())->SetUserRenderTarget(nullptr);
+  }
+
   return retval;
 }
 

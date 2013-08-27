@@ -1477,13 +1477,16 @@ void AsyncPanZoomController::SendAsyncScrollEvent() {
 
   CSSRect contentRect;
   CSSSize scrollableSize;
+  CSSToScreenScale resolution;
   {
     scrollableSize = mFrameMetrics.mScrollableRect.Size();
     contentRect = mFrameMetrics.CalculateCompositedRectInCssPixels();
     contentRect.MoveTo(mCurrentAsyncScrollOffset);
+    resolution = mFrameMetrics.CalculateResolution();
   }
 
   mGeckoContentController->SendAsyncScrollDOMEvent(contentRect, scrollableSize);
+  mGeckoContentController->ScrollUpdate(mFrameMetrics.mScrollOffset, resolution.scale);
 }
 
 static void GetAPZCAtPointOnSubtree(const ContainerLayer& aLayerIn,

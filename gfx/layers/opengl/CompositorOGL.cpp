@@ -725,7 +725,9 @@ CompositorOGL::SetUserRenderTarget(CompositingRenderTarget *aSurface)
   CompositingRenderTargetOGL* surface
     = static_cast<CompositingRenderTargetOGL*>(aSurface);
   if (mUserRenderTarget != surface) {
-    surface->BindRenderTarget();
+    if (surface) {
+        surface->BindRenderTarget();
+    }
     mUserRenderTarget = surface;
   }
 }
