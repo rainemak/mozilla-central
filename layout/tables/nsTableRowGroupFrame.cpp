@@ -244,7 +244,7 @@ nsTableRowGroupFrame::BuildDisplayList(nsDisplayListBuilder*   aBuilder,
 }
 
 int
-nsTableRowGroupFrame::GetSkipSides() const
+nsTableRowGroupFrame::GetSkipSides(const nsHTMLReflowState* aReflowState) const
 {
   int skip = 0;
   if (nullptr != GetPrevInFlow()) {
@@ -837,7 +837,7 @@ nsTableRowGroupFrame::CollapseRowGroupIfNecessary(nscoord aYTotalOffset,
   
   SetRect(groupRect);
   overflow.UnionAllWith(nsRect(0, 0, groupRect.width, groupRect.height));
-  FinishAndStoreOverflow(overflow, nsSize(groupRect.width, groupRect.height));
+  FinishAndStoreOverflow(overflow, groupRect.Size());
   nsTableFrame::RePositionViews(this);
   nsTableFrame::InvalidateTableFrame(this, oldGroupRect, oldGroupVisualOverflow,
                                      false);

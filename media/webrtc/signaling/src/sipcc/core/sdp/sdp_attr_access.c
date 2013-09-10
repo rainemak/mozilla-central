@@ -238,7 +238,11 @@ sdp_result_e sdp_add_new_attr (void *sdp_ptr, u16 level, u8 cap_num,
 	fmtp_p->qcif = 0;
         fmtp_p->profile = SDP_INVALID_VALUE;
         fmtp_p->level = SDP_INVALID_VALUE;
-        fmtp_p->parameter_add = TRUE;
+        fmtp_p->parameter_add = SDP_FMTP_UNUSED;
+        fmtp_p->usedtx = SDP_FMTP_UNUSED;
+        fmtp_p->stereo = SDP_FMTP_UNUSED;
+        fmtp_p->useinbandfec = SDP_FMTP_UNUSED;
+        fmtp_p->cbr = SDP_FMTP_UNUSED;
 	for (i=0; i < SDP_NE_NUM_BMAP_WORDS; i++) {
             fmtp_p->bmap[i] = 0;
         }
@@ -4080,6 +4084,163 @@ sdp_result_e sdp_attr_set_rtcp_mux_attribute(void *sdp_ptr, u16 level,
     return (SDP_SUCCESS);
 }
 
+
+/* Function:    sdp_attr_get_setup_attribute
+ * Description: Returns the value of a setup attribute at a given level
+ *
+ * Parameters:  sdp_ptr     The SDP handle returned by sdp_init_description.
+ *              level       The level to check for the attribute.
+ *              cap_num     The capability number associated with the
+ *                          attribute if any.  If none, should be zero.
+ *              inst_num    The attribute instance number to check.
+ *              setup_type  Returns sdp_setup_type_e enum
+ * Returns:
+ *              SDP_SUCCESS           Attribute param was set successfully.
+ *              SDP_INVALID_SDP_PTR   SDP pointer invalid
+ *              SDP_INVALID_PARAMETER Specified attribute is not defined.
+ */
+sdp_result_e sdp_attr_get_setup_attribute (void *sdp_ptr, u16 level,
+    u8 cap_num, u16 inst_num, sdp_setup_type_e *setup_type)
+{
+    sdp_t       *sdp_p = (sdp_t *)sdp_ptr;
+    sdp_attr_t  *attr_p;
+
+    if (!sdp_verify_sdp_ptr(sdp_p)) {
+        return SDP_INVALID_SDP_PTR;
+    }
+
+    attr_p = sdp_find_attr(sdp_p, level, cap_num, SDP_ATTR_SETUP, inst_num);
+    if (!attr_p) {
+        if (sdp_p->debug_flag[SDP_DEBUG_ERRORS]) {
+            CSFLogError(logTag,
+                "%s setup attribute, level %u instance %u not found.",
+                sdp_p->debug_str, level, inst_num);
+        }
+        sdp_p->conf_p->num_invalid_param++;
+        return SDP_INVALID_PARAMETER;
+    }
+
+    *setup_type = attr_p->attr.setup;
+    return SDP_SUCCESS;
+}
+
+/* Function:    sdp_attr_set_setup_attribute
+ * Description: Sets the value of a setup attribute parameter
+ *
+ * Parameters:  sdp_ptr        The SDP handle returned by sdp_init_description.
+ *              level          The level to set the attribute.
+ *              cap_num        The capability number associated with the
+ *                             attribute if any.  If none, should be zero.
+ *              inst_num       The attribute instance number to check.
+ *              setup_type     setup attribute value to set
+ * Returns:     SDP_SUCCESS            Attribute param was set successfully.
+ *              SDP_INVALID_SDP_PTR    SDP ptr invalid
+ *              SDP_INVALID_PARAMETER  Specified attribute is not defined.
+ */
+sdp_result_e
+sdp_attr_set_setup_attribute(void *sdp_ptr, u16 level,
+    u8 cap_num, u16 inst_num, sdp_setup_type_e setup_type)
+{
+    sdp_t       *sdp_p = (sdp_t *)sdp_ptr;
+    sdp_attr_t  *attr_p;
+
+    if (!sdp_verify_sdp_ptr(sdp_p)) {
+        return SDP_INVALID_SDP_PTR;
+    }
+
+    attr_p = sdp_find_attr(sdp_p, level, cap_num, SDP_ATTR_SETUP, inst_num);
+    if (!attr_p) {
+        if (sdp_p->debug_flag[SDP_DEBUG_ERRORS]) {
+            CSFLogError(logTag, "%s setup attribute, level %u instance %u "
+                      "not found.", sdp_p->debug_str, level, inst_num);
+        }
+        sdp_p->conf_p->num_invalid_param++;
+        return SDP_INVALID_PARAMETER;
+    }
+
+    attr_p->attr.setup = setup_type;
+    return SDP_SUCCESS;
+}
+
+/* Function:    sdp_attr_get_connection_attribute
+ * Description: Returns the value of a connection attribute at a given level
+ *
+ * Parameters:  sdp_ptr     The SDP handle returned by sdp_init_description.
+ *              level       The level to check for the attribute.
+ *              cap_num     The capability number associated with the
+ *                          attribute if any.  If none, should be zero.
+ *              inst_num    The attribute instance number to check.
+ *              connection_type  Returns sdp_connection_type_e enum
+ * Returns:
+ *              SDP_SUCCESS           Attribute param was set successfully.
+ *              SDP_INVALID_SDP_PTR   SDP pointer invalid
+ *              SDP_INVALID_PARAMETER Specified attribute is not defined.
+ */
+sdp_result_e sdp_attr_get_connection_attribute (void *sdp_ptr, u16 level,
+    u8 cap_num, u16 inst_num, sdp_connection_type_e *connection_type)
+{
+    sdp_t       *sdp_p = (sdp_t *)sdp_ptr;
+    sdp_attr_t  *attr_p;
+
+    if (!sdp_verify_sdp_ptr(sdp_p)) {
+        return SDP_INVALID_SDP_PTR;
+    }
+
+    attr_p = sdp_find_attr(sdp_p, level, cap_num, SDP_ATTR_CONNECTION,
+        inst_num);
+    if (!attr_p) {
+        if (sdp_p->debug_flag[SDP_DEBUG_ERRORS]) {
+            CSFLogError(logTag,
+                "%s setup attribute, level %u instance %u not found.",
+                sdp_p->debug_str, level, inst_num);
+        }
+        sdp_p->conf_p->num_invalid_param++;
+        return SDP_INVALID_PARAMETER;
+    }
+
+    *connection_type = attr_p->attr.connection;
+    return SDP_SUCCESS;
+}
+
+/* Function:    sdp_attr_set_connection_attribute
+ * Description: Sets the value of a connection attribute parameter
+ *
+ * Parameters:  sdp_ptr        The SDP handle returned by sdp_init_description.
+ *              level          The level to set the attribute.
+ *              cap_num        The capability number associated with the
+ *                             attribute if any.  If none, should be zero.
+ *              inst_num       The attribute instance number to check.
+ *              connection_type     connection attribute value to set
+ * Returns:     SDP_SUCCESS            Attribute param was set successfully.
+ *              SDP_INVALID_SDP_PTR    SDP ptr invalid
+ *              SDP_INVALID_PARAMETER  Specified attribute is not defined.
+ */
+sdp_result_e
+sdp_attr_set_connection_attribute(void *sdp_ptr, u16 level,
+    u8 cap_num, u16 inst_num, sdp_connection_type_e connection_type)
+{
+    sdp_t       *sdp_p = (sdp_t *)sdp_ptr;
+    sdp_attr_t  *attr_p;
+
+    if (!sdp_verify_sdp_ptr(sdp_p)) {
+        return SDP_INVALID_SDP_PTR;
+    }
+
+    attr_p = sdp_find_attr(sdp_p, level, cap_num, SDP_ATTR_CONNECTION,
+        inst_num);
+    if (!attr_p) {
+        if (sdp_p->debug_flag[SDP_DEBUG_ERRORS]) {
+            CSFLogError(logTag, "%s connection attribute, level %u instance %u "
+                      "not found.", sdp_p->debug_str, level, inst_num);
+        }
+        sdp_p->conf_p->num_invalid_param++;
+        return SDP_INVALID_PARAMETER;
+    }
+
+    attr_p->attr.connection = connection_type;
+    return SDP_SUCCESS;
+}
+
 /* Function:    sdp_attr_get_dtls_fingerprint_attribute
  * Description: Returns the value of dtls fingerprint attribute at a given level
  *
@@ -6889,7 +7050,7 @@ sdp_result_e sdp_attr_set_fmtp_deint_buf_cap (void *sdp_ptr, u16 level,
 
 sdp_result_e sdp_attr_set_fmtp_h264_parameter_add (void *sdp_ptr, u16 level,
                                               u8 cap_num, u16 inst_num,
-                                              tinybool parameter_add)
+                                              u16 parameter_add)
 {
 
     sdp_t       *sdp_p = (sdp_t *)sdp_ptr;
@@ -8306,7 +8467,9 @@ tinybool sdp_attr_fmtp_is_parameter_add (void *sdp_ptr, u16 level,
         sdp_p->conf_p->num_invalid_param++;
         return (FALSE);
     } else {
-        return (attr_p->attr.fmtp.parameter_add);
+        /* Both 1 and SDP_FMTP_UNUSED (parameter not present) should be
+         * treated as TRUE, per RFC 3984, page 45 */
+        return (attr_p->attr.fmtp.parameter_add != 0);
     }
 }
 

@@ -347,9 +347,6 @@ static nsresult GetDownloadDirectory(nsIFile **_directory)
   else {
     return NS_ERROR_FAILURE;
   }
-#elif defined(MOZ_PLATFORM_MAEMO)
-  nsresult rv = NS_GetSpecialDirectory(NS_UNIX_XDG_DOCUMENTS_DIR, getter_AddRefs(dir));
-  NS_ENSURE_SUCCESS(rv, rv);
 #elif defined(XP_WIN)
   // On metro we want to be able to search opened files and the temp directory
   // is exlcuded in searches.
@@ -397,6 +394,7 @@ static nsDefaultMimeTypeEntry defaultMimeEntries [] =
   { TEXT_CSS, "css" },
   { IMAGE_JPEG, "jpeg" },
   { IMAGE_JPEG, "jpg" },
+  { IMAGE_SVG_XML, "svg" },
   { TEXT_HTML, "html" },
   { TEXT_HTML, "htm" },
   { APPLICATION_XPINSTALL, "xpi" },
@@ -465,6 +463,7 @@ static nsExtraMimeTypeEntry extraMimeEntries [] =
   { "application/x-arj", "arj", "ARJ file" },
   { "application/rtf", "rtf", "Rich Text Format File" },
   { APPLICATION_XPINSTALL, "xpi", "XPInstall Install" },
+  { APPLICATION_PDF, "pdf", "Portable Document Format" },
   { APPLICATION_POSTSCRIPT, "ps,eps,ai", "Postscript File" },
   { APPLICATION_XJAVASCRIPT, "js", "Javascript Source File" },
   { APPLICATION_XJAVASCRIPT, "jsm", "Javascript Module Source File" },
@@ -479,10 +478,7 @@ static nsExtraMimeTypeEntry extraMimeEntries [] =
   { IMAGE_PNG, "png", "PNG Image" },
   { IMAGE_TIFF, "tiff,tif", "TIFF Image" },
   { IMAGE_XBM, "xbm", "XBM Image" },
-#ifdef MOZ_WBMP
-  { IMAGE_WBMP, "wbmp", "WBMP Image" },
-#endif
-  { "image/svg+xml", "svg", "Scalable Vector Graphics" },
+  { IMAGE_SVG_XML, "svg", "Scalable Vector Graphics" },
   { MESSAGE_RFC822, "eml", "RFC-822 data" },
   { TEXT_PLAIN, "txt,text", "Text File" },
   { TEXT_HTML, "html,htm,shtml,ehtml", "HyperText Markup Language" },
@@ -963,11 +959,6 @@ nsExternalHelperAppService::DeleteTemporaryPrivateFileWhenPossible(nsIFile* aTem
   return DeleteTemporaryFileHelper(aTemporaryFile, mTemporaryPrivateFilesList);
 }
 
-void nsExternalHelperAppService::FixFilePermissions(nsIFile* aFile)
-{
-  // This space intentionally left blank
-}
-
 void nsExternalHelperAppService::ExpungeTemporaryFilesHelper(nsCOMArray<nsIFile> &fileList)
 {
   int32_t numEntries = fileList.Count();
@@ -1086,8 +1077,8 @@ nsExternalHelperAppService::Observe(nsISupports *aSubject, const char *aTopic, c
 // begin external app handler implementation 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-NS_IMPL_THREADSAFE_ADDREF(nsExternalAppHandler)
-NS_IMPL_THREADSAFE_RELEASE(nsExternalAppHandler)
+NS_IMPL_ADDREF(nsExternalAppHandler)
+NS_IMPL_RELEASE(nsExternalAppHandler)
 
 NS_INTERFACE_MAP_BEGIN(nsExternalAppHandler)
    NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsIStreamListener)
@@ -2214,6 +2205,11 @@ NS_IMETHODIMP nsExternalAppHandler::Cancel(nsresult aReason)
   if (mSaver) {
     mSaver->Finish(aReason);
     mSaver = nullptr;
+  } else if (mStopRequestIssued && mTempFile) {
+    // This branch can only happen when the user cancels the helper app dialog
+    // when the request has completed. The temp file has to be removed here,
+    // because mSaver has been released at that time with the temp file left.
+    (void)mTempFile->Remove(false);
   }
 
   // Break our reference cycle with the helper app dialog (set up in

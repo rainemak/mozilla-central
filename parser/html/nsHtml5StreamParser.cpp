@@ -83,6 +83,8 @@ NS_INTERFACE_TABLE_HEAD(nsHtml5StreamParser)
   NS_INTERFACE_TABLE_TO_MAP_SEGUE_CYCLE_COLLECTION(nsHtml5StreamParser)
 NS_INTERFACE_MAP_END
 
+NS_IMPL_CYCLE_COLLECTION_CLASS(nsHtml5StreamParser)
+
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(nsHtml5StreamParser)
   tmp->DropTimer();
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mObserver)
@@ -171,7 +173,6 @@ nsHtml5StreamParser::nsHtml5StreamParser(nsHtml5TreeOpExecutor* aExecutor,
 {
   NS_ASSERTION(NS_IsMainThread(), "Wrong thread!");
   mFlushTimer->SetTarget(mThread);
-  mAtomTable.Init(); // we aren't checking for OOM anyway...
 #ifdef DEBUG
   mAtomTable.SetPermittedLookupThread(mThread);
 #endif
@@ -1492,7 +1493,7 @@ nsHtml5StreamParser::ContinueAfterScripts(nsHtml5Tokenizer* aTokenizer,
       mTokenizer->setLineNumber(speculation->GetStartLineNumber());
 
       nsContentUtils::ReportToConsole(nsIScriptError::warningFlag,
-                                      "DOM Events",
+                                      NS_LITERAL_CSTRING("DOM Events"),
                                       mExecutor->GetDocument(),
                                       nsContentUtils::eDOM_PROPERTIES,
                                       "SpeculationFailed",

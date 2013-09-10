@@ -7,10 +7,8 @@
 #define MOZILLA_AUDIONODESTREAM_H_
 
 #include "MediaStreamGraph.h"
-#include "AudioChannelFormat.h"
-#include "AudioNodeEngine.h"
 #include "mozilla/dom/AudioNodeBinding.h"
-#include "mozilla/dom/AudioParam.h"
+#include "AudioSegment.h"
 
 #ifdef PR_LOGGING
 #define LOG(type, msg) PR_LOG(gMediaStreamGraphLog, type, msg)
@@ -26,6 +24,7 @@ class AudioParamTimeline;
 }
 
 class ThreadSharedFloatArrayBufferList;
+class AudioNodeEngine;
 
 /**
  * An AudioNodeStream produces one audio track with ID AUDIO_TRACK.
@@ -114,14 +113,26 @@ public:
     return (mKind == MediaStreamGraph::SOURCE_STREAM && mFinished) ||
            mKind == MediaStreamGraph::EXTERNAL_STREAM;
   }
+  virtual bool IsIntrinsicallyConsumed() const MOZ_OVERRIDE
+  {
+    return true;
+  }
 
   // Any thread
   AudioNodeEngine* Engine() { return mEngine; }
   TrackRate SampleRate() const { return mSampleRate; }
 
 protected:
+  void AdvanceOutputSegment();
   void FinishOutput();
+  void AccumulateInputChunk(uint32_t aInputIndex, const AudioChunk& aChunk,
+                            AudioChunk* aBlock,
+                            nsTArray<float>* aDownmixBuffer);
+  void UpMixDownMixChunk(const AudioChunk* aChunk, uint32_t aOutputChannelCount,
+                         nsTArray<const void*>& aOutputChannels,
+                         nsTArray<float>& aDownmixBuffer);
 
+  uint32_t ComputeFinalOuputChannelCount(uint32_t aInputChannelCount);
   void ObtainInputBlock(AudioChunk& aTmpChunk, uint32_t aPortIndex);
 
   // The engine that will generate output for this node.

@@ -22,7 +22,6 @@
 #include "nsIDOMHTMLTextAreaElement.h"
 #include "nsIEditor.h"
 #include "nsIFormControl.h"
-#include "nsIFrame.h"
 #include "nsINameSpaceManager.h"
 #include "nsISelectionController.h"
 #include "jsapi.h"
@@ -38,12 +37,6 @@ using namespace mozilla::a11y;
 ////////////////////////////////////////////////////////////////////////////////
 // HTMLCheckboxAccessible
 ////////////////////////////////////////////////////////////////////////////////
-
-HTMLCheckboxAccessible::
-  HTMLCheckboxAccessible(nsIContent* aContent, DocAccessible* aDoc) :
-  LeafAccessible(aContent, aDoc)
-{
-}
 
 role
 HTMLCheckboxAccessible::NativeRole()
@@ -118,12 +111,6 @@ HTMLCheckboxAccessible::IsWidget() const
 ////////////////////////////////////////////////////////////////////////////////
 // HTMLRadioButtonAccessible
 ////////////////////////////////////////////////////////////////////////////////
-
-HTMLRadioButtonAccessible::
-  HTMLRadioButtonAccessible(nsIContent* aContent, DocAccessible* aDoc) :
-  RadioButtonAccessible(aContent, aDoc)
-{
-}
 
 uint64_t
 HTMLRadioButtonAccessible::NativeState()

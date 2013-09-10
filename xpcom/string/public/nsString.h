@@ -3,6 +3,7 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+// IWYU pragma: private, include "nsStringGlue.h"
 
 #ifndef nsString_h___
 #define nsString_h___
@@ -48,11 +49,11 @@
 #include "nsTString.h"
 #include "string-template-undef.h"
 
-MOZ_STATIC_ASSERT(sizeof(PRUnichar) == 2, "size of PRUnichar must be 2");
-MOZ_STATIC_ASSERT(sizeof(nsString::char_type) == 2,
-                  "size of nsString::char_type must be 2");
-MOZ_STATIC_ASSERT(sizeof(nsCString::char_type) == 1,
-                  "size of nsCString::char_type must be 1");
+static_assert(sizeof(PRUnichar) == 2, "size of PRUnichar must be 2");
+static_assert(sizeof(nsString::char_type) == 2,
+              "size of nsString::char_type must be 2");
+static_assert(sizeof(nsCString::char_type) == 1,
+              "size of nsCString::char_type must be 1");
 
   /**
    * A helper class that converts a UTF-16 string to ASCII in a lossy manner

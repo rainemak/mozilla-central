@@ -7,22 +7,22 @@
 #ifndef vm_Interpreter_inl_h
 #define vm_Interpreter_inl_h
 
-#include "jsapi.h"
-#include "jsbool.h"
-#include "jscompartment.h"
-#include "jsinfer.h"
-#include "jslibmath.h"
-#include "jsnum.h"
-#include "jsstr.h"
-#include "ion/Ion.h"
-#include "ion/IonCompartment.h"
-#include "vm/ForkJoin.h"
 #include "vm/Interpreter.h"
 
+#include "jscompartment.h"
+#include "jsinfer.h"
+#include "jsnum.h"
+#include "jsstr.h"
+
+#include "jit/Ion.h"
+#include "jit/IonCompartment.h"
+#include "vm/ArgumentsObject.h"
+#include "vm/ForkJoin.h"
+
 #include "jsatominlines.h"
-#include "jsfuninlines.h"
 #include "jsinferinlines.h"
-#include "jsopcodeinlines.h"
+#include "jsobjinlines.h"
+
 #include "vm/GlobalObject-inl.h"
 #include "vm/Stack-inl.h"
 
@@ -275,27 +275,27 @@ DefVarOrConstOperation(JSContext *cx, HandleObject varobj, HandlePropertyName dn
                                       JS_StrictPropertyStub, attrs)) {
             return false;
         }
-    } else {
+    } else if (attrs & JSPROP_READONLY) {
         /*
          * Extension: ordinarily we'd be done here -- but for |const|.  If we
          * see a redeclaration that's |const|, we consider it a conflict.
          */
         unsigned oldAttrs;
-        if (!JSObject::getPropertyAttributes(cx, varobj, dn, &oldAttrs))
+        RootedId id(cx, NameToId(dn));
+        if (!JSObject::getGenericAttributes(cx, varobj, id, &oldAttrs))
             return false;
-        if (attrs & JSPROP_READONLY) {
-            JSAutoByteString bytes;
-            if (AtomToPrintableString(cx, dn, &bytes)) {
-                JS_ALWAYS_FALSE(JS_ReportErrorFlagsAndNumber(cx, JSREPORT_ERROR,
-                                                             js_GetErrorMessage,
-                                                             NULL, JSMSG_REDECLARED_VAR,
-                                                             (oldAttrs & JSPROP_READONLY)
-                                                             ? "const"
-                                                             : "var",
-                                                             bytes.ptr()));
-            }
-            return false;
+
+        JSAutoByteString bytes;
+        if (AtomToPrintableString(cx, dn, &bytes)) {
+            JS_ALWAYS_FALSE(JS_ReportErrorFlagsAndNumber(cx, JSREPORT_ERROR,
+                                                         js_GetErrorMessage,
+                                                         NULL, JSMSG_REDECLARED_VAR,
+                                                         (oldAttrs & JSPROP_READONLY)
+                                                         ? "const"
+                                                         : "var",
+                                                         bytes.ptr()));
         }
+        return false;
     }
 
     return true;
@@ -354,20 +354,8 @@ GetObjectElementOperation(JSContext *cx, JSOp op, JSObject *objArg, bool wasObje
                           HandleValue rref, MutableHandleValue res)
 {
     do {
-        // Don't call GetPcScript (needed for analysis) from inside Ion since it's expensive.
-        bool analyze = cx->currentlyRunningInInterpreter();
-
         uint32_t index;
         if (IsDefinitelyIndex(rref, &index)) {
-            if (analyze && !objArg->isNative() && !objArg->is<TypedArrayObject>()) {
-                JSScript *script = NULL;
-                jsbytecode *pc = NULL;
-                types::TypeScript::GetPcScript(cx, &script, &pc);
-
-                if (script->hasAnalysis())
-                    script->analysis()->getCode(pc).nonNativeGetElement = true;
-            }
-
             if (JSObject::getElementNoGC(cx, objArg, objArg, index, res.address()))
                 break;
 
@@ -376,22 +364,6 @@ GetObjectElementOperation(JSContext *cx, JSOp op, JSObject *objArg, bool wasObje
                 return false;
             objArg = obj;
             break;
-        }
-
-        if (analyze) {
-            JSScript *script = NULL;
-            jsbytecode *pc = NULL;
-            types::TypeScript::GetPcScript(cx, &script, &pc);
-
-            if (script->hasAnalysis()) {
-                script->analysis()->getCode(pc).getStringElement = true;
-
-                if (!objArg->is<ArrayObject>() && !objArg->isNative() &&
-                    !objArg->is<TypedArrayObject>())
-                {
-                    script->analysis()->getCode(pc).nonNativeGetElement = true;
-                }
-            }
         }
 
         if (ValueMightBeSpecial(rref)) {
@@ -698,7 +670,7 @@ class FastInvokeGuard
 #ifdef JS_ION
     // Constructing an IonContext is pretty expensive due to the TLS access,
     // so only do this if we have to.
-    mozilla::Maybe<ion::IonContext> ictx_;
+    mozilla::Maybe<jit::IonContext> ictx_;
     bool useIon_;
 #endif
 
@@ -708,7 +680,7 @@ class FastInvokeGuard
       , fun_(cx)
       , script_(cx)
 #ifdef JS_ION
-      , useIon_(ion::IsEnabled(cx))
+      , useIon_(jit::IsIonEnabled(cx))
 #endif
     {
         JS_ASSERT(!InParallelSection());
@@ -736,22 +708,22 @@ class FastInvokeGuard
                     return false;
             }
             if (ictx_.empty())
-                ictx_.construct(cx, (js::ion::TempAllocator *)NULL);
+                ictx_.construct(cx, (js::jit::TempAllocator *)NULL);
             JS_ASSERT(fun_->nonLazyScript() == script_);
 
-            ion::MethodStatus status = ion::CanEnterUsingFastInvoke(cx, script_, args_.length());
-            if (status == ion::Method_Error)
+            jit::MethodStatus status = jit::CanEnterUsingFastInvoke(cx, script_, args_.length());
+            if (status == jit::Method_Error)
                 return false;
-            if (status == ion::Method_Compiled) {
-                ion::IonExecStatus result = ion::FastInvoke(cx, fun_, args_);
+            if (status == jit::Method_Compiled) {
+                jit::IonExecStatus result = jit::FastInvoke(cx, fun_, args_);
                 if (IsErrorStatus(result))
                     return false;
 
-                JS_ASSERT(result == ion::IonExec_Ok);
+                JS_ASSERT(result == jit::IonExec_Ok);
                 return true;
             }
 
-            JS_ASSERT(status == ion::Method_Skipped);
+            JS_ASSERT(status == jit::Method_Skipped);
 
             if (script_->canIonCompile()) {
                 // This script is not yet hot. Since calling into Ion is much

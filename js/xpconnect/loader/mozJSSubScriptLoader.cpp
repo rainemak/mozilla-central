@@ -25,9 +25,10 @@
 #include "nsScriptLoader.h"
 
 #include "jsapi.h"
-#include "jsdbgapi.h"
 #include "jsfriendapi.h"
+#include "js/OldDebugAPI.h"
 #include "nsJSPrincipals.h"
+#include "xpcpublic.h" // For xpc::SystemErrorReporter
 
 #include "mozilla/scache/StartupCache.h"
 #include "mozilla/scache/StartupCacheUtils.h"
@@ -50,10 +51,6 @@ using namespace JS;
 #define LOAD_ERROR_NOSPEC "Failed to get URI spec.  This is bad."
 #define LOAD_ERROR_CONTENTTOOBIG "ContentLength is too large"
 
-// We just use the same reporter as the component loader
-extern void
-mozJSLoaderErrorReporter(JSContext *cx, const char *message, JSErrorReport *rep);
-
 mozJSSubScriptLoader::mozJSSubScriptLoader() : mSystemPrincipal(nullptr)
 {
     // Force construction of the JS component loader.  We may need it later.
@@ -66,7 +63,7 @@ mozJSSubScriptLoader::~mozJSSubScriptLoader()
     /* empty */
 }
 
-NS_IMPL_THREADSAFE_ISUPPORTS1(mozJSSubScriptLoader, mozIJSSubScriptLoader)
+NS_IMPL_ISUPPORTS1(mozJSSubScriptLoader, mozIJSSubScriptLoader)
 
 static nsresult
 ReportError(JSContext *cx, const char *msg)
@@ -123,7 +120,7 @@ mozJSSubScriptLoader::ReadScript(nsIURI *uri, JSContext *cx, JSObject *targetObj
 
     /* set our own error reporter so we can report any bad things as catchable
      * exceptions, including the source/line number */
-    er = JS_SetErrorReporter(cx, mozJSLoaderErrorReporter);
+    er = JS_SetErrorReporter(cx, xpc::SystemErrorReporter);
 
     JS::CompileOptions options(cx);
     options.setPrincipals(nsJSPrincipals::get(principal))

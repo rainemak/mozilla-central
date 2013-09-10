@@ -4,11 +4,11 @@
 
 /*****************************************************************************/
 /* This is an automatically generated file. If you're not                    */
-/* nsStrictTransportSecurityService.cpp, you shouldn't be #including it.     */
+/* nsSiteSecurityService.cpp, you shouldn't be #including it.     */
 /*****************************************************************************/
 
-#include "mozilla/StandardInteger.h"
-const PRTime gPreloadListExpirationTime = INT64_C(1383992137406000);
+#include <stdint.h>
+const PRTime gPreloadListExpirationTime = INT64_C(1389435858346000);
 
 class nsSTSPreload
 {
@@ -18,21 +18,25 @@ class nsSTSPreload
 };
 
 static const nsSTSPreload kSTSPreloadList[] = {
+  { "aladdinschools.appspot.com", false },
   { "alpha.irccloud.com", false },
   { "api.intercom.io", false },
   { "app.recurly.com", false },
   { "arivo.com.br", true },
+  { "bank.simple.com", false },
   { "bassh.net", true },
   { "bccx.com", true },
   { "blog.cyveillance.com", true },
   { "blog.linode.com", false },
   { "blog.torproject.org", false },
-  { "blueseed.co", false },
   { "bugzilla.mozilla.org", true },
   { "business.medbank.com.mt", true },
   { "carezone.com", false },
   { "check.torproject.org", false },
+  { "chromiumcodereview.appspot.com", false },
+  { "cloudns.com.au", true },
   { "cloudsecurityalliance.org", true },
+  { "codereview.appspot.com", false },
   { "conformal.com", true },
   { "controlcenter.gigahost.dk", true },
   { "crate.io", true },
@@ -50,8 +54,8 @@ static const nsSTSPreload kSTSPreloadList[] = {
   { "factor.cc", false },
   { "forum.linode.com", false },
   { "forum.quantifiedself.com", true },
-  { "gocardless.com", true },
   { "grc.com", false },
+  { "haste.ch", true },
   { "howrandom.org", true },
   { "id.mayfirst.org", false },
   { "inertianetworks.com", true },
@@ -67,17 +71,21 @@ static const nsSTSPreload kSTSPreloadList[] = {
   { "login.persona.org", true },
   { "login.sapo.pt", true },
   { "logotype.se", true },
+  { "lolicore.ch", true },
   { "lookout.com", false },
   { "luneta.nearbuysystems.com", false },
-  { "makeyourlaws.org", false },
+  { "makeyourlaws.org", true },
   { "manager.linode.com", false },
   { "mattmccutchen.net", true },
+  { "mediacru.sh", true },
   { "mega.co.nz", false },
   { "members.mayfirst.org", false },
   { "members.nearlyfreespeech.net", false },
+  { "mudcrab.us", true },
   { "my.onlime.ch", false },
   { "mylookout.com", false },
   { "neg9.org", false },
+  { "oplop.appspot.com", true },
   { "p.linode.com", false },
   { "passwd.io", true },
   { "paste.linode.com", false },
@@ -87,22 +95,26 @@ static const nsSTSPreload kSTSPreloadList[] = {
   { "paymill.de", true },
   { "piratenlogin.de", true },
   { "pixi.me", true },
+  { "rapidresearch.me", true },
   { "riseup.net", true },
   { "roundcube.mayfirst.org", false },
   { "sandbox.mydigipass.com", false },
+  { "securityheaders.com", true },
   { "shodan.io", true },
   { "silentcircle.com", true },
   { "simple.com", false },
+  { "squareup.com", false },
   { "stocktrade.de", false },
   { "stripe.com", true },
   { "support.mayfirst.org", false },
+  { "surkatty.org", true },
   { "therapynotes.com", false },
   { "twitter.com", false },
   { "ubertt.org", true },
   { "webmail.gigahost.dk", false },
   { "webmail.mayfirst.org", false },
   { "webmail.onlime.ch", false },
-  { "whonix.org", true },
+  { "wiki.python.org", true },
   { "wiz.biz", true },
   { "writeapp.me", false },
   { "www.apollo-auto.com", true },
@@ -110,12 +122,12 @@ static const nsSTSPreload kSTSPreloadList[] = {
   { "www.cueup.com", false },
   { "www.cyveillance.com", true },
   { "www.entropia.de", false },
-  { "www.gov.uk", false },
   { "www.grc.com", false },
   { "www.intercom.io", false },
   { "www.irccloud.com", false },
   { "www.linode.com", false },
   { "www.lookout.com", false },
+  { "www.makeyourlaws.org", true },
   { "www.mydigipass.com", false },
   { "www.mylookout.com", false },
   { "www.noisebridge.net", false },
@@ -123,5 +135,4 @@ static const nsSTSPreload kSTSPreloadList[] = {
   { "www.therapynotes.com", false },
   { "www.torproject.org", false },
   { "www.twitter.com", false },
-  { "zoo24.de", true },
 };

@@ -16,6 +16,8 @@
 #include "nsNetUtil.h"
 #include "nsEventListenerManager.h"
 #include "nsIDOMWindowUtils.h"
+#include "nsIDOMDocument.h"
+#include "nsIDocument.h"
 #include "mozilla/dom/Element.h"
 #include "nsIDOMHTMLBodyElement.h"
 #include "mozilla/dom/HTMLBodyElement.h"
@@ -185,7 +187,7 @@ TabChildHelper::Observe(nsISupports* aSubject,
     nsCOMPtr<nsIDocShell> docShell(do_QueryInterface(aSubject));
     CSSRect rect;
     sscanf(NS_ConvertUTF16toUTF8(aData).get(),
-           "{\"x\":%lf,\"y\":%lf,\"w\":%lf,\"h\":%lf}",
+           "{\"x\":%f,\"y\":%f,\"w\":%f,\"h\":%f}",
            &rect.x, &rect.y, &rect.width, &rect.height);
     mView->SendZoomToRect(rect);
   } else if (!strcmp(aTopic, DETECT_SCROLLABLE_SUBFRAME)) {
@@ -235,7 +237,7 @@ TabChildHelper::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
   utils->SetScrollPositionClampingScrollPortSize(
     cssCompositedRect.width, cssCompositedRect.height);
   ScrollWindowTo(window, aFrameMetrics.mScrollOffset);
-  CSSToScreenScale resolution = aFrameMetrics.CalculateResolution();
+  CSSToScreenScale resolution = aFrameMetrics.mZoom;
   utils->SetResolution(resolution.scale, resolution.scale);
 
   nsCOMPtr<nsIDOMDocument> domDoc;
@@ -274,7 +276,7 @@ TabChildHelper::DoLoadFrameScript(const nsAString& aURL)
   return true;
 }
 
-static JSBool
+static bool
 JSONCreator(const jschar* aBuf, uint32_t aLen, void* aData)
 {
   nsAString* result = static_cast<nsAString*>(aData);
@@ -284,8 +286,10 @@ JSONCreator(const jschar* aBuf, uint32_t aLen, void* aData)
 }
 
 bool
-TabChildHelper::DoSendSyncMessage(const nsAString& aMessage,
+TabChildHelper::DoSendSyncMessage(JSContext* aCx,
+                                  const nsAString& aMessage,
                                   const mozilla::dom::StructuredCloneData& aData,
+                                  JS::Handle<JSObject *> aCpows,
                                   InfallibleTArray<nsString>* aJSONRetVal)
 {
   if (!mView->HasMessageListener(aMessage)) {
@@ -312,8 +316,10 @@ TabChildHelper::DoSendSyncMessage(const nsAString& aMessage,
 }
 
 bool
-TabChildHelper::DoSendAsyncMessage(const nsAString& aMessage,
-                                   const mozilla::dom::StructuredCloneData& aData)
+TabChildHelper::DoSendAsyncMessage(JSContext* aCx,
+                                   const nsAString& aMessage,
+                                   const mozilla::dom::StructuredCloneData& aData,
+                                   JS::Handle<JSObject *> aCpows)
 {
   if (!mView->HasMessageListener(aMessage)) {
     LOGW("Message not registered msg:%s\n", NS_ConvertUTF16toUTF8(aMessage).get());
@@ -346,15 +352,16 @@ TabChildHelper::CheckPermission(const nsAString& aPermission)
 }
 
 bool
-TabChildHelper::RecvAsyncMessage(const nsAString& aMessageName,
+TabChildHelper::RecvAsyncMessage(const nsAString& aMessage,
                                  const nsAString& aJSONData)
 {
   NS_ENSURE_TRUE(InitTabChildGlobal(), false);
-  JSAutoRequest ar(GetJSContext());
-  JS::Rooted<JS::Value> json(GetJSContext(), JS::NullValue());
+  MOZ_ASSERT(NS_IsMainThread());
+  AutoSafeJSContext cx;
+  JS::Rooted<JS::Value> json(cx, JSVAL_NULL);
   StructuredCloneData cloneData;
   JSAutoStructuredCloneBuffer buffer;
-  if (JS_ParseJSON(GetJSContext(),
+  if (JS_ParseJSON(cx,
                    static_cast<const jschar*>(aJSONData.BeginReading()),
                    aJSONData.Length(),
                    &json)) {
@@ -366,7 +373,8 @@ TabChildHelper::RecvAsyncMessage(const nsAString& aMessageName,
   nsRefPtr<nsFrameMessageManager> mm =
     static_cast<nsFrameMessageManager*>(mTabChildGlobal->mMessageManager.get());
   mm->ReceiveMessage(static_cast<EventTarget*>(mTabChildGlobal),
-                     aMessageName, false, &cloneData, JS::NullPtr(), nullptr);
+                     aMessage, false, &cloneData, nullptr, nullptr);
+
   return true;
 }
 
@@ -528,6 +536,7 @@ TabChildHelper::DispatchSynthesizedMouseEvent(const nsTouchEvent& aEvent)
       break;
     default:
       NS_ERROR("Unknown touch event message");
+      return nsEventStatus_eIgnore;
   }
 
   // get the widget to send the event to
@@ -555,7 +564,9 @@ TabChildHelper::DispatchSynthesizedMouseEvent(const nsTouchEvent& aEvent)
     refPoint = aEvent.touches[0]->mRefPoint;
   }
 
-  event.refPoint = ToWidgetPoint(refPoint.x, refPoint.y, offset, presContext);
+  nsIntPoint pt = ToWidgetPoint(refPoint.x, refPoint.y, offset, presContext);
+  event.refPoint.x = pt.x;
+  event.refPoint.y = pt.y;
   event.ignoreRootScrollFrame = true;
 
   nsEventStatus status;
@@ -575,7 +586,8 @@ TabChildHelper::DispatchSynthesizedMouseEvent(uint32_t aMsg, uint64_t aTime,
 
   nsMouseEvent event(true, aMsg, NULL,
                      nsMouseEvent::eReal, nsMouseEvent::eNormal);
-  event.refPoint = aRefPoint;
+  event.refPoint.x = aRefPoint.x;
+  event.refPoint.y = aRefPoint.y;
   event.time = aTime;
   event.button = nsMouseEvent::eLeftButton;
   if (aMsg != NS_MOUSE_MOVE) {

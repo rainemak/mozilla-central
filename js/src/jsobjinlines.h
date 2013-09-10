@@ -9,8 +9,6 @@
 
 #include "jsobj.h"
 
-#include "jswrapper.h"
-
 #include "vm/ArrayObject.h"
 #include "vm/DateObject.h"
 #include "vm/NumberObject.h"
@@ -22,40 +20,15 @@
 #include "jscompartmentinlines.h"
 #include "jsinferinlines.h"
 
-#include "vm/ObjectImpl-inl.h"
 #include "vm/Shape-inl.h"
 
-/* static */ inline JSBool
+/* static */ inline bool
 JSObject::setGenericAttributes(JSContext *cx, js::HandleObject obj,
                                js::HandleId id, unsigned *attrsp)
 {
     js::types::MarkTypePropertyConfigured(cx, obj, id);
     js::GenericAttributesOp op = obj->getOps()->setGenericAttributes;
     return (op ? op : js::baseops::SetAttributes)(cx, obj, id, attrsp);
-}
-
-/* static */ inline JSBool
-JSObject::setPropertyAttributes(JSContext *cx, js::HandleObject obj,
-                                js::PropertyName *name, unsigned *attrsp)
-{
-    JS::RootedId id(cx, js::NameToId(name));
-    return setGenericAttributes(cx, obj, id, attrsp);
-}
-
-/* static */ inline JSBool
-JSObject::setElementAttributes(JSContext *cx, js::HandleObject obj,
-                               uint32_t index, unsigned *attrsp)
-{
-    js::ElementAttributesOp op = obj->getOps()->setElementAttributes;
-    return (op ? op : js::baseops::SetElementAttributes)(cx, obj, index, attrsp);
-}
-
-/* static */ inline JSBool
-JSObject::setSpecialAttributes(JSContext *cx, js::HandleObject obj,
-                               js::SpecialId sid, unsigned *attrsp)
-{
-    JS::RootedId id(cx, SPECIALID_TO_JSID(sid));
-    return setGenericAttributes(cx, obj, id, attrsp);
 }
 
 /* static */ inline bool
@@ -67,7 +40,7 @@ JSObject::changePropertyAttributes(JSContext *cx, js::HandleObject obj,
 
 /* static */ inline bool
 JSObject::deleteProperty(JSContext *cx, js::HandleObject obj, js::HandlePropertyName name,
-                         JSBool *succeeded)
+                         bool *succeeded)
 {
     JS::RootedId id(cx, js::NameToId(name));
     js::types::AddTypePropertyId(cx, obj, id, js::types::Type::UndefinedType());
@@ -77,7 +50,7 @@ JSObject::deleteProperty(JSContext *cx, js::HandleObject obj, js::HandleProperty
 }
 
 /* static */ inline bool
-JSObject::deleteElement(JSContext *cx, js::HandleObject obj, uint32_t index, JSBool *succeeded)
+JSObject::deleteElement(JSContext *cx, js::HandleObject obj, uint32_t index, bool *succeeded)
 {
     JS::RootedId id(cx);
     if (!js::IndexToId(cx, index, &id))
@@ -90,7 +63,7 @@ JSObject::deleteElement(JSContext *cx, js::HandleObject obj, uint32_t index, JSB
 
 /* static */ inline bool
 JSObject::deleteSpecial(JSContext *cx, js::HandleObject obj, js::HandleSpecialId sid,
-                        JSBool *succeeded)
+                        bool *succeeded)
 {
     JS::RootedId id(cx, SPECIALID_TO_JSID(sid));
     js::types::AddTypePropertyId(cx, obj, id, js::types::Type::UndefinedType());
@@ -108,7 +81,7 @@ JSObject::finalize(js::FreeOp *fop)
     JS_ASSERT(isTenured());
     if (!IsBackgroundFinalized(tenuredGetAllocKind())) {
         /* Assert we're on the main thread. */
-        fop->runtime()->assertValidThread();
+        JS_ASSERT(CurrentThreadCanAccessRuntime(fop->runtime()));
     }
 #endif
     js::Class *clasp = getClass();
@@ -280,7 +253,7 @@ inline void
 JSObject::initDenseElements(uint32_t dstStart, const js::Value *src, uint32_t count)
 {
     JS_ASSERT(dstStart + count <= getDenseCapacity());
-    JSRuntime *rt = runtime();
+    JSRuntime *rt = runtimeFromMainThread();
     for (uint32_t i = 0; i < count; ++i)
         elements[dstStart + i].init(rt, this, js::HeapSlot::Element, dstStart + i, src[i]);
 }
@@ -318,7 +291,7 @@ JSObject::moveDenseElements(uint32_t dstStart, uint32_t srcStart, uint32_t count
         }
     } else {
         memmove(elements + dstStart, elements + srcStart, count * sizeof(js::HeapSlot));
-        DenseRangeWriteBarrierPost(runtime(), this, dstStart, count);
+        DenseRangeWriteBarrierPost(runtimeFromMainThread(), this, dstStart, count);
     }
 }
 
@@ -354,7 +327,7 @@ JSObject::ensureDenseInitializedLength(js::ExclusiveContext *cx, uint32_t index,
         markDenseElementsNotPacked(cx);
 
     if (initlen < index + extra) {
-        JSRuntime *rt = runtime();
+        JSRuntime *rt = runtimeFromAnyThread();
         size_t offset = initlen;
         for (js::HeapSlot *sp = elements + initlen;
              sp != elements + (index + extra);
@@ -479,17 +452,15 @@ JSObject::ensureDenseElements(js::ExclusiveContext *cx, uint32_t index, uint32_t
 }
 
 /* static */ inline bool
-JSObject::setSingletonType(js::ExclusiveContext *cxArg, js::HandleObject obj)
+JSObject::setSingletonType(js::ExclusiveContext *cx, js::HandleObject obj)
 {
-    if (!cxArg->typeInferenceEnabled())
+    if (!cx->typeInferenceEnabled())
         return true;
 
-    JSContext *cx = cxArg->asJSContext();
+    JS_ASSERT_IF(cx->isJSContext(),
+                 !IsInsideNursery(cx->asJSContext()->runtime(), obj.get()));
 
-    JS_ASSERT(!IsInsideNursery(cx->runtime(), obj.get()));
-
-    js::types::TypeObject *type =
-        cx->compartment()->getLazyType(cx, obj->getClass(), obj->getTaggedProto());
+    js::types::TypeObject *type = cx->getLazyType(obj->getClass(), obj->getTaggedProto());
     if (!type)
         return false;
 
@@ -589,7 +560,7 @@ JSObject::create(js::ExclusiveContext *cx, js::gc::AllocKind kind, js::gc::Initi
     }
 
 #ifdef JSGC_GENERATIONAL
-    if (heap != js::gc::TenuredHeap)
+    if (slots && heap != js::gc::TenuredHeap)
         cx->asJSContext()->runtime()->gcNursery.notifyInitialSlots(obj, slots);
 #endif
 
@@ -692,7 +663,7 @@ JSObject::nativeSetSlotWithType(js::ExclusiveContext *cx, js::HandleObject obj, 
     js::types::AddTypePropertyId(cx, obj, shape->propid(), value);
 }
 
-/* static */ inline JSBool
+/* static */ inline bool
 JSObject::getElement(JSContext *cx, js::HandleObject obj, js::HandleObject receiver,
                      uint32_t index, js::MutableHandleValue vp)
 {
@@ -706,7 +677,7 @@ JSObject::getElement(JSContext *cx, js::HandleObject obj, js::HandleObject recei
     return getGeneric(cx, obj, receiver, id, vp);
 }
 
-/* static */ inline JSBool
+/* static */ inline bool
 JSObject::getElementNoGC(JSContext *cx, JSObject *obj, JSObject *receiver,
                          uint32_t index, js::Value *vp)
 {
@@ -720,7 +691,7 @@ JSObject::getElementNoGC(JSContext *cx, JSObject *obj, JSObject *receiver,
     return getGenericNoGC(cx, obj, receiver, id, vp);
 }
 
-/* static */ inline JSBool
+/* static */ inline bool
 JSObject::getElementIfPresent(JSContext *cx, js::HandleObject obj, js::HandleObject receiver,
                               uint32_t index, js::MutableHandleValue vp,
                               bool *present)
@@ -750,28 +721,6 @@ JSObject::getElementIfPresent(JSContext *cx, js::HandleObject obj, js::HandleObj
 
     *present = true;
     return getGeneric(cx, obj, receiver, id, vp);
-}
-
-/* static */ inline JSBool
-JSObject::getElementAttributes(JSContext *cx, js::HandleObject obj,
-                               uint32_t index, unsigned *attrsp)
-{
-    JS::RootedId id(cx);
-    if (!js::IndexToId(cx, index, &id))
-        return false;
-    return getGenericAttributes(cx, obj, id, attrsp);
-}
-
-inline bool
-JSObject::isCrossCompartmentWrapper() const
-{
-    return js::IsCrossCompartmentWrapper(const_cast<JSObject*>(this));
-}
-
-inline bool
-JSObject::isWrapper() const
-{
-    return js::IsWrapper(const_cast<JSObject*>(this));
 }
 
 inline js::GlobalObject &
@@ -944,34 +893,6 @@ class AutoPropDescArrayRooter : private AutoGCRooter
   private:
     PropDescArray descriptors;
     SkipRoot skip;
-};
-
-class AutoPropertyDescriptorRooter : private AutoGCRooter, public PropertyDescriptor
-{
-    SkipRoot skip;
-
-  public:
-    AutoPropertyDescriptorRooter(JSContext *cx)
-      : AutoGCRooter(cx, DESCRIPTOR), skip(cx, MOZ_THIS_IN_INITIALIZER_LIST())
-    {
-        obj = NULL;
-        attrs = 0;
-        getter = (PropertyOp) NULL;
-        setter = (StrictPropertyOp) NULL;
-        value.setUndefined();
-    }
-
-    AutoPropertyDescriptorRooter(JSContext *cx, PropertyDescriptor *desc)
-      : AutoGCRooter(cx, DESCRIPTOR), skip(cx, MOZ_THIS_IN_INITIALIZER_LIST())
-    {
-        obj = desc->obj;
-        attrs = desc->attrs;
-        getter = desc->getter;
-        setter = desc->setter;
-        value = desc->value;
-    }
-
-    friend void AutoGCRooter::trace(JSTracer *trc);
 };
 
 /*
@@ -1207,11 +1128,12 @@ static JS_ALWAYS_INLINE bool
 NewObjectMetadata(ExclusiveContext *cxArg, JSObject **pmetadata)
 {
     // The metadata callback is invoked before each created object, except when
-    // analysis is active as the callback may reenter JS.
+    // analysis/compilation/parsing is active as the callback may reenter JS.
     JS_ASSERT(!*pmetadata);
     if (JSContext *cx = cxArg->maybeJSContext()) {
         if (JS_UNLIKELY((size_t)cx->compartment()->objectMetadataCallback) &&
-            !cx->compartment()->activeAnalysis)
+            !cx->compartment()->activeAnalysis &&
+            !cx->runtime()->mainThread.activeCompilations)
         {
             gc::AutoSuppressGC suppress(cx);
             return cx->compartment()->objectMetadataCallback(cx, pmetadata);
@@ -1248,7 +1170,7 @@ LookupProperty(ExclusiveContext *cx, HandleObject obj, PropertyName *name,
     return LookupProperty<CanGC>(cx, obj, id, objp, propp);
 }
 
-inline JSBool
+inline bool
 DefineProperty(ExclusiveContext *cx, HandleObject obj, PropertyName *name, HandleValue value,
                JSPropertyOp getter, JSStrictPropertyOp setter, unsigned attrs)
 {

@@ -18,6 +18,14 @@ var NavButtonSlider = {
   _mouseDown: false,
   _yPos: -1,
 
+  get back() {
+    return this._back;
+  },
+
+  get plus() {
+    return this._plus;
+  },
+
   /*
    * custom dragger, see input.js
    */
@@ -61,7 +69,7 @@ var NavButtonSlider = {
     this._back.customDragger = this;
     this._plus.customDragger = this;
     Elements.browsers.addEventListener("ContentSizeChanged", this, true);
-    let events = ["mousedown", "mouseup", "mousemove", "click"];
+    let events = ["mousedown", "mouseup", "mousemove", "click", "touchstart", "touchmove", "touchend"];
     events.forEach(function (value) {
       this._back.addEventListener(value, this, true);
       this._plus.addEventListener(value, this, true);
@@ -72,7 +80,7 @@ var NavButtonSlider = {
     Services.prefs.addObserver(kNavButtonPref, this, false);
   },
 
-  observe: function BrowserUI_observe(aSubject, aTopic, aData) {
+  observe: function (aSubject, aTopic, aData) {
     if (aTopic == "nsPref:changed" && aData == kNavButtonPref) {
       this._updateVisibility();
     }
@@ -135,20 +143,47 @@ var NavButtonSlider = {
       case "ContentSizeChanged":
         this._updateStops();
         break;
+
+      case "touchstart":
+        if (aEvent.touches.length != 1)
+          break;
+        aEvent.preventDefault();
+        aEvent = aEvent.touches[0];
       case "mousedown":
         this._getPosition();
         this._mouseDown = true;
         this._mouseMoveStarted = false;
         this._mouseY = aEvent.clientY;
-        aEvent.originalTarget.setCapture();
+        if (aEvent.originalTarget)
+          aEvent.originalTarget.setCapture();
         this._back.setAttribute("mousedrag", true);
         this._plus.setAttribute("mousedrag", true);
+        break;
+
+      case "touchend":
+        if (aEvent.touches.length != 0)
+          break;
+        this._mouseDown = false;
+        this._back.removeAttribute("mousedrag");
+        this._plus.removeAttribute("mousedrag");
+        if (!this._mouseMoveStarted) {
+          if (aEvent.originalTarget == this._back) {
+            CommandUpdater.doCommand('cmd_back');
+          } else {
+            CommandUpdater.doCommand('cmd_newTab');
+          }
+        }
         break;
       case "mouseup":
         this._mouseDown = false;
         this._back.removeAttribute("mousedrag");
         this._plus.removeAttribute("mousedrag");
         break;
+
+      case "touchmove":
+        if (aEvent.touches.length != 1)
+          break;
+        aEvent = aEvent.touches[0];
       case "mousemove":
         // Check to be sure this is a drag operation
         if (!this._mouseDown) {

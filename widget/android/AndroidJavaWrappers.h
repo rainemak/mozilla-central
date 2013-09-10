@@ -11,10 +11,10 @@
 #include <android/log.h>
 
 #include "nsGeoPosition.h"
-#include "nsPoint.h"
 #include "nsRect.h"
 #include "nsString.h"
 #include "nsTArray.h"
+#include "nsIObserver.h"
 #include "mozilla/gfx/Rect.h"
 #include "mozilla/dom/Touch.h"
 #include "InputData.h"
@@ -197,7 +197,7 @@ public:
     float GetX(JNIEnv *env);
     float GetY(JNIEnv *env);
     float GetScale(JNIEnv *env);
-    void GetFixedLayerMargins(JNIEnv *env, gfx::Margin &aFixedLayerMargins);
+    void GetFixedLayerMargins(JNIEnv *env, LayerMargin &aFixedLayerMargins);
     float GetOffsetX(JNIEnv *env);
     float GetOffsetY(JNIEnv *env);
 
@@ -273,10 +273,10 @@ public:
     void SetPageRect(const CSSRect& aCssPageRect);
     void SyncViewportInfo(const LayerIntRect& aDisplayPort, const CSSToLayerScale& aDisplayResolution,
                           bool aLayersUpdated, ScreenPoint& aScrollOffset, CSSToScreenScale& aScale,
-                          gfx::Margin& aFixedLayerMargins, ScreenPoint& aOffset);
+                          LayerMargin& aFixedLayerMargins, ScreenPoint& aOffset);
     void SyncFrameMetrics(const ScreenPoint& aScrollOffset, float aZoom, const CSSRect& aCssPageRect,
                           bool aLayersUpdated, const CSSRect& aDisplayPort, const CSSToLayerScale& aDisplayResolution,
-                          bool aIsFirstPaint, gfx::Margin& aFixedLayerMargins, ScreenPoint& aOffset);
+                          bool aIsFirstPaint, LayerMargin& aFixedLayerMargins, ScreenPoint& aOffset);
     bool ProgressiveUpdateCallback(bool aHasPendingNewThebesContent, const LayerRect& aDisplayPort, float aDisplayResolution, bool aDrawingCritical, gfx::Rect& aViewport, float& aScaleX, float& aScaleY);
     bool CreateFrame(AutoLocalJNIFrame *jniFrame, AndroidLayerRendererFrame& aFrame);
     bool ActivateProgram(AutoLocalJNIFrame *jniFrame);
@@ -530,6 +530,14 @@ public:
         return event;
     }
 
+    static AndroidGeckoEvent* MakeAddObserver(const nsAString &key, nsIObserver *observer) {
+        AndroidGeckoEvent *event = new AndroidGeckoEvent();
+        event->Init(ADD_OBSERVER);
+        event->mCharacters.Assign(key);
+        event->mObserver = observer;
+        return event;
+    }
+
     int Action() { return mAction; }
     int Type() { return mType; }
     bool AckNeeded() { return mAckNeeded; }
@@ -580,6 +588,7 @@ public:
     nsTouchEvent MakeTouchEvent(nsIWidget* widget);
     MultiTouchInput MakeMultiTouchInput(nsIWidget* widget);
     void UnionRect(nsIntRect const& aRect);
+    nsIObserver *Observer() { return mObserver; }
 
 protected:
     int mAction;
@@ -612,6 +621,7 @@ protected:
     short mScreenOrientation;
     nsRefPtr<RefCountedJavaObject> mByteBuffer;
     int mWidth, mHeight;
+    nsCOMPtr<nsIObserver> mObserver;
 
     void ReadIntArray(nsTArray<int> &aVals,
                       JNIEnv *jenv,
@@ -716,6 +726,8 @@ public:
         REMOVE_OBSERVER = 34,
         LOW_MEMORY = 35,
         NETWORK_LINK_CHANGE = 36,
+        TELEMETRY_HISTOGRAM_ADD = 37,
+        ADD_OBSERVER = 38,
         dummy_java_enum_list_end
     };
 

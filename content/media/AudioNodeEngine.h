@@ -8,13 +8,13 @@
 
 #include "AudioSegment.h"
 #include "mozilla/dom/AudioNode.h"
-#include "mozilla/dom/AudioParam.h"
 #include "mozilla/Mutex.h"
 
 namespace mozilla {
 
 namespace dom {
 struct ThreeDPoint;
+class AudioParamTimeline;
 }
 
 class AudioNodeStream;
@@ -86,6 +86,14 @@ void AllocateAudioBlock(uint32_t aChannelCount, AudioChunk* aChunk);
  * aChunk must have been allocated by AllocateAudioBlock.
  */
 void WriteZeroesToAudioBlock(AudioChunk* aChunk, uint32_t aStart, uint32_t aLength);
+
+/**
+ * Copy with scale. aScale == 1.0f should be optimized.
+ */
+void AudioBufferCopyWithScale(const float* aInput,
+                              float aScale,
+                              float* aOutput,
+                              uint32_t aSize);
 
 /**
  * Pointwise multiply-add operation. aScale == 1.0f should be optimized.

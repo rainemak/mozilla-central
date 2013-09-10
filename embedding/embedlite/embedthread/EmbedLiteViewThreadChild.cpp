@@ -24,6 +24,7 @@
 #include "nsIDOMWindowUtils.h"
 #include "nsPIDOMWindow.h"
 #include "nsIDocument.h"
+#include "nsIDOMDocument.h"
 #include "nsIPresShell.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
 #include "nsIScriptSecurityManager.h"
@@ -92,7 +93,6 @@ EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(const uint32_t& aId, const ui
   mInitWindowTask = NewRunnableMethod(this,
                                       &EmbedLiteViewThreadChild::InitGeckoWindow, parentId);
   MessageLoop::current()->PostTask(FROM_HERE, mInitWindowTask);
-  mRegisteredMessages.Init();
 }
 
 EmbedLiteViewThreadChild::~EmbedLiteViewThreadChild()
@@ -543,7 +543,7 @@ EmbedLiteViewThreadChild::RecvAsyncScrollDOMEvent(const gfxRect& contentRect,
   mozilla::CSSRect rect(contentRect.x, contentRect.y, contentRect.width, contentRect.height);
   mozilla::CSSSize size(scrollSize.width, scrollSize.height);
   for (unsigned int i = 0; i < mControllerListeners.Length(); i++) {
-    mControllerListeners[i]->SendAsyncScrollDOMEvent(rect, size);
+    mControllerListeners[i]->SendAsyncScrollDOMEvent(0, rect, size);
   }
 
   if (sPostAZPCAsJson.scroll) {
@@ -570,7 +570,7 @@ EmbedLiteViewThreadChild::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
 
   if (sPostAZPCAsJson.viewport) {
     nsString data;
-    mozilla::CSSToScreenScale resolution = aFrameMetrics.CalculateResolution();
+    mozilla::CSSToScreenScale resolution = aFrameMetrics.mZoom;
     data.AppendPrintf("{ \"x\" : %d", NS_lround(aFrameMetrics.mScrollOffset.x));
     data.AppendPrintf(", \"y\" : %d", NS_lround(aFrameMetrics.mScrollOffset.y));
     data.AppendPrintf(", \"viewport\" : ");

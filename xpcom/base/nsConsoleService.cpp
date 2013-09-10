@@ -31,8 +31,8 @@
 
 using namespace mozilla;
 
-NS_IMPL_THREADSAFE_ADDREF(nsConsoleService)
-NS_IMPL_THREADSAFE_RELEASE(nsConsoleService)
+NS_IMPL_ADDREF(nsConsoleService)
+NS_IMPL_RELEASE(nsConsoleService)
 NS_IMPL_CLASSINFO(nsConsoleService, NULL, nsIClassInfo::THREADSAFE | nsIClassInfo::SINGLETON, NS_CONSOLESERVICE_CID)
 NS_IMPL_QUERY_INTERFACE1_CI(nsConsoleService, nsIConsoleService)
 NS_IMPL_CI_INTERFACE_GETTER1(nsConsoleService, nsIConsoleService)
@@ -95,7 +95,6 @@ nsConsoleService::Init()
     // Array elements should be 0 initially for circular buffer algorithm.
     memset(mMessages, 0, mBufferSize * sizeof(nsIConsoleMessage *));
 
-    mListeners.Init();
     NS_DispatchToMainThread(new AddConsolePrefWatchers(this));
 
     return NS_OK;

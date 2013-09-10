@@ -35,7 +35,6 @@ namespace dom {
 
 DOMStorageDBBridge::DOMStorageDBBridge()
 {
-  mUsages.Init();
 }
 
 DOMStorageUsage*
@@ -66,7 +65,6 @@ DOMStorageDBThread::DOMStorageDBThread()
 , mFlushImmediately(false)
 , mPriorityCounter(0)
 {
-  mScopesHavingData.Init();
 }
 
 nsresult
@@ -677,7 +675,7 @@ DOMStorageDBThread::TimeUntilFlush()
     return 0; // Do it now regardless the timeout.
   }
 
-  MOZ_STATIC_ASSERT(PR_INTERVAL_NO_TIMEOUT != 0,
+  static_assert(PR_INTERVAL_NO_TIMEOUT != 0,
       "PR_INTERVAL_NO_TIMEOUT must be non-zero");
 
   if (!mDirtyEpoch) {
@@ -855,7 +853,7 @@ DOMStorageDBThread::DBOperation::Perform(DOMStorageDBThread* aThread)
     rv = stmt->ExecuteStep(&exists);
     NS_ENSURE_SUCCESS(rv, rv);
 
-    int64_t usage;
+    int64_t usage = 0;
     if (exists) {
       rv = stmt->GetInt64(0, &usage);
       NS_ENSURE_SUCCESS(rv, rv);
@@ -1026,8 +1024,6 @@ DOMStorageDBThread::DBOperation::Finalize(nsresult aRv)
 DOMStorageDBThread::PendingOperations::PendingOperations()
 : mFlushFailureCount(0)
 {
-  mClears.Init();
-  mUpdates.Init();
 }
 
 bool

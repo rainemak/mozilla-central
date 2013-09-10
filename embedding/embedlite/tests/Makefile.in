@@ -15,13 +15,6 @@ DEFINES += -DXPCOM_GLUE
 # move me to common, when we link with common library
 STL_FLAGS=
 
-CPPSRCS = \
-    embedLiteCoreInitTest.cpp \
-    embedLiteViewInitTest.cpp \
-    $(NULL)
-
-SIMPLE_PROGRAMS := $(CPPSRCS:.cpp=$(BIN_SUFFIX))
-
 LOCAL_INCLUDES += -I$(topsrcdir)/xpcom/build
 
 LIBS += \

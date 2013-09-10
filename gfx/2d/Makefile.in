@@ -3,16 +3,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-DEPTH		= @DEPTH@
-topsrcdir	= @top_srcdir@
-srcdir		= @srcdir@
 VPATH		=  $(srcdir) $(srcdir)/unittest
 
-include $(DEPTH)/config/autoconf.mk
-
-LIBRARY_NAME	= gfx2d
-MSVC_ENABLE_PGO := 1
-LIBXUL_LIBRARY	= 1
 EXPORT_LIBRARY	= 1
 
 DEFINES += -DMOZ_GFX -DUSE_CAIRO -DGFX2D_INTERNAL
@@ -41,6 +33,11 @@ DEFINES += -DWIN32 -DINITGUID
 
 ifdef MOZ_ENABLE_SKIA
 DEFINES += -DSKIA_IMPLEMENTATION=1 -DGR_IMPLEMENTATION=1
+endif
+
+# For Direct2D 1.1 we require WINSDK_MAXVER 0x06020000 or higher.
+ifdef MOZ_ENABLE_DIRECT2D1_1
+DEFINES += -DUSE_D2D1_1
 endif
 endif
 

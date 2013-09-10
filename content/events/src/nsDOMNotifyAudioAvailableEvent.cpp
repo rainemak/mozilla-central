@@ -6,7 +6,7 @@
 
 #include "nsError.h"
 #include "nsDOMNotifyAudioAvailableEvent.h"
-#include "nsContentUtils.h" // NS_DROP_JS_OBJECTS
+#include "nsCycleCollectionHoldDrop.h"
 #include "jsfriendapi.h"
 
 using namespace mozilla;
@@ -35,10 +35,12 @@ nsDOMNotifyAudioAvailableEvent::nsDOMNotifyAudioAvailableEvent(EventTarget* aOwn
 NS_IMPL_ADDREF_INHERITED(nsDOMNotifyAudioAvailableEvent, nsDOMEvent)
 NS_IMPL_RELEASE_INHERITED(nsDOMNotifyAudioAvailableEvent, nsDOMEvent)
 
+NS_IMPL_CYCLE_COLLECTION_CLASS(nsDOMNotifyAudioAvailableEvent)
+
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN_INHERITED(nsDOMNotifyAudioAvailableEvent, nsDOMEvent)
   if (tmp->mCachedArray) {
     tmp->mCachedArray = nullptr;
-    NS_DROP_JS_OBJECTS(tmp, nsDOMNotifyAudioAvailableEvent);
+    mozilla::DropJSObjects(tmp);
   }
 NS_IMPL_CYCLE_COLLECTION_UNLINK_END
 
@@ -58,7 +60,7 @@ nsDOMNotifyAudioAvailableEvent::~nsDOMNotifyAudioAvailableEvent()
   MOZ_COUNT_DTOR(nsDOMNotifyAudioAvailableEvent);
   if (mCachedArray) {
     mCachedArray = nullptr;
-    NS_DROP_JS_OBJECTS(this, nsDOMNotifyAudioAvailableEvent);
+    mozilla::DropJSObjects(this);
   }
 }
 
@@ -76,11 +78,11 @@ nsDOMNotifyAudioAvailableEvent::GetFrameBuffer(JSContext* aCx, JS::Value* aResul
   }
 
   // Cache this array so we don't recreate on next call.
-  NS_HOLD_JS_OBJECTS(this, nsDOMNotifyAudioAvailableEvent);
+  mozilla::HoldJSObjects(this);
 
   mCachedArray = JS_NewFloat32Array(aCx, mFrameBufferLength);
   if (!mCachedArray) {
-    NS_DROP_JS_OBJECTS(this, nsDOMNotifyAudioAvailableEvent);
+    mozilla::DropJSObjects(this);
     return NS_ERROR_FAILURE;
   }
   memcpy(JS_GetFloat32ArrayData(mCachedArray), mFrameBuffer.get(), mFrameBufferLength * sizeof(float));

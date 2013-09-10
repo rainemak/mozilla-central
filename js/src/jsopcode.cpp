@@ -8,42 +8,41 @@
  * JS bytecode descriptors, disassemblers, and (expression) decompilers.
  */
 
-#include "jsopcode.h"
+#include "jsopcodeinlines.h"
 
 #include "mozilla/Util.h"
 
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "jstypes.h"
-#include "jsutil.h"
-#include "jsprf.h"
 #include "jsanalyze.h"
 #include "jsapi.h"
 #include "jsatom.h"
+#include "jsautooplen.h"
 #include "jscntxt.h"
 #include "jscompartment.h"
 #include "jsfun.h"
 #include "jsnum.h"
 #include "jsobj.h"
+#include "jsprf.h"
 #include "jsscript.h"
 #include "jsstr.h"
+#include "jstypes.h"
+#include "jsutil.h"
 
 #include "frontend/BytecodeCompiler.h"
 #include "frontend/SourceNotes.h"
 #include "js/CharacterEncoding.h"
+#include "vm/ScopeObject.h"
 #include "vm/Shape.h"
 #include "vm/StringBuffer.h"
 
 #include "jscntxtinlines.h"
 #include "jscompartmentinlines.h"
-#include "jsopcodeinlines.h"
-
-#include "jsautooplen.h"
-
-#include "vm/RegExpObject-inl.h"
-#include "vm/ScopeObject-inl.h"
+#include "jsinferinlines.h"
+#include "jsscriptinlines.h"
 
 using namespace js;
 using namespace js::gc;
@@ -259,11 +258,11 @@ PCCounts::countName(JSOp op, size_t which)
 
 #ifdef JS_ION
 void
-js::DumpIonScriptCounts(Sprinter *sp, ion::IonScriptCounts *ionCounts)
+js::DumpIonScriptCounts(Sprinter *sp, jit::IonScriptCounts *ionCounts)
 {
     Sprint(sp, "IonScript [%lu blocks]:\n", ionCounts->numBlocks());
     for (size_t i = 0; i < ionCounts->numBlocks(); i++) {
-        const ion::IonBlockCounts &block = ionCounts->block(i);
+        const jit::IonBlockCounts &block = ionCounts->block(i);
         if (block.hitCount() < 10)
             continue;
         Sprint(sp, "BB #%lu [%05u]", block.id(), block.offset());
@@ -313,7 +312,7 @@ js_DumpPCCounts(JSContext *cx, HandleScript script, js::Sprinter *sp)
 #endif
 
 #ifdef JS_ION
-    ion::IonScriptCounts *ionCounts = script->getIonCounts();
+    jit::IonScriptCounts *ionCounts = script->getIonCounts();
 
     while (ionCounts) {
         DumpIonScriptCounts(sp, ionCounts);
@@ -328,8 +327,8 @@ js_DumpPCCounts(JSContext *cx, HandleScript script, js::Sprinter *sp)
  * If pc != NULL, include a prefix indicating whether the PC is at the current line.
  * If showAll is true, include the source note type and the entry stack depth.
  */
-JS_FRIEND_API(JSBool)
-js_DisassembleAtPC(JSContext *cx, JSScript *scriptArg, JSBool lines,
+JS_FRIEND_API(bool)
+js_DisassembleAtPC(JSContext *cx, JSScript *scriptArg, bool lines,
                    jsbytecode *pc, bool showAll, Sprinter *sp)
 {
     RootedScript script(cx, scriptArg);
@@ -390,41 +389,41 @@ js_DisassembleAtPC(JSContext *cx, JSScript *scriptArg, JSBool lines,
         }
         len = js_Disassemble1(cx, script, next, next - script->code, lines, sp);
         if (!len)
-            return JS_FALSE;
+            return false;
         next += len;
     }
-    return JS_TRUE;
+    return true;
 }
 
-JSBool
-js_Disassemble(JSContext *cx, HandleScript script, JSBool lines, Sprinter *sp)
+bool
+js_Disassemble(JSContext *cx, HandleScript script, bool lines, Sprinter *sp)
 {
     return js_DisassembleAtPC(cx, script, lines, NULL, false, sp);
 }
 
-JS_FRIEND_API(JSBool)
+JS_FRIEND_API(bool)
 js_DumpPC(JSContext *cx)
 {
     js::gc::AutoSuppressGC suppressGC(cx);
     Sprinter sprinter(cx);
     if (!sprinter.init())
-        return JS_FALSE;
+        return false;
     ScriptFrameIter iter(cx);
     RootedScript script(cx, iter.script());
-    JSBool ok = js_DisassembleAtPC(cx, script, true, iter.pc(), false, &sprinter);
+    bool ok = js_DisassembleAtPC(cx, script, true, iter.pc(), false, &sprinter);
     fprintf(stdout, "%s", sprinter.string());
     return ok;
 }
 
-JS_FRIEND_API(JSBool)
+JS_FRIEND_API(bool)
 js_DumpScript(JSContext *cx, JSScript *scriptArg)
 {
     js::gc::AutoSuppressGC suppressGC(cx);
     Sprinter sprinter(cx);
     if (!sprinter.init())
-        return JS_FALSE;
+        return false;
     RootedScript script(cx, scriptArg);
-    JSBool ok = js_Disassemble(cx, script, true, &sprinter);
+    bool ok = js_Disassemble(cx, script, true, &sprinter);
     fprintf(stdout, "%s", sprinter.string());
     return ok;
 }
@@ -432,15 +431,15 @@ js_DumpScript(JSContext *cx, JSScript *scriptArg)
 /*
  * Useful to debug ReconstructPCStack.
  */
-JS_FRIEND_API(JSBool)
+JS_FRIEND_API(bool)
 js_DumpScriptDepth(JSContext *cx, JSScript *scriptArg, jsbytecode *pc)
 {
     js::gc::AutoSuppressGC suppressGC(cx);
     Sprinter sprinter(cx);
     if (!sprinter.init())
-        return JS_FALSE;
+        return false;
     RootedScript script(cx, scriptArg);
-    JSBool ok = js_DisassembleAtPC(cx, script, true, pc, true, &sprinter);
+    bool ok = js_DisassembleAtPC(cx, script, true, pc, true, &sprinter);
     fprintf(stdout, "%s", sprinter.string());
     return ok;
 }
@@ -529,7 +528,7 @@ ToDisassemblySource(JSContext *cx, jsval v, JSAutoByteString *bytes)
 
 unsigned
 js_Disassemble1(JSContext *cx, HandleScript script, jsbytecode *pc,
-                unsigned loc, JSBool lines, Sprinter *sp)
+                unsigned loc, bool lines, Sprinter *sp)
 {
     JSOp op = (JSOp)*pc;
     if (op >= JSOP_LIMIT) {
@@ -604,7 +603,7 @@ js_Disassemble1(JSContext *cx, HandleScript script, jsbytecode *pc,
 
       case JOF_OBJECT: {
         /* Don't call obj.toSource if analysis/inference is active. */
-        if (cx->compartment()->activeAnalysis) {
+        if (script->compartment()->activeAnalysis) {
             Sprint(sp, " object");
             break;
         }
@@ -722,9 +721,11 @@ bool
 Sprinter::realloc_(size_t newSize)
 {
     JS_ASSERT(newSize > (size_t) offset);
-    char *newBuf = (char *) context->realloc_(base, newSize);
-    if (!newBuf)
+    char *newBuf = (char *) js_realloc(base, newSize);
+    if (!newBuf) {
+        reportOutOfMemory();
         return false;
+    }
     base = newBuf;
     size = newSize;
     base[size - 1] = 0;
@@ -752,9 +753,11 @@ bool
 Sprinter::init()
 {
     JS_ASSERT(!initialized);
-    base = (char *) context->malloc_(DefaultSize);
-    if (!base)
+    base = (char *) js_malloc(DefaultSize);
+    if (!base) {
+        reportOutOfMemory();
         return false;
+    }
 #ifdef DEBUG
     initialized = true;
 #endif
@@ -798,12 +801,6 @@ Sprinter::operator[](size_t off)
     return *(base + off);
 }
 
-bool
-Sprinter::empty() const
-{
-    return *base == 0;
-}
-
 char *
 Sprinter::reserve(size_t len)
 {
@@ -816,15 +813,6 @@ Sprinter::reserve(size_t len)
 
     char *sb = base + offset;
     offset += len;
-    return sb;
-}
-
-char *
-Sprinter::reserveAndClear(size_t len)
-{
-    char *sb = reserve(len);
-    if (sb)
-        memset(sb, 0, len);
     return sb;
 }
 
@@ -905,43 +893,25 @@ Sprinter::printf(const char *fmt, ...)
     return -1;
 }
 
-void
-Sprinter::setOffset(const char *end)
-{
-    JS_ASSERT(end >= base && end < base + size);
-    offset = end - base;
-}
-
-void
-Sprinter::setOffset(ptrdiff_t off)
-{
-    JS_ASSERT(off >= 0 && (size_t) off < size);
-    offset = off;
-}
-
 ptrdiff_t
 Sprinter::getOffset() const
 {
     return offset;
 }
 
-ptrdiff_t
-Sprinter::getOffsetOf(const char *string) const
-{
-    JS_ASSERT(string >= base && string < base + size);
-    return string - base;
-}
-
 void
-Sprinter::reportOutOfMemory() {
+Sprinter::reportOutOfMemory()
+{
     if (reportedOOM)
         return;
-    js_ReportOutOfMemory(context);
+    if (context)
+        js_ReportOutOfMemory(context);
     reportedOOM = true;
 }
 
 bool
-Sprinter::hadOutOfMemory() const {
+Sprinter::hadOutOfMemory() const
+{
     return reportedOOM;
 }
 
@@ -983,7 +953,7 @@ static char *
 QuoteString(Sprinter *sp, JSString *str, uint32_t quote)
 {
     /* Sample off first for later return value pointer computation. */
-    JSBool dontEscape = (quote & DONT_ESCAPE) != 0;
+    bool dontEscape = (quote & DONT_ESCAPE) != 0;
     jschar qc = (jschar) quote;
     ptrdiff_t offset = sp->getOffset();
     if (qc && Sprint(sp, "%c", (char)qc) < 0)
@@ -1117,6 +1087,8 @@ GetBlockChainAtPC(JSContext *cx, JSScript *script, jsbytecode *pc)
     return blockChain;
 }
 
+namespace {
+
 class PCStack
 {
     jsbytecode **stack;
@@ -1129,6 +1101,8 @@ class PCStack
     int depth() const { return depth_; }
     jsbytecode *operator[](int i) const;
 };
+
+} /* anonymous namespace */
 
 PCStack::~PCStack()
 {
@@ -2191,7 +2165,7 @@ js::GetPCCountScriptSummary(JSContext *cx, size_t index)
                               JS_ARRAY_LENGTH(arithTotals), comma);
 
     uint64_t ionActivity = 0;
-    ion::IonScriptCounts *ionCounts = sac.getIonCounts();
+    jit::IonScriptCounts *ionCounts = sac.getIonCounts();
     while (ionCounts) {
         for (size_t i = 0; i < ionCounts->numBlocks(); i++)
             ionActivity += ionCounts->block(i).hitCount();
@@ -2303,7 +2277,7 @@ GetPCCountJSON(JSContext *cx, const ScriptAndCounts &sac, StringBuffer &buf)
 
     buf.append(']');
 
-    ion::IonScriptCounts *ionCounts = sac.getIonCounts();
+    jit::IonScriptCounts *ionCounts = sac.getIonCounts();
     if (ionCounts) {
         AppendJSONProperty(buf, "ion");
         buf.append('[');
@@ -2317,7 +2291,7 @@ GetPCCountJSON(JSContext *cx, const ScriptAndCounts &sac, StringBuffer &buf)
             for (size_t i = 0; i < ionCounts->numBlocks(); i++) {
                 if (i)
                     buf.append(',');
-                const ion::IonBlockCounts &block = ionCounts->block(i);
+                const jit::IonBlockCounts &block = ionCounts->block(i);
 
                 buf.append('{');
                 AppendJSONProperty(buf, "id", NO_COMMA);

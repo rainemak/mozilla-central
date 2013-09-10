@@ -7,20 +7,9 @@
 #ifndef gc_Marking_h
 #define gc_Marking_h
 
-#include "jsgc.h"
-#include "jslock.h"
-
 #include "gc/Barrier.h"
-#include "gc/Nursery.h"
-#include "js/TemplateLib.h"
-#include "ion/IonCode.h"
-
-extern "C" {
-struct JSContext;
-class JSFunction;
-class JSObject;
-class JSScript;
-}
+#include "jit/IonCode.h"
+#include "js/TypeDecls.h"
 
 class JSAtom;
 class JSLinearString;
@@ -31,9 +20,13 @@ class ArgumentsObject;
 class ArrayBufferObject;
 class ArrayBufferViewObject;
 class BaseShape;
+class DebugScopeObject;
+struct GCMarker;
 class GlobalObject;
-class UnownedBaseShape;
+class LazyScript;
+class ScopeObject;
 class Shape;
+class UnownedBaseShape;
 
 template<class, typename> class HeapPtr;
 
@@ -92,7 +85,7 @@ bool Is##base##AboutToBeFinalized(EncapsulatedPtr<type> *thingp);
 
 DeclMarker(BaseShape, BaseShape)
 DeclMarker(BaseShape, UnownedBaseShape)
-DeclMarker(IonCode, ion::IonCode)
+DeclMarker(IonCode, jit::IonCode)
 DeclMarker(Object, ArgumentsObject)
 DeclMarker(Object, ArrayBufferObject)
 DeclMarker(Object, ArrayBufferViewObject)
@@ -278,7 +271,7 @@ Mark(JSTracer *trc, EncapsulatedPtrScript *o, const char *name)
 }
 
 inline void
-Mark(JSTracer *trc, HeapPtr<ion::IonCode> *code, const char *name)
+Mark(JSTracer *trc, HeapPtr<jit::IonCode> *code, const char *name)
 {
     MarkIonCode(trc, code, name);
 }
@@ -347,7 +340,7 @@ IsAboutToBeFinalized(EncapsulatedPtrScript *scriptp)
 /* Nonsense to get WeakCache to work with new Marking semantics. */
 
 inline bool
-IsAboutToBeFinalized(const js::ion::VMFunction **vmfunc)
+IsAboutToBeFinalized(const js::jit::VMFunction **vmfunc)
 {
     /*
      * Preserves entries in the WeakCache<VMFunction, IonCode>
@@ -357,7 +350,7 @@ IsAboutToBeFinalized(const js::ion::VMFunction **vmfunc)
 }
 
 inline bool
-IsAboutToBeFinalized(ReadBarriered<js::ion::IonCode> code)
+IsAboutToBeFinalized(ReadBarriered<js::jit::IonCode> code)
 {
     return IsIonCodeAboutToBeFinalized(code.unsafeGet());
 }

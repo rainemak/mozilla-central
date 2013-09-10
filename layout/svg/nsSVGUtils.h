@@ -21,8 +21,6 @@
 #include "nsID.h"
 #include "nsISupportsBase.h"
 #include "nsMathUtils.h"
-#include "nsPoint.h"
-#include "nsRect.h"
 #include "nsStyleStruct.h"
 #include "mozilla/Constants.h"
 #include <algorithm>
@@ -51,6 +49,9 @@ class gfxTextObjectPaint;
 
 struct nsStyleSVG;
 struct nsStyleSVGPaint;
+struct nsRect;
+struct nsIntRect;
+struct nsPoint;
 
 namespace mozilla {
 class SVGAnimatedPreserveAspectRatio;
@@ -102,6 +103,8 @@ class Element;
  * probably not worth it.
  */
 #define NS_STATE_SVG_POSITIONING_MAY_USE_PERCENTAGES NS_FRAME_STATE_BIT(23)
+
+#define NS_STATE_SVG_TEXT_IN_REFLOW              NS_FRAME_STATE_BIT(24)
 
 /**
  * Byte offsets of channels in a native packed gfxColor or cairo image surface.

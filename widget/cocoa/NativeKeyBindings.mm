@@ -37,8 +37,6 @@ NativeKeyBindings::Init(NativeKeyBindingsType aType)
   PR_LOG(gNativeKeyBindingsLog, PR_LOG_ALWAYS,
     ("%p NativeKeyBindings::Init", this));
 
-  mSelectorToCommand.Init();
-
   // Many selectors have a one-to-one mapping to a Gecko command. Those mappings
   // are registered in mSelectorToCommand.
 
@@ -64,14 +62,9 @@ NativeKeyBindings::Init(NativeKeyBindingsType aType)
 
   // TODO: deleteTo* selectors are also supposed to add text to a kill buffer
   SEL_TO_COMMAND(deleteToBeginningOfLine:, "cmd_deleteToBeginningOfLine");
-  if (aType == eNativeKeyBindingsType_Input) {
-    SEL_TO_COMMAND(deleteToBeginningOfParagraph:,
-      "cmd_deleteToBeginningOfLine");
-  }
+  SEL_TO_COMMAND(deleteToBeginningOfParagraph:, "cmd_deleteToBeginningOfLine");
   SEL_TO_COMMAND(deleteToEndOfLine:, "cmd_deleteToEndOfLine");
-  if (aType == eNativeKeyBindingsType_Input) {
-    SEL_TO_COMMAND(deleteToEndOfParagraph:, "cmd_deleteToEndOfLine");
-  }
+  SEL_TO_COMMAND(deleteToEndOfParagraph:, "cmd_deleteToEndOfLine");
   // SEL_TO_COMMAND(deleteToMark:, );
 
   SEL_TO_COMMAND(deleteWordBackward:, "cmd_deleteWordBackward");
@@ -100,12 +93,9 @@ NativeKeyBindings::Init(NativeKeyBindingsType aType)
   SEL_TO_COMMAND(moveForwardAndModifySelection:, "cmd_selectCharNext");
   SEL_TO_COMMAND(moveLeft:, "cmd_charPrevious");
   SEL_TO_COMMAND(moveLeftAndModifySelection:, "cmd_selectCharPrevious");
-  if (aType == eNativeKeyBindingsType_Input) {
-    SEL_TO_COMMAND(moveParagraphBackwardAndModifySelection:,
-      "cmd_selectBeginLine");
-    SEL_TO_COMMAND(moveParagraphForwardAndModifySelection:,
-      "cmd_selectEndLine");
-  }
+  SEL_TO_COMMAND(moveParagraphBackwardAndModifySelection:,
+    "cmd_selectBeginLine");
+  SEL_TO_COMMAND(moveParagraphForwardAndModifySelection:, "cmd_selectEndLine");
   SEL_TO_COMMAND(moveRight:, "cmd_charNext");
   SEL_TO_COMMAND(moveRightAndModifySelection:, "cmd_selectCharNext");
   SEL_TO_COMMAND(moveToBeginningOfDocument:, "cmd_moveTop");
@@ -113,20 +103,15 @@ NativeKeyBindings::Init(NativeKeyBindingsType aType)
   SEL_TO_COMMAND(moveToBeginningOfLine:, "cmd_beginLine");
   SEL_TO_COMMAND(moveToBeginningOfLineAndModifySelection:,
     "cmd_selectBeginLine");
-  if (aType == eNativeKeyBindingsType_Input) {
-    SEL_TO_COMMAND(moveToBeginningOfParagraph:, "cmd_beginLine");
-    SEL_TO_COMMAND(moveToBeginningOfParagraphAndModifySelection:,
-      "cmd_selectBeginLine");
-  }
+  SEL_TO_COMMAND(moveToBeginningOfParagraph:, "cmd_beginLine");
+  SEL_TO_COMMAND(moveToBeginningOfParagraphAndModifySelection:,
+    "cmd_selectBeginLine");
   SEL_TO_COMMAND(moveToEndOfDocument:, "cmd_moveBottom");
   SEL_TO_COMMAND(moveToEndOfDocumentAndModifySelection:, "cmd_selectBottom");
   SEL_TO_COMMAND(moveToEndOfLine:, "cmd_endLine");
   SEL_TO_COMMAND(moveToEndOfLineAndModifySelection:, "cmd_selectEndLine");
-  if (aType == eNativeKeyBindingsType_Input) {
-    SEL_TO_COMMAND(moveToEndOfParagraph:, "cmd_endLine");
-    SEL_TO_COMMAND(moveToEndOfParagraphAndModifySelection:,
-      "cmd_selectEndLine");
-  }
+  SEL_TO_COMMAND(moveToEndOfParagraph:, "cmd_endLine");
+  SEL_TO_COMMAND(moveToEndOfParagraphAndModifySelection:, "cmd_selectEndLine");
   SEL_TO_COMMAND(moveToLeftEndOfLine:, "cmd_beginLine");
   SEL_TO_COMMAND(moveToLeftEndOfLineAndModifySelection:, "cmd_selectBeginLine");
   SEL_TO_COMMAND(moveToRightEndOfLine:, "cmd_endLine");
@@ -182,14 +167,14 @@ NativeKeyBindings::Init(NativeKeyBindingsType aType)
 NS_IMPL_ISUPPORTS1(NativeKeyBindings, nsINativeKeyBindings)
 
 NS_IMETHODIMP_(bool)
-NativeKeyBindings::KeyDown(const nsNativeKeyEvent& aEvent,
+NativeKeyBindings::KeyDown(const nsKeyEvent& aEvent,
                            DoCommandCallback aCallback, void* aCallbackData)
 {
   return false;
 }
 
 NS_IMETHODIMP_(bool)
-NativeKeyBindings::KeyPress(const nsNativeKeyEvent& aEvent,
+NativeKeyBindings::KeyPress(const nsKeyEvent& aEvent,
                             DoCommandCallback aCallback, void* aCallbackData)
 {
   PR_LOG(gNativeKeyBindingsLog, PR_LOG_ALWAYS,
@@ -197,11 +182,8 @@ NativeKeyBindings::KeyPress(const nsNativeKeyEvent& aEvent,
 
   // Recover the current event, which should always be the key down we are
   // responding to.
-  nsKeyEvent* geckoEvent = aEvent.mGeckoEvent;
 
-  MOZ_ASSERT(geckoEvent);
-
-  NSEvent* cocoaEvent = reinterpret_cast<NSEvent*>(geckoEvent->mNativeKeyEvent);
+  NSEvent* cocoaEvent = reinterpret_cast<NSEvent*>(aEvent.mNativeKeyEvent);
 
   if (!cocoaEvent || [cocoaEvent type] != NSKeyDown) {
     PR_LOG(gNativeKeyBindingsLog, PR_LOG_ALWAYS,
@@ -283,7 +265,7 @@ NativeKeyBindings::KeyPress(const nsNativeKeyEvent& aEvent,
 }
 
 NS_IMETHODIMP_(bool)
-NativeKeyBindings::KeyUp(const nsNativeKeyEvent& aEvent,
+NativeKeyBindings::KeyUp(const nsKeyEvent& aEvent,
                          DoCommandCallback aCallback, void* aCallbackData)
 {
   return false;

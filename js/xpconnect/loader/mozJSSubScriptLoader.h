@@ -4,7 +4,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "jsapi.h"
 #include "nsCOMPtr.h"
 #include "mozIJSSubScriptLoader.h"
 #include "nsIScriptSecurityManager.h"
@@ -26,7 +25,7 @@ public:
     virtual ~mozJSSubScriptLoader();
 
     // all the interface method declarations...
-    NS_DECL_ISUPPORTS
+    NS_DECL_THREADSAFE_ISUPPORTS
     NS_DECL_MOZIJSSUBSCRIPTLOADER
 
 private:

@@ -12,6 +12,10 @@ XPIDL_SOURCES += [
 ]
 
 if CONFIG['MOZ_PLACES']:
+    LIBXUL_LIBRARY = True
+    MSVC_ENABLE_PGO = True
+    LIBRARY_NAME = 'places'
+
     XPIDL_SOURCES += [
         'mozIAsyncFavicons.idl',
         'mozIAsyncHistory.idl',
@@ -58,6 +62,11 @@ if CONFIG['MOZ_PLACES']:
         'ColorConversion.js',
         'PlacesBackups.jsm',
         'PlacesDBUtils.jsm',
+    ]
+
+    EXTRA_PP_JS_MODULES += [
+        'BookmarkHTMLUtils.jsm',
+        'PlacesUtils.jsm',
     ]
 
 MODULE = 'places'

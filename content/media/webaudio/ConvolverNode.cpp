@@ -9,9 +9,7 @@
 #include "AudioNodeEngine.h"
 #include "AudioNodeStream.h"
 #include "blink/Reverb.h"
-
-#include <cmath>
-#include "nsMathUtils.h"
+#include "PlayingRefChangeHandler.h"
 
 namespace mozilla {
 namespace dom {
@@ -144,7 +142,7 @@ public:
         for (uint32_t i = 0; i < numChannels; ++i) {
           const float* src = static_cast<const float*>(aInput.mChannelData[i]);
           float* dest = static_cast<float*>(const_cast<void*>(input.mChannelData[i]));
-          AudioBlockAddChannelWithScale(src, aInput.mVolume, dest);
+          AudioBlockCopyChannelWithScale(src, aInput.mVolume, dest);
         }
       }
 

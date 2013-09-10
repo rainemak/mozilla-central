@@ -30,6 +30,9 @@
 #include "mozilla/layers/PCompositorChild.h"
 #include "mozilla/net/NeckoChild.h"
 #include "mozilla/Preferences.h"
+#ifdef MOZ_CONTENT_SANDBOX
+#include "mozilla/Sandbox.h"
+#endif
 #include "mozilla/unused.h"
 
 #include "nsIMemoryReporter.h"
@@ -40,6 +43,7 @@
 #include "nsIObserver.h"
 #include "nsIScriptSecurityManager.h"
 #include "nsServiceManagerUtils.h"
+#include "nsStyleSheetService.h"
 #include "nsXULAppAPI.h"
 #include "nsWeakReference.h"
 #include "nsIScriptError.h"
@@ -94,6 +98,7 @@
 #include "mozilla/dom/mobilemessage/SmsChild.h"
 #include "mozilla/dom/devicestorage/DeviceStorageRequestChild.h"
 #include "mozilla/dom/bluetooth/PBluetoothChild.h"
+#include "mozilla/dom/PFMRadioChild.h"
 #include "mozilla/ipc/InputStreamUtils.h"
 
 #ifdef MOZ_WEBSPEECH
@@ -321,6 +326,8 @@ ContentChild::Init(MessageLoop* aIOLoop,
 
     SendGetProcessAttributes(&mID, &mIsForApp, &mIsForBrowser);
 
+    GetCPOWManager();
+
     if (mIsForApp && !mIsForBrowser) {
         SetProcessName(NS_LITERAL_STRING("(Preallocated app)"));
     } else {
@@ -340,8 +347,11 @@ ContentChild::SetProcessName(const nsAString& aName)
         printf_stderr("\n\nCHILDCHILDCHILDCHILD\n  [%s] debug me @%d\n\n", name, getpid());
         sleep(30);
 #elif defined(OS_WIN)
-        printf_stderr("\n\nCHILDCHILDCHILDCHILD\n  [%s] debug me @%d\n\n", name, _getpid());
-        Sleep(30000);
+        // Windows has a decent JIT debugging story, so NS_DebugBreak does the
+        // right thing.
+        NS_DebugBreak(NS_DEBUG_BREAK,
+                      "Invoking NS_DebugBreak() to debug child process",
+                      nullptr, __FILE__, __LINE__);
 #endif
     }
 
@@ -544,6 +554,13 @@ ContentChild::RecvSetProcessPrivileges(const ChildPrivileges& aPrivs)
                           aPrivs;
   // If this fails, we die.
   SetCurrentProcessPrivileges(privs);
+#ifdef MOZ_CONTENT_SANDBOX
+  // SetCurrentProcessSandbox should be moved close to process initialization
+  // time if/when possible. SetCurrentProcessPrivileges should probably be
+  // moved as well. Right now this is set ONLY if we receive the
+  // RecvSetProcessPrivileges message. See bug 880808.
+  SetCurrentProcessSandbox();
+#endif
   return true;
 }
 
@@ -589,7 +606,15 @@ ContentChild::AllocPBrowserChild(const IPCTabContext& aContext,
     // check that it's of a certain type for security purposes, because we
     // believe whatever the parent process tells us.
 
-    nsRefPtr<TabChild> child = TabChild::Create(this, TabContext(aContext), aChromeFlags);
+    MaybeInvalidTabContext tc(aContext);
+    if (!tc.IsValid()) {
+        NS_ERROR(nsPrintfCString("Received an invalid TabContext from "
+                                 "the parent process. (%s)  Crashing...",
+                                 tc.GetInvalidReason()).get());
+        MOZ_CRASH("Invalid TabContext received from the parent process.");
+    }
+
+    nsRefPtr<TabChild> child = TabChild::Create(this, tc.GetTabContext(), aChromeFlags);
 
     // The ref here is released in DeallocPBrowserChild.
     return child.forget().get();
@@ -634,7 +659,7 @@ ContentChild::DeallocPBrowserChild(PBrowserChild* iframe)
 PBlobChild*
 ContentChild::AllocPBlobChild(const BlobConstructorParams& aParams)
 {
-  return BlobChild::Create(aParams);
+  return BlobChild::Create(this, aParams);
 }
 
 bool
@@ -647,28 +672,61 @@ ContentChild::DeallocPBlobChild(PBlobChild* aActor)
 BlobChild*
 ContentChild::GetOrCreateActorForBlob(nsIDOMBlob* aBlob)
 {
-  NS_ASSERTION(NS_IsMainThread(), "Wrong thread!");
-  NS_ASSERTION(aBlob, "Null pointer!");
+  MOZ_ASSERT(NS_IsMainThread());
+  MOZ_ASSERT(aBlob);
+
+  // If the blob represents a remote blob then we can simply pass its actor back
+  // here.
+  if (nsCOMPtr<nsIRemoteBlob> remoteBlob = do_QueryInterface(aBlob)) {
+    BlobChild* actor =
+      static_cast<BlobChild*>(
+        static_cast<PBlobChild*>(remoteBlob->GetPBlob()));
+    MOZ_ASSERT(actor);
+    return actor;
+  }
 
   // XXX This is only safe so long as all blob implementations in our tree
   //     inherit nsDOMFileBase. If that ever changes then this will need to grow
   //     a real interface or something.
   const nsDOMFileBase* blob = static_cast<nsDOMFileBase*>(aBlob);
 
+  // We often pass blobs that are multipart but that only contain one sub-blob
+  // (WebActivities does this a bunch). Unwrap to reduce the number of actors
+  // that we have to maintain.
+  const nsTArray<nsCOMPtr<nsIDOMBlob> >* subBlobs = blob->GetSubBlobs();
+  if (subBlobs && subBlobs->Length() == 1) {
+    const nsCOMPtr<nsIDOMBlob>& subBlob = subBlobs->ElementAt(0);
+    MOZ_ASSERT(subBlob);
+
+    // We can only take this shortcut if the multipart and the sub-blob are both
+    // Blob objects or both File objects.
+    nsCOMPtr<nsIDOMFile> multipartBlobAsFile = do_QueryInterface(aBlob);
+    nsCOMPtr<nsIDOMFile> subBlobAsFile = do_QueryInterface(subBlob);
+    if (!multipartBlobAsFile == !subBlobAsFile) {
+      // The wrapping was unnecessary, see if we can simply pass an existing
+      // remote blob.
+      if (nsCOMPtr<nsIRemoteBlob> remoteBlob = do_QueryInterface(subBlob)) {
+        BlobChild* actor =
+          static_cast<BlobChild*>(
+            static_cast<PBlobChild*>(remoteBlob->GetPBlob()));
+        MOZ_ASSERT(actor);
+        return actor;
+      }
+
+      // No need to add a reference here since the original blob must have a
+      // strong reference in the caller and it must also have a strong reference
+      // to this sub-blob.
+      aBlob = subBlob;
+      blob = static_cast<nsDOMFileBase*>(aBlob);
+      subBlobs = blob->GetSubBlobs();
+    }
+  }
+
   // All blobs shared between processes must be immutable.
   nsCOMPtr<nsIMutable> mutableBlob = do_QueryInterface(aBlob);
   if (!mutableBlob || NS_FAILED(mutableBlob->SetMutable(false))) {
     NS_WARNING("Failed to make blob immutable!");
     return nullptr;
-  }
-
-  nsCOMPtr<nsIRemoteBlob> remoteBlob = do_QueryInterface(aBlob);
-  if (remoteBlob) {
-    BlobChild* actor =
-      static_cast<BlobChild*>(static_cast<PBlobChild*>(remoteBlob->GetPBlob()));
-    NS_ASSERTION(actor, "Null actor?!");
-
-    return actor;
   }
 
   ParentBlobConstructorParams params;
@@ -719,16 +777,12 @@ ContentChild::GetOrCreateActorForBlob(nsIDOMBlob* aBlob)
       blobParams.length() = length;
       params.blobParams() = blobParams;
     }
-    }
+  }
 
-  BlobChild* actor = BlobChild::Create(aBlob);
+  BlobChild* actor = BlobChild::Create(this, aBlob);
   NS_ENSURE_TRUE(actor, nullptr);
 
-  if (!SendPBlobConstructor(actor, params)) {
-        return nullptr;
-      }
-
-  return actor;
+  return SendPBlobConstructor(actor, params) ? actor : nullptr;
 }
 
 PCrashReporterChild*
@@ -901,6 +955,30 @@ ContentChild::DeallocPBluetoothChild(PBluetoothChild* aActor)
 #endif
 }
 
+PFMRadioChild*
+ContentChild::AllocPFMRadioChild()
+{
+#ifdef MOZ_B2G_FM
+    NS_RUNTIMEABORT("No one should be allocating PFMRadioChild actors");
+    return nullptr;
+#else
+    NS_RUNTIMEABORT("No support for FMRadio on this platform!");
+    return nullptr;
+#endif
+}
+
+bool
+ContentChild::DeallocPFMRadioChild(PFMRadioChild* aActor)
+{
+#ifdef MOZ_B2G_FM
+    delete aActor;
+    return true;
+#else
+    NS_RUNTIMEABORT("No support for FMRadio on this platform!");
+    return false;
+#endif
+}
+
 PSpeechSynthesisChild*
 ContentChild::AllocPSpeechSynthesisChild()
 {
@@ -1059,13 +1137,15 @@ ContentChild::RecvNotifyVisited(const URIParams& aURI)
 
 bool
 ContentChild::RecvAsyncMessage(const nsString& aMsg,
-                                     const ClonedMessageData& aData)
+                               const ClonedMessageData& aData,
+                               const InfallibleTArray<CpowEntry>& aCpows)
 {
   nsRefPtr<nsFrameMessageManager> cpm = nsFrameMessageManager::sChildProcessManager;
   if (cpm) {
     StructuredCloneData cloneData = ipc::UnpackClonedMessageDataForChild(aData);
+    CpowIdHolder cpows(GetCPOWManager(), aCpows);
     cpm->ReceiveMessage(static_cast<nsIContentFrameMessageManager*>(cpm.get()),
-                        aMsg, false, &cloneData, JS::NullPtr(), nullptr);
+                        aMsg, false, &cloneData, &cpows, nullptr);
   }
   return true;
 }
@@ -1177,10 +1257,13 @@ PreloadSlowThings()
 }
 
 bool
-ContentChild::RecvAppInfo(const nsCString& version, const nsCString& buildID)
+ContentChild::RecvAppInfo(const nsCString& version, const nsCString& buildID,
+                          const nsCString& name, const nsCString& UAName)
 {
     mAppInfo.version.Assign(version);
     mAppInfo.buildID.Assign(buildID);
+    mAppInfo.name.Assign(name);
+    mAppInfo.UAName.Assign(UAName);
     // If we're part of the mozbrowser machinery, go ahead and start
     // preloading things.  We can only do this for mozbrowser because
     // PreloadSlowThings() may set the docshell of the first TabChild
@@ -1220,11 +1303,14 @@ bool
 ContentChild::RecvFileSystemUpdate(const nsString& aFsName,
                                    const nsString& aVolumeName,
                                    const int32_t& aState,
-                                   const int32_t& aMountGeneration)
+                                   const int32_t& aMountGeneration,
+                                   const bool& aIsMediaPresent,
+                                   const bool& aIsSharing)
 {
 #ifdef MOZ_WIDGET_GONK
     nsRefPtr<nsVolume> volume = new nsVolume(aFsName, aVolumeName, aState,
-                                             aMountGeneration);
+                                             aMountGeneration, aIsMediaPresent,
+                                             aIsSharing);
 
     nsRefPtr<nsVolumeService> vs = nsVolumeService::GetSingleton();
     if (vs) {
@@ -1236,6 +1322,8 @@ ContentChild::RecvFileSystemUpdate(const nsString& aFsName,
     unused << aVolumeName;
     unused << aState;
     unused << aMountGeneration;
+    unused << aIsMediaPresent;
+    unused << aIsSharing;
 #endif
     return true;
 }
@@ -1248,7 +1336,6 @@ ContentChild::RecvNotifyProcessPriorityChanged(
     NS_ENSURE_TRUE(os, true);
 
     nsRefPtr<nsHashPropertyBag> props = new nsHashPropertyBag();
-    props->Init();
     props->SetPropertyAsInt32(NS_LITERAL_STRING("priority"),
                               static_cast<int32_t>(aPriority));
 
@@ -1287,6 +1374,38 @@ ContentChild::RecvCancelMinimizeMemoryUsage()
     if (runnable) {
         runnable->Cancel();
         mMemoryMinimizerRunnable = nullptr;
+    }
+
+    return true;
+}
+
+bool
+ContentChild::RecvLoadAndRegisterSheet(const URIParams& aURI, const uint32_t& aType)
+{
+    nsCOMPtr<nsIURI> uri = DeserializeURI(aURI);
+    if (!uri) {
+        return true;
+    }
+
+    nsStyleSheetService *sheetService = nsStyleSheetService::GetInstance();
+    if (sheetService) {
+        sheetService->LoadAndRegisterSheet(uri, aType);
+    }
+
+    return true;
+}
+
+bool
+ContentChild::RecvUnregisterSheet(const URIParams& aURI, const uint32_t& aType)
+{
+    nsCOMPtr<nsIURI> uri = DeserializeURI(aURI);
+    if (!uri) {
+        return true;
+    }
+
+    nsStyleSheetService *sheetService = nsStyleSheetService::GetInstance();
+    if (sheetService) {
+        sheetService->UnregisterSheet(uri, aType);
     }
 
     return true;

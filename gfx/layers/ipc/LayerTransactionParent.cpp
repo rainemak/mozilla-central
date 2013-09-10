@@ -5,28 +5,39 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include <vector>
-
-#include "AutoOpenSurface.h"
-#include "CompositorParent.h"
-#include "gfxSharedImageSurface.h"
-#include "ImageLayers.h"
-#include "mozilla/layout/RenderFrameParent.h"
-#include "mozilla/unused.h"
-#include "RenderTrace.h"
-#include "ShadowLayerParent.h"
 #include "LayerTransactionParent.h"
-#include "ShadowLayers.h"
-#include "ShadowLayerUtils.h"
-#include "TiledLayerBuffer.h"
-#include "gfxPlatform.h"
-#include "CompositableHost.h"
-#include "mozilla/layers/ThebesLayerComposite.h"
-#include "mozilla/layers/ImageLayerComposite.h"
-#include "mozilla/layers/ColorLayerComposite.h"
-#include "mozilla/layers/ContainerLayerComposite.h"
+#include <vector>                       // for vector
+#include "CompositableHost.h"           // for CompositableParent, Get, etc
+#include "ImageLayers.h"                // for ImageLayer
+#include "Layers.h"                     // for Layer, ContainerLayer, etc
+#include "ShadowLayerParent.h"          // for ShadowLayerParent
+#include "gfx3DMatrix.h"                // for gfx3DMatrix
+#include "gfxPoint3D.h"                 // for gfxPoint3D
+#include "CompositableTransactionParent.h"  // for EditReplyVector
+#include "ShadowLayersManager.h"        // for ShadowLayersManager
+#include "mozilla/Assertions.h"         // for MOZ_ASSERT, etc
+#include "mozilla/gfx/BasePoint3D.h"    // for BasePoint3D
 #include "mozilla/layers/CanvasLayerComposite.h"
-#include "mozilla/layers/PLayerTransaction.h"
+#include "mozilla/layers/ColorLayerComposite.h"
+#include "mozilla/layers/Compositor.h"  // for Compositor
+#include "mozilla/layers/ContainerLayerComposite.h"
+#include "mozilla/layers/ImageLayerComposite.h"
+#include "mozilla/layers/LayerManagerComposite.h"
+#include "mozilla/layers/LayersMessages.h"  // for EditReply, etc
+#include "mozilla/layers/LayersSurfaces.h"  // for PGrallocBufferParent
+#include "mozilla/layers/LayersTypes.h"  // for MOZ_LAYERS_LOG
+#include "mozilla/layers/PCompositableParent.h"
+#include "mozilla/layers/PLayerParent.h"  // for PLayerParent
+#include "mozilla/layers/ThebesLayerComposite.h"
+#include "mozilla/mozalloc.h"           // for operator delete, etc
+#include "nsCoord.h"                    // for NSAppUnitsToFloatPixels
+#include "nsDebug.h"                    // for NS_RUNTIMEABORT
+#include "nsISupportsImpl.h"            // for Layer::Release, etc
+#include "nsLayoutUtils.h"              // for nsLayoutUtils
+#include "nsMathUtils.h"                // for NS_round
+#include "nsPoint.h"                    // for nsPoint
+#include "nsTArray.h"                   // for nsTArray, nsTArray_Impl, etc
+#include "nsTraceRefcnt.h"              // for MOZ_COUNT_CTOR, etc
 
 typedef std::vector<mozilla::layers::EditReply> EditReplyVector;
 
@@ -34,6 +45,8 @@ using mozilla::layout::RenderFrameParent;
 
 namespace mozilla {
 namespace layers {
+
+class PGrallocBufferParent;
 
 //--------------------------------------------------
 // Convenience accessors
@@ -185,7 +198,7 @@ LayerTransactionParent::RecvUpdate(const InfallibleTArray<Edit>& cset,
 
   EditReplyVector replyv;
 
-  layer_manager()->BeginTransactionWithTarget(NULL);
+  layer_manager()->BeginTransactionWithTarget(nullptr);
 
   for (EditArray::index_type i = 0; i < cset.Length(); ++i) {
     const Edit& edit = cset[i];
@@ -251,7 +264,7 @@ LayerTransactionParent::RecvUpdate(const InfallibleTArray<Edit>& cset,
       layer->SetVisibleRegion(common.visibleRegion());
       layer->SetContentFlags(common.contentFlags());
       layer->SetOpacity(common.opacity());
-      layer->SetClipRect(common.useClipRect() ? &common.clipRect() : NULL);
+      layer->SetClipRect(common.useClipRect() ? &common.clipRect() : nullptr);
       layer->SetBaseTransform(common.transform().value());
       layer->SetPostScale(common.postXScale(), common.postYScale());
       layer->SetIsFixedPosition(common.isFixedPosition());
@@ -260,7 +273,7 @@ LayerTransactionParent::RecvUpdate(const InfallibleTArray<Edit>& cset,
       if (PLayerParent* maskLayer = common.maskLayerParent()) {
         layer->SetMaskLayer(cast(maskLayer)->AsLayer());
       } else {
-        layer->SetMaskLayer(NULL);
+        layer->SetMaskLayer(nullptr);
       }
       layer->SetAnimations(common.animations());
 
@@ -333,12 +346,9 @@ LayerTransactionParent::RecvUpdate(const InfallibleTArray<Edit>& cset,
       }
       break;
     }
-    case Edit::TOpSetColoredBorders: {
-      if (edit.get_OpSetColoredBorders().enabled()) {
-        mLayerManager->GetCompositor()->EnableColoredBorders();
-      } else {
-        mLayerManager->GetCompositor()->DisableColoredBorders();
-      }
+    case Edit::TOpSetDiagnosticTypes: {
+      mLayerManager->GetCompositor()->SetDiagnosticTypes(
+        edit.get_OpSetDiagnosticTypes().diagnostics());
       break;
     }
     // Tree ops
@@ -361,7 +371,7 @@ LayerTransactionParent::RecvUpdate(const InfallibleTArray<Edit>& cset,
 
       const OpAppendChild& oac = edit.get_OpAppendChild();
       ShadowContainer(oac)->AsContainer()->InsertAfter(
-        ShadowChild(oac)->AsLayer(), NULL);
+        ShadowChild(oac)->AsLayer(), nullptr);
       break;
     }
     case Edit::TOpRemoveChild: {
@@ -385,7 +395,7 @@ LayerTransactionParent::RecvUpdate(const InfallibleTArray<Edit>& cset,
 
       const OpRaiseToTopChild& rtc = edit.get_OpRaiseToTopChild();
       ShadowContainer(rtc)->AsContainer()->RepositionChild(
-        ShadowChild(rtc)->AsLayer(), NULL);
+        ShadowChild(rtc)->AsLayer(), nullptr);
       break;
     }
     case Edit::TCompositableOperation: {
@@ -395,14 +405,16 @@ LayerTransactionParent::RecvUpdate(const InfallibleTArray<Edit>& cset,
     }
     case Edit::TOpAttachCompositable: {
       const OpAttachCompositable& op = edit.get_OpAttachCompositable();
-      Attach(cast(op.layerParent()), cast(op.compositableParent()));
+      Attach(cast(op.layerParent()), cast(op.compositableParent()), false);
+      cast(op.compositableParent())->SetCompositorID(
+        mLayerManager->GetCompositor()->GetCompositorID());
       break;
     }
     case Edit::TOpAttachAsyncCompositable: {
       const OpAttachAsyncCompositable& op = edit.get_OpAttachAsyncCompositable();
       CompositableParent* compositableParent = CompositableMap::Get(op.containerID());
       MOZ_ASSERT(compositableParent, "CompositableParent not found in the map");
-      Attach(cast(op.layerParent()), compositableParent);
+      Attach(cast(op.layerParent()), compositableParent, true);
       compositableParent->SetCompositorID(mLayerManager->GetCompositor()->GetCompositorID());
       break;
     }
@@ -411,7 +423,7 @@ LayerTransactionParent::RecvUpdate(const InfallibleTArray<Edit>& cset,
     }
   }
 
-  layer_manager()->EndTransaction(NULL, NULL, LayerManager::END_NO_IMMEDIATE_REDRAW);
+  layer_manager()->EndTransaction(nullptr, nullptr, LayerManager::END_NO_IMMEDIATE_REDRAW);
 
   if (reply) {
     reply->SetCapacity(replyv.size());
@@ -489,7 +501,9 @@ LayerTransactionParent::RecvGetTransform(PLayerParent* aParent,
 }
 
 void
-LayerTransactionParent::Attach(ShadowLayerParent* aLayerParent, CompositableParent* aCompositable)
+LayerTransactionParent::Attach(ShadowLayerParent* aLayerParent,
+                               CompositableParent* aCompositable,
+                               bool aIsAsyncVideo)
 {
   LayerComposite* layer = aLayerParent->AsLayer()->AsLayerComposite();
   MOZ_ASSERT(layer);
@@ -500,7 +514,12 @@ LayerTransactionParent::Attach(ShadowLayerParent* aLayerParent, CompositablePare
   CompositableHost* compositable = aCompositable->GetCompositableHost();
   MOZ_ASSERT(compositable);
   layer->SetCompositableHost(compositable);
-  compositable->Attach(aLayerParent->AsLayer(), compositor);
+  compositable->Attach(aLayerParent->AsLayer(),
+                       compositor,
+                       aIsAsyncVideo
+                         ? CompositableHost::ALLOW_REATTACH
+                           | CompositableHost::KEEP_ATTACHED
+                         : CompositableHost::NO_FLAGS);
 }
 
 bool

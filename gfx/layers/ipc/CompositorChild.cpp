@@ -5,9 +5,20 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "CompositorChild.h"
-#include "CompositorParent.h"
-#include "LayerManagerOGL.h"
+#include <stddef.h>                     // for size_t
+#include "Layers.h"                     // for LayerManager
+#include "base/message_loop.h"          // for MessageLoop
+#include "base/process_util.h"          // for OpenProcessHandle
+#include "base/task.h"                  // for NewRunnableMethod, etc
+#include "base/tracked.h"               // for FROM_HERE
 #include "mozilla/layers/LayerTransactionChild.h"
+#include "mozilla/layers/PLayerTransactionChild.h"
+#include "mozilla/mozalloc.h"           // for operator new, etc
+#include "nsDebug.h"                    // for NS_RUNTIMEABORT
+#include "nsIObserver.h"                // for nsIObserver
+#include "nsTArray.h"                   // for nsTArray, nsTArray_Impl
+#include "nsTraceRefcnt.h"              // for MOZ_COUNT_CTOR, etc
+#include "nsXULAppAPI.h"                // for XRE_GetIOMessageLoop, etc
 
 using mozilla::layers::LayerTransactionChild;
 
@@ -31,7 +42,7 @@ void
 CompositorChild::Destroy()
 {
   mLayerManager->Destroy();
-  mLayerManager = NULL;
+  mLayerManager = nullptr;
   while (size_t len = ManagedPLayerTransactionChild().Length()) {
     LayerTransactionChild* layers =
       static_cast<LayerTransactionChild*>(ManagedPLayerTransactionChild()[len - 1]);
@@ -71,9 +82,10 @@ CompositorChild::Get()
 }
 
 PLayerTransactionChild*
-CompositorChild::AllocPLayerTransactionChild(const LayersBackend& aBackendHint,
+CompositorChild::AllocPLayerTransactionChild(const nsTArray<LayersBackend>& aBackendHints,
                                              const uint64_t& aId,
-                                             TextureFactoryIdentifier*)
+                                             TextureFactoryIdentifier*,
+                                             bool*)
 {
   return new LayerTransactionChild();
 }
@@ -94,7 +106,7 @@ CompositorChild::ActorDestroy(ActorDestroyReason aWhy)
     NS_RUNTIMEABORT("ActorDestroy by IPC channel failure at CompositorChild");
   }
 
-  sCompositor = NULL;
+  sCompositor = nullptr;
   // We don't want to release the ref to sCompositor here, during
   // cleanup, because that will cause it to be deleted while it's
   // still being used.  So defer the deletion to after it's not in

@@ -111,9 +111,11 @@ NS_QUERYFRAME_TAIL_INHERITING(nsLeafBoxFrame)
 nsTreeBodyFrame::nsTreeBodyFrame(nsIPresShell* aPresShell, nsStyleContext* aContext)
 :nsLeafBoxFrame(aPresShell, aContext),
  mSlots(nullptr),
+ mImageCache(16),
  mTopRowIndex(0),
  mPageLength(0),
  mHorzPosition(0),
+ mOriginalHorzWidth(-1),
  mHorzWidth(0),
  mAdjustWidth(0),
  mRowHeight(0),
@@ -167,9 +169,6 @@ nsTreeBodyFrame::Init(nsIContent*     aContent,
   mIndentation = GetIndentation();
   mRowHeight = GetRowHeight();
 
-  mCreatedListeners.Init();
-
-  mImageCache.Init(16);
   EnsureBoxObject();
 
   if (LookAndFeel::GetInt(LookAndFeel::eIntID_UseOverlayScrollbars) != 0) {
@@ -375,6 +374,7 @@ nsTreeBodyFrame::EnsureView()
         // Scroll to the given row.
         // XXX is this optimal if we haven't laid out yet?
         ScrollToRow(rowIndex);
+        ENSURE_TRUE(weakFrame.IsAlive());
 
         // Clear out the property info for the top row, but we always keep the
         // view current.
@@ -385,15 +385,28 @@ nsTreeBodyFrame::EnsureView()
 }
 
 void
+nsTreeBodyFrame::ManageReflowCallback(const nsRect& aRect, nscoord aHorzWidth)
+{
+  if (!mReflowCallbackPosted &&
+      (!aRect.IsEqualEdges(mRect) || mHorzWidth != aHorzWidth)) {
+    PresContext()->PresShell()->PostReflowCallback(this);
+    mReflowCallbackPosted = true;
+    mOriginalHorzWidth = mHorzWidth;
+  }
+  else if (mReflowCallbackPosted &&
+           mHorzWidth != aHorzWidth && mOriginalHorzWidth == aHorzWidth) {
+    PresContext()->PresShell()->CancelReflowCallback(this);
+    mReflowCallbackPosted = false;
+    mOriginalHorzWidth = -1;
+  }
+}
+
+void
 nsTreeBodyFrame::SetBounds(nsBoxLayoutState& aBoxLayoutState, const nsRect& aRect,
                            bool aRemoveOverflowArea)
 {
   nscoord horzWidth = CalcHorzWidth(GetScrollParts());
-  if ((!aRect.IsEqualEdges(mRect) || mHorzWidth != horzWidth) && !mReflowCallbackPosted) {
-    mReflowCallbackPosted = true;
-    PresContext()->PresShell()->PostReflowCallback(this);
-  }
-
+  ManageReflowCallback(aRect, horzWidth);
   mHorzWidth = horzWidth;
 
   nsLeafBoxFrame::SetBounds(aBoxLayoutState, aRect, aRemoveOverflowArea);
@@ -4120,9 +4133,12 @@ nsTreeBodyFrame::ScrollHorzInternal(const ScrollParts& aParts, int32_t aPosition
   Invalidate();
 
   // Update the column scroll view
+  nsWeakFrame weakFrame(this);
   aParts.mColumnsScrollFrame->ScrollTo(nsPoint(mHorzPosition, 0),
                                        nsIScrollableFrame::INSTANT);
-
+  if (!weakFrame.IsAlive()) {
+    return NS_ERROR_FAILURE;
+  }
   // And fire off an event about it all
   PostScrollEvent();
   return NS_OK;
@@ -4139,7 +4155,8 @@ nsTreeBodyFrame::ScrollbarButtonPressed(nsScrollbarFrame* aScrollbar, int32_t aO
     else if (aNewIndex < aOldIndex)
       ScrollToRowInternal(parts, mTopRowIndex-1);
   } else {
-    ScrollHorzInternal(parts, aNewIndex);
+    nsresult rv = ScrollHorzInternal(parts, aNewIndex);
+    if (NS_FAILED(rv)) return rv;
   }
 
   UpdateScrollbars(parts);
@@ -4163,7 +4180,8 @@ nsTreeBodyFrame::PositionChanged(nsScrollbarFrame* aScrollbar, int32_t aOldIndex
     ScrollInternal(parts, newrow);
   // Horizontal Scrollbar
   } else if (parts.mHScrollbar == aScrollbar) {
-    ScrollHorzInternal(parts, aNewIndex);
+    nsresult rv = ScrollHorzInternal(parts, aNewIndex);
+    if (NS_FAILED(rv)) return rv;
   }
 
   UpdateScrollbars(parts);
@@ -4433,7 +4451,7 @@ void
 nsTreeBodyFrame::FireScrollEvent()
 {
   mScrollEvent.Forget();
-  nsScrollbarEvent event(true, NS_SCROLL_EVENT, nullptr);
+  nsGUIEvent event(true, NS_SCROLL_EVENT, nullptr);
   // scroll events fired at elements don't bubble
   event.mFlags.mBubbles = false;
   nsEventDispatcher::Dispatch(GetContent(), PresContext(), &event);

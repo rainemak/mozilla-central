@@ -8,7 +8,6 @@
 
 #include "mozilla/Attributes.h"
 #include "gfxMatrix.h"
-#include "gfxRect.h"
 #include "nsContainerFrame.h"
 #include "nsFrame.h"
 #include "nsIFrame.h"
@@ -24,6 +23,8 @@ class nsRenderingContext;
 class nsStyleContext;
 
 struct nsPoint;
+struct nsRect;
+struct nsIntRect;
 
 typedef nsContainerFrame nsSVGContainerFrameBase;
 
@@ -91,6 +92,13 @@ public:
                                 const nsDisplayListSet& aLists) MOZ_OVERRIDE {}
 
   virtual bool UpdateOverflow() MOZ_OVERRIDE;
+
+protected:
+  /**
+   * Traverses a frame tree, marking any nsSVGTextFrame2 frames as dirty
+   * and calling InvalidateRenderingObservers() on it.
+   */
+  static void ReflowSVGNonDisplayText(nsIFrame* aContainer);
 };
 
 /**

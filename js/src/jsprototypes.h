@@ -9,8 +9,6 @@
 #ifndef jsprototypes_h
 #define jsprototypes_h
 
-#include "jsversion.h"
-
 /*
  * Enumerator codes in the second column must not change -- they are part of
  * the JS XDR API.  Also note the symbols in the third column are extern "C";
@@ -56,5 +54,20 @@
     macro(DataView,              35,     js_InitTypedArrayClasses) \
     macro(ParallelArray,         36,     js_InitParallelArrayClass) \
     macro(Intl,                  37,     js_InitIntlClass) \
+    macro(Type,                  38,     js_InitTypedObjectClasses) \
+    macro(Data,                  39,     js_InitTypedObjectClasses) \
+    macro(uint8Clamped,          40,     js_InitTypedObjectClasses) \
+    macro(uint8,                 41,     js_InitTypedObjectClasses) \
+    macro(uint16,                42,     js_InitTypedObjectClasses) \
+    macro(uint32,                43,     js_InitTypedObjectClasses) \
+    macro(int8,                  44,     js_InitTypedObjectClasses) \
+    macro(int16,                 45,     js_InitTypedObjectClasses) \
+    macro(int32,                 46,     js_InitTypedObjectClasses) \
+    macro(float32,               47,     js_InitTypedObjectClasses) \
+    macro(float64,               48,     js_InitTypedObjectClasses) \
+    macro(ArrayType,             49,     js_InitTypedObjectClasses) \
+    macro(StructType,            50,     js_InitTypedObjectClasses) \
+    macro(ArrayTypeObject,       51,     js_InitTypedObjectClasses) \
+    macro(GeneratorFunction,     52,     js_InitIteratorClasses) \
 
 #endif /* jsprototypes_h */

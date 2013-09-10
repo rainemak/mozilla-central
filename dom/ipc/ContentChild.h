@@ -60,6 +60,8 @@ public:
     {
         nsCString version;
         nsCString buildID;
+        nsCString name;
+        nsCString UAName;
     };
 
     bool Init(MessageLoop* aIOLoop,
@@ -156,6 +158,9 @@ public:
     virtual PBluetoothChild* AllocPBluetoothChild();
     virtual bool DeallocPBluetoothChild(PBluetoothChild* aActor);
 
+    virtual PFMRadioChild* AllocPFMRadioChild();
+    virtual bool DeallocPFMRadioChild(PFMRadioChild* aActor);
+
     virtual PSpeechSynthesisChild* AllocPSpeechSynthesisChild();
     virtual bool DeallocPSpeechSynthesisChild(PSpeechSynthesisChild* aActor);
 
@@ -178,7 +183,8 @@ public:
     virtual bool RecvNotifyAlertsObserver(const nsCString& aType, const nsString& aData);
 
     virtual bool RecvAsyncMessage(const nsString& aMsg,
-                                  const ClonedMessageData& aData);
+                                  const ClonedMessageData& aData,
+                                  const InfallibleTArray<CpowEntry>& aCpows);
 
     virtual bool RecvGeolocationUpdate(const GeoPosition& somewhere);
 
@@ -193,7 +199,8 @@ public:
     virtual bool RecvGarbageCollect();
     virtual bool RecvCycleCollect();
 
-    virtual bool RecvAppInfo(const nsCString& version, const nsCString& buildID);
+    virtual bool RecvAppInfo(const nsCString& version, const nsCString& buildID,
+                             const nsCString& name, const nsCString& UAName);
 
     virtual bool RecvLastPrivateDocShellDestroyed();
 
@@ -204,11 +211,16 @@ public:
     virtual bool RecvFileSystemUpdate(const nsString& aFsName,
                                       const nsString& aVolumeName,
                                       const int32_t& aState,
-                                      const int32_t& aMountGeneration);
+                                      const int32_t& aMountGeneration,
+                                      const bool& aIsMediaPresent,
+                                      const bool& aIsSharing);
 
     virtual bool RecvNotifyProcessPriorityChanged(const hal::ProcessPriority& aPriority);
     virtual bool RecvMinimizeMemoryUsage();
     virtual bool RecvCancelMinimizeMemoryUsage();
+
+    virtual bool RecvLoadAndRegisterSheet(const URIParams& aURI, const uint32_t& aType);
+    virtual bool RecvUnregisterSheet(const URIParams& aURI, const uint32_t& aType);
 
 #ifdef ANDROID
     gfxIntSize GetScreenSize() { return mScreenSize; }

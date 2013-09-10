@@ -6,14 +6,13 @@
 
 #include "vm/ObjectImpl-inl.h"
 
+#include "gc/Marking.h"
 #include "js/Value.h"
 #include "vm/Debugger.h"
-#include "vm/ObjectImpl.h"
 
 #include "jsobjinlines.h"
 
 #include "gc/Barrier-inl.h"
-#include "gc/Marking.h"
 
 using namespace js;
 
@@ -159,10 +158,10 @@ PropDesc::wrapInto(JSContext *cx, HandleObject obj, const jsid &id, jsid *wrappe
     return !obj->is<ProxyObject>() || desc->makeObject(cx);
 }
 
-static ObjectElements emptyElementsHeader(0, 0);
+static const ObjectElements emptyElementsHeader(0, 0);
 
 /* Objects with no elements share one empty set of elements. */
-HeapSlot *js::emptyObjectElements =
+HeapSlot *const js::emptyObjectElements =
     reinterpret_cast<HeapSlot *>(uintptr_t(&emptyElementsHeader) + sizeof(ObjectElements));
 
 /* static */ bool
@@ -265,7 +264,7 @@ js::ObjectImpl::initializeSlotRange(uint32_t start, uint32_t length)
     HeapSlot *fixedStart, *fixedEnd, *slotsStart, *slotsEnd;
     getSlotRangeUnchecked(start, length, &fixedStart, &fixedEnd, &slotsStart, &slotsEnd);
 
-    JSRuntime *rt = runtime();
+    JSRuntime *rt = runtimeFromAnyThread();
     uint32_t offset = start;
     for (HeapSlot *sp = fixedStart; sp < fixedEnd; sp++)
         sp->init(rt, this->asObjectPtr(), HeapSlot::Slot, offset++, UndefinedValue());
@@ -276,7 +275,7 @@ js::ObjectImpl::initializeSlotRange(uint32_t start, uint32_t length)
 void
 js::ObjectImpl::initSlotRange(uint32_t start, const Value *vector, uint32_t length)
 {
-    JSRuntime *rt = runtime();
+    JSRuntime *rt = runtimeFromAnyThread();
     HeapSlot *fixedStart, *fixedEnd, *slotsStart, *slotsEnd;
     getSlotRange(start, length, &fixedStart, &fixedEnd, &slotsStart, &slotsEnd);
     for (HeapSlot *sp = fixedStart; sp < fixedEnd; sp++)
@@ -562,7 +561,7 @@ bool
 js::GetOwnProperty(JSContext *cx, Handle<ObjectImpl*> obj, PropertyId pid_, unsigned resolveFlags,
                    PropDesc *desc)
 {
-    NEW_OBJECT_REPRESENTATION_ONLY();
+    JS_NEW_OBJECT_REPRESENTATION_ONLY();
 
     JS_CHECK_RECURSION(cx, return false);
 
@@ -652,7 +651,7 @@ bool
 js::GetProperty(JSContext *cx, Handle<ObjectImpl*> obj, Handle<ObjectImpl*> receiver,
                 Handle<PropertyId> pid, unsigned resolveFlags, MutableHandle<Value> vp)
 {
-    NEW_OBJECT_REPRESENTATION_ONLY();
+    JS_NEW_OBJECT_REPRESENTATION_ONLY();
 
     MOZ_ASSERT(receiver);
 
@@ -715,7 +714,7 @@ bool
 js::GetElement(JSContext *cx, Handle<ObjectImpl*> obj, Handle<ObjectImpl*> receiver, uint32_t index,
                unsigned resolveFlags, Value *vp)
 {
-    NEW_OBJECT_REPRESENTATION_ONLY();
+    JS_NEW_OBJECT_REPRESENTATION_ONLY();
 
     Rooted<ObjectImpl*> current(cx, obj);
 
@@ -778,7 +777,7 @@ bool
 js::HasElement(JSContext *cx, Handle<ObjectImpl*> obj, uint32_t index, unsigned resolveFlags,
                bool *found)
 {
-    NEW_OBJECT_REPRESENTATION_ONLY();
+    JS_NEW_OBJECT_REPRESENTATION_ONLY();
 
     Rooted<ObjectImpl*> current(cx, obj);
 
@@ -812,7 +811,7 @@ bool
 js::DefineElement(JSContext *cx, Handle<ObjectImpl*> obj, uint32_t index, const PropDesc &desc,
                   bool shouldThrow, unsigned resolveFlags, bool *succeeded)
 {
-    NEW_OBJECT_REPRESENTATION_ONLY();
+    JS_NEW_OBJECT_REPRESENTATION_ONLY();
 
     ElementsHeader &header = obj->elementsHeader();
 
@@ -938,7 +937,7 @@ bool
 js::SetElement(JSContext *cx, Handle<ObjectImpl*> obj, Handle<ObjectImpl*> receiver,
                uint32_t index, const Value &v, unsigned resolveFlags, bool *succeeded)
 {
-    NEW_OBJECT_REPRESENTATION_ONLY();
+    JS_NEW_OBJECT_REPRESENTATION_ONLY();
 
     Rooted<ObjectImpl*> current(cx, obj);
     RootedValue setter(cx);
@@ -986,7 +985,7 @@ js::SetElement(JSContext *cx, Handle<ObjectImpl*> obj, Handle<ObjectImpl*> recei
                 /* Push set, receiver, and v as the sole argument. */
                 args.setCallee(setter);
                 args.setThis(ObjectValue(*current));
-                args[0] = v;
+                args[0].set(v);
 
                 *succeeded = true;
                 return Invoke(cx, args);

@@ -7,6 +7,7 @@
 
 #include <gtk/gtk.h>
 
+#include "nsGtkUtils.h"
 #include "nsIFileURL.h"
 #include "nsIURI.h"
 #include "nsIWidget.h"
@@ -22,26 +23,11 @@
 
 #include "nsFilePicker.h"
 
-#if (MOZ_PLATFORM_MAEMO == 5)
-#include <hildon-fm-2/hildon/hildon-file-chooser-dialog.h>
-#endif
-
 using namespace mozilla;
 
 #define MAX_PREVIEW_SIZE 180
 
 nsIFile *nsFilePicker::mPrevDisplayDirectory = nullptr;
-
-// Some GObject functions expect functions for gpointer arguments.
-// gpointer is void* but C++ doesn't like casting functions to void*.
-template<class T> static inline gpointer
-FuncToGpointer(T aFunction)
-{
-    return reinterpret_cast<gpointer>
-        (reinterpret_cast<uintptr_t>
-         // This cast just provides a warning if T is not a function.
-         (reinterpret_cast<void (*)()>(aFunction)));
-}
 
 void
 nsFilePicker::Shutdown()
@@ -164,8 +150,7 @@ MakeCaseInsensitiveShellGlob(const char* aPattern) {
 NS_IMPL_ISUPPORTS1(nsFilePicker, nsIFilePicker)
 
 nsFilePicker::nsFilePicker()
-  : mMode(nsIFilePicker::modeOpen),
-    mSelectedType(0),
+  : mSelectedType(0),
     mRunning(false),
     mAllowURLs(false)
 {
@@ -227,12 +212,10 @@ nsFilePicker::ReadValuesFromFileChooser(GtkWidget *file_chooser)
 
 void
 nsFilePicker::InitNative(nsIWidget *aParent,
-                         const nsAString& aTitle,
-                         int16_t aMode)
+                         const nsAString& aTitle)
 {
   mParentWidget = aParent;
   mTitle.Assign(aTitle);
-  mMode = aMode;
 }
 
 NS_IMETHODIMP
@@ -380,14 +363,6 @@ nsFilePicker::Open(nsIFilePickerShownCallback *aCallback)
   GtkFileChooserAction action = GetGtkFileChooserAction(mMode);
   const gchar *accept_button = (action == GTK_FILE_CHOOSER_ACTION_SAVE)
                                ? GTK_STOCK_SAVE : GTK_STOCK_OPEN;
-#if (MOZ_PLATFORM_MAEMO == 5)
-  GtkWidget *file_chooser =
-    hildon_file_chooser_dialog_new_with_properties(parent_widget,
-                                                   "action", action,
-                                                   "open-button-text", accept_button,
-                                                   NULL);
-  gtk_window_set_title(GTK_WINDOW(file_chooser), title);
-#else
   GtkWidget *file_chooser =
       gtk_file_chooser_dialog_new(title, parent_widget, action,
                                   GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
@@ -400,7 +375,6 @@ nsFilePicker::Open(nsIFilePickerShownCallback *aCallback)
   if (mAllowURLs) {
     gtk_file_chooser_set_local_only(GTK_FILE_CHOOSER(file_chooser), FALSE);
   }
-#endif
 
   if (action == GTK_FILE_CHOOSER_ACTION_OPEN || action == GTK_FILE_CHOOSER_ACTION_SAVE) {
     GtkWidget *img_preview = gtk_image_new();

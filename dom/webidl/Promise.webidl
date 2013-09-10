@@ -7,7 +7,9 @@
  * http://dom.spec.whatwg.org/#promises
  */
 
+[Func="mozilla::dom::Promise::EnabledForScope"]
 interface PromiseResolver {
+  // TODO bug 875289 - void fulfill(optional any value);
   void resolve(optional any value);
   void reject(optional any value);
 };
@@ -15,22 +17,24 @@ interface PromiseResolver {
 callback PromiseInit = void (PromiseResolver resolver);
 callback AnyCallback = any (optional any value);
 
-[PrefControlled, Constructor(PromiseInit init)]
+[Func="mozilla::dom::Promise::EnabledForScope", Constructor(PromiseInit init)]
 interface Promise {
-  // TODO: update this interface - bug 875289
+  // TODO bug 875289 - static Promise fulfill(any value);
 
-  [Creator, Throws]
+  // Disable the static methods when the interface object is supposed to be
+  // disabled, just in case some code decides to walk over to .constructor from
+  // the proto of a promise object or someone screws up and manages to create a
+  // Promise object in this scope without having resolved the interface object
+  // first.
+  [Creator, Throws, Func="mozilla::dom::Promise::EnabledForScope"]
   static Promise resolve(any value); // same as any(value)
-  [Creator, Throws]
+  [Creator, Throws, Func="mozilla::dom::Promise::EnabledForScope"]
   static Promise reject(any value);
 
   [Creator]
-  Promise then(optional AnyCallback? resolveCallback = null,
-               optional AnyCallback? rejectCallback = null);
+  Promise then([TreatUndefinedAs=Missing] optional AnyCallback fulfillCallback,
+               [TreatUndefinedAs=Missing] optional AnyCallback rejectCallback);
 
   [Creator]
-  Promise catch(optional AnyCallback? rejectCallback = null);
-
-  void done(optional AnyCallback? resolveCallback = null,
-            optional AnyCallback? rejectCallback = null);
+  Promise catch([TreatUndefinedAs=Missing] optional AnyCallback rejectCallback);
 };

@@ -8,13 +8,10 @@
 #define mozilla_dom_TextTrack_h
 
 #include "mozilla/dom/TextTrackBinding.h"
-#include "mozilla/dom/TextTrackCue.h"
-#include "mozilla/dom/TextTrackCueList.h"
 #include "nsCOMPtr.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsDOMEventTargetHelper.h"
 #include "nsString.h"
-#include "nsWrapperCache.h"
 
 namespace mozilla {
 namespace dom {
@@ -26,8 +23,7 @@ class TextTrack MOZ_FINAL : public nsDOMEventTargetHelper
 {
 public:
   NS_DECL_ISUPPORTS_INHERITED
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS_INHERITED(TextTrack,
-                                                         nsDOMEventTargetHelper)
+  NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(TextTrack, nsDOMEventTargetHelper)
 
   TextTrack(nsISupports* aParent);
   TextTrack(nsISupports* aParent,
@@ -58,6 +54,10 @@ public:
   void GetInBandMetadataTrackDispatchType(nsAString& aType) const
   {
     aType = mType;
+  }
+  void GetId(nsAString& aId) const
+  {
+    aId = mId;
   }
 
   TextTrackMode Mode() const
@@ -98,6 +98,7 @@ private:
   nsString mLabel;
   nsString mLanguage;
   nsString mType;
+  nsString mId;
   TextTrackMode mMode;
 
   nsRefPtr<TextTrackCueList> mCueList;

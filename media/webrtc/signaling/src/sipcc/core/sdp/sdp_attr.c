@@ -482,7 +482,7 @@ sdp_result_e sdp_parse_attr_fmtp (sdp_t *sdp_p, sdp_attr_t *attr_p,
     }
     fmtp_p = &(attr_p->attr.fmtp);
     fmtp_p->fmtp_format = SDP_FMTP_UNKNOWN_TYPE;
-    fmtp_p->parameter_add = TRUE;
+    fmtp_p->parameter_add = 1;
     fmtp_p->flag = 0;
 
     /*
@@ -1388,18 +1388,17 @@ sdp_result_e sdp_parse_attr_fmtp (sdp_t *sdp_p, sdp_attr_t *attr_p,
             }
         } else if (cpr_strncasecmp(tmp,sdp_fmtp_codec_param[32].name,
                                sdp_fmtp_codec_param[32].strlen) == 0) {
-	    fmtp_ptr = sdp_getnextstrtok(fmtp_ptr, tmp, sizeof(tmp), "; \t", &result1);
-	    if (result1 != SDP_SUCCESS) {
-	        fmtp_ptr = sdp_getnextstrtok(fmtp_ptr, tmp, sizeof(tmp), " \t", &result1);
-	        if (result1 != SDP_SUCCESS) {
+            fmtp_ptr = sdp_getnextstrtok(fmtp_ptr, tmp, sizeof(tmp), "; \t", &result1);
+            if (result1 != SDP_SUCCESS) {
+                fmtp_ptr = sdp_getnextstrtok(fmtp_ptr, tmp, sizeof(tmp), " \t", &result1);
+                if (result1 != SDP_SUCCESS) {
                     sdp_attr_fmtp_no_value(sdp_p, "parameter_add");
-		    SDP_FREE(temp_ptr);
+                    SDP_FREE(temp_ptr);
                     return SDP_INVALID_PARAMETER;
-		}
-	    }
-	    tok = tmp;
-	    tok++;
-
+                }
+            }
+            tok = tmp;
+            tok++;
             errno = 0;
             strtoul_result = strtoul(tok, &strtoul_end, 10);
 
@@ -1408,16 +1407,9 @@ sdp_result_e sdp_parse_attr_fmtp (sdp_t *sdp_p, sdp_attr_t *attr_p,
                 SDP_FREE(temp_ptr);
                 return SDP_INVALID_PARAMETER;
             }
-
-		fmtp_p->fmtp_format = SDP_FMTP_CODEC_INFO;
-
-		if (strtoul_result == 1) {
-		    fmtp_p->parameter_add = TRUE;
-		} else {
-		    fmtp_p->parameter_add = FALSE;
-		}
-
-	    codec_info_found = TRUE;
+            fmtp_p->fmtp_format = SDP_FMTP_CODEC_INFO;
+            fmtp_p->parameter_add = (u16) strtoul_result;
+            codec_info_found = TRUE;
         } else if (cpr_strncasecmp(tmp,sdp_fmtp_codec_param[33].name,
                                sdp_fmtp_codec_param[33].strlen) == 0) {
 	    fmtp_p->fmtp_format = SDP_FMTP_CODEC_INFO;
@@ -2066,8 +2058,8 @@ sdp_result_e sdp_build_attr_fmtp (sdp_t *sdp_p, sdp_attr_t *attr_p, flex_string 
       FMTP_BUILD_UNSIGNED(fmtp_p->flag & SDP_MAX_RCMD_NALU_SIZE_FLAG,
         "max-rcmd-naFMTP_BUILD_FLlu-size", fmtp_p->max_rcmd_nalu_size)
 
-      FMTP_BUILD_UNSIGNED(fmtp_p->parameter_add > 0,
-        "parameter-add", fmtp_p->parameter_add)
+      FMTP_BUILD_UNSIGNED(fmtp_p->parameter_add <= 1, "parameter-add",
+                          fmtp_p->parameter_add)
 
       FMTP_BUILD_UNSIGNED(fmtp_p->maxaveragebitrate > 0,
         "maxaveragebitrate", fmtp_p->maxaveragebitrate)
@@ -4792,7 +4784,7 @@ sdp_result_e sdp_build_attr_rtcp_fb(sdp_t *sdp_p,
             }
             break;
         case SDP_RTCP_FB_NACK:
-            if (attr_p->attr.rtcp_fb.param.nack > SDP_RTCP_FB_NACK_UNSPECIFIED
+            if (attr_p->attr.rtcp_fb.param.nack > SDP_RTCP_FB_NACK_BASIC
                 && attr_p->attr.rtcp_fb.param.nack < SDP_MAX_RTCP_FB_NACK) {
                 flex_string_sprintf(fs, " %s",
                     sdp_rtcp_fb_nack_type_val[attr_p->attr.rtcp_fb.param.nack]
@@ -4943,7 +4935,7 @@ sdp_result_e sdp_parse_attr_rtcp_fb (sdp_t *sdp_p,
             }
             /* Check for empty string */
             if (*ptr == '\r') {
-                rtcp_fb_p->param.nack = SDP_RTCP_FB_NACK_UNSPECIFIED;
+                rtcp_fb_p->param.nack = SDP_RTCP_FB_NACK_BASIC;
                 break;
             }
             i = find_token_enum("rtcp-fb nack type", sdp_p, &ptr,
@@ -4991,6 +4983,130 @@ sdp_result_e sdp_parse_attr_rtcp_fb (sdp_t *sdp_p,
        a failure result if there is no more text, but that's fine. */
     ptr = sdp_getnextstrtok(ptr, rtcp_fb_p->extra,
                             sizeof(rtcp_fb_p->extra), "\r\n", &result);
+
+    return SDP_SUCCESS;
+}
+
+sdp_result_e sdp_build_attr_setup(sdp_t *sdp_p,
+                                  sdp_attr_t *attr_p,
+                                  flex_string *fs)
+{
+    switch (attr_p->attr.setup) {
+    case SDP_SETUP_ACTIVE:
+    case SDP_SETUP_PASSIVE:
+    case SDP_SETUP_ACTPASS:
+    case SDP_SETUP_HOLDCONN:
+        flex_string_sprintf(fs, "a=%s:%s\r\n",
+            sdp_attr[attr_p->type].name,
+            sdp_setup_type_val[attr_p->attr.setup].name);
+        break;
+    default:
+        CSFLogError(logTag, "%s Error: Invalid setup enum (%d)",
+                    sdp_p->debug_str, attr_p->attr.setup);
+        return SDP_FAILURE;
+    }
+
+    return SDP_SUCCESS;
+}
+
+sdp_result_e sdp_parse_attr_setup(sdp_t *sdp_p,
+                                   sdp_attr_t *attr_p,
+                                   const char *ptr)
+{
+    int i = find_token_enum("setup attribute", sdp_p, &ptr,
+        sdp_setup_type_val,
+        SDP_MAX_SETUP, SDP_SETUP_UNKNOWN);
+
+    if (i < 0) {
+        sdp_parse_error(sdp_p->peerconnection,
+          "%s Warning: could not parse setup attribute",
+          sdp_p->debug_str);
+        sdp_p->conf_p->num_invalid_param++;
+        return SDP_INVALID_PARAMETER;
+    }
+
+    attr_p->attr.setup = (sdp_setup_type_e) i;
+
+    switch (attr_p->attr.setup) {
+    case SDP_SETUP_ACTIVE:
+    case SDP_SETUP_PASSIVE:
+    case SDP_SETUP_ACTPASS:
+    case SDP_SETUP_HOLDCONN:
+        /* All these values are OK */
+        break;
+    case SDP_SETUP_UNKNOWN:
+        sdp_parse_error(sdp_p->peerconnection,
+            "%s Warning: Unknown setup attribute",
+            sdp_p->debug_str);
+        return SDP_INVALID_PARAMETER;
+        break;
+    default:
+        /* This is an internal error, not a parsing error */
+        CSFLogError(logTag, "%s Error: Invalid setup enum (%d)",
+                    sdp_p->debug_str, attr_p->attr.setup);
+        return SDP_FAILURE;
+        break;
+    }
+
+    return SDP_SUCCESS;
+}
+
+sdp_result_e sdp_build_attr_connection(sdp_t *sdp_p,
+                                       sdp_attr_t *attr_p,
+                                       flex_string *fs)
+{
+    switch (attr_p->attr.connection) {
+    case SDP_CONNECTION_NEW:
+    case SDP_CONNECTION_EXISTING:
+        flex_string_sprintf(fs, "a=%s:%s\r\n",
+            sdp_attr[attr_p->type].name,
+            sdp_connection_type_val[attr_p->attr.connection].name);
+        break;
+    default:
+        CSFLogError(logTag, "%s Error: Invalid connection enum (%d)",
+                    sdp_p->debug_str, attr_p->attr.connection);
+        return SDP_FAILURE;
+    }
+
+    return SDP_SUCCESS;
+}
+
+sdp_result_e sdp_parse_attr_connection(sdp_t *sdp_p,
+                                       sdp_attr_t *attr_p,
+                                       const char *ptr)
+{
+    int i = find_token_enum("connection attribute", sdp_p, &ptr,
+        sdp_connection_type_val,
+        SDP_MAX_CONNECTION, SDP_CONNECTION_UNKNOWN);
+
+    if (i < 0) {
+        sdp_parse_error(sdp_p->peerconnection,
+          "%s Warning: could not parse connection attribute",
+          sdp_p->debug_str);
+        sdp_p->conf_p->num_invalid_param++;
+        return SDP_INVALID_PARAMETER;
+    }
+
+    attr_p->attr.connection = (sdp_connection_type_e) i;
+
+    switch (attr_p->attr.connection) {
+    case SDP_CONNECTION_NEW:
+    case SDP_CONNECTION_EXISTING:
+        /* All these values are OK */
+        break;
+    case SDP_CONNECTION_UNKNOWN:
+        sdp_parse_error(sdp_p->peerconnection,
+            "%s Warning: Unknown connection attribute",
+            sdp_p->debug_str);
+        return SDP_INVALID_PARAMETER;
+        break;
+    default:
+        /* This is an internal error, not a parsing error */
+        CSFLogError(logTag, "%s Error: Invalid connection enum (%d)",
+                    sdp_p->debug_str, attr_p->attr.connection);
+        return SDP_FAILURE;
+        break;
+    }
 
     return SDP_SUCCESS;
 }

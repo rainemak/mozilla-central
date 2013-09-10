@@ -104,10 +104,10 @@ BluetoothServiceChildProcess::GetDefaultAdapterPathInternal(
 
 nsresult
 BluetoothServiceChildProcess::GetConnectedDevicePropertiesInternal(
-                                              uint16_t aProfileId,
+                                              uint16_t aServiceUuid,
                                               BluetoothReplyRunnable* aRunnable)
 {
-  SendRequest(aRunnable, ConnectedDevicePropertiesRequest(aProfileId));
+  SendRequest(aRunnable, ConnectedDevicePropertiesRequest(aServiceUuid));
   return NS_OK;
 }
 nsresult
@@ -250,39 +250,27 @@ BluetoothServiceChildProcess::SetPairingConfirmationInternal(
   return true;
 }
 
-bool
-BluetoothServiceChildProcess::SetAuthorizationInternal(
-                                                const nsAString& aDeviceAddress,
-                                                bool aAllow,
-                                                BluetoothReplyRunnable* aRunnable)
-{
-  if(aAllow) {
-    SendRequest(aRunnable,
-                ConfirmAuthorizationRequest(nsString(aDeviceAddress)));
-  } else {
-    SendRequest(aRunnable,
-                DenyAuthorizationRequest(nsString(aDeviceAddress)));
-  }
-  return true;
-}
-
 void
 BluetoothServiceChildProcess::Connect(
   const nsAString& aDeviceAddress,
-  const uint16_t aProfileId,
+  uint32_t aCod,
+  uint16_t aServiceUuid,
   BluetoothReplyRunnable* aRunnable)
 {
   SendRequest(aRunnable,
               ConnectRequest(nsString(aDeviceAddress),
-                             aProfileId));
+                             aCod,
+                             aServiceUuid));
 }
 
 void
 BluetoothServiceChildProcess::Disconnect(
-  const uint16_t aProfileId,
+  const nsAString& aDeviceAddress,
+  uint16_t aServiceUuid,
   BluetoothReplyRunnable* aRunnable)
 {
-  SendRequest(aRunnable, DisconnectRequest(aProfileId));
+  SendRequest(aRunnable,
+              DisconnectRequest(nsString(aDeviceAddress), aServiceUuid));
 }
 
 void
@@ -339,6 +327,32 @@ BluetoothServiceChildProcess::IsScoConnected(BluetoothReplyRunnable* aRunnable)
   SendRequest(aRunnable, IsScoConnectedRequest());
 }
 
+void
+BluetoothServiceChildProcess::SendMetaData(const nsAString& aTitle,
+                                           const nsAString& aArtist,
+                                           const nsAString& aAlbum,
+                                           int64_t aMediaNumber,
+                                           int64_t aTotalMediaCount,
+                                           int64_t aDuration,
+                                           BluetoothReplyRunnable* aRunnable)
+{
+  SendRequest(aRunnable,
+              SendMetaDataRequest(nsString(aTitle), nsString(aArtist),
+                                  nsString(aAlbum), aMediaNumber,
+                                  aTotalMediaCount, aDuration));
+}
+
+void
+BluetoothServiceChildProcess::SendPlayStatus(int64_t aDuration,
+                                             int64_t aPosition,
+                                             const nsAString& aPlayStatus,
+                                             BluetoothReplyRunnable* aRunnable)
+{
+  SendRequest(aRunnable,
+              SendPlayStatusRequest(aDuration, aPosition,
+                                    nsString(aPlayStatus)));
+}
+
 nsresult
 BluetoothServiceChildProcess::HandleStartup()
 {
@@ -377,7 +391,7 @@ BluetoothServiceChildProcess::IsEnabledInternal()
 }
 
 bool
-BluetoothServiceChildProcess::IsConnected(uint16_t aProfileId)
+BluetoothServiceChildProcess::IsConnected(uint16_t aServiceUuid)
 {
   MOZ_CRASH("This should never be called!");
 }
@@ -388,3 +402,19 @@ BluetoothServiceChildProcess::SendSinkMessage(const nsAString& aDeviceAddresses,
 {
   MOZ_CRASH("This should never be called!");
 }
+
+nsresult
+BluetoothServiceChildProcess::SendInputMessage(const nsAString& aDeviceAddresses,
+                                               const nsAString& aMessage)
+{
+  MOZ_CRASH("This should never be called!");
+}
+
+void
+BluetoothServiceChildProcess::UpdatePlayStatus(uint32_t aDuration,
+                                               uint32_t aPosition,
+                                               ControlPlayStatus aPlayStatus)
+{
+  MOZ_CRASH("This should never be called!");
+}
+

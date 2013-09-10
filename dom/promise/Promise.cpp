@@ -5,12 +5,19 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/dom/Promise.h"
+
+#include "jsfriendapi.h"
 #include "mozilla/dom/PromiseBinding.h"
 #include "mozilla/dom/PromiseResolver.h"
 #include "mozilla/Preferences.h"
 #include "PromiseCallback.h"
 #include "nsContentUtils.h"
 #include "nsPIDOMWindow.h"
+#include "WorkerPrivate.h"
+#include "nsJSPrincipals.h"
+#include "nsJSUtils.h"
+#include "nsPIDOMWindow.h"
+#include "nsJSEnvironment.h"
 
 namespace mozilla {
 namespace dom {
@@ -46,12 +53,15 @@ private:
 
 // Promise
 
+NS_IMPL_CYCLE_COLLECTION_CLASS(Promise)
+
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(Promise)
+  tmp->MaybeReportRejected();
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mWindow)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mResolver)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mResolveCallbacks);
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mRejectCallbacks);
-  tmp->mResult = JSVAL_VOID;
+  tmp->mResult = JS::UndefinedValue();
   NS_IMPL_CYCLE_COLLECTION_UNLINK_PRESERVED_WRAPPER
 NS_IMPL_CYCLE_COLLECTION_UNLINK_END
 
@@ -81,9 +91,10 @@ Promise::Promise(nsPIDOMWindow* aWindow)
   , mResult(JS::UndefinedValue())
   , mState(Pending)
   , mTaskPending(false)
+  , mHadRejectCallback(false)
 {
   MOZ_COUNT_CTOR(Promise);
-  NS_HOLD_JS_OBJECTS(this, Promise);
+  mozilla::HoldJSObjects(this);
   SetIsDOMBinding();
 
   mResolver = new PromiseResolver(this);
@@ -91,8 +102,9 @@ Promise::Promise(nsPIDOMWindow* aWindow)
 
 Promise::~Promise()
 {
-  mResult = JSVAL_VOID;
-  NS_DROP_JS_OBJECTS(this, Promise);
+  MaybeReportRejected();
+  mResult = JS::UndefinedValue();
+  mozilla::DropJSObjects(this);
   MOZ_COUNT_DTOR(Promise);
 }
 
@@ -108,6 +120,26 @@ Promise::PrefEnabled()
   return Preferences::GetBool("dom.promise.enabled", false);
 }
 
+/* static */ bool
+Promise::EnabledForScope(JSContext* aCx, JSObject* /* unused */)
+{
+  // Enable if the pref is enabled or if we're chrome or if we're a
+  // certified app.
+  if (PrefEnabled()) {
+    return true;
+  }
+
+  // Note that we have no concept of a certified app in workers.
+  // XXXbz well, why not?
+  if (!NS_IsMainThread()) {
+    return workers::GetWorkerPrivateFromContext(aCx)->IsChromeWorker();
+  }
+
+  nsIPrincipal* prin = nsContentUtils::GetSubjectPrincipal();
+  return nsContentUtils::IsSystemPrincipal(prin) ||
+    prin->GetAppStatus() == nsIPrincipal::APP_STATUS_CERTIFIED;
+}
+
 static void
 EnterCompartment(Maybe<JSAutoCompartment>& aAc, JSContext* aCx,
                  const Optional<JS::Handle<JS::Value> >& aValue)
@@ -120,12 +152,11 @@ EnterCompartment(Maybe<JSAutoCompartment>& aAc, JSContext* aCx,
 }
 
 /* static */ already_AddRefed<Promise>
-Promise::Constructor(const GlobalObject& aGlobal, JSContext* aCx,
+Promise::Constructor(const GlobalObject& aGlobal,
                      PromiseInit& aInit, ErrorResult& aRv)
 {
-  MOZ_ASSERT(PrefEnabled());
-
-  nsCOMPtr<nsPIDOMWindow> window = do_QueryInterface(aGlobal.Get());
+  JSContext* cx = aGlobal.GetContext();
+  nsCOMPtr<nsPIDOMWindow> window = do_QueryInterface(aGlobal.GetAsSupports());
   if (!window) {
     aRv.Throw(NS_ERROR_UNEXPECTED);
     return nullptr;
@@ -138,12 +169,12 @@ Promise::Constructor(const GlobalObject& aGlobal, JSContext* aCx,
   aRv.WouldReportJSException();
 
   if (aRv.IsJSException()) {
-    Optional<JS::Handle<JS::Value> > value(aCx);
-    aRv.StealJSException(aCx, &value.Value());
+    Optional<JS::Handle<JS::Value> > value(cx);
+    aRv.StealJSException(cx, &value.Value());
 
     Maybe<JSAutoCompartment> ac;
-    EnterCompartment(ac, aCx, value);
-    promise->mResolver->Reject(aCx, value);
+    EnterCompartment(ac, cx, value);
+    promise->mResolver->Reject(cx, value);
   }
 
   return promise.forget();
@@ -153,9 +184,7 @@ Promise::Constructor(const GlobalObject& aGlobal, JSContext* aCx,
 Promise::Resolve(const GlobalObject& aGlobal, JSContext* aCx,
                  JS::Handle<JS::Value> aValue, ErrorResult& aRv)
 {
-  MOZ_ASSERT(PrefEnabled());
-
-  nsCOMPtr<nsPIDOMWindow> window = do_QueryInterface(aGlobal.Get());
+  nsCOMPtr<nsPIDOMWindow> window = do_QueryInterface(aGlobal.GetAsSupports());
   if (!window) {
     aRv.Throw(NS_ERROR_UNEXPECTED);
     return nullptr;
@@ -172,9 +201,7 @@ Promise::Resolve(const GlobalObject& aGlobal, JSContext* aCx,
 Promise::Reject(const GlobalObject& aGlobal, JSContext* aCx,
                 JS::Handle<JS::Value> aValue, ErrorResult& aRv)
 {
-  MOZ_ASSERT(PrefEnabled());
-
-  nsCOMPtr<nsPIDOMWindow> window = do_QueryInterface(aGlobal.Get());
+  nsCOMPtr<nsPIDOMWindow> window = do_QueryInterface(aGlobal.GetAsSupports());
   if (!window) {
     aRv.Throw(NS_ERROR_UNEXPECTED);
     return nullptr;
@@ -188,18 +215,23 @@ Promise::Reject(const GlobalObject& aGlobal, JSContext* aCx,
 }
 
 already_AddRefed<Promise>
-Promise::Then(AnyCallback* aResolveCallback, AnyCallback* aRejectCallback)
+Promise::Then(const Optional<OwningNonNull<AnyCallback> >& aResolveCallback,
+              const Optional<OwningNonNull<AnyCallback> >& aRejectCallback)
 {
   nsRefPtr<Promise> promise = new Promise(GetParentObject());
 
   nsRefPtr<PromiseCallback> resolveCb =
     PromiseCallback::Factory(promise->mResolver,
-                             aResolveCallback,
+                             aResolveCallback.WasPassed()
+                               ? &aResolveCallback.Value()
+                               : nullptr,
                              PromiseCallback::Resolve);
 
   nsRefPtr<PromiseCallback> rejectCb =
     PromiseCallback::Factory(promise->mResolver,
-                             aRejectCallback,
+                             aRejectCallback.WasPassed()
+                               ? &aRejectCallback.Value()
+                               : nullptr,
                              PromiseCallback::Reject);
 
   AppendCallbacks(resolveCb, rejectCb);
@@ -208,29 +240,10 @@ Promise::Then(AnyCallback* aResolveCallback, AnyCallback* aRejectCallback)
 }
 
 already_AddRefed<Promise>
-Promise::Catch(AnyCallback* aRejectCallback)
+Promise::Catch(const Optional<OwningNonNull<AnyCallback> >& aRejectCallback)
 {
-  return Then(nullptr, aRejectCallback);
-}
-
-void
-Promise::Done(AnyCallback* aResolveCallback, AnyCallback* aRejectCallback)
-{
-  if (!aResolveCallback && !aRejectCallback) {
-    return;
-  }
-
-  nsRefPtr<PromiseCallback> resolveCb;
-  if (aResolveCallback) {
-    resolveCb = new SimpleWrapperPromiseCallback(this, aResolveCallback);
-  }
-
-  nsRefPtr<PromiseCallback> rejectCb;
-  if (aRejectCallback) {
-    rejectCb = new SimpleWrapperPromiseCallback(this, aRejectCallback);
-  }
-
-  AppendCallbacks(resolveCb, rejectCb);
+  Optional<OwningNonNull<AnyCallback> > resolveCb;
+  return Then(resolveCb, aRejectCallback);
 }
 
 void
@@ -242,6 +255,7 @@ Promise::AppendCallbacks(PromiseCallback* aResolveCallback,
   }
 
   if (aRejectCallback) {
+    mHadRejectCallback = true;
     mRejectCallbacks.AppendElement(aRejectCallback);
   }
 
@@ -272,6 +286,32 @@ Promise::RunTask()
   for (uint32_t i = 0; i < callbacks.Length(); ++i) {
     callbacks[i]->Call(value);
   }
+}
+
+void
+Promise::MaybeReportRejected()
+{
+  if (mState != Rejected || mHadRejectCallback || mResult.isUndefined()) {
+    return;
+  }
+
+  JSErrorReport* report = js::ErrorFromException(mResult);
+  if (!report) {
+    return;
+  }
+
+  MOZ_ASSERT(mResult.isObject(), "How did we get a JSErrorReport?");
+
+  nsCOMPtr<nsPIDOMWindow> win =
+    do_QueryInterface(nsJSUtils::GetStaticScriptGlobal(&mResult.toObject()));
+
+  // Now post an event to do the real reporting async
+  NS_DispatchToCurrentThread(
+    new AsyncErrorReporter(JS_GetObjectRuntime(&mResult.toObject()),
+                           report,
+                           nullptr,
+                           nsContentUtils::GetObjectPrincipal(&mResult.toObject()),
+                           win));
 }
 
 } // namespace dom

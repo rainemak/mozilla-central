@@ -28,7 +28,9 @@ SEARCH_PATHS = [
     'python/mach',
     'python/mozboot',
     'python/mozbuild',
+    'python/mozversioncontrol',
     'python/blessings',
+    'python/configobj',
     'python/psutil',
     'python/which',
     'build/pymake',
@@ -48,7 +50,10 @@ SEARCH_PATHS = [
     'testing/mozbase/mozprocess',
     'testing/mozbase/mozprofile',
     'testing/mozbase/mozrunner',
+    'testing/mozbase/mozsystemmonitor',
     'testing/mozbase/mozinfo',
+    'testing/mozbase/manifestdestiny',
+    'xpcom/idl-parser',
 ]
 
 # Individual files providing mach commands.
@@ -64,6 +69,9 @@ MACH_MODULES = [
     'testing/marionette/mach_commands.py',
     'testing/mochitest/mach_commands.py',
     'testing/xpcshell/mach_commands.py',
+    'testing/talos/mach_commands.py',
+    'testing/xpcshell/mach_commands.py',
+    'tools/mercurial/mach_commands.py',
     'tools/mach_commands.py',
 ]
 
@@ -131,6 +139,7 @@ def bootstrap(topsrcdir, mozilla_dir=None):
             os.makedirs(state_env_dir, mode=0o770)
             print('Please re-run mach.')
             sys.exit(1)
+        state_dir = state_env_dir
     else:
         if not os.path.exists(state_user_dir):
             print(STATE_DIR_FIRST_RUN.format(userdir=state_user_dir))
@@ -146,6 +155,7 @@ def bootstrap(topsrcdir, mozilla_dir=None):
             os.mkdir(state_user_dir)
             print('Please re-run mach.')
             sys.exit(1)
+        state_dir = state_user_dir
 
     try:
         import mach.main
@@ -153,7 +163,12 @@ def bootstrap(topsrcdir, mozilla_dir=None):
         sys.path[0:0] = [os.path.join(mozilla_dir, path) for path in SEARCH_PATHS]
         import mach.main
 
+    def populate_context(context):
+        context.state_dir = state_dir
+
     mach = mach.main.Mach(topsrcdir)
+    mach.populate_context_handler = populate_context
+
     for category, meta in CATEGORIES.items():
         mach.define_category(category, meta['short'], meta['long'],
             meta['priority'])

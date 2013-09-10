@@ -3,16 +3,22 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+MODULE = 'embedlite'
+
+LIBRARY_NAME = 'embedlite'
+FAIL_ON_WARNINGS = True
+LIBXUL_LIBRARY = True
+MSVC_ENABLE_PGO = True
+
 TOOL_DIRS += ['tests']
 
 XPIDL_SOURCES += [
-    'nsIEmbedAppService.idl',
-    'nsIEmbedBrowserChromeListener.idl',
-    'nsIEmbedLiteJSON.idl',
+    'modules/nsIEmbedAppService.idl',
+    'modules/nsIEmbedLiteJSON.idl',
+    'utils/nsIEmbedBrowserChromeListener.idl',
 ]
 
-XPIDL_MODULE = 'embedLite'
-MODULE = 'embedLite'
+XPIDL_MODULE = 'embedLite_base'
 
 EXPORTS.mozilla.embedlite += [
     'EmbedInitGlue.h',
@@ -21,10 +27,10 @@ EXPORTS.mozilla.embedlite += [
     'EmbedLiteMessagePump.h',
     'EmbedLiteRenderTarget.h',
     'EmbedLiteView.h',
-    'EmbedLog.h',
+    'utils/EmbedLog.h',
 ]
 
-EXPORTS.ipc = ['InputDataIPC.h']
+EXPORTS.ipc = ['embedhelpers/InputDataIPC.h']
 
 CPP_SOURCES += [
     'DirProvider.cpp',

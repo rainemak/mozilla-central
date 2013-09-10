@@ -6,16 +6,19 @@
 
 #include "AudioBufferSourceNode.h"
 #include "mozilla/dom/AudioBufferSourceNodeBinding.h"
+#include "mozilla/dom/AudioParam.h"
 #include "nsMathUtils.h"
 #include "AudioNodeEngine.h"
 #include "AudioNodeStream.h"
 #include "AudioDestinationNode.h"
-#include "PannerNode.h"
+#include "AudioParamTimeline.h"
 #include "speex/speex_resampler.h"
 #include <limits>
 
 namespace mozilla {
 namespace dom {
+
+NS_IMPL_CYCLE_COLLECTION_CLASS(AudioBufferSourceNode)
 
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(AudioBufferSourceNode)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mBuffer)
@@ -354,7 +357,6 @@ public:
       uint32_t finalSampleRate = ComputeFinalOutSampleRate(aStream->SampleRate());
       if (currentOutSampleRate != finalSampleRate) {
         speex_resampler_set_rate(resampler, currentInSampleRate, finalSampleRate);
-        speex_resampler_skip_zeros(mResampler);
       }
     }
   }

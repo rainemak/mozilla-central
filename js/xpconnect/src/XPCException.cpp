@@ -7,6 +7,7 @@
 /* An implementaion of nsIException. */
 
 #include "xpcprivate.h"
+#include "jsprf.h"
 #include "nsError.h"
 #include "nsIUnicodeDecoder.h"
 
@@ -31,7 +32,7 @@ static const struct ResultMap
 #define RESULT_COUNT ((sizeof(map) / sizeof(map[0]))-1)
 
 // static
-JSBool
+bool
 nsXPCException::NameAndFormatForNSResult(nsresult rv,
                                          const char** name,
                                          const char** format)
@@ -91,8 +92,8 @@ NS_INTERFACE_MAP_BEGIN(nsXPCException)
   NS_IMPL_QUERY_CLASSINFO(nsXPCException)
 NS_INTERFACE_MAP_END_THREADSAFE
 
-NS_IMPL_THREADSAFE_ADDREF(nsXPCException)
-NS_IMPL_THREADSAFE_RELEASE(nsXPCException)
+NS_IMPL_ADDREF(nsXPCException)
+NS_IMPL_RELEASE(nsXPCException)
 
 NS_IMPL_CI_INTERFACE_GETTER1(nsXPCException, nsIXPCException)
 
@@ -365,7 +366,7 @@ nsXPCException::ToString(char **_retval)
     return final ? NS_OK : NS_ERROR_OUT_OF_MEMORY;
 }
 
-JSBool nsXPCException::sEverMadeOneFromFactory = false;
+bool nsXPCException::sEverMadeOneFromFactory = false;
 
 // static
 nsresult

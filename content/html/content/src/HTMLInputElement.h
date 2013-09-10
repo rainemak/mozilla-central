@@ -13,12 +13,9 @@
 #include "nsITextControlElement.h"
 #include "nsIPhonetic.h"
 #include "nsIDOMNSEditableElement.h"
-#include "nsTextEditorState.h"
 #include "nsCOMPtr.h"
 #include "nsIConstraintValidation.h"
-#include "nsDOMFile.h"
-#include "mozilla/dom/HTMLFormElement.h" // for ShouldShowInvalidUI()
-#include "nsIFile.h"
+#include "mozilla/dom/HTMLFormElement.h" // for HasEverTriedInvalidSubmit()
 #include "nsIFilePicker.h"
 #include "nsIContentPrefService2.h"
 #include "mozilla/Decimal.h"
@@ -27,9 +24,12 @@ class nsDOMFileList;
 class nsIRadioGroupContainer;
 class nsIRadioGroupVisitor;
 class nsIRadioVisitor;
+class nsTextEditorState;
 
 namespace mozilla {
 namespace dom {
+
+class Date;
 
 class UploadLastDir MOZ_FINAL : public nsIObserver, public nsSupportsWeakReference {
 public:
@@ -52,10 +52,9 @@ public:
    * Store the last used directory for this location using the
    * content pref service, if it is available
    * @param aURI URI of the current page
-   * @param aDomFile file chosen by the user - the path to the parent of this
-   *        file will be stored
+   * @param aDir Parent directory of the file(s)/directory chosen by the user
    */
-  nsresult StoreLastUsedDirectory(nsIDocument* aDoc, nsIDOMFile* aDomFile);
+  nsresult StoreLastUsedDirectory(nsIDocument* aDoc, nsIFile* aDir);
 
   class ContentPrefCallback MOZ_FINAL : public nsIContentPrefCallback2
   {
@@ -77,7 +76,7 @@ public:
   };
 };
 
-class HTMLInputElement MOZ_FINAL : public nsGenericHTMLFormElement,
+class HTMLInputElement MOZ_FINAL : public nsGenericHTMLFormElementWithState,
                                    public nsImageLoadingContent,
                                    public nsIDOMHTMLInputElement,
                                    public nsITextControlElement,
@@ -90,7 +89,7 @@ public:
   using nsIConstraintValidation::CheckValidity;
   using nsIConstraintValidation::WillValidate;
   using nsIConstraintValidation::Validity;
-  using nsGenericHTMLFormElement::GetForm;
+  using nsGenericHTMLFormElementWithState::GetForm;
 
   HTMLInputElement(already_AddRefed<nsINodeInfo> aNodeInfo,
                    mozilla::dom::FromParser aFromParser);
@@ -101,15 +100,8 @@ public:
   // nsISupports
   NS_DECL_ISUPPORTS_INHERITED
 
-  // nsIDOMNode
-  NS_FORWARD_NSIDOMNODE_TO_NSINODE
-
-  // nsIDOMElement
-  NS_FORWARD_NSIDOMELEMENT_TO_GENERIC
-
-  // nsIDOMHTMLElement
-  NS_FORWARD_NSIDOMHTMLELEMENT_TO_GENERIC
   virtual int32_t TabIndexDefault() MOZ_OVERRIDE;
+  using nsGenericHTMLElement::Focus;
   virtual void Focus(ErrorResult& aError) MOZ_OVERRIDE;
 
   // nsIDOMHTMLInputElement
@@ -196,12 +188,12 @@ public:
 
   void GetDisplayFileName(nsAString& aFileName) const;
 
-  const nsCOMArray<nsIDOMFile>& GetFilesInternal() const
+  const nsTArray<nsCOMPtr<nsIDOMFile> >& GetFilesInternal() const
   {
     return mFiles;
   }
 
-  void SetFiles(const nsCOMArray<nsIDOMFile>& aFiles, bool aSetValueChanged);
+  void SetFiles(const nsTArray<nsCOMPtr<nsIDOMFile> >& aFiles, bool aSetValueChanged);
   void SetFiles(nsIDOMFileList* aFiles, bool aSetValueChanged);
 
   void SetCheckedChangedInternal(bool aCheckedChanged);
@@ -222,11 +214,8 @@ public:
 
   virtual nsresult Clone(nsINodeInfo *aNodeInfo, nsINode **aResult) const MOZ_OVERRIDE;
 
-  void MaybeFireAsyncClickHandler(nsEventChainPostVisitor& aVisitor);
-  NS_IMETHOD FireAsyncClickHandler();
-
   NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(HTMLInputElement,
-                                           nsGenericHTMLFormElement)
+                                           nsGenericHTMLFormElementWithState)
 
   static UploadLastDir* gUploadLastDir;
   // create and destroy the static UploadLastDir object for remembering
@@ -235,8 +224,6 @@ public:
   static void DestroyUploadLastDir();
 
   void MaybeLoadImage();
-
-  virtual nsIDOMNode* AsDOMNode() MOZ_OVERRIDE { return this; }
 
   // nsIConstraintValidation
   bool     IsTooLong();
@@ -402,6 +389,8 @@ public:
   // XPCOM GetForm() is OK
 
   nsDOMFileList* GetFiles();
+
+  void OpenDirectoryPicker(ErrorResult& aRv);
 
   // XPCOM GetFormAction() is OK
   void SetFormAction(const nsAString& aValue, ErrorResult& aRv)
@@ -665,7 +654,7 @@ protected:
 
   // Pull IsSingleLineTextControl into our scope, otherwise it'd be hidden
   // by the nsITextControlElement version.
-  using nsGenericHTMLFormElement::IsSingleLineTextControl;
+  using nsGenericHTMLFormElementWithState::IsSingleLineTextControl;
 
   /**
    * The ValueModeType specifies how the value IDL attribute should behave.
@@ -743,10 +732,7 @@ protected:
    */
   bool IsValueEmpty() const;
 
-  void ClearFiles(bool aSetValueChanged) {
-    nsCOMArray<nsIDOMFile> files;
-    SetFiles(files, aSetValueChanged);
-  }
+  void ClearFiles(bool aSetValueChanged);
 
   void SetIndeterminateInternal(bool aValue,
                                 bool aShouldInvalidate);
@@ -1083,6 +1069,29 @@ protected:
    */
   bool ShouldPreventDOMActivateDispatch(EventTarget* aOriginalTarget);
 
+  /**
+   * Some input type (color and file) let user choose a value using a picker:
+   * this function checks if it is needed, and if so, open the corresponding
+   * picker (color picker or file picker).
+   */
+  nsresult MaybeInitPickers(nsEventChainPostVisitor& aVisitor);
+
+  enum FilePickerType {
+    FILE_PICKER_FILE,
+    FILE_PICKER_DIRECTORY
+  };
+  nsresult InitFilePicker(FilePickerType aType);
+  nsresult InitColorPicker();
+
+  /**
+   * Use this function before trying to open a picker.
+   * It checks if the page is allowed to open a new pop-up.
+   * If it returns true, you should not create the picker.
+   *
+   * @return true if popup should be blocked, false otherwise
+   */
+  bool IsPopupBlocked() const;
+
   nsCOMPtr<nsIControllers> mControllers;
 
   /*
@@ -1113,7 +1122,7 @@ protected:
    * the frame. Whenever the frame wants to change the filename it has to call
    * SetFileNames to update this member.
    */
-  nsCOMArray<nsIDOMFile>   mFiles;
+  nsTArray<nsCOMPtr<nsIDOMFile> >   mFiles;
 
   nsRefPtr<nsDOMFileList>  mFileList;
 
@@ -1230,28 +1239,12 @@ private:
     bool mIsTrusted; 
   };
 
-  class AsyncClickHandler
-    : public nsRunnable
-  {
-  public:
-    AsyncClickHandler(HTMLInputElement* aInput);
-    NS_IMETHOD Run() MOZ_OVERRIDE;
-
-  protected:
-    nsresult InitFilePicker();
-    nsresult InitColorPicker();
-
-    nsRefPtr<HTMLInputElement> mInput;
-    PopupControlState mPopupControlState;
-  };
-
   class nsFilePickerShownCallback
     : public nsIFilePickerShownCallback
   {
   public:
     nsFilePickerShownCallback(HTMLInputElement* aInput,
-                              nsIFilePicker* aFilePicker,
-                              bool aMulti);
+                              nsIFilePicker* aFilePicker);
     virtual ~nsFilePickerShownCallback()
     { }
 
@@ -1262,7 +1255,6 @@ private:
   private:
     nsCOMPtr<nsIFilePicker> mFilePicker;
     nsRefPtr<HTMLInputElement> mInput;
-    bool mMulti;
   };
 };
 

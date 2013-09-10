@@ -10,7 +10,7 @@ interface nsIDOMMozMobileConnectionInfo;
 interface nsIDOMMozMobileNetworkInfo;
 interface nsIDOMWindow;
 
-[scriptable, uuid(74361840-c913-11e2-8b8b-0800200c9a66)]
+[scriptable, uuid(f1878629-4151-4e02-a22a-8cec3d7eddee)]
 interface nsIMobileConnectionListener : nsISupports
 {
   void notifyVoiceChanged();
@@ -24,13 +24,16 @@ interface nsIMobileConnectionListener : nsISupports
                            in DOMString number,
                            in unsigned short timeSeconds,
                            in unsigned short serviceClass);
+  void notifyEmergencyCbModeChanged(in boolean active,
+                                    in unsigned long timeoutMs);
+  void notifyOtaStatusChanged(in DOMString status);
 };
 
 /**
  * XPCOM component (in the content process) that provides the mobile
  * network information.
  */
-[scriptable, uuid(477d93f0-c913-11e2-8b8b-0800200c9a66)]
+[scriptable, uuid(c66652e0-0628-11e3-8ffd-0800200c9a66)]
 interface nsIMobileConnectionProvider : nsISupports
 {
   /**
@@ -41,7 +44,6 @@ interface nsIMobileConnectionProvider : nsISupports
   void registerMobileConnectionMsg(in nsIMobileConnectionListener listener);
   void unregisterMobileConnectionMsg(in nsIMobileConnectionListener listener);
 
-  readonly attribute long retryCount;
   readonly attribute nsIDOMMozMobileConnectionInfo voiceConnectionInfo;
   readonly attribute nsIDOMMozMobileConnectionInfo dataConnectionInfo;
   readonly attribute DOMString networkSelectionMode;
@@ -49,6 +51,14 @@ interface nsIMobileConnectionProvider : nsISupports
   nsIDOMDOMRequest getNetworks(in nsIDOMWindow window);
   nsIDOMDOMRequest selectNetwork(in nsIDOMWindow window, in nsIDOMMozMobileNetworkInfo network);
   nsIDOMDOMRequest selectNetworkAutomatically(in nsIDOMWindow window);
+
+  nsIDOMDOMRequest setRoamingPreference(in nsIDOMWindow window,
+                                        in DOMString mode);
+  nsIDOMDOMRequest getRoamingPreference(in nsIDOMWindow window);
+
+  nsIDOMDOMRequest setVoicePrivacyMode(in nsIDOMWindow window,
+                                       in bool enabled);
+  nsIDOMDOMRequest getVoicePrivacyMode(in nsIDOMWindow window);
 
   nsIDOMDOMRequest sendMMI(in nsIDOMWindow window, in DOMString mmi);
   nsIDOMDOMRequest cancelMMI(in nsIDOMWindow window);
@@ -62,8 +72,16 @@ interface nsIMobileConnectionProvider : nsISupports
                                         in jsval        option);
   nsIDOMDOMRequest setCallBarringOption(in nsIDOMWindow window,
                                         in jsval        option);
+  nsIDOMDOMRequest changeCallBarringPassword(in nsIDOMWindow window,
+                                             in jsval info);
 
   nsIDOMDOMRequest setCallWaitingOption(in nsIDOMWindow   window,
                                         in bool enabled);
   nsIDOMDOMRequest getCallWaitingOption(in nsIDOMWindow   window);
+
+  nsIDOMDOMRequest setCallingLineIdRestriction(in nsIDOMWindow   window,
+                                               in unsigned short clirMode);
+  nsIDOMDOMRequest getCallingLineIdRestriction(in nsIDOMWindow   window);
+
+  nsIDOMDOMRequest exitEmergencyCbMode(in nsIDOMWindow window);
 };

@@ -3,9 +3,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "mozilla/Util.h"
 // please add new includes below Qt, otherwise it break Qt build due malloc wrapper conflicts
-
 #if defined(XP_UNIX)
 
 #ifdef MOZ_WIDGET_GTK
@@ -22,6 +20,9 @@
 #include "HwcComposer2D.h"
 #include "libdisplay/GonkDisplay.h"
 #endif
+
+#include "GLContext.h"
+#include "mozilla/Util.h"
 
 #if defined(MOZ_X11)
 #include <X11/Xlib.h>
@@ -67,7 +68,7 @@ using namespace android;
 // a little helper
 class AutoDestroyHWND {
 public:
-    AutoDestroyHWND(HWND aWnd = NULL)
+    AutoDestroyHWND(HWND aWnd = nullptr)
         : mWnd(aWnd)
     {
     }
@@ -84,7 +85,7 @@ public:
 
     HWND forget() {
         HWND w = mWnd;
-        mWnd = NULL;
+        mWnd = nullptr;
         return w;
     }
 
@@ -122,7 +123,7 @@ public:
 
 using namespace mozilla::gfx;
 
-#if defined(MOZ_PLATFORM_MAEMO) || defined(MOZ_WIDGET_GONK)
+#if defined(MOZ_WIDGET_GONK)
 static bool gUseBackingSurface = true;
 #else
 static bool gUseBackingSurface = false;
@@ -270,7 +271,7 @@ public:
         , mTemporaryEGLImageTexture(0)
     {
         // any EGL contexts will always be GLESv2
-        SetIsGLES2(true);
+        SetProfileVersion(ContextProfile::OpenGLES, 200);
 
 #ifdef DEBUG
         printf_stderr("Initializing context %p surface %p on display %p\n", mContext, mSurface, EGL_DISPLAY());
@@ -557,7 +558,7 @@ public:
 #else
             EGLConfig config;
             CreateConfig(&config);
-            mSurface = CreateSurfaceForWindow(NULL, config);
+            mSurface = CreateSurfaceForWindow(nullptr, config);
 #endif
         }
         return sEGLLibrary.fMakeCurrent(EGL_DISPLAY(),
@@ -572,7 +573,7 @@ public:
             sEGLLibrary.fMakeCurrent(EGL_DISPLAY(), EGL_NO_SURFACE, EGL_NO_SURFACE,
                                      EGL_NO_CONTEXT);
             sEGLLibrary.fDestroySurface(EGL_DISPLAY(), mSurface);
-            mSurface = NULL;
+            mSurface = nullptr;
         }
     }
 
@@ -611,13 +612,15 @@ public:
     CreateTextureImage(const nsIntSize& aSize,
                        TextureImage::ContentType aContentType,
                        GLenum aWrapMode,
-                       TextureImage::Flags aFlags = TextureImage::NoFlags);
+                       TextureImage::Flags aFlags = TextureImage::NoFlags,
+                       TextureImage::ImageFormat aImageFormat = gfxASurface::ImageFormatUnknown);
 
     // a function to generate Tiles for Tiled Texture Image
     virtual already_AddRefed<TextureImage>
     TileGenFunc(const nsIntSize& aSize,
                 TextureImage::ContentType aContentType,
-                TextureImage::Flags aFlags = TextureImage::NoFlags) MOZ_OVERRIDE;
+                TextureImage::Flags aFlags = TextureImage::NoFlags,
+                TextureImage::ImageFormat aImageFormat = gfxASurface::ImageFormatUnknown) MOZ_OVERRIDE;
     // hold a reference to the given surface
     // for the lifetime of this context.
     void HoldSurface(gfxASurface *aSurf) {
@@ -736,12 +739,12 @@ protected:
 };
 
 
-typedef enum {
-    Image
+enum SharedHandleType {
+    SharedHandleType_Image
 #ifdef MOZ_WIDGET_ANDROID
-    , SurfaceTexture
+    , SharedHandleType_SurfaceTexture
 #endif
-} SharedHandleType;
+};
 
 class SharedTextureHandleWrapper
 {
@@ -765,7 +768,7 @@ class SurfaceTextureWrapper: public SharedTextureHandleWrapper
 {
 public:
     SurfaceTextureWrapper(nsSurfaceTexture* aSurfaceTexture) :
-        SharedTextureHandleWrapper(SharedHandleType::SurfaceTexture)
+        SharedTextureHandleWrapper(SharedHandleType_SurfaceTexture)
         , mSurfaceTexture(aSurfaceTexture)
     {
     }
@@ -785,7 +788,7 @@ class EGLTextureWrapper : public SharedTextureHandleWrapper
 {
 public:
     EGLTextureWrapper() :
-        SharedTextureHandleWrapper(SharedHandleType::Image)
+        SharedTextureHandleWrapper(SharedHandleType_Image)
         , mEGLImage(nullptr)
         , mSyncObject(nullptr)
     {
@@ -876,7 +879,7 @@ GLContextEGL::UpdateSharedHandle(SharedTextureShareType shareType,
 
     SharedTextureHandleWrapper* wrapper = reinterpret_cast<SharedTextureHandleWrapper*>(sharedHandle);
 
-    NS_ASSERTION(wrapper->Type() == SharedHandleType::Image, "Expected EGLImage shared handle");
+    NS_ASSERTION(wrapper->Type() == SharedHandleType_Image, "Expected EGLImage shared handle");
     NS_ASSERTION(mShareWithEGLImage, "EGLImage not supported or disabled in runtime");
 
     EGLTextureWrapper* wrap = reinterpret_cast<EGLTextureWrapper*>(wrapper);
@@ -950,12 +953,12 @@ void GLContextEGL::ReleaseSharedHandle(SharedTextureShareType shareType,
 
     switch (wrapper->Type()) {
 #ifdef MOZ_WIDGET_ANDROID
-    case SharedHandleType::SurfaceTexture:
+    case SharedHandleType_SurfaceTexture:
         delete wrapper;
         break;
 #endif
     
-    case SharedHandleType::Image: {
+    case SharedHandleType_Image: {
         NS_ASSERTION(mShareWithEGLImage, "EGLImage not supported or disabled in runtime");
 
         EGLTextureWrapper* wrap = (EGLTextureWrapper*)sharedHandle;
@@ -980,7 +983,7 @@ bool GLContextEGL::GetSharedHandleDetails(SharedTextureShareType shareType,
 
     switch (wrapper->Type()) {
 #ifdef MOZ_WIDGET_ANDROID
-    case SharedHandleType::SurfaceTexture: {
+    case SharedHandleType_SurfaceTexture: {
         SurfaceTextureWrapper* surfaceWrapper = reinterpret_cast<SurfaceTextureWrapper*>(wrapper);
 
         details.mTarget = LOCAL_GL_TEXTURE_EXTERNAL;
@@ -990,7 +993,7 @@ bool GLContextEGL::GetSharedHandleDetails(SharedTextureShareType shareType,
     }
 #endif
 
-    case SharedHandleType::Image:
+    case SharedHandleType_Image:
         details.mTarget = LOCAL_GL_TEXTURE_2D;
         details.mTextureFormat = FORMAT_R8G8B8A8;
         break;
@@ -1013,7 +1016,7 @@ bool GLContextEGL::AttachSharedHandle(SharedTextureShareType shareType,
 
     switch (wrapper->Type()) {
 #ifdef MOZ_WIDGET_ANDROID
-    case SharedHandleType::SurfaceTexture: {
+    case SharedHandleType_SurfaceTexture: {
 #ifndef DEBUG
         /**
          * NOTE: SurfaceTexture spams us if there are any existing GL errors, so we'll clear
@@ -1031,7 +1034,7 @@ bool GLContextEGL::AttachSharedHandle(SharedTextureShareType shareType,
     }
 #endif // MOZ_WIDGET_ANDROID
 
-    case SharedHandleType::Image: {
+    case SharedHandleType_Image: {
         NS_ASSERTION(mShareWithEGLImage, "EGLImage not supported or disabled in runtime");
 
         EGLTextureWrapper* wrap = (EGLTextureWrapper*)sharedHandle;
@@ -1105,10 +1108,11 @@ public:
                     ContentType aContentType,
                     GLContext* aContext,
                     Flags aFlags = TextureImage::NoFlags,
-                    TextureState aTextureState = Created)
+                    TextureState aTextureState = Created,
+                    TextureImage::ImageFormat aImageFormat = gfxASurface::ImageFormatUnknown)
         : TextureImage(aSize, aWrapMode, aContentType, aFlags)
         , mGLContext(aContext)
-        , mUpdateFormat(gfxASurface::ImageFormatUnknown)
+        , mUpdateFormat(aImageFormat)
         , mEGLImage(nullptr)
         , mTexture(aTexture)
         , mSurface(nullptr)
@@ -1116,7 +1120,9 @@ public:
         , mTextureState(aTextureState)
         , mBound(false)
     {
-        mUpdateFormat = gfxPlatform::GetPlatform()->OptimalFormatForContent(GetContentType());
+        if (mUpdateFormat == gfxASurface::ImageFormatUnknown) {
+            mUpdateFormat = gfxPlatform::GetPlatform()->OptimalFormatForContent(GetContentType());
+        }
 
         if (gUseBackingSurface) {
             if (mUpdateFormat != gfxASurface::ImageFormatARGB32) {
@@ -1193,7 +1199,7 @@ public:
         //printf_stderr("BeginUpdate with updateRect [%d %d %d %d]\n", mUpdateRect.x, mUpdateRect.y, mUpdateRect.width, mUpdateRect.height);
         if (!nsIntRect(nsIntPoint(0, 0), mSize).Contains(mUpdateRect)) {
             NS_ERROR("update outside of image");
-            return NULL;
+            return nullptr;
         }
 
         if (mBackingSurface) {
@@ -1359,7 +1365,7 @@ public:
                                     0,
                                     GLFormatForImage(mUpdateFormat),
                                     GLTypeForImage(mUpdateFormat),
-                                    NULL);
+                                    nullptr);
         }
 
         mTextureState = Allocated;
@@ -1531,16 +1537,18 @@ already_AddRefed<TextureImage>
 GLContextEGL::CreateTextureImage(const nsIntSize& aSize,
                                  TextureImage::ContentType aContentType,
                                  GLenum aWrapMode,
-                                 TextureImage::Flags aFlags)
+                                 TextureImage::Flags aFlags,
+                                 TextureImage::ImageFormat aImageFormat)
 {
-    nsRefPtr<TextureImage> t = new gl::TiledTextureImage(this, aSize, aContentType, aFlags);
+    nsRefPtr<TextureImage> t = new gl::TiledTextureImage(this, aSize, aContentType, aFlags, aImageFormat);
     return t.forget();
 }
 
 already_AddRefed<TextureImage>
 GLContextEGL::TileGenFunc(const nsIntSize& aSize,
                           TextureImage::ContentType aContentType,
-                          TextureImage::Flags aFlags)
+                          TextureImage::Flags aFlags,
+                          TextureImage::ImageFormat aImageFormat)
 {
   MakeCurrent();
 
@@ -1548,7 +1556,8 @@ GLContextEGL::TileGenFunc(const nsIntSize& aSize,
   fGenTextures(1, &texture);
 
   nsRefPtr<TextureImageEGL> teximage =
-      new TextureImageEGL(texture, aSize, LOCAL_GL_CLAMP_TO_EDGE, aContentType, this, aFlags);
+      new TextureImageEGL(texture, aSize, LOCAL_GL_CLAMP_TO_EDGE, aContentType,
+                          this, aFlags, TextureImage::Created, aImageFormat);
   
   teximage->BindTexture(LOCAL_GL_TEXTURE0);
 
@@ -1984,9 +1993,7 @@ GLContextEGL::CreateEGLPixmapOffscreenContext(const gfxIntSize& size)
     return glContext.forget();
 }
 
-// Under EGL, if we're under X11, then we have to create a Pixmap
-// because Maemo's EGL implementation doesn't support pbuffers at all
-// for some reason.  On Android, pbuffers are supported fine, though
+// Under EGL, on Android, pbuffers are supported fine, though
 // often without the ability to texture from them directly.
 already_AddRefed<GLContext>
 GLContextProviderEGL::CreateOffscreen(const gfxIntSize& size,
@@ -2008,7 +2015,7 @@ GLContextProviderEGL::CreateOffscreen(const gfxIntSize& size,
     if (!glContext)
         return nullptr;
 
-    if (flags & GLContext::ContextFlagsGlobal)
+    if (flags & ContextFlagsGlobal)
         return glContext.forget();
 
     if (!glContext->InitOffscreen(size, caps))
@@ -2018,15 +2025,15 @@ GLContextProviderEGL::CreateOffscreen(const gfxIntSize& size,
 }
 
 SharedTextureHandle
-GLContextProviderEGL::CreateSharedHandle(GLContext::SharedTextureShareType shareType,
+GLContextProviderEGL::CreateSharedHandle(SharedTextureShareType shareType,
                                          void* buffer,
-                                         GLContext::SharedTextureBufferType bufferType)
+                                         SharedTextureBufferType bufferType)
 {
   return 0;
 }
 
 already_AddRefed<gfxASurface>
-GLContextProviderEGL::GetSharedHandleAsSurface(GLContext::SharedTextureShareType shareType,
+GLContextProviderEGL::GetSharedHandleAsSurface(SharedTextureShareType shareType,
                                                SharedTextureHandle sharedHandle)
 {
   return nullptr;

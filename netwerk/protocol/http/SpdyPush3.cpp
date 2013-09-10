@@ -165,12 +165,10 @@ SpdyPushedStream3::GetBufferedData(char *buf,
 
 SpdyPushCache3::SpdyPushCache3()
 {
-  mHash.Init();
 }
 
 SpdyPushCache3::~SpdyPushCache3()
 {
-  mHash.Clear();
 }
 
 SpdyPushedStream3 *
@@ -208,7 +206,7 @@ SpdyPushCache3::RemovePushedStream(nsCString key)
 // stream has not yet been matched with a pull request
 //////////////////////////////////////////
 
-NS_IMPL_THREADSAFE_ISUPPORTS0(SpdyPush3TransactionBuffer)
+NS_IMPL_ISUPPORTS0(SpdyPush3TransactionBuffer)
 
 SpdyPush3TransactionBuffer::SpdyPush3TransactionBuffer()
   : mStatus(NS_OK)

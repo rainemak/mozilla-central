@@ -14,6 +14,13 @@ elif CONFIG['OS_ARCH'] == 'Linux':
 DIRS += ['locales']
 TEST_DIRS += ['test']
 
+EXTRA_COMPONENTS += [
+    'CommandLineHandler.js',
+    'ContentPermission.js',
+    'DirectoryProvider.js',
+    'components.manifest',
+]
+
 EXTRA_JS_MODULES += [
     'Startup.jsm',
     'WebappRT.jsm',

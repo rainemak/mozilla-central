@@ -4,7 +4,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "vm/GlobalObject.h"
+#include "vm/GlobalObject-inl.h"
 
 #include "jscntxt.h"
 #include "jsdate.h"
@@ -19,13 +19,12 @@
 #include "builtin/MapObject.h"
 #include "builtin/Object.h"
 #include "builtin/RegExp.h"
+#include "vm/RegExpStatics.h"
 
 #include "jscompartmentinlines.h"
 #include "jsfuninlines.h"
 #include "jsobjinlines.h"
-
-#include "vm/GlobalObject-inl.h"
-#include "vm/RegExpStatics-inl.h"
+#include "jsscriptinlines.h"
 
 using namespace js;
 
@@ -45,7 +44,7 @@ js_InitFunctionClass(JSContext *cx, HandleObject obj)
     return obj->as<GlobalObject>().getOrCreateFunctionPrototype(cx);
 }
 
-static JSBool
+static bool
 ThrowTypeError(JSContext *cx, unsigned argc, Value *vp)
 {
     JS_ReportErrorFlagsAndNumber(cx, JSREPORT_ERROR, js_GetErrorMessage, NULL,
@@ -54,7 +53,7 @@ ThrowTypeError(JSContext *cx, unsigned argc, Value *vp)
 }
 
 static bool
-TestProtoGetterThis(const Value &v)
+TestProtoGetterThis(HandleValue v)
 {
     return !v.isNullOrUndefined();
 }
@@ -64,7 +63,7 @@ ProtoGetterImpl(JSContext *cx, CallArgs args)
 {
     JS_ASSERT(TestProtoGetterThis(args.thisv()));
 
-    const Value &thisv = args.thisv();
+    HandleValue thisv = args.thisv();
     if (thisv.isPrimitive() && !BoxNonStrictThis(cx, args))
         return false;
 
@@ -79,7 +78,7 @@ ProtoGetterImpl(JSContext *cx, CallArgs args)
     return true;
 }
 
-static JSBool
+static bool
 ProtoGetter(JSContext *cx, unsigned argc, Value *vp)
 {
     CallArgs args = CallArgsFromVp(argc, vp);
@@ -91,7 +90,7 @@ size_t sSetProtoCalled = 0;
 } // namespace js
 
 static bool
-TestProtoSetterThis(const Value &v)
+TestProtoSetterThis(HandleValue v)
 {
     if (v.isNullOrUndefined())
         return false;
@@ -109,7 +108,7 @@ ProtoSetterImpl(JSContext *cx, CallArgs args)
 {
     JS_ASSERT(TestProtoSetterThis(args.thisv()));
 
-    const Value &thisv = args.thisv();
+    HandleValue thisv = args.thisv();
     if (thisv.isPrimitive()) {
         JS_ASSERT(!thisv.isNullOrUndefined());
 
@@ -166,7 +165,7 @@ ProtoSetterImpl(JSContext *cx, CallArgs args)
     return true;
 }
 
-static JSBool
+static bool
 ProtoSetter(JSContext *cx, unsigned argc, Value *vp)
 {
     CallArgs args = CallArgsFromVp(argc, vp);
@@ -178,7 +177,7 @@ GlobalObject::initFunctionAndObjectClasses(JSContext *cx)
 {
     Rooted<GlobalObject*> self(cx, this);
 
-    JS_THREADSAFE_ASSERT(cx->compartment() != cx->runtime()->atomsCompartment);
+    JS_ASSERT(!cx->runtime()->isAtomsCompartment(cx->compartment()));
     JS_ASSERT(isNative());
 
     cx->setDefaultCompartmentObjectIfUnset(self);
@@ -228,12 +227,12 @@ GlobalObject::initFunctionAndObjectClasses(JSContext *cx)
         jschar *source = InflateString(cx, rawSource, &sourceLen);
         if (!source)
             return NULL;
-        ScriptSource *ss = cx->new_<ScriptSource>();
+        ScriptSource *ss = cx->new_<ScriptSource>(/* originPrincipals = */ (JSPrincipals*) NULL);
         if (!ss) {
             js_free(source);
             return NULL;
         }
-        JS::RootedScriptSource sourceObject(cx, ScriptSourceObject::create(cx, ss));
+        RootedScriptSource sourceObject(cx, ScriptSourceObject::create(cx, ss));
         if (!sourceObject)
             return NULL;
         ss->setSource(source, sourceLen);
@@ -241,6 +240,7 @@ GlobalObject::initFunctionAndObjectClasses(JSContext *cx)
         CompileOptions options(cx);
         options.setNoScriptRval(true)
                .setVersion(JSVERSION_DEFAULT);
+
         RootedScript script(cx, JSScript::Create(cx,
                                                  /* enclosingScope = */ NullPtr(),
                                                  /* savedCallerFun = */ false,
@@ -478,7 +478,7 @@ GlobalObject::initStandardClasses(JSContext *cx, Handle<GlobalObject*> global)
            GlobalObject::initMapIteratorProto(cx, global) &&
            js_InitSetClass(cx, global) &&
            GlobalObject::initSetIteratorProto(cx, global) &&
-#if ENABLE_INTL_API
+#if EXPOSE_INTL_API
            js_InitIntlClass(cx, global) &&
 #endif
            true;

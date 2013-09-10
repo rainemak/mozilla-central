@@ -44,6 +44,7 @@ namespace JSC {
 
 inline bool CAN_SIGN_EXTEND_8_32(int32_t value) { return value == (int32_t)(signed char)value; }
 inline bool CAN_ZERO_EXTEND_8_32(int32_t value) { return value == (int32_t)(unsigned char)value; }
+inline bool CAN_ZERO_EXTEND_8H_32(int32_t value) { return value == (value & 0xff00); }
 inline bool CAN_ZERO_EXTEND_32_64(int32_t value) { return value >= 0; }
 
 namespace X86Registers {
@@ -134,6 +135,31 @@ namespace X86Registers {
 #       else
         return nameIReg(4, reg);
 #       endif
+    }
+
+    inline bool hasSubregL(RegisterID reg)
+    {
+#       if WTF_CPU_X86_64
+        // In 64-bit mode, all registers have an 8-bit lo subreg.
+        return true;
+#       else
+        // In 32-bit mode, only the first four registers do.
+        return reg <= ebx;
+#       endif
+    }
+
+    inline bool hasSubregH(RegisterID reg)
+    {
+        // The first four registers always have h registers. However, note that
+        // on x64, h registers may not be used in instructions using REX
+        // prefixes. Also note that this may depend on what other registers are
+        // used!
+        return reg <= ebx;
+    }
+
+    inline RegisterID getSubregH(RegisterID reg) {
+        JS_ASSERT(hasSubregH(reg));
+        return RegisterID(reg + 4);
     }
 
 } /* namespace X86Registers */
@@ -268,7 +294,9 @@ private:
         OP2_CVTSS2SD_VsdEd  = 0x5A,
         OP2_CVTSD2SS_VsdEd  = 0x5A,
         OP2_SUBSD_VsdWsd    = 0x5C,
+        OP2_MINSD_VsdWsd    = 0x5D,
         OP2_DIVSD_VsdWsd    = 0x5E,
+        OP2_MAXSD_VsdWsd    = 0x5F,
         OP2_SQRTSD_VsdWsd   = 0x51,
         OP2_ANDPD_VpdWpd    = 0x54,
         OP2_ORPD_VpdWpd     = 0x56,
@@ -1284,15 +1312,18 @@ public:
 
     void testl_i32r(int imm, RegisterID dst)
     {
-#if WTF_CPU_X86_64
         // If the mask fits in an 8-bit immediate, we can use testb with an
-        // 8-bit subreg. This could be extended to handle x86-32 too, but it
-        // would require a check to see if the register supports 8-bit subregs.
-        if (CAN_ZERO_EXTEND_8_32(imm)) {
+        // 8-bit subreg.
+        if (CAN_ZERO_EXTEND_8_32(imm) && X86Registers::hasSubregL(dst)) {
             testb_i8r(imm, dst);
             return;
         }
-#endif
+        // If the mask is a subset of 0xff00, we can use testb with an h reg, if
+        // one happens to be available.
+        if (CAN_ZERO_EXTEND_8H_32(imm) && X86Registers::hasSubregH(dst)) {
+            testb_i8r_norex(imm >> 8, X86Registers::getSubregH(dst));
+            return;
+        }
         spew("testl      $0x%x, %s",
              imm, nameIReg(dst));
         m_formatter.oneByteOp(OP_GROUP3_EvIz, GROUP3_OP_TEST, dst);
@@ -1338,14 +1369,16 @@ public:
 
     void testq_i32r(int imm, RegisterID dst)
     {
+        // If the mask fits in a 32-bit immediate, we can use testl with a
+        // 32-bit subreg.
         if (CAN_ZERO_EXTEND_32_64(imm)) {
             testl_i32r(imm, dst);
-        } else {
-            spew("testq      $0x%x, %s",
-                 imm, nameIReg(dst));
-            m_formatter.oneByteOp64(OP_GROUP3_EvIz, GROUP3_OP_TEST, dst);
-            m_formatter.immediate32(imm);
+            return;
         }
+        spew("testq      $0x%x, %s",
+             imm, nameIReg(dst));
+        m_formatter.oneByteOp64(OP_GROUP3_EvIz, GROUP3_OP_TEST, dst);
+        m_formatter.immediate32(imm);
     }
 
     void testq_i32m(int imm, int offset, RegisterID base)
@@ -1376,6 +1409,16 @@ public:
         spew("testb      $0x%x, %s",
              imm, nameIReg(1,dst));
         m_formatter.oneByteOp8(OP_GROUP3_EbIb, GROUP3_OP_TEST, dst);
+        m_formatter.immediate8(imm);
+    }
+
+    // Like testb_i8r, but never emits a REX prefix. This may be used to
+    // reference ah..bh.
+    void testb_i8r_norex(int imm, RegisterID dst)
+    {
+        spew("testb      $0x%x, %s",
+             imm, nameIReg(1,dst));
+        m_formatter.oneByteOp8_norex(OP_GROUP3_EbIb, GROUP3_OP_TEST, dst);
         m_formatter.immediate8(imm);
     }
 
@@ -1453,6 +1496,24 @@ public:
         m_formatter.oneByteOp_disp32(OP_MOV_EvGv, src, base, offset);
     }
 
+    void movw_rm(RegisterID src, int offset, RegisterID base, RegisterID index, int scale)
+    {
+        spew("movw       %s, %d(%s,%s,%d)",
+             nameIReg(2, src), offset, nameIReg(base), nameIReg(index), 1<<scale);
+        m_formatter.prefix(PRE_OPERAND_SIZE);
+        m_formatter.oneByteOp(OP_MOV_EvGv, src, base, index, scale, offset);
+    }
+
+#if !WTF_CPU_X86_64
+    void movw_rm(RegisterID src, const void* addr)
+    {
+        spew("movw       %s, %p",
+             nameIReg(2, src), addr);
+        m_formatter.prefix(PRE_OPERAND_SIZE);
+        m_formatter.oneByteOp(OP_MOV_EvGv, src, addr);
+    }
+#endif
+
     void movl_rm(RegisterID src, int offset, RegisterID base)
     {
         spew("movl       %s, %s0x%x(%s)",
@@ -1464,14 +1525,6 @@ public:
     {
         FIXME_INSN_PRINTING;
         m_formatter.oneByteOp_disp32(OP_MOV_EvGv, src, base, offset);
-    }
-
-    void movw_rm(RegisterID src, int offset, RegisterID base, RegisterID index, int scale)
-    {
-        spew("movw       %s, %d(%s,%s,%d)",
-             nameIReg(2, src), offset, nameIReg(base), nameIReg(index), 1<<scale);
-        m_formatter.prefix(PRE_OPERAND_SIZE);
-        m_formatter.oneByteOp(OP_MOV_EvGv, src, base, index, scale, offset);
     }
 
     void movl_rm(RegisterID src, int offset, RegisterID base, RegisterID index, int scale)
@@ -1520,6 +1573,18 @@ public:
              offset, nameIReg(base), nameIReg(index), 1<<scale, nameIReg(4, dst));
         m_formatter.oneByteOp(OP_MOV_GvEv, dst, base, index, scale, offset);
     }
+
+#if !WTF_CPU_X86_64
+    void movl_mr(const void* addr, RegisterID dst)
+    {
+        spew("movl       %p, %s",
+             addr, nameIReg(4, dst));
+        if (dst == X86Registers::eax)
+            movl_mEAX(addr);
+        else
+            m_formatter.oneByteOp(OP_MOV_GvEv, dst, addr);
+    }
+#endif
 
     void movl_i32r(int imm, RegisterID dst)
     {
@@ -1737,16 +1802,6 @@ public:
             m_formatter.oneByteOp(OP_MOV_EvGv, src, addr);
     }
 
-    void movl_mr(const void* addr, RegisterID dst)
-    {
-        spew("movl       %p, %s",
-             addr, nameIReg(4, dst));
-        if (dst == X86Registers::eax)
-            movl_mEAX(addr);
-        else
-            m_formatter.oneByteOp(OP_MOV_GvEv, dst, addr);
-    }
-
     void movl_i32m(int imm, const void* addr)
     {
         FIXME_INSN_PRINTING;
@@ -1776,6 +1831,15 @@ public:
         m_formatter.oneByteOp8(OP_MOV_EbGv, src, base, index, scale, offset);
     }
 
+#if !WTF_CPU_X86_64
+    void movb_rm(RegisterID src, const void* addr)
+    {
+        spew("movb       %s, %p",
+             nameIReg(1, src), addr);
+        m_formatter.oneByteOp(OP_MOV_EbGv, src, addr);
+    }
+#endif
+
     void movzbl_mr(int offset, RegisterID base, RegisterID dst)
     {
         spew("movzbl     %s0x%x(%s), %s",
@@ -1796,6 +1860,15 @@ public:
              offset, nameIReg(base), nameIReg(index), 1<<scale, nameIReg(dst));
         m_formatter.twoByteOp(OP2_MOVZX_GvEb, dst, base, index, scale, offset);
     }
+
+#if !WTF_CPU_X86_64
+    void movzbl_mr(const void* addr, RegisterID dst)
+    {
+        spew("movzbl     %p, %s",
+             addr, nameIReg(dst));
+        m_formatter.twoByteOp(OP2_MOVZX_GvEb, dst, addr);
+    }
+#endif
 
     void movsbl_mr(int offset, RegisterID base, RegisterID dst)
     {
@@ -1818,6 +1891,15 @@ public:
         m_formatter.twoByteOp(OP2_MOVSX_GvEb, dst, base, index, scale, offset);
     }
 
+#if !WTF_CPU_X86_64
+    void movsbl_mr(const void* addr, RegisterID dst)
+    {
+        spew("movsbl     %p, %s",
+             addr, nameIReg(4, dst));
+        m_formatter.twoByteOp(OP2_MOVSX_GvEb, dst, addr);
+    }
+#endif
+
     void movzwl_mr(int offset, RegisterID base, RegisterID dst)
     {
         spew("movzwl     %s0x%x(%s), %s",
@@ -1838,6 +1920,15 @@ public:
              offset, nameIReg(base), nameIReg(index), 1<<scale, nameIReg(dst));
         m_formatter.twoByteOp(OP2_MOVZX_GvEw, dst, base, index, scale, offset);
     }
+
+#if !WTF_CPU_X86_64
+    void movzwl_mr(const void* addr, RegisterID dst)
+    {
+        spew("movzwl     %p, %s",
+             addr, nameIReg(4, dst));
+        m_formatter.twoByteOp(OP2_MOVZX_GvEw, dst, addr);
+    }
+#endif
 
     void movswl_mr(int offset, RegisterID base, RegisterID dst)
     {
@@ -1860,14 +1951,20 @@ public:
         m_formatter.twoByteOp(OP2_MOVSX_GvEw, dst, base, index, scale, offset);
     }
 
+#if !WTF_CPU_X86_64
+    void movswl_mr(const void* addr, RegisterID dst)
+    {
+        spew("movswl     %p, %s",
+             addr, nameIReg(4, dst));
+        m_formatter.twoByteOp(OP2_MOVSX_GvEw, dst, addr);
+    }
+#endif
+
     void movzbl_rr(RegisterID src, RegisterID dst)
     {
-        // In 64-bit, this may cause an unnecessary REX to be planted (if the dst register
-        // is in the range ESP-EDI, and the src would not have required a REX).  Unneeded
-        // REX prefixes are defined to be silently ignored by the processor.
         spew("movzbl     %s, %s",
              nameIReg(1,src), nameIReg(4,dst));
-        m_formatter.twoByteOp8(OP2_MOVZX_GvEb, dst, src);
+        m_formatter.twoByteOp8_movx(OP2_MOVZX_GvEb, dst, src);
     }
 
     void leal_mr(int offset, RegisterID base, RegisterID index, int scale, RegisterID dst)
@@ -2294,6 +2391,16 @@ public:
         m_formatter.twoByteOp_disp32(OP2_MOVSD_WsdVsd, (RegisterID)src, base, offset);
     }
 
+#if !WTF_CPU_X86_64
+    void movss_rm(XMMRegisterID src, const void* addr)
+    {
+        spew("movss      %s, %p",
+             nameFPReg(src), addr);
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOp(OP2_MOVSD_WsdVsd, (RegisterID)src, addr);
+    }
+#endif
+
     void movss_mr(int offset, RegisterID base, XMMRegisterID dst)
     {
         spew("movss      %s0x%x(%s), %s",
@@ -2309,6 +2416,16 @@ public:
         m_formatter.prefix(PRE_SSE_F3);
         m_formatter.twoByteOp_disp32(OP2_MOVSD_VsdWsd, (RegisterID)dst, base, offset);
     }
+
+#if !WTF_CPU_X86_64
+    void movss_mr(const void* addr, XMMRegisterID dst)
+    {
+        spew("movss      %p, %s",
+             addr, nameFPReg(dst));
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOp(OP2_MOVSD_VsdWsd, (RegisterID)dst, addr);
+    }
+#endif
 
     void movsd_rm(XMMRegisterID src, int offset, RegisterID base, RegisterID index, int scale)
     {
@@ -2563,6 +2680,38 @@ public:
         m_formatter.prefix(PRE_SSE_66);
         m_formatter.threeByteOp(OP3_PINSRD_VsdWsd, ESCAPE_PINSRD, (RegisterID)dst, base, offset);
         m_formatter.immediate8(0x01); // the $1
+    }
+
+    void minsd_rr(XMMRegisterID src, XMMRegisterID dst)
+    {
+        spew("minsd      %s, %s",
+             nameFPReg(src), nameFPReg(dst));
+        m_formatter.prefix(PRE_SSE_F2);
+        m_formatter.twoByteOp(OP2_MINSD_VsdWsd, (RegisterID)dst, (RegisterID)src);
+    }
+
+    void minsd_mr(int offset, RegisterID base, XMMRegisterID dst)
+    {
+        spew("minsd      %s0x%x(%s), %s",
+             PRETTY_PRINT_OFFSET(offset), nameIReg(base), nameFPReg(dst));
+        m_formatter.prefix(PRE_SSE_F2);
+        m_formatter.twoByteOp(OP2_MINSD_VsdWsd, (RegisterID)dst, base, offset);
+    }
+
+    void maxsd_rr(XMMRegisterID src, XMMRegisterID dst)
+    {
+        spew("maxsd      %s, %s",
+             nameFPReg(src), nameFPReg(dst));
+        m_formatter.prefix(PRE_SSE_F2);
+        m_formatter.twoByteOp(OP2_MAXSD_VsdWsd, (RegisterID)dst, (RegisterID)src);
+    }
+
+    void maxsd_mr(int offset, RegisterID base, XMMRegisterID dst)
+    {
+        spew("maxsd      %s0x%x(%s), %s",
+             PRETTY_PRINT_OFFSET(offset), nameIReg(base), nameFPReg(dst));
+        m_formatter.prefix(PRE_SSE_F2);
+        m_formatter.twoByteOp(OP2_MAXSD_VsdWsd, (RegisterID)dst, base, offset);
     }
 
     // Misc instructions:
@@ -3144,18 +3293,6 @@ private:
         // x86-64.  These register numbers may either represent the second byte of the first
         // four registers (ah..bh) or the first byte of the second four registers (spl..dil).
         //
-        // Since ah..bh cannot be used in all permutations of operands (specifically cannot
-        // be accessed where a REX prefix is present), these are likely best treated as
-        // deprecated.  In order to ensure the correct registers spl..dil are selected a
-        // REX prefix will be emitted for any byte register operand in the range 4..15.
-        //
-        // These formatters may be used in instructions where a mix of operand sizes, in which
-        // case an unnecessary REX will be emitted, for example:
-        //     movzbl %al, %edi
-        // In this case a REX will be planted since edi is 7 (and were this a byte operand
-        // a REX would be required to specify dil instead of bh).  Unneeded REX prefixes will
-        // be silently ignored by the processor.
-        //
         // Address operands should still be checked using regRequiresRex(), while byteRegRequiresRex()
         // is provided to check byte register operands.
 
@@ -3166,6 +3303,15 @@ private:
 #endif
             m_buffer.ensureSpace(maxInstructionSize);
             emitRexIf(byteRegRequiresRex(rm), 0, 0, rm);
+            m_buffer.putByteUnchecked(opcode);
+            registerModRM(groupOp, rm);
+        }
+
+        // Like oneByteOp8, but never emits a REX prefix.
+        void oneByteOp8_norex(OneByteOpcodeID opcode, GroupOpcodeID groupOp, RegisterID rm)
+        {
+            ASSERT(!regRequiresRex(rm));
+            m_buffer.ensureSpace(maxInstructionSize);
             m_buffer.putByteUnchecked(opcode);
             registerModRM(groupOp, rm);
         }
@@ -3207,6 +3353,19 @@ private:
         {
             m_buffer.ensureSpace(maxInstructionSize);
             emitRexIf(byteRegRequiresRex(reg)|byteRegRequiresRex(rm), reg, 0, rm);
+            m_buffer.putByteUnchecked(OP_2BYTE_ESCAPE);
+            m_buffer.putByteUnchecked(opcode);
+            registerModRM(reg, rm);
+        }
+
+        // Like twoByteOp8 but doesn't add a REX prefix if the destination reg
+        // is in esp..edi. This may be used when the destination is not an 8-bit
+        // register (as in a movzbl instruction), so it doesn't need a REX
+        // prefix to disambiguate it from ah..bh.
+        void twoByteOp8_movx(TwoByteOpcodeID opcode, RegisterID reg, RegisterID rm)
+        {
+            m_buffer.ensureSpace(maxInstructionSize);
+            emitRexIf(regRequiresRex(reg)|byteRegRequiresRex(rm), reg, 0, rm);
             m_buffer.putByteUnchecked(OP_2BYTE_ESCAPE);
             m_buffer.putByteUnchecked(opcode);
             registerModRM(reg, rm);

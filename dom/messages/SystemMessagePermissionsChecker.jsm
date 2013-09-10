@@ -34,25 +34,22 @@ this.SystemMessagePermissionsTable = {
   "bluetooth-dialer-command": {
     "telephony": []
   },
-  "bluetooth-requestconfirmation": {
-    "bluetooth": []
-  },
-  "bluetooth-requestpasskey": {
-    "bluetooth": []
-  },
-  "bluetooth-requestpincode": {
-    "bluetooth": []
-  },
-  "bluetooth-authorize": {
-    "bluetooth": []
-  },
   "bluetooth-cancel": {
     "bluetooth": []
   },
   "bluetooth-pairedstatuschanged": {
     "bluetooth": []
   },
+  "bluetooth-a2dp-status-changed": {
+    "bluetooth": []
+  },
   "bluetooth-hfp-status-changed": {
+    "bluetooth": []
+  },
+  "bluetooth-hid-status-changed": {
+    "bluetooth": []
+  },
+  "bluetooth-sco-status-changed": {
     "bluetooth": []
   },
   "bluetooth-pairing-request": {
@@ -74,6 +71,7 @@ this.SystemMessagePermissionsTable = {
   "icc-stkcommand": {
     "settings": ["read", "write"]
   },
+  "media-button": { },
   "notification": {
     "desktop-notification": []
   },
@@ -99,7 +97,7 @@ this.SystemMessagePermissionsTable = {
     "mobileconnection": []
   },
   "wappush-received": {
-    "sms": []
+    "wappush": []
   },
 };
 

@@ -8,6 +8,7 @@
 #include "WebGLVertexArray.h"
 #include "WebGLExtensions.h"
 #include "mozilla/dom/WebGLRenderingContextBinding.h"
+#include "GLContext.h"
 
 using namespace mozilla;
 
@@ -46,12 +47,7 @@ bool WebGLExtensionVertexArray::IsSupported(const WebGLContext* context)
 {
     gl::GLContext* gl = context->GL();
 
-    if (gl->IsGLES2()) {
-        return gl->IsExtensionSupported(gl::GLContext::OES_vertex_array_object);
-    }
-
-    return gl->IsExtensionSupported(gl::GLContext::ARB_vertex_array_object) ||
-           gl->IsExtensionSupported(gl::GLContext::APPLE_vertex_array_object);
+    return gl->IsSupported(gl::GLFeature::vertex_array_object);
 }
 
 IMPL_WEBGL_EXTENSION_GOOP(WebGLExtensionVertexArray)

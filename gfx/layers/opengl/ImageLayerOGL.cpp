@@ -3,26 +3,42 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "gfxSharedImageSurface.h"
-
-#include "ImageContainer.h" // for PlanarYCBCRImage
-#include "ipc/AutoOpenSurface.h"
 #include "ImageLayerOGL.h"
-#include "gfxImageSurface.h"
-#include "gfxUtils.h"
-#include "yuv_convert.h"
-#include "GLContextProvider.h"
+#include <stdint.h>                     // for uint32_t
+#include "mozilla-config.h"             // for GL_PROVIDER_GLX
+#include "GLContext.h"                  // for GLContext, etc
+#include "ImageContainer.h"             // for CairoImage, etc
+#include "ImageTypes.h"                 // for ImageFormat::CAIRO_SURFACE, etc
+#include "SharedTextureImage.h"         // for SharedTextureImage::Data, etc
+#include "gfx3DMatrix.h"                // for gfx3DMatrix
+#include "gfxASurface.h"                // for gfxASurface, etc
+#include "gfxImageSurface.h"            // for gfxImageSurface
+#include "gfxUtils.h"                   // for NextPowerOfTwo
+#include "mozilla/gfx/BaseSize.h"       // for BaseSize
+#include "mozilla/gfx/Types.h"          // for SurfaceFormat
+#include "mozilla/layers/LayersTypes.h"
+#include "nsAutoRef.h"                  // for nsCountedRef, nsAutoRefBase
+#include "nsCOMPtr.h"                   // for nsCOMPtr, already_AddRefed
+#include "nsDebug.h"                    // for NS_ASSERTION, NS_ERROR
+#include "nsIRunnable.h"                // for nsIRunnable
+#include "nsPoint.h"                    // for nsIntPoint
+#include "nsRect.h"                     // for nsIntRect
+#include "nsSize.h"                     // for nsIntSize
+#include "nsThreadUtils.h"              // for nsRunnable
+#include "nscore.h"                     // for NS_IMETHOD
+#include "LayerManagerOGL.h"            // for LayerOGL::GLContext, etc
 #if defined(GL_PROVIDER_GLX)
 # include "GLXLibrary.h"
 # include "gfxXlibSurface.h"
 #endif
-#include "SharedTextureImage.h"
 
 using namespace mozilla::gfx;
 using namespace mozilla::gl;
 
 namespace mozilla {
 namespace layers {
+
+class Layer;
 
 /**
  * This is an event used to unref a GLContext on the main thread and
@@ -49,6 +65,16 @@ public:
   nsRefPtr<GLContext> mContext;
   GLuint mTexture;
 };
+
+GLTexture::GLTexture()
+  : mTexture(0)
+{
+}
+
+GLTexture::~GLTexture()
+{
+  Release();
+}
 
 void
 GLTexture::Allocate(GLContext *aContext)
@@ -239,6 +265,7 @@ ImageLayerOGL::RenderLayer(int,
                                         yuvImage->GetSize().width,
                                         yuvImage->GetSize().height));
     program->SetLayerTransform(GetEffectiveTransform());
+    program->SetTextureTransform(gfx3DMatrix());
     program->SetLayerOpacity(GetEffectiveOpacity());
     program->SetRenderOffset(aOffset);
     program->SetYCbCrTextureUnits(0, 1, 2);
@@ -297,6 +324,7 @@ ImageLayerOGL::RenderLayer(int,
                                         cairoImage->GetSize().width, 
                                         cairoImage->GetSize().height));
     program->SetLayerTransform(GetEffectiveTransform());
+    program->SetTextureTransform(gfx3DMatrix());
     program->SetLayerOpacity(GetEffectiveOpacity());
     program->SetRenderOffset(aOffset);
     program->SetTextureUnit(0);
@@ -324,6 +352,7 @@ ImageLayerOGL::RenderLayer(int,
       program->SetTexCoordMultiplier(data->mSize.width, data->mSize.height);
     }
     program->SetLayerTransform(GetEffectiveTransform());
+    program->SetTextureTransform(gfx3DMatrix());
     program->SetLayerOpacity(GetEffectiveOpacity());
     program->SetRenderOffset(aOffset);
     program->SetTextureUnit(0);
@@ -392,7 +421,7 @@ UploadYUVToTexture(GLContext* gl, const PlanarYCbCrImage::Data& aData,
 }
 
 ImageLayerOGL::ImageLayerOGL(LayerManagerOGL *aManager)
-  : ImageLayer(aManager, NULL)
+  : ImageLayer(aManager, nullptr)
   , LayerOGL(aManager)
   , mTextureRecycleBin(new TextureRecycleBin())
 { 

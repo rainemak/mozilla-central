@@ -104,6 +104,8 @@ public:
                                          GrGLInterface* aGrGLInterface,
                                          const IntSize &aSize,
                                          SurfaceFormat aFormat) MOZ_OVERRIDE;
+
+  void SetCacheLimits(int number, int sizeInBytes);
 #endif
 
   operator std::string() const {
@@ -114,8 +116,7 @@ public:
 
 private:
   friend class SourceSurfaceSkia;
-  void AppendSnapshot(SourceSurfaceSkia* aSnapshot);
-  void RemoveSnapshot(SourceSurfaceSkia* aSnapshot);
+  void SnapshotDestroyed();
 
   void MarkChanged();
 
@@ -133,7 +134,8 @@ private:
 
   IntSize mSize;
   SkRefPtr<SkCanvas> mCanvas;
-  std::vector<SourceSurfaceSkia*> mSnapshots;
+  SourceSurfaceSkia* mSnapshot;
+  bool mSoftClipping;
 };
 
 }

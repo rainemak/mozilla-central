@@ -34,10 +34,6 @@ nsJARProtocolHandler::nsJARProtocolHandler()
 : mIsMainProcess(XRE_GetProcessType() == GeckoProcessType_Default)
 {
     MOZ_ASSERT(NS_IsMainThread());
-
-    if (!mIsMainProcess) {
-        mRemoteFileListeners.Init();
-    }
 }
 
 nsJARProtocolHandler::~nsJARProtocolHandler()
@@ -124,7 +120,7 @@ nsJARProtocolHandler::RemoteOpenFileComplete(nsIHashable *aRemoteFile,
     }
 }
 
-NS_IMPL_THREADSAFE_ISUPPORTS3(nsJARProtocolHandler,
+NS_IMPL_ISUPPORTS3(nsJARProtocolHandler,
                               nsIJARProtocolHandler,
                               nsIProtocolHandler,
                               nsISupportsWeakReference)

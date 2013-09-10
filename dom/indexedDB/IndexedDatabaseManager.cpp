@@ -45,13 +45,13 @@ namespace {
 
 mozilla::StaticRefPtr<IndexedDatabaseManager> gInstance;
 
-int32_t gInitialized = 0;
-int32_t gClosed = 0;
+mozilla::Atomic<int32_t> gInitialized(0);
+mozilla::Atomic<int32_t> gClosed(0);
 
 class AsyncDeleteFileRunnable MOZ_FINAL : public nsIRunnable
 {
 public:
-  NS_DECL_ISUPPORTS
+  NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSIRUNNABLE
 
   AsyncDeleteFileRunnable(FileManager* aFileManager, int64_t aFileId);
@@ -64,7 +64,7 @@ private:
 class GetFileReferencesHelper MOZ_FINAL : public nsIRunnable
 {
 public:
-  NS_DECL_ISUPPORTS
+  NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSIRUNNABLE
 
   GetFileReferencesHelper(const nsACString& aOrigin,
@@ -130,8 +130,6 @@ IndexedDatabaseManager::IndexedDatabaseManager()
 : mFileMutex("IndexedDatabaseManager.mFileMutex")
 {
   NS_ASSERTION(NS_IsMainThread(), "Wrong thread!");
-
-  mFileManagers.Init();
 }
 
 IndexedDatabaseManager::~IndexedDatabaseManager()
@@ -140,7 +138,7 @@ IndexedDatabaseManager::~IndexedDatabaseManager()
 }
 
 bool IndexedDatabaseManager::sIsMainProcess = false;
-int32_t IndexedDatabaseManager::sLowDiskSpaceMode = 0;
+mozilla::Atomic<int32_t> IndexedDatabaseManager::sLowDiskSpaceMode(0);
 
 // static
 IndexedDatabaseManager*
@@ -179,7 +177,7 @@ IndexedDatabaseManager::GetOrCreate()
     nsresult rv = instance->Init();
     NS_ENSURE_SUCCESS(rv, nullptr);
 
-    if (PR_ATOMIC_SET(&gInitialized, 1)) {
+    if (gInitialized.exchange(1)) {
       NS_ERROR("Initialized more than once?!");
     }
 
@@ -243,7 +241,7 @@ IndexedDatabaseManager::Destroy()
 {
   // Setting the closed flag prevents the service from being recreated.
   // Don't set it though if there's no real instance created.
-  if (!!gInitialized && PR_ATOMIC_SET(&gClosed, 1)) {
+  if (!!gInitialized && gClosed.exchange(1)) {
     NS_ERROR("Shutdown more than once?!");
   }
 
@@ -275,8 +273,7 @@ IndexedDatabaseManager::FireWindowOnError(nsPIDOMWindow* aOwner,
   nsCOMPtr<EventTarget> eventTarget =
     aVisitor.mDOMEvent->InternalDOMEvent()->GetTarget();
 
-  nsCOMPtr<nsIIDBRequest> strongRequest = do_QueryInterface(eventTarget);
-  IDBRequest* request = static_cast<IDBRequest*>(strongRequest.get());
+  IDBRequest* request = static_cast<IDBRequest*>(eventTarget.get());
   NS_ENSURE_TRUE(request, NS_ERROR_UNEXPECTED);
 
   ErrorResult ret;
@@ -526,7 +523,7 @@ IndexedDatabaseManager::InitWindowless(const jsval& aObj, JSContext* aCx)
 
   JS::Rooted<JSObject*> obj(aCx, JSVAL_TO_OBJECT(aObj));
 
-  JSBool hasIndexedDB;
+  bool hasIndexedDB;
   if (!JS_HasProperty(aCx, obj, "indexedDB", &hasIndexedDB)) {
     return NS_ERROR_FAILURE;
   }
@@ -589,10 +586,10 @@ IndexedDatabaseManager::Observe(nsISupports* aSubject, const char* aTopic,
     const nsDependentString data(aData);
 
     if (data.EqualsLiteral(LOW_DISK_SPACE_DATA_FULL)) {
-      PR_ATOMIC_SET(&sLowDiskSpaceMode, 1);
+      sLowDiskSpaceMode = 1;
     }
     else if (data.EqualsLiteral(LOW_DISK_SPACE_DATA_FREE)) {
-      PR_ATOMIC_SET(&sLowDiskSpaceMode, 0);
+      sLowDiskSpaceMode = 0;
     }
     else {
       NS_NOTREACHED("Unknown data value!");
@@ -611,8 +608,8 @@ AsyncDeleteFileRunnable::AsyncDeleteFileRunnable(FileManager* aFileManager,
 {
 }
 
-NS_IMPL_THREADSAFE_ISUPPORTS1(AsyncDeleteFileRunnable,
-                              nsIRunnable)
+NS_IMPL_ISUPPORTS1(AsyncDeleteFileRunnable,
+                   nsIRunnable)
 
 NS_IMETHODIMP
 AsyncDeleteFileRunnable::Run()
@@ -683,8 +680,8 @@ GetFileReferencesHelper::DispatchAndReturnFileReferences(int32_t* aMemRefCnt,
   return NS_OK;
 }
 
-NS_IMPL_THREADSAFE_ISUPPORTS1(GetFileReferencesHelper,
-                              nsIRunnable)
+NS_IMPL_ISUPPORTS1(GetFileReferencesHelper,
+                   nsIRunnable)
 
 NS_IMETHODIMP
 GetFileReferencesHelper::Run()

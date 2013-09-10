@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include "GeckoProfiler.h"
+#include "mozilla/Atomics.h"
 #include "mozilla/dom/file/FileService.h"
 #include "mozilla/dom/indexedDB/Client.h"
 #include "mozilla/LazyIdleThread.h"
@@ -124,7 +125,7 @@ class OriginClearRunnable MOZ_FINAL : public nsIRunnable,
   };
 
 public:
-  NS_DECL_ISUPPORTS
+  NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSIRUNNABLE
 
   // AcquireListener override
@@ -196,7 +197,7 @@ class AsyncUsageRunnable MOZ_FINAL : public UsageRunnable,
   };
 
 public:
-  NS_DECL_ISUPPORTS
+  NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSIRUNNABLE
   NS_DECL_NSIQUOTAREQUEST
 
@@ -259,7 +260,7 @@ END_QUOTA_NAMESPACE
 namespace {
 
 QuotaManager* gInstance = nullptr;
-int32_t gShutdown = 0;
+mozilla::Atomic<uint32_t> gShutdown(0);
 
 int32_t gStorageQuotaMB = DEFAULT_QUOTA_MB;
 
@@ -278,7 +279,7 @@ public:
     NS_ASSERTION(mCountdown, "Wrong countdown!");
   }
 
-  NS_DECL_ISUPPORTS
+  NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSIRUNNABLE
 
   void
@@ -300,7 +301,7 @@ public:
   : mBusy(true)
   { }
 
-  NS_DECL_ISUPPORTS
+  NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSIRUNNABLE
 
   bool
@@ -478,12 +479,8 @@ QuotaManager::Init()
     gStorageQuotaMB = DEFAULT_QUOTA_MB;
   }
 
-  mOriginInfos.Init();
-  mCheckQuotaHelpers.Init();
-  mLiveStorages.Init();
-
-  MOZ_STATIC_ASSERT(Client::IDB == 0 && Client::TYPE_MAX == 1,
-                    "Fix the registration!");
+  static_assert(Client::IDB == 0 && Client::TYPE_MAX == 1,
+                "Fix the registration!");
 
   NS_ASSERTION(mClients.Capacity() == Client::TYPE_MAX,
                "Should be using an auto array with correct capacity!");
@@ -1199,7 +1196,7 @@ QuotaManager::Observe(nsISupports* aSubject,
   if (!strcmp(aTopic, PROFILE_BEFORE_CHANGE_OBSERVER_ID)) {
     // Setting this flag prevents the service from being recreated and prevents
     // further storagess from being created.
-    if (PR_ATOMIC_SET(&gShutdown, 1)) {
+    if (gShutdown.exchange(1)) {
       NS_ERROR("Shutdown more than once?!");
     }
 
@@ -1899,7 +1896,7 @@ OriginClearRunnable::DeleteFiles(QuotaManager* aQuotaManager)
   aQuotaManager->OriginClearCompleted(mOriginOrPattern);
 }
 
-NS_IMPL_THREADSAFE_ISUPPORTS1(OriginClearRunnable, nsIRunnable)
+NS_IMPL_ISUPPORTS1(OriginClearRunnable, nsIRunnable)
 
 NS_IMETHODIMP
 OriginClearRunnable::Run()
@@ -2143,9 +2140,9 @@ AsyncUsageRunnable::RunInternal()
   return NS_ERROR_UNEXPECTED;
 }
 
-NS_IMPL_THREADSAFE_ISUPPORTS2(AsyncUsageRunnable,
-                              nsIRunnable,
-                              nsIQuotaRequest)
+NS_IMPL_ISUPPORTS2(AsyncUsageRunnable,
+                   nsIRunnable,
+                   nsIQuotaRequest)
 
 NS_IMETHODIMP
 AsyncUsageRunnable::Run()
@@ -2170,7 +2167,7 @@ AsyncUsageRunnable::Run()
 NS_IMETHODIMP
 AsyncUsageRunnable::Cancel()
 {
-  if (PR_ATOMIC_SET(&mCanceled, 1)) {
+  if (mCanceled.exchange(1)) {
     NS_WARNING("Canceled more than once?!");
     return NS_ERROR_UNEXPECTED;
   }
@@ -2178,7 +2175,7 @@ AsyncUsageRunnable::Cancel()
   return NS_OK;
 }
 
-NS_IMPL_THREADSAFE_ISUPPORTS1(WaitForTransactionsToFinishRunnable, nsIRunnable)
+NS_IMPL_ISUPPORTS1(WaitForTransactionsToFinishRunnable, nsIRunnable)
 
 NS_IMETHODIMP
 WaitForTransactionsToFinishRunnable::Run()
@@ -2206,7 +2203,7 @@ WaitForTransactionsToFinishRunnable::Run()
   return NS_OK;
 }
 
-NS_IMPL_THREADSAFE_ISUPPORTS1(WaitForLockedFilesToFinishRunnable, nsIRunnable)
+NS_IMPL_ISUPPORTS1(WaitForLockedFilesToFinishRunnable, nsIRunnable)
 
 NS_IMETHODIMP
 WaitForLockedFilesToFinishRunnable::Run()

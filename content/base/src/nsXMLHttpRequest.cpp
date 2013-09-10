@@ -4,16 +4,19 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "nsXMLHttpRequest.h"
+
+#include "mozilla/dom/XMLHttpRequestUploadBinding.h"
 #include "mozilla/MemoryReporting.h"
 #include "mozilla/Util.h"
-
-#include "nsXMLHttpRequest.h"
-#include "nsISimpleEnumerator.h"
-#include "nsIXPConnect.h"
+#include "nsDOMBlobBuilder.h"
 #include "nsICharsetConverterManager.h"
+#include "nsIDOMDocument.h"
+#include "nsIDOMProgressEvent.h"
+#include "nsIJARChannel.h"
 #include "nsLayoutCID.h"
-#include "nsXPIDLString.h"
 #include "nsReadableUtils.h"
+
 #include "nsIURI.h"
 #include "nsILoadGroup.h"
 #include "nsNetUtil.h"
@@ -23,43 +26,27 @@
 #include "nsIUploadChannel2.h"
 #include "nsIDOMSerializer.h"
 #include "nsXPCOM.h"
-#include "nsISupportsPrimitives.h"
 #include "nsGUIEvent.h"
-#include "prprf.h"
 #include "nsIDOMEventListener.h"
 #include "nsIScriptSecurityManager.h"
-#include "nsWeakPtr.h"
-#include "nsIScriptGlobalObject.h"
-#include "nsDOMClassInfoID.h"
-#include "nsIDOMElement.h"
 #include "nsIDOMWindow.h"
-#include "nsIMIMEService.h"
-#include "nsCExternalHandlerService.h"
 #include "nsIVariant.h"
 #include "nsVariant.h"
 #include "nsIScriptError.h"
-#include "xpcpublic.h"
-#include "nsStringStream.h"
 #include "nsIStreamConverterService.h"
 #include "nsICachingChannel.h"
 #include "nsContentUtils.h"
 #include "nsCxPusher.h"
 #include "nsEventDispatcher.h"
-#include "nsDOMJSUtils.h"
-#include "nsCOMArray.h"
-#include "nsIScriptableUConv.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsIContentPolicy.h"
 #include "nsContentPolicyUtils.h"
 #include "nsError.h"
-#include "nsLayoutStatics.h"
 #include "nsCrossSiteListenerProxy.h"
 #include "nsIHTMLDocument.h"
-#include "nsIScriptObjectPrincipal.h"
 #include "nsIStorageStream.h"
 #include "nsIPromptFactory.h"
 #include "nsIWindowWatcher.h"
-#include "nsCharSeparatedTokenizer.h"
 #include "nsIConsoleService.h"
 #include "nsIChannelPolicy.h"
 #include "nsChannelPolicy.h"
@@ -73,14 +60,14 @@
 #include "GeckoProfiler.h"
 #include "mozilla/dom/EncodingUtils.h"
 #include "mozilla/dom/XMLHttpRequestBinding.h"
-#include "nsIDOMFormData.h"
-#include "DictionaryHelpers.h"
 #include "mozilla/Attributes.h"
 #include "nsIPermissionManager.h"
 #include "nsMimeTypes.h"
 #include "nsIHttpChannelInternal.h"
+#include "nsCharSeparatedTokenizer.h"
 #include "nsFormData.h"
 #include "nsStreamListenerWrapper.h"
+#include "xpcjsid.h"
 
 #include "nsWrapperCacheInlines.h"
 
@@ -244,6 +231,8 @@ XMLHttpRequestAuthPrompt::PromptPassword(const PRUnichar* aDialogTitle,
 
 /////////////////////////////////////////////
 
+NS_IMPL_CYCLE_COLLECTION_CLASS(nsXHREventTarget)
+
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INHERITED(nsXHREventTarget,
                                                   nsDOMEventTargetHelper)
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
@@ -282,6 +271,12 @@ NS_INTERFACE_MAP_END_INHERITING(nsXHREventTarget)
 NS_IMPL_ADDREF_INHERITED(nsXMLHttpRequestUpload, nsXHREventTarget)
 NS_IMPL_RELEASE_INHERITED(nsXMLHttpRequestUpload, nsXHREventTarget)
 
+/* virtual */ JSObject*
+nsXMLHttpRequestUpload::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aScope)
+{
+  return XMLHttpRequestUploadBinding::Wrap(aCx, aScope, this);
+}
+
 /////////////////////////////////////////////
 //
 //
@@ -295,7 +290,7 @@ nsXMLHttpRequest::nsXMLHttpRequest()
     mProgressSinceLastProgressEvent(false),
     mRequestSentTime(0), mTimeoutMilliseconds(0),
     mErrorLoad(false), mWaitingForOnStopRequest(false),
-    mProgressTimerIsActive(false), mProgressEventWasDelayed(false),
+    mProgressTimerIsActive(false),
     mIsHtml(false),
     mWarnAboutSyncHtml(false),
     mLoadLengthComputable(false), mLoadTotal(0),
@@ -307,10 +302,6 @@ nsXMLHttpRequest::nsXMLHttpRequest()
     mResultArrayBuffer(nullptr),
     mXPCOMifier(nullptr)
 {
-  nsLayoutStatics::AddRef();
-
-  mAlreadySetHeaders.Init();
-
   SetIsDOMBinding();
 #ifdef DEBUG
   StaticAssertions();
@@ -331,15 +322,13 @@ nsXMLHttpRequest::~nsXMLHttpRequest()
 
   mResultJSON = JSVAL_VOID;
   mResultArrayBuffer = nullptr;
-  NS_DROP_JS_OBJECTS(this, nsXMLHttpRequest);
-
-  nsLayoutStatics::Release();
+  mozilla::DropJSObjects(this);
 }
 
 void
 nsXMLHttpRequest::RootJSResultObjects()
 {
-  NS_HOLD_JS_OBJECTS(this, nsXMLHttpRequest);
+  mozilla::HoldJSObjects(this);
 }
 
 /**
@@ -356,9 +345,11 @@ nsXMLHttpRequest::Init()
   NS_ENSURE_STATE(subjectPrincipal);
 
   // Instead of grabbing some random global from the context stack,
-  // let's use the default one (junk drawer) for now.
+  // let's use the default one (junk scope) for now.
   // We should move away from this Init...
-  Construct(subjectPrincipal, xpc::GetNativeForGlobal(xpc::GetJunkScope()));
+  nsCOMPtr<nsIGlobalObject> global = xpc::GetJunkScopeGlobal();
+  NS_ENSURE_TRUE(global, NS_ERROR_FAILURE);
+  Construct(subjectPrincipal, global);
   return NS_OK;
 }
 
@@ -445,6 +436,8 @@ nsXMLHttpRequest::SetRequestObserver(nsIRequestObserver* aObserver)
 {
   mRequestObserver = aObserver;
 }
+
+NS_IMPL_CYCLE_COLLECTION_CLASS(nsXMLHttpRequest)
 
 NS_IMPL_CYCLE_COLLECTION_CAN_SKIP_BEGIN(nsXMLHttpRequest)
   bool isBlack = tmp->IsBlack();
@@ -577,7 +570,7 @@ static void LogMessage(const char* aWarning, nsPIDOMWindow* aWindow)
     doc = aWindow->GetExtantDoc();
   }
   nsContentUtils::ReportToConsole(nsIScriptError::warningFlag,
-                                  "DOM", doc,
+                                  NS_LITERAL_CSTRING("DOM"), doc,
                                   nsContentUtils::eDOM_PROPERTIES,
                                   aWarning);
 }
@@ -863,7 +856,7 @@ void
 nsXMLHttpRequest::StaticAssertions()
 {
 #define ASSERT_ENUM_EQUAL(_lc, _uc) \
-  MOZ_STATIC_ASSERT(\
+  static_assert(\
     static_cast<int>(XMLHttpRequestResponseType::_lc)  \
     == XML_HTTP_RESPONSE_TYPE_ ## _uc, \
     #_uc " should match")
@@ -1020,7 +1013,7 @@ nsXMLHttpRequest::GetResponse(JSContext* aCx, ErrorResult& aRv)
     }
 
     JS::Rooted<JS::Value> result(aCx, JSVAL_NULL);
-    JS::Rooted<JSObject*> scope(aCx, JS_GetGlobalForScopeChain(aCx));
+    JS::Rooted<JSObject*> scope(aCx, JS::CurrentGlobalOrNull(aCx));
     aRv = nsContentUtils::WrapNative(aCx, scope, mResponseBlob, result.address(),
                                      nullptr, true);
     return result;
@@ -1031,7 +1024,7 @@ nsXMLHttpRequest::GetResponse(JSContext* aCx, ErrorResult& aRv)
       return JSVAL_NULL;
     }
 
-    JS::Rooted<JSObject*> scope(aCx, JS_GetGlobalForScopeChain(aCx));
+    JS::Rooted<JSObject*> scope(aCx, JS::CurrentGlobalOrNull(aCx));
     JS::Rooted<JS::Value> result(aCx, JSVAL_NULL);
     aRv = nsContentUtils::WrapNative(aCx, scope, mResponseXML, result.address(),
                                      nullptr, true);
@@ -3758,7 +3751,6 @@ nsXMLHttpRequest::StartProgressEventTimer()
     mProgressNotifier = do_CreateInstance(NS_TIMER_CONTRACTID);
   }
   if (mProgressNotifier) {
-    mProgressEventWasDelayed = false;
     mProgressTimerIsActive = true;
     mProgressNotifier->Cancel();
     mProgressNotifier->InitWithCallback(this, NS_PROGRESS_EVENT_INTERVAL,
@@ -3806,6 +3798,8 @@ NS_IMPL_CYCLE_COLLECTING_RELEASE(nsXMLHttpRequestXPCOMifier)
 
 // Can't NS_IMPL_CYCLE_COLLECTION_1 because mXHR has ambiguous
 // inheritance from nsISupports.
+NS_IMPL_CYCLE_COLLECTION_CLASS(nsXMLHttpRequestXPCOMifier)
+
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(nsXMLHttpRequestXPCOMifier)
 if (tmp->mXHR) {
   tmp->mXHR->mXPCOMifier = nullptr;
@@ -3831,3 +3825,120 @@ nsXMLHttpRequestXPCOMifier::GetInterface(const nsIID & aIID, void **aResult)
 
   return mXHR->GetInterface(aIID, aResult);
 }
+
+namespace mozilla {
+
+ArrayBufferBuilder::ArrayBufferBuilder()
+  : mRawContents(nullptr),
+    mDataPtr(nullptr),
+    mCapacity(0),
+    mLength(0)
+{
+}
+
+ArrayBufferBuilder::~ArrayBufferBuilder()
+{
+  reset();
+}
+
+void
+ArrayBufferBuilder::reset()
+{
+  if (mRawContents) {
+    JS_free(nullptr, mRawContents);
+  }
+  mRawContents = mDataPtr = nullptr;
+  mCapacity = mLength = 0;
+}
+
+bool
+ArrayBufferBuilder::setCapacity(uint32_t aNewCap)
+{
+  if (!JS_ReallocateArrayBufferContents(nullptr, aNewCap, &mRawContents, &mDataPtr)) {
+    return false;
+  }
+
+  mCapacity = aNewCap;
+  if (mLength > aNewCap) {
+    mLength = aNewCap;
+  }
+
+  return true;
+}
+
+bool
+ArrayBufferBuilder::append(const uint8_t *aNewData, uint32_t aDataLen,
+                           uint32_t aMaxGrowth)
+{
+  if (mLength + aDataLen > mCapacity) {
+    uint32_t newcap;
+    // Double while under aMaxGrowth or if not specified.
+    if (!aMaxGrowth || mCapacity < aMaxGrowth) {
+      newcap = mCapacity * 2;
+    } else {
+      newcap = mCapacity + aMaxGrowth;
+    }
+
+    // But make sure there's always enough to satisfy our request.
+    if (newcap < mLength + aDataLen) {
+      newcap = mLength + aDataLen;
+    }
+
+    // Did we overflow?
+    if (newcap < mCapacity) {
+      return false;
+    }
+
+    if (!setCapacity(newcap)) {
+      return false;
+    }
+  }
+
+  // Assert that the region isn't overlapping so we can memcpy.
+  MOZ_ASSERT(!areOverlappingRegions(aNewData, aDataLen, mDataPtr + mLength,
+                                    aDataLen));
+
+  memcpy(mDataPtr + mLength, aNewData, aDataLen);
+  mLength += aDataLen;
+
+  return true;
+}
+
+JSObject*
+ArrayBufferBuilder::getArrayBuffer(JSContext* aCx)
+{
+  // we need to check for mLength == 0, because nothing may have been
+  // added
+  if (mCapacity > mLength || mLength == 0) {
+    if (!setCapacity(mLength)) {
+      return nullptr;
+    }
+  }
+
+  JSObject* obj = JS_NewArrayBufferWithContents(aCx, mRawContents);
+  if (!obj) {
+    return nullptr;
+  }
+
+  mRawContents = mDataPtr = nullptr;
+  mLength = mCapacity = 0;
+
+  return obj;
+}
+
+/* static */ bool
+ArrayBufferBuilder::areOverlappingRegions(const uint8_t* aStart1,
+                                          uint32_t aLength1,
+                                          const uint8_t* aStart2,
+                                          uint32_t aLength2)
+{
+  const uint8_t* end1 = aStart1 + aLength1;
+  const uint8_t* end2 = aStart2 + aLength2;
+
+  const uint8_t* max_start = aStart1 > aStart2 ? aStart1 : aStart2;
+  const uint8_t* min_end   = end1 < end2 ? end1 : end2;
+
+  return max_start < min_end;
+}
+
+} // namespace mozilla

@@ -312,7 +312,7 @@ ensure_combo_box_widgets()
     if (gComboBoxButtonWidget) {
         /* Get the widgets inside the Button */
         buttonChild = gtk_bin_get_child(GTK_BIN(gComboBoxButtonWidget));
-        if (GTK_IS_HBOX(buttonChild)) {
+        if (GTK_IS_BOX(buttonChild)) {
             /* appears-as-list = FALSE, cell-view = TRUE; the button
              * contains an hbox. This hbox is there because the ComboBox
              * needs to place a cell renderer, a separator, and an arrow in
@@ -401,7 +401,7 @@ ensure_combo_box_entry_widgets()
 
     /* Create a ComboBoxEntry if needed */
     if (!gComboBoxEntryWidget) {
-        gComboBoxEntryWidget = NULL; /* TODO - gtk_combo_box_entry_new();*/
+        gComboBoxEntryWidget = gtk_combo_box_new_with_entry();
         setup_widget_prototype(gComboBoxEntryWidget);
     }
 
@@ -418,14 +418,11 @@ ensure_combo_box_entry_widgets()
     if (gComboBoxEntryButtonWidget) {
         /* Get the Arrow inside the Button */
         buttonChild = gtk_bin_get_child(GTK_BIN(gComboBoxEntryButtonWidget));
-        if (GTK_IS_HBOX(buttonChild)) {
-            /* appears-as-list = FALSE, cell-view = TRUE; the button
-             * contains an hbox. This hbox is there because ComboBoxEntry
-             * inherits from ComboBox which needs to place a cell renderer,
-             * a separator, and an arrow in the button when appears-as-list
-             * is FALSE. Here the hbox should only contain an arrow, since
-             * a ComboBoxEntry doesn't need all those widgets in the
-             * button. */
+        if (GTK_IS_BOX(buttonChild)) {
+           /* appears-as-list = FALSE, cell-view = TRUE; the button
+             * contains an hbox. This hbox is there because the ComboBox
+             * needs to place a cell renderer, a separator, and an arrow in
+             * the button when appears-as-list is FALSE. */
             gtk_container_forall(GTK_CONTAINER(buttonChild),
                                  moz_gtk_get_combo_box_entry_arrow,
                                  NULL);
@@ -678,8 +675,8 @@ ensure_tree_header_cell_widget()
         gtk_tree_view_append_column(GTK_TREE_VIEW(gTreeViewWidget), lastTreeViewColumn);
 
         /* Use the middle column's header for our button */
-        /* TODO, but they can't be NULL */
-        gTreeHeaderCellWidget = gtk_button_new_with_label("M");
+        gTreeHeaderCellWidget = gtk_tree_view_column_get_button(gMiddleTreeViewColumn);
+        /* TODO, but it can't be NULL */
         gTreeHeaderSortArrowWidget = gtk_button_new();
     }
     return MOZ_GTK_SUCCESS;
@@ -1573,6 +1570,8 @@ moz_gtk_tree_header_sort_arrow_paint(cairo_t *cr, GdkRectangle* rect,
     return MOZ_GTK_SUCCESS;
 }
 
+/* See gtk_expander_paint() for reference. 
+ */
 static gint
 moz_gtk_treeview_expander_paint(cairo_t *cr, GdkRectangle* rect,
                                 GtkWidgetState* state,
@@ -1580,6 +1579,7 @@ moz_gtk_treeview_expander_paint(cairo_t *cr, GdkRectangle* rect,
                                 GtkTextDirection direction)
 {
     GtkStyleContext *style;
+    GtkStateFlags    state_flags;
 
     ensure_tree_view_widget();
     gtk_widget_set_direction(gTreeViewWidget, direction);
@@ -1587,34 +1587,27 @@ moz_gtk_treeview_expander_paint(cairo_t *cr, GdkRectangle* rect,
     style = gtk_widget_get_style_context(gTreeViewWidget);
     gtk_style_context_save(style);
     gtk_style_context_add_class(style, GTK_STYLE_CLASS_EXPANDER);
+
     /* Because the frame we get is of the entire treeview, we can't get the precise
      * event state of one expander, thus rendering hover and active feedback useless. */
-    gtk_style_context_set_state(style, GetStateFlagsFromGtkWidgetState(state));
+    state_flags = state->disabled ? GTK_STATE_INSENSITIVE : GTK_STATE_NORMAL;
+
+    /* GTK_STATE_FLAG_ACTIVE controls expanded/colapsed state rendering
+     * in gtk_render_expander()
+     */
+    if (expander_state == GTK_EXPANDER_EXPANDED)
+        state_flags |= GTK_STATE_FLAG_ACTIVE;
+    else
+        state_flags &= ~(GTK_STATE_FLAG_ACTIVE);
+
+    gtk_style_context_set_state(style, state_flags);
+
     gtk_render_expander(style, cr,
-                        rect->x + rect->width / 2, rect->y + rect->height / 2,
-                        rect->width, rect->height);
-    gtk_style_context_restore(style);
-    return MOZ_GTK_SUCCESS;
-}
+                        rect->x,
+                        rect->y,
+                        rect->width,
+                        rect->height);
 
-static gint
-moz_gtk_expander_paint(cairo_t *cr, GdkRectangle* rect,
-                       GtkWidgetState* state,
-                       GtkExpanderStyle expander_state,
-                       GtkTextDirection direction)
-{
-    GtkStyleContext *style;
-
-    ensure_expander_widget();
-    gtk_widget_set_direction(gExpanderWidget, direction);
-
-    style = gtk_widget_get_style_context(gExpanderWidget);
-    gtk_style_context_save(style);
-    gtk_style_context_add_class(style, GTK_STYLE_CLASS_EXPANDER);
-    gtk_style_context_set_state(style, GetStateFlagsFromGtkWidgetState(state));
-    gtk_render_expander(style, cr, 
-                        rect->x + rect->width / 2, rect->y + rect->height / 2,
-						rect->width, rect->height);
     gtk_style_context_restore(style);
     return MOZ_GTK_SUCCESS;
 }
@@ -2545,6 +2538,34 @@ moz_gtk_window_paint(cairo_t *cr, GdkRectangle* rect,
     return MOZ_GTK_SUCCESS;
 }
 
+static void
+moz_gtk_add_style_border(GtkStyleContext* style,
+                         gint* left, gint* top, gint* right, gint* bottom)
+{
+    GtkBorder border;
+
+    gtk_style_context_get_border(style, 0, &border);
+
+    *left += border.left;
+    *right += border.right;
+    *top += border.top;
+    *bottom += border.bottom;
+}
+
+static void
+moz_gtk_add_style_padding(GtkStyleContext* style,
+                          gint* left, gint* top, gint* right, gint* bottom)
+{
+    GtkBorder padding;
+
+    gtk_style_context_get_padding(style, 0, &padding);
+
+    *left += padding.left;
+    *right += padding.right;
+    *top += padding.top;
+    *bottom += padding.bottom;
+}
+
 gint
 moz_gtk_get_widget_border(GtkThemeWidgetType widget, gint* left, gint* top,
                           gint* right, gint* bottom, GtkTextDirection direction,
@@ -2552,8 +2573,7 @@ moz_gtk_get_widget_border(GtkThemeWidgetType widget, gint* left, gint* top,
 {
     GtkWidget* w;
     GtkStyleContext* style;
-    GtkBorder border;
-    GtkBorder padding;
+    *left = *top = *right = *bottom = 0;
 
     switch (widget) {
     case MOZ_GTK_BUTTON:
@@ -2575,35 +2595,29 @@ moz_gtk_get_widget_border(GtkThemeWidgetType widget, gint* left, gint* top,
                 *top += focus_width + focus_pad + inner_border.top;
                 *bottom += focus_width + focus_pad + inner_border.bottom;
             }
-          
-            style = gtk_widget_get_style_context(gButtonWidget);
-            gtk_style_context_get_border(style, 0, &border);
-          
-            *left += border.left;
-            *right += border.right;
-            *top += border.top;
-            *bottom += border.bottom;
+
+            moz_gtk_add_style_border(gtk_widget_get_style_context(gButtonWidget), 
+                                     left, top, right, bottom);
             return MOZ_GTK_SUCCESS;
         }
     case MOZ_GTK_ENTRY:
         {
             ensure_entry_widget();
             style = gtk_widget_get_style_context(gEntryWidget);
-
-            gtk_style_context_get_border(style, 0, &border);
-            gtk_style_context_get_padding(style, 0, &padding);
-
-            *left = padding.left + border.left;
-            *right = padding.right + border.right;
-            *top =  padding.top + border.top;
-            *bottom = padding.bottom + border.bottom;
-
+            moz_gtk_add_style_border(style, left, top, right, bottom);
+            moz_gtk_add_style_padding(style, left, top, right, bottom);
             return MOZ_GTK_SUCCESS;
         }
     case MOZ_GTK_TREEVIEW:
-        ensure_tree_view_widget();
-        w = gTreeViewWidget;
-        break;
+        {
+            ensure_scrolled_window_widget();
+            style = gtk_widget_get_style_context(gScrolledWindowWidget);
+            gtk_style_context_save(style);
+            gtk_style_context_add_class(style, GTK_STYLE_CLASS_FRAME);
+            moz_gtk_add_style_border(style, left, top, right, bottom);
+            gtk_style_context_restore(style);
+            return MOZ_GTK_SUCCESS;
+        }
     case MOZ_GTK_TREE_HEADER_CELL:
         {
             /* A Tree Header in GTK is just a different styled button 
@@ -2626,13 +2640,8 @@ moz_gtk_get_widget_border(GtkThemeWidgetType widget, gint* left, gint* top,
             *top += focus_width + focus_pad + inner_border.top;
             *bottom += focus_width + focus_pad + inner_border.bottom;
         
-            style = gtk_widget_get_style_context(gTreeHeaderCellWidget);
-            gtk_style_context_get_border(style, 0, &border);
-            
-            *left += border.left;
-            *right += border.right;
-            *top += border.top;
-            *bottom += border.bottom;
+            moz_gtk_add_style_border(gtk_widget_get_style_context(gTreeHeaderCellWidget), 
+                                     left, top, right, bottom);
             return MOZ_GTK_SUCCESS;
         }
     case MOZ_GTK_TREE_HEADER_SORTARROW:
@@ -2655,6 +2664,7 @@ moz_gtk_get_widget_border(GtkThemeWidgetType widget, gint* left, gint* top,
             gboolean ignored_interior_focus, wide_separators;
             gint focus_width, focus_pad, separator_width;
             GtkRequisition arrow_req;
+            GtkBorder border;
 
             ensure_combo_box_widgets();
 
@@ -2746,8 +2756,6 @@ moz_gtk_get_widget_border(GtkThemeWidgetType widget, gint* left, gint* top,
 
             if (interior_focus)
                 *left = *top = *right = *bottom = (focus_width + focus_pad);
-            else
-                *left = *top = *right = *bottom = 0;
 
             return MOZ_GTK_SUCCESS;
         }
@@ -2789,21 +2797,12 @@ moz_gtk_get_widget_border(GtkThemeWidgetType widget, gint* left, gint* top,
         break;
     case MOZ_GTK_MENUITEM:
         {
-            guint border_width;
-        
             ensure_menu_item_widget();
             ensure_menu_bar_item_widget();
             
-            style = gtk_widget_get_style_context(gMenuItemWidget);
-            gtk_style_context_get_padding(style, 0, &padding);
-
-            border_width = gtk_container_get_border_width(GTK_CONTAINER(gMenuItemWidget));
-
-            *left = padding.left + border_width;
-            *right = padding.right + border_width;
-            *top =  padding.top + border_width;
-            *bottom = padding.bottom + border_width;
-
+            *left = *top = *right = *bottom = gtk_container_get_border_width(GTK_CONTAINER(gMenuItemWidget));
+            moz_gtk_add_style_padding(gtk_widget_get_style_context(gMenuItemWidget), 
+                                      left, top, right, bottom);
             return MOZ_GTK_SUCCESS;
         }
     case MOZ_GTK_CHECKMENUITEM:
@@ -2831,7 +2830,6 @@ moz_gtk_get_widget_border(GtkThemeWidgetType widget, gint* left, gint* top,
     case MOZ_GTK_PROGRESS_CHUNK:
     case MOZ_GTK_PROGRESS_CHUNK_INDETERMINATE:
     case MOZ_GTK_PROGRESS_CHUNK_VERTICAL_INDETERMINATE:
-    case MOZ_GTK_EXPANDER:
     case MOZ_GTK_TREEVIEW_EXPANDER:
     case MOZ_GTK_TOOLBAR_SEPARATOR:
     case MOZ_GTK_MENUSEPARATOR:
@@ -2845,23 +2843,15 @@ moz_gtk_get_widget_border(GtkThemeWidgetType widget, gint* left, gint* top,
     case MOZ_GTK_TOOLBAR:
     case MOZ_GTK_MENUBAR:
     case MOZ_GTK_TAB_SCROLLARROW:
-        *left = *top = *right = *bottom = 0;
         return MOZ_GTK_SUCCESS;
     default:
         g_warning("Unsupported widget type: %d", widget);
         return MOZ_GTK_UNKNOWN_WIDGET;
     }
     /* TODO - we're still missing some widget implementations */
-    if (!w) {
-      *right = *left = 0;
-      *bottom = *top = 0;
-    } else {
-      style = gtk_widget_get_style_context(w);
-      gtk_style_context_get_border(style, 0, &border);
-      *left = border.left;
-      *right = border.right;
-      *top = border.top;
-      *bottom = border.bottom;
+    if (w) {
+      moz_gtk_add_style_border(gtk_widget_get_style_context(w), 
+                               left, top, right, bottom);
     }
     return MOZ_GTK_SUCCESS;
 }
@@ -3051,6 +3041,10 @@ moz_gtk_widget_paint(GtkThemeWidgetType widget, cairo_t *cr,
                      GtkWidgetState* state, gint flags,
                      GtkTextDirection direction)
 {
+    /* A workaround for https://bugzilla.gnome.org/show_bug.cgi?id=694086
+     */
+    cairo_new_path(cr);
+
     switch (widget) {
     case MOZ_GTK_BUTTON:
         if (state->depressed) {
@@ -3132,10 +3126,6 @@ moz_gtk_widget_paint(GtkThemeWidgetType widget, cairo_t *cr,
     case MOZ_GTK_TREEVIEW_EXPANDER:
         return moz_gtk_treeview_expander_paint(cr, rect, state,
                                                (GtkExpanderStyle) flags, direction);
-        break;
-    case MOZ_GTK_EXPANDER:
-        return moz_gtk_expander_paint(cr, rect, state,
-                                      (GtkExpanderStyle) flags, direction);
         break;
     case MOZ_GTK_ENTRY:
         ensure_entry_widget();
@@ -3267,9 +3257,7 @@ moz_gtk_shutdown()
     if (gProtoWindow)
         gtk_widget_destroy(gProtoWindow);
 
-    /* TODO - replace it with appropriate widgets */
-    if (gTreeHeaderCellWidget)
-        gtk_widget_destroy(gTreeHeaderCellWidget);
+    /* TODO - replace it with appropriate widget */
     if (gTreeHeaderSortArrowWidget)
         gtk_widget_destroy(gTreeHeaderSortArrowWidget);
 

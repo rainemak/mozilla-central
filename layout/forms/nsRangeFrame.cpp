@@ -9,11 +9,9 @@
 #include "nsContentList.h"
 #include "nsContentUtils.h"
 #include "nsCSSRenderingBorders.h"
-#include "nsFontMetrics.h"
 #include "nsFormControlFrame.h"
 #include "nsIContent.h"
 #include "nsIDocument.h"
-#include "nsIDOMHTMLInputElement.h"
 #include "nsINameSpaceManager.h"
 #include "nsINodeInfo.h"
 #include "nsIPresShell.h"
@@ -23,9 +21,8 @@
 #include "nsNodeInfoManager.h"
 #include "nsRenderingContext.h"
 #include "mozilla/dom/Element.h"
-#include "prtypes.h"
-
-#include <algorithm>
+#include "nsStyleSet.h"
+#include "nsThemeConstants.h"
 
 #ifdef ACCESSIBILITY
 #include "nsAccessibilityService.h"
@@ -476,16 +473,18 @@ nsRangeFrame::GetValueAtEventPoint(nsGUIEvent* aEvent)
   }
   Decimal range = maximum - minimum;
 
-  nsIntPoint absPoint;
+  LayoutDeviceIntPoint absPoint;
   if (aEvent->eventStructType == NS_TOUCH_EVENT) {
     MOZ_ASSERT(static_cast<nsTouchEvent*>(aEvent)->touches.Length() == 1,
                "Unexpected number of touches");
-    absPoint = static_cast<nsTouchEvent*>(aEvent)->touches[0]->mRefPoint;
+    absPoint = LayoutDeviceIntPoint::FromUntyped(
+      static_cast<nsTouchEvent*>(aEvent)->touches[0]->mRefPoint);
   } else {
     absPoint = aEvent->refPoint;
   }
   nsPoint point =
-    nsLayoutUtils::GetEventCoordinatesRelativeTo(aEvent, absPoint, this);
+    nsLayoutUtils::GetEventCoordinatesRelativeTo(aEvent, 
+      LayoutDeviceIntPoint::ToUntyped(absPoint), this);
 
   if (point == nsPoint(NS_UNCONSTRAINEDSIZE, NS_UNCONSTRAINEDSIZE)) {
     // We don't want to change the current value for this error state.

@@ -7,8 +7,6 @@
 #include "imgFrame.h"
 #include "DiscardTracker.h"
 
-#include <limits.h>
-
 #include "prenv.h"
 
 #include "gfxPlatform.h"
@@ -20,6 +18,7 @@ static bool gDisableOptimize = false;
 #include "GeckoProfiler.h"
 #include "mozilla/Likely.h"
 #include "mozilla/MemoryReporting.h"
+#include "nsMargin.h"
 
 #if defined(XP_WIN)
 
@@ -468,7 +467,7 @@ void imgFrame::Draw(gfxContext *aContext, gfxPattern::GraphicsFilter aFilter,
   }
 
   gfxMatrix userSpaceToImageSpace = aUserSpaceToImageSpace;
-  gfxRect sourceRect = userSpaceToImageSpace.Transform(aFill);
+  gfxRect sourceRect = userSpaceToImageSpace.TransformBounds(aFill);
   gfxRect imageRect(0, 0, mSize.width + aPadding.LeftRight(),
                     mSize.height + aPadding.TopBottom());
   gfxRect subimage(aSubimage.x, aSubimage.y, aSubimage.width, aSubimage.height);
@@ -509,7 +508,7 @@ nsresult imgFrame::ImageUpdated(const nsIntRect &aUpdateRect)
   return NS_OK;
 }
 
-bool imgFrame::GetIsDirty()
+bool imgFrame::GetIsDirty() const
 {
   MutexAutoLock lock(mDirtyMutex);
   return mDirty;
@@ -796,8 +795,11 @@ void imgFrame::SetBlendMethod(int32_t aBlendMethod)
   mBlendMethod = (int8_t)aBlendMethod;
 }
 
+// This can be called from any thread.
 bool imgFrame::ImageComplete() const
 {
+  MutexAutoLock lock(mDirtyMutex);
+
   return mDecoded.IsEqualInterior(nsIntRect(mOffset, mSize));
 }
 
@@ -837,7 +839,7 @@ size_t
 imgFrame::SizeOfExcludingThisWithComputedFallbackIfHeap(gfxASurface::MemoryLocation aLocation, mozilla::MallocSizeOf aMallocSizeOf) const
 {
   // aMallocSizeOf is only used if aLocation==MEMORY_IN_PROCESS_HEAP.  It
-  // should be NULL otherwise.
+  // should be nullptr otherwise.
   NS_ABORT_IF_FALSE(
     (aLocation == gfxASurface::MEMORY_IN_PROCESS_HEAP &&  aMallocSizeOf) ||
     (aLocation != gfxASurface::MEMORY_IN_PROCESS_HEAP && !aMallocSizeOf),

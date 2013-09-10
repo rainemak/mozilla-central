@@ -8,6 +8,11 @@ let Ci = Components.interfaces;
 let Cu = Components.utils;
 let Cr = Components.results;
 
+Cu.import("resource://gre/modules/PageThumbs.jsm");
+
+// Page for which the start UI is shown
+const kStartURI = "about:start";
+
 const kBrowserViewZoomLevelPrecision = 10000;
 
 // allow panning after this timeout on pages with registered touch listeners
@@ -16,11 +21,26 @@ const kSetInactiveStateTimeout = 100;
 
 const kDefaultMetadata = { autoSize: false, allowZoom: true, autoScale: true };
 
+const kTabThumbnailDelayCapture = 500;
+
+const XUL_NS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
+
+// See grid.xml, we use this to cache style info across loads of the startui.
+var _richgridTileSizes = {};
+
 // Override sizeToContent in the main window. It breaks things (bug 565887)
 window.sizeToContent = function() {
   Cu.reportError("window.sizeToContent is not allowed in this window");
 }
 
+function getTabModalPromptBox(aWindow) {
+  let browser = Browser.getBrowserForWindow(aWindow);
+  return Browser.getTabModalPromptBox(browser);
+}
+
+/*
+ * Returns the browser for the currently displayed tab.
+ */
 function getBrowser() {
   return Browser.selectedBrowser;
 }
@@ -72,6 +92,7 @@ var Browser = {
     GestureModule.init();
     BrowserTouchHandler.init();
     PopupBlockerObserver.init();
+    APZCObserver.init();
 
     // Init the touch scrollbox
     this.contentScrollbox = Elements.browsers;
@@ -126,11 +147,20 @@ var Browser = {
     Util.forceOnline();
 
     // If this is an intial window launch the commandline handler passes us the default
-    // page as an argument. commandURL _should_ never be empty, but we protect against it
-    // below. However, we delay trying to get the fallback homepage until we really need it.
+    // page as an argument.
     let commandURL = null;
-    if (window.arguments && window.arguments[0])
-      commandURL = window.arguments[0];
+    try {
+      let argsObj = window.arguments[0].wrappedJSObject;
+      if (argsObj && argsObj.pageloadURL) {
+        // Talos tp-cmdline parameter
+        commandURL = argsObj.pageloadURL;
+      } else if (window.arguments && window.arguments[0]) {
+        // BrowserCLH paramerter
+        commandURL = window.arguments[0];
+      }
+    } catch (ex) {
+      Util.dumpLn(ex);
+    }
 
     messageManager.addMessageListener("DOMLinkAdded", this);
     messageManager.addMessageListener("MozScrolledAreaChanged", this);
@@ -147,17 +177,14 @@ var Browser = {
 
     Task.spawn(function() {
       // Activation URIs come from protocol activations, secondary tiles, and file activations
-      let activationURI = yield this.getShortcutOrURI(MetroUtils.activationURI);
+      let activationURI = yield this.getShortcutOrURI(Services.metro.activationURI);
 
       let self = this;
       function loadStartupURI() {
-        let uri = activationURI || commandURL || Browser.getHomePage();
-        if (StartUI.isStartURI(uri)) {
-          self.addTab(uri, true);
-          StartUI.show(); // This makes about:start load a lot faster
-        } else if (activationURI) {
-          self.addTab(uri, true, null, { flags: Ci.nsIWebNavigation.LOAD_FLAGS_ALLOW_THIRD_PARTY_FIXUP });
+        if (activationURI) {
+          self.addTab(activationURI, true, null, { flags: Ci.nsIWebNavigation.LOAD_FLAGS_ALLOW_THIRD_PARTY_FIXUP });
         } else {
+          let uri = commandURL || Browser.getHomePage();
           self.addTab(uri, true);
         }
       }
@@ -167,9 +194,9 @@ var Browser = {
       if (ss.shouldRestore() || Services.prefs.getBoolPref("browser.startup.sessionRestore")) {
         let bringFront = false;
         // First open any commandline URLs, except the homepage
-        if (activationURI && !StartUI.isStartURI(activationURI)) {
+        if (activationURI && activationURI != kStartURI) {
           this.addTab(activationURI, true, null, { flags: Ci.nsIWebNavigation.LOAD_FLAGS_ALLOW_THIRD_PARTY_FIXUP });
-        } else if (commandURL && !StartUI.isStartURI(commandURL)) {
+        } else if (commandURL && commandURL != kStartURI) {
           this.addTab(commandURL, true);
         } else {
           bringFront = true;
@@ -203,40 +230,11 @@ var Browser = {
     }.bind(this));
   },
 
-  quit: function quit() {
-    // NOTE: onclose seems to be called only when using OS chrome to close a window,
-    // so we need to handle the Browser.closing check ourselves.
-    if (this.closing()) {
-      window.QueryInterface(Ci.nsIDOMChromeWindow).minimize();
-      window.close();
-    }
-  },
-
-  closing: function closing() {
-    // Figure out if there's at least one other browser window around.
-    let lastBrowser = true;
-    let e = Services.wm.getEnumerator("navigator:browser");
-    while (e.hasMoreElements() && lastBrowser) {
-      let win = e.getNext();
-      if (win != window)
-        lastBrowser = false;
-    }
-    if (!lastBrowser)
-      return true;
-
-    // Let everyone know we are closing the last browser window
-    let closingCancelled = Cc["@mozilla.org/supports-PRBool;1"].createInstance(Ci.nsISupportsPRBool);
-    Services.obs.notifyObservers(closingCancelled, "browser-lastwindow-close-requested", null);
-    if (closingCancelled.data)
-      return false;
-
-    Services.obs.notifyObservers(null, "browser-lastwindow-close-granted", null);
-    return true;
-  },
-
   shutdown: function shutdown() {
+    APZCObserver.shutdown();
     BrowserUI.uninit();
     ContentAreaObserver.shutdown();
+    Appbar.shutdown();
 
     messageManager.removeMessageListener("MozScrolledAreaChanged", this);
     messageManager.removeMessageListener("Browser:ViewportMetadata", this);
@@ -265,7 +263,7 @@ var Browser = {
   getHomePage: function getHomePage(aOptions) {
     aOptions = aOptions || { useDefault: false };
 
-    let url = "about:start";
+    let url = kStartURI;
     try {
       let prefs = aOptions.useDefault ? Services.prefs.getDefaultBranch(null) : Services.prefs;
       url = prefs.getComplexValue("browser.startup.homepage", Ci.nsIPrefLocalizedString).data;
@@ -396,19 +394,68 @@ var Browser = {
     return this._tabs;
   },
 
-  getTabForBrowser: function getTabForBrowser(aBrowser) {
-    let tabs = this._tabs;
-    for (let i = 0; i < tabs.length; i++) {
-      if (tabs[i].browser == aBrowser)
-        return tabs[i];
-    }
-    return null;
+  getTabModalPromptBox: function(aBrowser) {
+    let browser = (aBrowser || getBrowser());
+    let stack = browser.parentNode;
+    let self = this;
+
+    let promptBox = {
+      appendPrompt : function(args, onCloseCallback) {
+          let newPrompt = document.createElementNS(XUL_NS, "tabmodalprompt");
+          stack.appendChild(newPrompt);
+          browser.setAttribute("tabmodalPromptShowing", true);
+          newPrompt.clientTop; // style flush to assure binding is attached
+
+          let tab = self.getTabForBrowser(browser);
+          tab = tab.chromeTab;
+
+          newPrompt.init(args, tab, onCloseCallback);
+          return newPrompt;
+      },
+
+      removePrompt : function(aPrompt) {
+          stack.removeChild(aPrompt);
+
+          let prompts = this.listPrompts();
+          if (prompts.length) {
+          let prompt = prompts[prompts.length - 1];
+              prompt.Dialog.setDefaultFocus();
+          } else {
+              browser.removeAttribute("tabmodalPromptShowing");
+              browser.focus();
+          }
+      },
+
+      listPrompts : function(aPrompt) {
+          let els = stack.getElementsByTagNameNS(XUL_NS, "tabmodalprompt");
+          // NodeList --> real JS array
+          let prompts = Array.slice(els);
+          return prompts;
+      },
+    };
+
+    return promptBox;
   },
 
   getBrowserForWindowId: function getBrowserForWindowId(aWindowId) {
     for (let i = 0; i < this.browsers.length; i++) {
       if (this.browsers[i].contentWindowId == aWindowId)
         return this.browsers[i];
+    }
+    return null;
+  },
+
+  getBrowserForWindow: function(aWindow) {
+    let windowID = aWindow.QueryInterface(Ci.nsIInterfaceRequestor)
+                          .getInterface(Ci.nsIDOMWindowUtils).currentInnerWindowID;
+    return this.getBrowserForWindowId(windowID);
+  },
+
+  getTabForBrowser: function getTabForBrowser(aBrowser) {
+    let tabs = this._tabs;
+    for (let i = 0; i < tabs.length; i++) {
+      if (tabs[i].browser == aBrowser)
+        return tabs[i];
     }
     return null;
   },
@@ -486,9 +533,16 @@ var Browser = {
         item.owner = null;
     });
 
+    // tray tab
     let event = document.createEvent("Events");
     event.initEvent("TabClose", true, false);
     aTab.chromeTab.dispatchEvent(event);
+
+    // tab window
+    event = document.createEvent("Events");
+    event.initEvent("TabClose", true, false);
+    aTab.browser.contentWindow.dispatchEvent(event);
+
     aTab.browser.messageManager.sendAsyncMessage("Browser:TabClose");
 
     let container = aTab.chromeTab.parentNode;
@@ -574,6 +628,7 @@ var Browser = {
     } else {
       // Update all of our UI to reflect the new tab's location
       BrowserUI.updateURI();
+      BrowserUI.update();
 
       let event = document.createEvent("Events");
       event.initEvent("TabSelect", true, false);
@@ -597,7 +652,7 @@ var Browser = {
 
   getNotificationBox: function getNotificationBox(aBrowser) {
     let browser = aBrowser || this.selectedBrowser;
-    return browser.parentNode;
+    return browser.parentNode.parentNode;
   },
 
   /**
@@ -678,10 +733,10 @@ var Browser = {
     var ios = Components.classes["@mozilla.org/network/io-service;1"].
               getService(Components.interfaces.nsIIOService);
     var uriSpec = ios.newFileURI(file).spec;
-    MetroUtils.pinTileAsync(this._currentPageTileID,
-                            Browser.selectedBrowser.contentTitle, // short name
-                            Browser.selectedBrowser.contentTitle, // display name
-                            "metrobrowser -url " + Browser.selectedBrowser.currentURI.spec,
+    Services.metro.pinTileAsync(this._currentPageTileID,
+                                Browser.selectedBrowser.contentTitle, // short name
+                                Browser.selectedBrowser.contentTitle, // display name
+                                "metrobrowser -url " + Browser.selectedBrowser.currentURI.spec,
                             uriSpec, uriSpec);
   },
 
@@ -700,17 +755,17 @@ var Browser = {
   },
 
   unpinSite: function browser_unpinSite() {
-    if (!MetroUtils.immersive)
+    if (!Services.metro.immersive)
       return;
 
-    MetroUtils.unpinTileAsync(this._currentPageTileID);
+    Services.metro.unpinTileAsync(this._currentPageTileID);
   },
 
   isSitePinned: function browser_isSitePinned() {
-    if (!MetroUtils.immersive)
+    if (!Services.metro.immersive)
       return false;
 
-    return MetroUtils.isTilePinned(this._currentPageTileID);
+    return Services.metro.isTilePinned(this._currentPageTileID);
   },
 
   starSite: function browser_starSite(callback) {
@@ -968,13 +1023,6 @@ var Browser = {
         break;
     }
   },
-
-  onAboutPolicyClick: function() {
-    FlyoutPanelsUI.hide();
-    let linkStr = Services.urlFormatter.formatURLPref("app.privacyURL");
-    BrowserUI.newTab(linkStr, Browser.selectedTab);
-  }
-
 };
 
 Browser.MainDragger = function MainDragger() {
@@ -1204,6 +1252,10 @@ nsBrowserAccess.prototype = {
 
   isTabContentWindow: function(aWindow) {
     return Browser.browsers.some(function (browser) browser.contentWindow == aWindow);
+  },
+
+  get contentWindow() {
+    return Browser.selectedBrowser.contentWindow;
   }
 };
 
@@ -1375,8 +1427,7 @@ function getNotificationBox(aBrowser) {
 }
 
 function showDownloadManager(aWindowContext, aID, aReason) {
-  PanelUI.show("downloads-container");
-  // TODO: select the download with aID
+  // TODO: Bug 883962: Toggle the downloads infobar as our current "download manager".
 }
 
 function Tab(aURI, aParams, aOwner) {
@@ -1387,6 +1438,7 @@ function Tab(aURI, aParams, aOwner) {
   this._chromeTab = null;
   this._metadata = null;
   this._eventDeferred = null;
+  this._updateThumbnailTimeout = null;
 
   this.owner = aOwner || null;
 
@@ -1506,12 +1558,18 @@ Tab.prototype = {
   },
 
   startLoading: function startLoading() {
-    if (this._loading) throw "Already Loading!";
+    if (this._loading) {
+      let stack = new Error().stack;
+      throw "Already Loading!\n" + stack;
+    }
     this._loading = true;
   },
 
   endLoading: function endLoading() {
-    if (!this._loading) throw "Not Loading!";
+    if (!this._loading) {
+      let stack = new Error().stack;
+      throw "Not Loading!\n" + stack;
+    }
     this._loading = false;
     this.updateFavicon();
   },
@@ -1536,13 +1594,45 @@ Tab.prototype = {
       self._eventDeferred = null;
     }
     browser.addEventListener("pageshow", onPageShowEvent, true);
+    browser.messageManager.addMessageListener("Content:StateChange", this);
+    Services.obs.addObserver(this, "metro_viewstate_changed", false);
 
     if (aOwner)
       this._copyHistoryFrom(aOwner);
     this._loadUsingParams(browser, aURI, aParams);
   },
 
+  receiveMessage: function(aMessage) {
+    switch (aMessage.name) {
+      case "Content:StateChange":
+        // update the thumbnail now...
+        this.updateThumbnail();
+        // ...and in a little while to capture page after load.
+        if (aMessage.json.stateFlags & Ci.nsIWebProgressListener.STATE_STOP) {
+          clearTimeout(this._updateThumbnailTimeout);
+          this._updateThumbnailTimeout = setTimeout(() => {
+            this.updateThumbnail();
+          }, kTabThumbnailDelayCapture);
+        }
+        break;
+    }
+  },
+
+  observe: function BrowserUI_observe(aSubject, aTopic, aData) {
+    switch (aTopic) {
+      case "metro_viewstate_changed":
+        if (aData !== "snapped") {
+          this.updateThumbnail();
+        }
+        break;
+    }
+  },
+
   destroy: function destroy() {
+    this._browser.messageManager.removeMessageListener("Content:StateChange", this);
+    Services.obs.removeObserver(this, "metro_viewstate_changed", false);
+    clearTimeout(this._updateThumbnailTimeout);
+
     Elements.tabList.removeTab(this._chromeTab);
     this._chromeTab = null;
     this._destroyBrowser();
@@ -1578,7 +1668,7 @@ Tab.prototype = {
 
     // Ensure that history is initialized
     history.QueryInterface(Ci.nsISHistoryInternal);
-    
+
     for (let i = 0, length = otherHistory.index; i <= length; i++)
       history.addEntry(otherHistory.getEntryAtIndex(i, false), true);
   },
@@ -1604,9 +1694,6 @@ Tab.prototype = {
     browser.id = "browser-" + this._id;
     this._chromeTab.linkedBrowser = browser;
 
-    // let the content area manager know about this browser.
-    ContentAreaObserver.onBrowserCreated(browser);
-
     browser.setAttribute("type", "content");
 
     let useRemote = Services.prefs.getBoolPref("browser.tabs.remote");
@@ -1614,8 +1701,17 @@ Tab.prototype = {
     browser.setAttribute("remote", (!useLocal && useRemote) ? "true" : "false");
 
     // Append the browser to the document, which should start the page load
-    notification.appendChild(browser);
+    let stack = document.createElementNS(XUL_NS, "stack");
+    stack.className = "browserStack";
+    stack.appendChild(browser);
+    stack.setAttribute("flex", "1");
+    notification.appendChild(stack);
     Elements.browsers.insertBefore(notification, aInsertBefore);
+
+    notification.dir = "reverse";
+
+     // let the content area manager know about this browser.
+    ContentAreaObserver.onBrowserCreated(browser);
 
     // stop about:blank from loading
     browser.stop();
@@ -1747,8 +1843,8 @@ Tab.prototype = {
     return this.metadata.allowZoom && !Util.isURLEmpty(this.browser.currentURI.spec);
   },
 
-  updateThumbnailSource: function updateThumbnailSource() {
-    this._chromeTab.updateThumbnailSource(this._browser);
+  updateThumbnail: function updateThumbnail() {
+    PageThumbs.captureToCanvas(this.browser.contentWindow, this._chromeTab.thumbnailCanvas);
   },
 
   updateFavicon: function updateFavicon() {

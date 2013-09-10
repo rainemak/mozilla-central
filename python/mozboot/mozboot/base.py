@@ -96,7 +96,10 @@ class BaseBootstrapper(object):
 
     def run_as_root(self, command):
         if os.geteuid() != 0:
-            command.insert(0, 'sudo')
+            if self.which('sudo'):
+                command.insert(0, 'sudo')
+            else:
+                command = ['su', 'root', '-c', ' '.join(command)]
 
         print('Executing as root:', subprocess.list2cmdline(command))
 
@@ -187,7 +190,7 @@ class BaseBootstrapper(object):
 
         info = self.check_output([hg, '--version']).splitlines()[0]
 
-        match = re.search('version ([^\)]+)', info)
+        match = re.search('version ([^\+\)]+)', info)
         if not match:
             print('ERROR: Unable to identify Mercurial version.')
             return True, False, None

@@ -171,9 +171,6 @@ nsXULTemplateBuilder::InitGlobals()
         gXULTemplateLog = PR_NewLogModule("nsXULTemplateBuilder");
 #endif
 
-    if (!mMatchMap.IsInitialized())
-        mMatchMap.Init();
-
     return NS_OK;
 }
 
@@ -234,6 +231,8 @@ TraverseMatchList(nsISupports* aKey, nsTemplateMatch* aMatch, void* aContext)
     return PL_DHASH_NEXT;
 }
 
+NS_IMPL_CYCLE_COLLECTION_CLASS(nsXULTemplateBuilder)
+
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(nsXULTemplateBuilder)
     NS_IMPL_CYCLE_COLLECTION_UNLINK(mDataSource)
     NS_IMPL_CYCLE_COLLECTION_UNLINK(mDB)
@@ -242,9 +241,7 @@ NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(nsXULTemplateBuilder)
     NS_IMPL_CYCLE_COLLECTION_UNLINK(mRootResult)
     NS_IMPL_CYCLE_COLLECTION_UNLINK(mListeners)
     NS_IMPL_CYCLE_COLLECTION_UNLINK(mQueryProcessor)
-    if (tmp->mMatchMap.IsInitialized()) {
-      tmp->mMatchMap.Enumerate(DestroyMatchList, nullptr);
-    }
+    tmp->mMatchMap.Enumerate(DestroyMatchList, nullptr);
     for (uint32_t i = 0; i < tmp->mQuerySets.Length(); ++i) {
         nsTemplateQuerySet* qs = tmp->mQuerySets[i];
         delete qs;
@@ -264,8 +261,7 @@ NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN(nsXULTemplateBuilder)
     NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mRootResult)
     NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mListeners)
     NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mQueryProcessor)
-    if (tmp->mMatchMap.IsInitialized())
-        tmp->mMatchMap.EnumerateRead(TraverseMatchList, &cb);
+    tmp->mMatchMap.EnumerateRead(TraverseMatchList, &cb);
     {
       uint32_t i, count = tmp->mQuerySets.Length();
       for (i = 0; i < count; ++i) {
@@ -1404,7 +1400,7 @@ nsXULTemplateBuilder::InitHTMLTemplateRoot()
         NS_ENSURE_SUCCESS(rv, rv);
 
         bool ok;
-        ok = JS_SetProperty(jscontext, jselement, "database", jsdatabase.address());
+        ok = JS_SetProperty(jscontext, jselement, "database", jsdatabase);
         NS_ASSERTION(ok, "unable to set database property");
         if (! ok)
             return NS_ERROR_FAILURE;
@@ -1421,7 +1417,7 @@ nsXULTemplateBuilder::InitHTMLTemplateRoot()
         NS_ENSURE_SUCCESS(rv, rv);
 
         bool ok;
-        ok = JS_SetProperty(jscontext, jselement, "builder", jsbuilder.address());
+        ok = JS_SetProperty(jscontext, jselement, "builder", jsbuilder);
         if (! ok)
             return NS_ERROR_FAILURE;
     }

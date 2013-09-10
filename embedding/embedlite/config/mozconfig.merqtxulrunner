@@ -33,6 +33,7 @@ ac_add_options --enable-skia
 ac_add_options --disable-dbus
 ac_add_options --disable-updater
 ac_add_options --disable-gamepad
+ac_add_options --disable-necko-wifi
 
 # disabling for now, since the build fails...
 ac_add_options --enable-webrtc

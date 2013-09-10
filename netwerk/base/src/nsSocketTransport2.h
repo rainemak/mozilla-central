@@ -57,7 +57,7 @@ public:
 
 private:
     nsSocketTransport               *mTransport;
-    nsrefcnt                         mReaderRefCnt;
+    mozilla::ThreadSafeAutoRefCnt    mReaderRefCnt;
 
     // access to these is protected by mTransport->mLock
     nsresult                         mCondition;
@@ -91,7 +91,7 @@ private:
                                        uint32_t count, uint32_t *countRead);
 
     nsSocketTransport                *mTransport;
-    nsrefcnt                          mWriterRefCnt;
+    mozilla::ThreadSafeAutoRefCnt     mWriterRefCnt;
 
     // access to these is protected by mTransport->mLock
     nsresult                          mCondition;
@@ -110,7 +110,7 @@ class nsSocketTransport : public nsASocketHandler
     typedef mozilla::Mutex Mutex;
 
 public:
-    NS_DECL_ISUPPORTS
+    NS_DECL_THREADSAFE_ISUPPORTS
     NS_DECL_NSITRANSPORT
     NS_DECL_NSISOCKETTRANSPORT
     NS_DECL_NSIDNSLISTENER
@@ -129,8 +129,13 @@ public:
     nsresult InitWithConnectedSocket(PRFileDesc *socketFD,
                                      const mozilla::net::NetAddr *addr);
 
+    // This method instructs the socket transport to open a socket
+    // connected to the given Unix domain address. We can only create
+    // unlayered, simple, stream sockets.
+    nsresult InitWithFilename(const char *filename);
+
     // nsASocketHandler methods:
-    void OnSocketReady(PRFileDesc *, int16_t outFlags); 
+    void OnSocketReady(PRFileDesc *, int16_t outFlags);
     void OnSocketDetached(PRFileDesc *);
     void IsLocal(bool *aIsLocal);
 

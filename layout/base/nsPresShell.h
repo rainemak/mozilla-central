@@ -30,7 +30,6 @@
 #include "nsAutoPtr.h"
 #include "nsIWidget.h"
 #include "nsStyleSet.h"
-#include "nsPresArena.h"
 #include "nsFrameSelection.h"
 #include "nsGUIEvent.h"
 #include "nsContentUtils.h" // For AddScriptBlocker().
@@ -251,6 +250,7 @@ public:
   NS_DECL_NSIDOCUMENTOBSERVER_STYLERULEREMOVED
 
   // nsIMutationObserver
+  NS_DECL_NSIMUTATIONOBSERVER_CHARACTERDATAWILLCHANGE
   NS_DECL_NSIMUTATIONOBSERVER_CHARACTERDATACHANGED
   NS_DECL_NSIMUTATIONOBSERVER_ATTRIBUTEWILLCHANGE
   NS_DECL_NSIMUTATIONOBSERVER_ATTRIBUTECHANGED
@@ -556,13 +556,6 @@ protected:
     }
 
   protected:
-    void Init(nsInputEvent* aEvent)
-    {
-      mEvent->time = aEvent->time;
-      mEvent->refPoint = aEvent->refPoint;
-      mEvent->modifiers = aEvent->modifiers;
-    }
-
     nsDelayedInputEvent()
     : nsDelayedEvent(), mEvent(nullptr) {}
 
@@ -579,8 +572,7 @@ protected:
                                 aEvent->widget,
                                 aEvent->reason,
                                 aEvent->context);
-      Init(aEvent);
-      static_cast<nsMouseEvent*>(mEvent)->clickCount = aEvent->clickCount;
+      static_cast<nsMouseEvent*>(mEvent)->AssignMouseEventData(*aEvent, false);
     }
 
     virtual ~nsDelayedMouseEvent()
@@ -597,12 +589,7 @@ protected:
       mEvent = new nsKeyEvent(aEvent->mFlags.mIsTrusted,
                               aEvent->message,
                               aEvent->widget);
-      Init(aEvent);
-      static_cast<nsKeyEvent*>(mEvent)->keyCode = aEvent->keyCode;
-      static_cast<nsKeyEvent*>(mEvent)->charCode = aEvent->charCode;
-      static_cast<nsKeyEvent*>(mEvent)->alternativeCharCodes =
-        aEvent->alternativeCharCodes;
-      static_cast<nsKeyEvent*>(mEvent)->isChar = aEvent->isChar;
+      static_cast<nsKeyEvent*>(mEvent)->AssignKeyEventData(*aEvent, false);
     }
 
     virtual ~nsDelayedKeyEvent()
@@ -689,7 +676,7 @@ protected:
   // document's root view for element, first ensuring the element is onscreen
   void GetCurrentItemAndPositionForElement(nsIDOMElement *aCurrentEl,
                                            nsIContent **aTargetToUse,
-                                           nsIntPoint& aTargetPt,
+                                           mozilla::LayoutDeviceIntPoint& aTargetPt,
                                            nsIWidget *aRootWidget);
 
   void FireResizeEvent();

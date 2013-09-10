@@ -33,6 +33,7 @@
 #include "nsISelection.h"
 #include "nsViewManager.h"
 #include "nsIFrame.h"
+#include "nsGtkUtils.h"
 
 // This sets how opaque the drag image is
 #define DRAG_IMAGE_ALPHA_LEVEL 0.5
@@ -45,17 +46,6 @@ enum {
   MOZ_GTK_DRAG_RESULT_SUCCESS,
   MOZ_GTK_DRAG_RESULT_NO_TARGET
 };
-
-// Some gobject functions expect functions for gpointer arguments.
-// gpointer is void* but C++ doesn't like casting functions to void*.
-template<class T> static inline gpointer
-FuncToGpointer(T aFunction)
-{
-    return reinterpret_cast<gpointer>
-        (reinterpret_cast<uintptr_t>
-         // This cast just provides a warning if T is not a function.
-         (reinterpret_cast<void (*)()>(aFunction)));
-}
 
 static PRLogModuleInfo *sDragLm = NULL;
 
@@ -1469,7 +1459,7 @@ nsDragService::SourceDataGet(GtkWidget        *aWidget,
 
     PR_LOG(sDragLm, PR_LOG_DEBUG, ("Type is %s\n", typeName));
     // make a copy since |nsXPIDLCString| won't use |g_free|...
-    mimeFlavor.Adopt(nsCRT::strdup(typeName));
+    mimeFlavor.Adopt(strdup(typeName));
     g_free(typeName);
     // check to make sure that we have data items to return.
     if (!mSourceDataItems) {

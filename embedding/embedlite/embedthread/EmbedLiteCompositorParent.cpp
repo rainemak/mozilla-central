@@ -49,27 +49,26 @@ EmbedLiteCompositorParent::~EmbedLiteCompositorParent()
 }
 
 PLayerTransactionParent*
-EmbedLiteCompositorParent::AllocPLayerTransactionParent(const LayersBackend& aBackendHint,
+EmbedLiteCompositorParent::AllocPLayerTransactionParent(const nsTArray<LayersBackend>& aBackendHints,
                                                         const uint64_t& aId,
-                                                        TextureFactoryIdentifier* aTextureFactoryIdentifier)
+                                                        TextureFactoryIdentifier* aTextureFactoryIdentifier,
+                                                        bool *aSuccess)
 {
   EmbedLiteView* view = EmbedLiteApp::GetInstance()->GetViewByID(mId);
   EmbedLiteViewListener* list = view ? view->GetListener() : nullptr;
   if (list) {
     list->CompositorCreated();
   }
-  return CompositorParent::AllocPLayerTransactionParent(aBackendHint,
+  return CompositorParent::AllocPLayerTransactionParent(aBackendHints,
                                                         aId,
-                                                        aTextureFactoryIdentifier);
+                                                        aTextureFactoryIdentifier,
+                                                        aSuccess);
 }
 
 bool
 EmbedLiteCompositorParent::IsGLBackend()
 {
-  LayerManagerComposite* mgr = GetLayerManager();
-  NS_ENSURE_TRUE(mgr, false);
-
-  return mgr->GetCompositor()->GetBackend() == mozilla::layers::LAYERS_OPENGL;
+  return EmbedLiteApp::GetInstance()->IsAccelerated();
 }
 
 bool EmbedLiteCompositorParent::RenderToContext(gfxContext* aContext)
@@ -93,23 +92,23 @@ bool EmbedLiteCompositorParent::RenderGL(mozilla::embedlite::EmbedLiteRenderTarg
 
   LayerManagerComposite* mgr = GetLayerManager();
 
-  if (IsGLBackend() && aTarget) {
+  if (mgr && IsGLBackend() && aTarget) {
     static_cast<CompositorOGL*>(mgr->GetCompositor())->SetUserRenderTarget(aTarget->GetRenderSurface());
   }
 
-  if (!mgr->GetRoot()) {
+  if (mgr && !mgr->GetRoot()) {
     retval = false;
   }
 
-  if (IsGLBackend()) {
+  if (mgr && IsGLBackend()) {
     mgr->SetWorldTransform(mWorldTransform);
   }
-  if (!mActiveClipping.IsEmpty() && mgr->GetRoot()) {
+  if (mgr && !mActiveClipping.IsEmpty() && mgr->GetRoot()) {
     mgr->GetRoot()->SetClipRect(&mActiveClipping);
   }
   CompositorParent::Composite();
 
-  if (IsGLBackend() && aTarget) {
+  if (mgr && IsGLBackend() && aTarget) {
     static_cast<CompositorOGL*>(mgr->GetCompositor())->SetUserRenderTarget(nullptr);
   }
 

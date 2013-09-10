@@ -8,6 +8,7 @@
 #define mozilla_TimeStamp_h
 
 #include "mozilla/Assertions.h"
+#include "mozilla/Attributes.h"
 
 #include "prinrval.h"
 #include "nsDebug.h"
@@ -44,7 +45,7 @@ class TimeDuration
 {
 public:
   // The default duration is 0.
-  TimeDuration() : mValue(0) {}
+  MOZ_CONSTEXPR TimeDuration() : mValue(0) {}
   // Allow construction using '0' as the initial value, for readability,
   // but no other numbers (so we don't have any implicit unit conversions).
   struct _SomethingVeryRandomHere;
@@ -341,6 +342,16 @@ private:
   TimeStamp(TimeStampValue aValue) : mValue(aValue) {}
 
   static TimeStamp Now(bool aHighResolution);
+
+  /**
+   * Computes the uptime of the current process in microseconds. The result
+   * is platform-dependent and needs to be checked against existing timestamps
+   * for consistency.
+   *
+   * @returns The number of microseconds since the calling process was started
+   *          or 0 if an error was encountered while computing the uptime
+   */
+  static uint64_t ComputeProcessUptime();
 
   /**
    * When built with PRIntervalTime, a value of 0 means this instance

@@ -134,7 +134,7 @@ RTCIceCandidate.prototype = {
   __init: function(dict) {
     this.candidate = dict.candidate;
     this.sdpMid = dict.sdpMid;
-    this.sdpMLineIndex = ("sdpMLineIndex" in dict)? dict.sdpMLineIndex+1 : null;
+    this.sdpMLineIndex = ("sdpMLineIndex" in dict)? dict.sdpMLineIndex : null;
   }
 };
 
@@ -153,12 +153,6 @@ RTCSessionDescription.prototype = {
   __init: function(dict) {
     this.type = dict.type;
     this.sdp  = dict.sdp;
-  },
-
-  // Bug 863402 serializer support workaround
-  toJSON: function() {
-    return { type: this.type, sdp: this.sdp,
-             __exposedProps__: { type: "rw", sdp: "rw" } };
   }
 };
 
@@ -365,20 +359,28 @@ RTCPeerConnection.prototype = {
    * ErrorMsg is passed in to detail which array-entry failed, if any.
    */
   _mustValidateRTCConfiguration: function(rtcConfig, errorMsg) {
+    var errorCtor = this._win.DOMError;
     function nicerNewURI(uriStr, errorMsg) {
       let ios = Cc['@mozilla.org/network/io-service;1'].getService(Ci.nsIIOService);
       try {
         return ios.newURI(uriStr, null, null);
       } catch (e if (e.result == Cr.NS_ERROR_MALFORMED_URI)) {
-        throw new Components.Exception(errorMsg + " - malformed URI: " + uriStr,
-                                       Cr.NS_ERROR_MALFORMED_URI);
+        throw new errorCtor("", errorMsg + " - malformed URI: " + uriStr);
       }
     }
     function mustValidateServer(server) {
       let url = nicerNewURI(server.url, errorMsg);
-      if (!(url.scheme in { stun:1, stuns:1, turn:1, turns:1 })) {
-        throw new Components.Exception(errorMsg + " - improper scheme: " + url.scheme,
-                                       Cr.NS_ERROR_MALFORMED_URI);
+      if (url.scheme in { turn:1, turns:1 }) {
+        if (!server.username) {
+          throw new errorCtor("", errorMsg + " - missing username: " + server.url);
+        }
+        if (!server.credential) {
+          throw new errorCtor("", errorMsg + " - missing credential: " +
+                              server.url);
+        }
+      }
+      else if (!(url.scheme in { stun:1, stuns:1 })) {
+        throw new errorCtor("", errorMsg + " - improper scheme: " + url.scheme);
       }
     }
     if (rtcConfig.iceServers) {
@@ -687,7 +689,8 @@ RTCPeerConnection.prototype = {
 
     this._queueOrRun({
       func: this._getPC().addIceCandidate,
-      args: [cand.candidate, cand.sdpMid || "", cand.sdpMLineIndex],
+      args: [cand.candidate, cand.sdpMid || "",
+             (cand.sdpMLineIndex === null)? 0 : cand.sdpMLineIndex + 1],
       wait: true
     });
   },
@@ -849,8 +852,8 @@ RTCPeerConnection.prototype = {
     }
 
     if (dict.maxRetransmitTime != undefined &&
-        dict.maxRetransmitNum != undefined) {
-      throw new Components.Exception("Both maxRetransmitTime and maxRetransmitNum cannot be provided");
+        dict.maxRetransmits != undefined) {
+      throw new Components.Exception("Both maxRetransmitTime and maxRetransmits cannot be provided");
     }
     let protocol;
     if (dict.protocol == undefined) {
@@ -863,7 +866,7 @@ RTCPeerConnection.prototype = {
     let type;
     if (dict.maxRetransmitTime != undefined) {
       type = Ci.IPeerConnection.kDataChannelPartialReliableTimed;
-    } else if (dict.maxRetransmitNum != undefined) {
+    } else if (dict.maxRetransmits != undefined) {
       type = Ci.IPeerConnection.kDataChannelPartialReliableRexmit;
     } else {
       type = Ci.IPeerConnection.kDataChannelReliable;
@@ -871,9 +874,9 @@ RTCPeerConnection.prototype = {
 
     // Synchronous since it doesn't block.
     let channel = this._getPC().createDataChannel(
-      label, protocol, type, dict.outOfOrderAllowed, dict.maxRetransmitTime,
-      dict.maxRetransmitNum, dict.preset ? true : false,
-      dict.stream != undefined ? dict.stream : 0xFFFF
+      label, protocol, type, !dict.ordered, dict.maxRetransmitTime,
+      dict.maxRetransmits, dict.negotiated ? true : false,
+      dict.id != undefined ? dict.id : 0xFFFF
     );
     return channel;
   },
@@ -1010,6 +1013,7 @@ PeerConnectionObserver.prototype = {
   },
 
   handleIceStateChanges: function(iceState) {
+    var histogram = Services.telemetry.getHistogramById("WEBRTC_ICE_SUCCESS_RATE");
     switch (iceState) {
       case Ci.IPeerConnection.kIceWaiting:
         this._dompc.changeIceConnectionState("new");
@@ -1028,10 +1032,12 @@ PeerConnectionObserver.prototype = {
         break;
       case Ci.IPeerConnection.kIceConnected:
         // ICE gathering complete.
+        histogram.add(true);
         this._dompc.changeIceConnectionState("connected");
         this.callCB(this._onicechange, "connected");
         break;
       case Ci.IPeerConnection.kIceFailed:
+        histogram.add(false);
         this._dompc.changeIceConnectionState("failed");
         this.callCB(this._onicechange, "failed");
         break;

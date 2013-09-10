@@ -7,7 +7,6 @@
 /* An xpcom implementation of the JavaScript nsIID and nsCID objects. */
 
 #include "xpcprivate.h"
-#include "mozilla/dom/DOMJSClass.h"
 #include "mozilla/dom/BindingUtils.h"
 #include "mozilla/Attributes.h"
 #include "XPCWrapper.h"
@@ -19,7 +18,7 @@ using namespace JS;
 /***************************************************************************/
 // nsJSID
 
-NS_IMPL_THREADSAFE_ISUPPORTS1(nsJSID, nsIJSID)
+NS_IMPL_ISUPPORTS1(nsJSID, nsIJSID)
 
 char nsJSID::gNoString[] = "";
 
@@ -51,8 +50,8 @@ void nsJSID::Reset()
 bool
 nsJSID::SetName(const char* name)
 {
-    NS_ASSERTION(!mName || mName == gNoString ,"name already set");
-    NS_ASSERTION(name,"null name");
+    MOZ_ASSERT(!mName || mName == gNoString ,"name already set");
+    MOZ_ASSERT(name,"null name");
     mName = NS_strdup(name);
     return mName ? true : false;
 }
@@ -65,7 +64,7 @@ nsJSID::GetName(char * *aName)
 
     if (!NameIsSet())
         SetNameToNoString();
-    NS_ASSERTION(mName, "name not set");
+    MOZ_ASSERT(mName, "name not set");
     *aName = NS_strdup(mName);
     return *aName ? NS_OK : NS_ERROR_OUT_OF_MEMORY;
 }
@@ -140,7 +139,7 @@ nsJSID::Initialize(const char *idString)
 bool
 nsJSID::InitWithName(const nsID& id, const char *nameString)
 {
-    NS_ASSERTION(nameString, "no name");
+    MOZ_ASSERT(nameString, "no name");
     Reset();
     mID = id;
     return SetName(nameString);
@@ -212,7 +211,7 @@ nsJSID::NewID(const nsID& id)
 class SharedScriptableHelperForJSIID MOZ_FINAL : public nsIXPCScriptable
 {
 public:
-    NS_DECL_ISUPPORTS
+    NS_DECL_THREADSAFE_ISUPPORTS
     NS_DECL_NSIXPCSCRIPTABLE
     SharedScriptableHelperForJSIID() {}
 };
@@ -222,8 +221,8 @@ NS_INTERFACE_MAP_BEGIN(SharedScriptableHelperForJSIID)
   NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsIXPCScriptable)
 NS_INTERFACE_MAP_END_THREADSAFE
 
-NS_IMPL_THREADSAFE_ADDREF(SharedScriptableHelperForJSIID)
-NS_IMPL_THREADSAFE_RELEASE(SharedScriptableHelperForJSIID)
+NS_IMPL_ADDREF(SharedScriptableHelperForJSIID)
+NS_IMPL_RELEASE(SharedScriptableHelperForJSIID)
 
 // The nsIXPCScriptable map declaration that will generate stubs for us...
 #define XPC_MAP_CLASSNAME           SharedScriptableHelperForJSIID
@@ -292,8 +291,8 @@ NS_INTERFACE_MAP_BEGIN(nsJSIID)
   NS_IMPL_QUERY_CLASSINFO(nsJSIID)
 NS_INTERFACE_MAP_END_THREADSAFE
 
-NS_IMPL_THREADSAFE_ADDREF(nsJSIID)
-NS_IMPL_THREADSAFE_RELEASE(nsJSIID)
+NS_IMPL_ADDREF(nsJSIID)
+NS_IMPL_RELEASE(nsJSIID)
 NS_IMPL_CI_INTERFACE_GETTER2(nsJSIID, nsIJSID, nsIJSIID)
 
 // The nsIXPCScriptable map declaration that will generate stubs for us...
@@ -568,7 +567,7 @@ NS_IMETHODIMP
 nsJSIID::CanCreateWrapper(const nsIID * iid, char **_retval)
 {
     // We let anyone do this...
-    *_retval = xpc_CloneAllAccess();
+    *_retval = xpc::CloneAllAccess();
     return NS_OK;
 }
 
@@ -578,7 +577,7 @@ nsJSIID::CanCallMethod(const nsIID * iid, const PRUnichar *methodName, char **_r
 {
     static const char* const allowed[] = {"equals", "toString", nullptr};
 
-    *_retval = xpc_CheckAccessList(methodName, allowed);
+    *_retval = xpc::CheckAccessList(methodName, allowed);
     return NS_OK;
 }
 
@@ -587,7 +586,7 @@ NS_IMETHODIMP
 nsJSIID::CanGetProperty(const nsIID * iid, const PRUnichar *propertyName, char **_retval)
 {
     static const char* const allowed[] = {"name", "number", "valid", nullptr};
-    *_retval = xpc_CheckAccessList(propertyName, allowed);
+    *_retval = xpc::CheckAccessList(propertyName, allowed);
     return NS_OK;
 }
 
@@ -610,8 +609,8 @@ NS_INTERFACE_MAP_BEGIN(nsJSCID)
   NS_IMPL_QUERY_CLASSINFO(nsJSCID)
 NS_INTERFACE_MAP_END_THREADSAFE
 
-NS_IMPL_THREADSAFE_ADDREF(nsJSCID)
-NS_IMPL_THREADSAFE_RELEASE(nsJSCID)
+NS_IMPL_ADDREF(nsJSCID)
+NS_IMPL_RELEASE(nsJSCID)
 NS_IMPL_CI_INTERFACE_GETTER2(nsJSCID, nsIJSID, nsIJSCID)
 
 // The nsIXPCScriptable map declaration that will generate stubs for us...
@@ -753,7 +752,7 @@ nsJSCID::CreateInstance(const JS::Value& iidval, JSContext* cx,
 
     nsCOMPtr<nsISupports> inst;
     rv = compMgr->CreateInstance(mDetails.ID(), nullptr, *iid, getter_AddRefs(inst));
-    NS_ASSERTION(NS_FAILED(rv) || inst, "component manager returned success, but instance is null!");
+    MOZ_ASSERT(NS_FAILED(rv) || inst, "component manager returned success, but instance is null!");
 
     if (NS_FAILED(rv) || !inst)
         return NS_ERROR_XPC_CI_RETURNED_FAILURE;
@@ -781,8 +780,8 @@ nsJSCID::GetService(const JS::Value& iidval, JSContext* cx,
     nsIXPCSecurityManager* sm;
     sm = nsXPConnect::XPConnect()->GetDefaultSecurityManager();
     if (sm && NS_FAILED(sm->CanCreateInstance(cx, mDetails.ID()))) {
-        NS_ASSERTION(JS_IsExceptionPending(cx),
-                     "security manager vetoed GetService without setting exception");
+        MOZ_ASSERT(JS_IsExceptionPending(cx),
+                   "security manager vetoed GetService without setting exception");
         return NS_OK;
     }
 
@@ -798,7 +797,7 @@ nsJSCID::GetService(const JS::Value& iidval, JSContext* cx,
 
     nsCOMPtr<nsISupports> srvc;
     rv = svcMgr->GetService(mDetails.ID(), *iid, getter_AddRefs(srvc));
-    NS_ASSERTION(NS_FAILED(rv) || srvc, "service manager returned success, but service is null!");
+    MOZ_ASSERT(NS_FAILED(rv) || srvc, "service manager returned success, but service is null!");
     if (NS_FAILED(rv) || !srvc)
         return NS_ERROR_XPC_GS_RETURNED_FAILURE;
 
@@ -847,7 +846,7 @@ nsJSCID::HasInstance(nsIXPConnectWrappedNative *wrapper,
         // we have a JSObject
         RootedObject obj(cx, &val.toObject());
 
-        NS_ASSERTION(obj, "when is an object not an object?");
+        MOZ_ASSERT(obj, "when is an object not an object?");
 
         // is this really a native xpcom object with a wrapper?
         nsIClassInfo* ci = nullptr;
@@ -915,10 +914,10 @@ xpc_JSObjectToID(JSContext *cx, JSObject* obj)
     return nullptr;
 }
 
-JSBool
+bool
 xpc_JSObjectIsID(JSContext *cx, JSObject* obj)
 {
-    NS_ASSERTION(cx && obj, "bad param");
+    MOZ_ASSERT(cx && obj, "bad param");
     // NOTE: this call does NOT addref
     XPCWrappedNative* wrapper = nullptr;
     obj = js::CheckedUnwrap(obj);

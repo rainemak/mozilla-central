@@ -5,7 +5,7 @@
  /*
   * ContentAreaObserver manages tracking the viewable area within the browser.
   * It also handles certain tasks like positioning of input elements within
-  * content when the viewable area changes. 
+  * content when the viewable area changes.
   *
   * ContentAreaObserver creates styles that content can apply and also fires
   * events when things change. The 'width' and 'height' properties of the
@@ -70,7 +70,7 @@ var ContentAreaObserver = {
   },
 
   get isKeyboardOpened() {
-    return MetroUtils.keyboardVisible;
+    return Services.metro.keyboardVisible;
   },
 
   get isKeyboardTransitioning() {
@@ -133,6 +133,17 @@ var ContentAreaObserver = {
     let newWidth = width || this.width;
     let newHeight = height || this.contentHeight;
 
+    if (Browser.selectedBrowser) {
+      let notificationBox = Browser.getNotificationBox();
+
+      // If a notification and navbar are visible together,
+      // make the notification appear above the navbar.
+      if (ContextUI.navbarVisible && !notificationBox.notificationsHidden &&
+          notificationBox.allNotifications.length != 0) {
+        newHeight -= Elements.navbar.getBoundingClientRect().height;
+      }
+    }
+
     if (newHeight == oldHeight && newWidth == oldWidth)
       return;
 
@@ -171,13 +182,10 @@ var ContentAreaObserver = {
 
   updateAppBarPosition: function updateAppBarPosition(aForceDown) {
     // Adjust the app and find bar position above the soft keyboard
-    let navBar = document.getElementById("navbar");
-    let contextAppBar = document.getElementById("contextappbar");
-    let findBar = document.getElementById("content-navigator");
-    let keyboardHeight = aForceDown ? 0 : MetroUtils.keyboardHeight;
-    navBar.style.bottom = keyboardHeight + "px";
-    contextAppBar.style.bottom = keyboardHeight + "px";
-    findBar.style.bottom = keyboardHeight + "px";
+    let keyboardHeight = aForceDown ? 0 : Services.metro.keyboardHeight;
+    Elements.navbar.style.bottom = keyboardHeight + "px";
+    Elements.contextappbar.style.bottom = keyboardHeight + "px";
+    Elements.findbar.style.bottom = keyboardHeight + "px";
   },
 
   /*
@@ -190,8 +198,9 @@ var ContentAreaObserver = {
   },
 
   onBrowserCreated: function onBrowserCreated(aBrowser) {
-    aBrowser.classList.add("content-width");
-    aBrowser.classList.add("content-height");
+    let notificationBox = aBrowser.parentNode.parentNode;
+    notificationBox.classList.add("content-width");
+    notificationBox.classList.add("content-height");
   },
 
   /*
@@ -326,7 +335,7 @@ var ContentAreaObserver = {
   },
 
   _getViewableHeightForContent: function (contentHeight) {
-    let keyboardHeight = MetroUtils.keyboardHeight;
+    let keyboardHeight = Services.metro.keyboardHeight;
     return contentHeight - keyboardHeight;
   },
 

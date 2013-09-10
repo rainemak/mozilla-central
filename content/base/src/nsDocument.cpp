@@ -8,6 +8,8 @@
  * Base class for all our document implementations.
  */
 
+#include "nsDocument.h"
+
 #include "mozilla/DebugOnly.h"
 #include "mozilla/MemoryReporting.h"
 #include "mozilla/Util.h"
@@ -25,7 +27,6 @@
 #include "mozilla/Telemetry.h"
 #include "nsIInterfaceRequestor.h"
 #include "nsIInterfaceRequestorUtils.h"
-#include "nsDocument.h"
 #include "nsUnicharUtils.h"
 #include "nsContentList.h"
 #include "nsIObserver.h"
@@ -34,7 +35,6 @@
 #include "mozilla/css/ImageLoader.h"
 #include "nsIDocShell.h"
 #include "nsIDocShellTreeItem.h"
-#include "nsIScriptRuntime.h"
 #include "nsCOMArray.h"
 #include "nsDOMClassInfo.h"
 #include "nsCxPusher.h"
@@ -99,10 +99,8 @@
 #include "nsBidiUtils.h"
 
 #include "nsIDOMUserDataHandler.h"
-#include "nsIDOMXPathEvaluator.h"
 #include "nsIDOMXPathExpression.h"
 #include "nsIDOMXPathNSResolver.h"
-#include "nsIXPathEvaluatorInternal.h"
 #include "nsIParserService.h"
 #include "nsContentCreatorFunctions.h"
 
@@ -112,7 +110,6 @@
 #include "nsHTMLDocument.h"
 #include "nsIDOMHTMLFormElement.h"
 #include "nsIRequest.h"
-#include "nsILink.h"
 #include "nsHostObjectProtocolHandler.h"
 
 #include "nsCharsetAlias.h"
@@ -149,6 +146,7 @@
 #include "nsObjectLoadingContent.h"
 #include "nsHtml5TreeOpExecutor.h"
 #include "nsIDOMElementReplaceEvent.h"
+#include "mozilla/dom/HTMLLinkElement.h"
 #include "mozilla/dom/HTMLMediaElement.h"
 #ifdef MOZ_WEBRTC
 #include "IPeerConnection.h"
@@ -194,6 +192,7 @@
 #include "mozilla/dom/DocumentFragment.h"
 #include "mozilla/dom/WebComponentsBinding.h"
 #include "mozilla/dom/HTMLBodyElement.h"
+#include "mozilla/dom/HTMLInputElement.h"
 #include "mozilla/dom/NodeFilterBinding.h"
 #include "mozilla/dom/UndoManager.h"
 #include "nsFrame.h"
@@ -208,6 +207,11 @@
 #include "nsIEditor.h"
 #include "nsIDOMCSSStyleRule.h"
 #include "mozilla/css/Rule.h"
+#include "nsIDOMLocation.h"
+#include "nsIHttpChannelInternal.h"
+#include "nsISecurityConsoleMessage.h"
+#include "nsCharSeparatedTokenizer.h"
+#include "mozilla/dom/XPathEvaluator.h"
 
 using namespace mozilla;
 using namespace mozilla::dom;
@@ -278,7 +282,6 @@ nsIdentifierMapEntry::AddContentChangeCallback(nsIDocument::IDTargetObserver aCa
     mChangeCallbacks = new nsTHashtable<ChangeCallbackEntry>;
     if (!mChangeCallbacks)
       return;
-    mChangeCallbacks->Init();
   }
 
   ChangeCallback cc = { aCallback, aData, aForImage };
@@ -495,7 +498,7 @@ struct nsRadioGroupStruct
   /**
    * A strong pointer to the currently selected radio button.
    */
-  nsCOMPtr<nsIDOMHTMLInputElement> mSelectedRadioButton;
+  nsRefPtr<HTMLInputElement> mSelectedRadioButton;
   nsCOMArray<nsIFormControl> mRadioButtons;
   uint32_t mRequiredRadioCount;
   bool mGroupSuffersFromValueMissing;
@@ -693,8 +696,6 @@ nsOnloadBlocker::SetLoadFlags(nsLoadFlags aLoadFlags)
 nsExternalResourceMap::nsExternalResourceMap()
   : mHaveShutDown(false)
 {
-  mMap.Init();
-  mPendingLoads.Init();
 }
 
 nsIDocument*
@@ -1390,8 +1391,6 @@ nsDocument::nsDocument(const char* aContentType)
 
   // Start out mLastStyleSheetSet as null, per spec
   SetDOMStringToNull(mLastStyleSheetSet);
-
-  mLinksToUpdate.Init();
 }
 
 static PLDHashOperator
@@ -1432,6 +1431,9 @@ nsDocument::~nsDocument()
     }
 
     if (!isAboutScheme) {
+      // Record the page load
+      uint32_t pageLoaded = 1;
+      Accumulate(Telemetry::MIXED_CONTENT_UNBLOCK_COUNTER, pageLoaded);
       // Record the mixed content status of the docshell in Telemetry
       enum {
         NO_MIXED_CONTENT = 0, // There is no Mixed Content on the page
@@ -1466,10 +1468,7 @@ nsDocument::~nsDocument()
 
   mCustomPrototypes.Clear();
 
-  nsISupports* supports;
-  QueryInterface(NS_GET_IID(nsCycleCollectionISupports), reinterpret_cast<void**>(&supports));
-  NS_ASSERTION(supports, "Failed to QI to nsCycleCollectionISupports?!");
-  nsContentUtils::DropJSObjects(supports);
+  mozilla::DropJSObjects(this);
 
   // Clear mObservers to keep it in sync with the mutationobserver list
   mObservers.Clear();
@@ -1576,27 +1575,12 @@ NS_INTERFACE_TABLE_HEAD(nsDocument)
     NS_INTERFACE_TABLE_ENTRY(nsDocument, nsIRadioGroupContainer)
     NS_INTERFACE_TABLE_ENTRY(nsDocument, nsIMutationObserver)
     NS_INTERFACE_TABLE_ENTRY(nsDocument, nsIApplicationCacheContainer)
-    NS_INTERFACE_TABLE_ENTRY(nsDocument, nsIDOMDocumentTouch)
-    NS_INTERFACE_TABLE_ENTRY(nsDocument, nsITouchEventReceiver)
-    NS_INTERFACE_TABLE_ENTRY(nsDocument, nsIInlineEventHandlers)
     NS_INTERFACE_TABLE_ENTRY(nsDocument, nsIObserver)
+    NS_INTERFACE_TABLE_ENTRY(nsDocument, nsIDOMXPathEvaluator)
   NS_INTERFACE_TABLE_END
   NS_INTERFACE_TABLE_TO_MAP_SEGUE_CYCLE_COLLECTION(nsDocument)
   NS_INTERFACE_MAP_ENTRY_TEAROFF(nsIDOMXPathNSResolver,
                                  new nsNode3Tearoff(this))
-  if (aIID.Equals(NS_GET_IID(nsIDOMXPathEvaluator)) ||
-      aIID.Equals(NS_GET_IID(nsIXPathEvaluatorInternal))) {
-    if (!mXPathEvaluatorTearoff) {
-      nsresult rv;
-      mXPathEvaluatorTearoff =
-        do_CreateInstance(NS_XPATH_EVALUATOR_CONTRACTID,
-                          static_cast<nsIDocument *>(this), &rv);
-      NS_ENSURE_SUCCESS(rv, rv);
-    }
-
-    return mXPathEvaluatorTearoff->QueryInterface(aIID, aInstancePtr);
-  }
-  else
 NS_INTERFACE_MAP_END
 
 
@@ -1605,7 +1589,7 @@ NS_IMETHODIMP_(nsrefcnt)
 nsDocument::Release()
 {
   NS_PRECONDITION(0 != mRefCnt, "dup release");
-  NS_ASSERT_OWNINGTHREAD_AND_NOT_CCTHREAD(nsDocument);
+  NS_ASSERT_OWNINGTHREAD(nsDocument);
   nsISupports* base = NS_CYCLE_COLLECTION_CLASSNAME(nsDocument)::Upcast(this);
   nsrefcnt count = mRefCnt.decr(base);
   NS_LOG_RELEASE(this, count, "nsDocument");
@@ -1670,7 +1654,7 @@ RadioGroupsTraverser(const nsAString& aKey, nsRadioGroupStruct* aData,
 
   NS_CYCLE_COLLECTION_NOTE_EDGE_NAME(*cb,
                                    "mRadioGroups entry->mSelectedRadioButton");
-  cb->NoteXPCOMChild(aData->mSelectedRadioButton);
+  cb->NoteXPCOMChild(ToSupports(aData->mSelectedRadioButton));
 
   uint32_t i, count = aData->mRadioButtons.Count();
   for (i = 0; i < count; ++i) {
@@ -1782,7 +1766,7 @@ NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INTERNAL(nsDocument)
 
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mChannel)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mStyleAttrStyleSheet)
-  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mXPathEvaluatorTearoff)
+  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mXPathEvaluator)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mLayoutHistoryState)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mOnloadBlocker)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mFirstBaseNodeWithHref)
@@ -1793,6 +1777,7 @@ NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INTERNAL(nsDocument)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mStateObjectCached)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mUndoManager)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mTemplateContentsOwner)
+  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mChildrenCollection)
 
   // Traverse all our nsCOMArrays.
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mStyleSheets)
@@ -1838,6 +1823,7 @@ CustomPrototypeTrace(const nsAString& aName, JS::Heap<JSObject*>& aObject, void 
   return PL_DHASH_NEXT;
 }
 
+NS_IMPL_CYCLE_COLLECTION_CLASS(nsDocument)
 
 NS_IMPL_CYCLE_COLLECTION_TRACE_BEGIN(nsDocument)
   CustomPrototypeTraceArgs customPrototypeArgs = { aCallbacks, aClosure };
@@ -1867,7 +1853,7 @@ NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(nsDocument)
   }
   tmp->mFirstChild = nullptr;
 
-  NS_IMPL_CYCLE_COLLECTION_UNLINK(mXPathEvaluatorTearoff)
+  NS_IMPL_CYCLE_COLLECTION_UNLINK(mXPathEvaluator)
   tmp->mCachedRootElement = nullptr; // Avoid a dangling pointer
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mDisplayDocument)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mFirstBaseNodeWithHref)
@@ -1877,6 +1863,7 @@ NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(nsDocument)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mCachedEncoder)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mUndoManager)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mTemplateContentsOwner)
+  NS_IMPL_CYCLE_COLLECTION_UNLINK(mChildrenCollection)
 
   tmp->mParentDocument = nullptr;
 
@@ -1945,18 +1932,6 @@ nsDocument::Init()
     Preferences::AddUintVarCache(&sOnloadDecodeLimit, "image.onload.decode.limit", 0);
   }
 
-  mIdentifierMap.Init();
-  mStyledLinks.Init();
-  mRadioGroups.Init();
-  mCustomPrototypes.Init();
-
-  // If after creation the owner js global is not set for a document
-  // we use the default compartment for this document, instead of creating
-  // wrapper in some random compartment when the document is exposed to js
-  // via some events.
-  mScopeObject = do_GetWeakReference(xpc::GetNativeForGlobal(xpc::GetJunkScope()));
-  MOZ_ASSERT(mScopeObject);
-
   // Force initialization.
   nsINode::nsSlots* slots = Slots();
 
@@ -1987,19 +1962,18 @@ nsDocument::Init()
 
   NS_ASSERTION(OwnerDoc() == this, "Our nodeinfo is busted!");
 
+  // If after creation the owner js global is not set for a document
+  // we use the default compartment for this document, instead of creating
+  // wrapper in some random compartment when the document is exposed to js
+  // via some events.
+  nsCOMPtr<nsIGlobalObject> global = xpc::GetJunkScopeGlobal();
+  NS_ENSURE_TRUE(global, NS_ERROR_FAILURE);
+  mScopeObject = do_GetWeakReference(global);
+  MOZ_ASSERT(mScopeObject);
+
   mScriptLoader = new nsScriptLoader(this);
 
-  mImageTracker.Init();
-  mPlugins.Init();
-
-  nsXPCOMCycleCollectionParticipant* participant;
-  CallQueryInterface(this, &participant);
-  NS_ASSERTION(participant, "Failed to QI to nsXPCOMCycleCollectionParticipant!");
-
-  nsISupports* thisSupports;
-  QueryInterface(NS_GET_IID(nsCycleCollectionISupports), reinterpret_cast<void**>(&thisSupports));
-  NS_ASSERTION(thisSupports, "Failed to QI to nsCycleCollectionISupports!");
-  nsContentUtils::HoldJSObjects(thisSupports, participant);
+  mozilla::HoldJSObjects(this);
 
   return NS_OK;
 }
@@ -2459,11 +2433,28 @@ CSPErrorQueue::Flush(nsIDocument* aDocument)
 {
   for (uint32_t i = 0; i < mErrors.Length(); i++) {
     nsContentUtils::ReportToConsole(nsIScriptError::warningFlag,
-        "CSP", aDocument,
+        NS_LITERAL_CSTRING("CSP"), aDocument,
         nsContentUtils::eSECURITY_PROPERTIES,
         mErrors[i]);
   }
   mErrors.Clear();
+}
+
+void
+nsDocument::SendToConsole(nsCOMArray<nsISecurityConsoleMessage>& aMessages)
+{
+  for (uint32_t i = 0; i < aMessages.Length(); ++i) {
+    nsAutoString messageTag;
+    aMessages[i]->GetTag(messageTag);
+
+    nsAutoString category;
+    aMessages[i]->GetCategory(category);
+
+    nsContentUtils::ReportToConsole(nsIScriptError::warningFlag,
+                                    NS_ConvertUTF16toUTF8(category),
+                                    this, nsContentUtils::eSECURITY_PROPERTIES,
+                                    NS_ConvertUTF16toUTF8(messageTag).get());
+  }
 }
 
 nsresult
@@ -2523,37 +2514,26 @@ nsDocument::InitCSP(nsIChannel* aChannel)
   }
 
   // Figure out if we need to apply an app default CSP or a CSP from an app manifest
-  bool applyAppDefaultCSP = false;
-  bool applyAppManifestCSP = false;
-
   nsIPrincipal* principal = NodePrincipal();
 
-  bool unknownAppId;
-  uint16_t appStatus = nsIPrincipal::APP_STATUS_NOT_INSTALLED;
-  nsAutoString appManifestCSP;
-  if (NS_SUCCEEDED(principal->GetUnknownAppId(&unknownAppId)) &&
-      !unknownAppId &&
-      NS_SUCCEEDED(principal->GetAppStatus(&appStatus))) {
-    applyAppDefaultCSP = ( appStatus == nsIPrincipal::APP_STATUS_PRIVILEGED ||
-                           appStatus == nsIPrincipal::APP_STATUS_CERTIFIED);
+  uint16_t appStatus = principal->GetAppStatus();
+  bool applyAppDefaultCSP = appStatus == nsIPrincipal::APP_STATUS_PRIVILEGED ||
+                            appStatus == nsIPrincipal::APP_STATUS_CERTIFIED;
+  bool applyAppManifestCSP = false;
 
-    if (appStatus != nsIPrincipal::APP_STATUS_NOT_INSTALLED) {
-      nsCOMPtr<nsIAppsService> appsService = do_GetService(APPS_SERVICE_CONTRACTID);
-      if (appsService) {
-        uint32_t appId = 0;
-        if (NS_SUCCEEDED(principal->GetAppId(&appId))) {
-          appsService->GetCSPByLocalId(appId, appManifestCSP);
-          if (!appManifestCSP.IsEmpty()) {
-            applyAppManifestCSP = true;
-          }
+  nsAutoString appManifestCSP;
+  if (appStatus != nsIPrincipal::APP_STATUS_NOT_INSTALLED) {
+    nsCOMPtr<nsIAppsService> appsService = do_GetService(APPS_SERVICE_CONTRACTID);
+    if (appsService) {
+      uint32_t appId = 0;
+      if (NS_SUCCEEDED(principal->GetAppId(&appId))) {
+        appsService->GetCSPByLocalId(appId, appManifestCSP);
+        if (!appManifestCSP.IsEmpty()) {
+          applyAppManifestCSP = true;
         }
       }
     }
   }
-#ifdef PR_LOGGING
-  else
-    PR_LOG(gCspPRLog, PR_LOG_DEBUG, ("Failed to get app status from principal"));
-#endif
 
   // If there's no CSP to apply, go ahead and return early
   if (!applyAppDefaultCSP &&
@@ -2750,8 +2730,11 @@ nsDocument::SetDocumentURI(nsIURI* aURI)
   nsIURI* newBase = GetDocBaseURI();
 
   bool equalBases = false;
+  // Changing just the ref of a URI does not change how relative URIs would
+  // resolve wrt to it, so we can treat the bases as equal as long as they're
+  // equal ignoring the ref.
   if (oldBase && newBase) {
-    oldBase->Equals(newBase, &equalBases);
+    oldBase->EqualsExceptRef(newBase, &equalBases);
   }
   else {
     equalBases = !oldBase && !newBase;
@@ -3132,8 +3115,9 @@ nsDocument::ElementFromPointHelper(float aX, float aY,
     return nullptr; // return null to premature XUL callers as a reminder to wait
   }
 
-  nsIFrame *ptFrame = nsLayoutUtils::GetFrameForPoint(rootFrame, pt, true,
-                                                      aIgnoreRootScrollFrame);
+  nsIFrame *ptFrame = nsLayoutUtils::GetFrameForPoint(rootFrame, pt,
+    nsLayoutUtils::IGNORE_PAINT_SUPPRESSION |
+    (aIgnoreRootScrollFrame ? nsLayoutUtils::IGNORE_ROOT_SCROLL_FRAME : 0));
   if (!ptFrame) {
     return nullptr;
   }
@@ -3187,7 +3171,8 @@ nsDocument::NodesFromRectHelper(float aX, float aY,
 
   nsAutoTArray<nsIFrame*,8> outFrames;
   nsLayoutUtils::GetFramesForArea(rootFrame, rect, outFrames,
-                                  true, aIgnoreRootScrollFrame);
+    nsLayoutUtils::IGNORE_PAINT_SUPPRESSION |
+    (aIgnoreRootScrollFrame ? nsLayoutUtils::IGNORE_ROOT_SCROLL_FRAME : 0));
 
   // Used to filter out repeated elements in sequence.
   nsIContent* lastAdded = nullptr;
@@ -3239,6 +3224,13 @@ nsIDocument::ReleaseCapture() const
   if (node && nsContentUtils::CanCallerAccess(node)) {
     nsIPresShell::SetCapturingContent(nullptr, 0);
   }
+}
+
+already_AddRefed<nsIURI>
+nsIDocument::GetBaseURI() const
+{
+  nsCOMPtr<nsIURI> uri = GetDocBaseURI();
+  return uri.forget();
 }
 
 nsresult
@@ -4281,8 +4273,16 @@ nsDocument::SetScriptGlobalObject(nsIScriptGlobalObject *aScriptGlobalObject)
   mWindow = window;
 
   // Now that we know what our window is, we can flush the CSP errors to the
-  // Web Console.
+  // Web Console. We are flushing all messages that occured and were stored
+  // in the queue prior to this point.
   FlushCSPWebConsoleErrorQueue();
+  nsCOMPtr<nsIHttpChannelInternal> internalChannel =
+    do_QueryInterface(GetChannel());
+  if (internalChannel) {
+    nsCOMArray<nsISecurityConsoleMessage> messages;
+    internalChannel->TakeAllSecurityMessages(messages);
+    SendToConsole(messages);
+  }
 
   // Set our visibility state, but do not fire the event.  This is correct
   // because either we're coming out of bfcache (in which case IsVisible() will
@@ -4473,7 +4473,7 @@ void
 nsDocument::ReportEmptyGetElementByIdArg()
 {
   nsContentUtils::ReportToConsole(nsIScriptError::warningFlag,
-                                  "DOM", this,
+                                  NS_LITERAL_CSTRING("DOM"), this,
                                   nsContentUtils::eDOM_PROPERTIES,
                                   "EmptyGetElementByIdParam");
 }
@@ -5121,7 +5121,7 @@ nsIDocument::CreateAttributeNS(const nsAString& aNamespaceURI,
   return attribute.forget();
 }
 
-static JSBool
+static bool
 CustomElementConstructor(JSContext *aCx, unsigned aArgc, JS::Value* aVp)
 {
   JS::CallArgs args = JS::CallArgsFromVp(aArgc, aVp);
@@ -5209,7 +5209,7 @@ nsDocument::Register(JSContext* aCx, const nsAString& aName,
 
     // Check the proto chain for HTMLElement prototype.
     JS::Rooted<JSObject*> protoProto(aCx);
-    if (!JS_GetPrototype(aCx, protoObject, protoProto.address())) {
+    if (!JS_GetPrototype(aCx, protoObject, &protoProto)) {
       rv.Throw(NS_ERROR_UNEXPECTED);
       return nullptr;
     }
@@ -5217,7 +5217,7 @@ nsDocument::Register(JSContext* aCx, const nsAString& aName,
       if (protoProto == htmlProto) {
         break;
       }
-      if (!JS_GetPrototype(aCx, protoProto, protoProto.address())) {
+      if (!JS_GetPrototype(aCx, protoProto, &protoProto)) {
         rv.Throw(NS_ERROR_UNEXPECTED);
         return nullptr;
       }
@@ -5247,7 +5247,7 @@ nsDocument::Register(JSContext* aCx, const nsAString& aName,
 
     nsINode* parentNode = oldNode->GetParentNode();
     MOZ_ASSERT(parentNode, "Node obtained by GetElementsByTagName.");
-    nsCOMPtr<nsIDOMElement> newElement = do_QueryInterface(newNode);
+    nsCOMPtr<Element> newElement = do_QueryInterface(newNode);
     MOZ_ASSERT(newElement, "Cloned of node obtained by GetElementsByTagName.");
 
     parentNode->ReplaceChild(*newNode, *oldNode, rv);
@@ -5272,8 +5272,9 @@ nsDocument::Register(JSContext* aCx, const nsAString& aName,
     nsCOMPtr<nsIDOMElementReplaceEvent> ptEvent = do_QueryInterface(event);
     MOZ_ASSERT(ptEvent);
 
+    nsCOMPtr<nsIDOMElement> element = do_QueryInterface(newElement);
     rv = ptEvent->InitElementReplaceEvent(NS_LITERAL_STRING("elementreplace"),
-                                          false, false, newElement);
+                                          false, false, element);
     if (rv.Failed()) {
       return nullptr;
     }
@@ -5413,10 +5414,7 @@ nsIDocument::GetSelectedStyleSheetSet(nsAString& aSheetSet)
 
     if (aSheetSet.IsEmpty()) {
       aSheetSet = title;
-      return;
-    }
-
-    if (!title.IsEmpty() && !aSheetSet.Equals(title)) {
+    } else if (!title.IsEmpty() && !aSheetSet.Equals(title)) {
       // Sheets from multiple sets enabled; return null string, per spec.
       SetDOMStringToNull(aSheetSet);
       return;
@@ -6130,14 +6128,13 @@ nsDocument::GetBoxObjectFor(Element* aElement, ErrorResult& aRv)
   if (!mHasWarnedAboutBoxObjects && !aElement->IsXUL()) {
     mHasWarnedAboutBoxObjects = true;
     nsContentUtils::ReportToConsole(nsIScriptError::warningFlag,
-                                    "BoxObjects", this,
+                                    NS_LITERAL_CSTRING("BoxObjects"), this,
                                     nsContentUtils::eDOM_PROPERTIES,
                                     "UseOfGetBoxObjectForWarning");
   }
 
   if (!mBoxObjectTable) {
-    mBoxObjectTable = new nsInterfaceHashtable<nsPtrHashKey<nsIContent>, nsPIBoxObject>;
-    mBoxObjectTable->Init(12);
+    mBoxObjectTable = new nsInterfaceHashtable<nsPtrHashKey<nsIContent>, nsPIBoxObject>(12);
   } else {
     nsCOMPtr<nsPIBoxObject> boxObject = mBoxObjectTable->Get(aElement);
     if (boxObject) {
@@ -6615,19 +6612,16 @@ nsIDocument::AdoptNode(nsINode& aAdoptedNode, ErrorResult& rv)
     case nsIDOMNode::ATTRIBUTE_NODE:
     {
       // Remove from ownerElement.
-      nsCOMPtr<nsIDOMAttr> adoptedAttr = do_QueryInterface(adoptedNode);
-      NS_ASSERTION(adoptedAttr, "Attribute not implementing nsIDOMAttr");
+      nsRefPtr<Attr> adoptedAttr = static_cast<Attr*>(adoptedNode);
 
-      nsCOMPtr<nsIDOMElement> ownerElement;
-      rv = adoptedAttr->GetOwnerElement(getter_AddRefs(ownerElement));
+      nsCOMPtr<Element> ownerElement = adoptedAttr->GetOwnerElement(rv);
       if (rv.Failed()) {
         return nullptr;
       }
 
       if (ownerElement) {
-        nsCOMPtr<nsIDOMAttr> newAttr;
-        rv = ownerElement->RemoveAttributeNode(adoptedAttr,
-                                               getter_AddRefs(newAttr));
+        nsRefPtr<Attr> newAttr =
+          ownerElement->RemoveAttributeNode(*adoptedAttr, rv);
         if (rv.Failed()) {
           return nullptr;
         }
@@ -6675,6 +6669,14 @@ nsIDocument::AdoptNode(nsINode& aAdoptedNode, ErrorResult& rv)
         int32_t idx = parent->IndexOf(adoptedNode);
         MOZ_ASSERT(idx >= 0);
         parent->RemoveChildAt(idx, true);
+      } else {
+        MOZ_ASSERT(!adoptedNode->IsInDoc());
+
+        // If we're adopting a node that's not in a document, it might still
+        // have a binding applied. Remove the binding from the element now
+        // that it's getting adopted into a new document.
+        // TODO Fully tear down the binding.
+        adoptedNode->AsContent()->SetXBLBinding(nullptr);
       }
 
       break;
@@ -6769,12 +6771,11 @@ nsIDocument::AdoptNode(nsINode& aAdoptedNode, ErrorResult& rv)
 }
 
 nsViewportInfo
-nsDocument::GetViewportInfo(uint32_t aDisplayWidth,
-                            uint32_t aDisplayHeight)
+nsDocument::GetViewportInfo(const ScreenIntSize& aDisplaySize)
 {
   switch (mViewportType) {
   case DisplayWidthHeight:
-    return nsViewportInfo(aDisplayWidth, aDisplayHeight);
+    return nsViewportInfo(aDisplaySize);
   case Unknown:
   {
     nsAutoString viewport;
@@ -6794,8 +6795,7 @@ nsDocument::GetViewportInfo(uint32_t aDisplayWidth,
           {
             // We're making an assumption that the docType can't change here
             mViewportType = DisplayWidthHeight;
-            nsViewportInfo ret(aDisplayWidth, aDisplayHeight);
-            return ret;
+            return nsViewportInfo(aDisplaySize);
           }
         }
       }
@@ -6804,8 +6804,7 @@ nsDocument::GetViewportInfo(uint32_t aDisplayWidth,
       GetHeaderData(nsGkAtoms::handheldFriendly, handheldFriendly);
       if (handheldFriendly.EqualsLiteral("true")) {
         mViewportType = DisplayWidthHeight;
-        nsViewportInfo ret(aDisplayWidth, aDisplayHeight);
-        return ret;
+        return nsViewportInfo(aDisplaySize);
       }
     }
 
@@ -6813,14 +6812,14 @@ nsDocument::GetViewportInfo(uint32_t aDisplayWidth,
     GetHeaderData(nsGkAtoms::viewport_minimum_scale, minScaleStr);
 
     nsresult errorCode;
-    mScaleMinFloat = minScaleStr.ToFloat(&errorCode);
+    mScaleMinFloat = LayoutDeviceToScreenScale(minScaleStr.ToFloat(&errorCode));
 
     if (NS_FAILED(errorCode)) {
       mScaleMinFloat = kViewportMinScale;
     }
 
-    mScaleMinFloat = std::min((double)mScaleMinFloat, kViewportMaxScale);
-    mScaleMinFloat = std::max((double)mScaleMinFloat, kViewportMinScale);
+    mScaleMinFloat = mozilla::clamped(
+        mScaleMinFloat, kViewportMinScale, kViewportMaxScale);
 
     nsAutoString maxScaleStr;
     GetHeaderData(nsGkAtoms::viewport_maximum_scale, maxScaleStr);
@@ -6828,20 +6827,20 @@ nsDocument::GetViewportInfo(uint32_t aDisplayWidth,
     // We define a special error code variable for the scale and max scale,
     // because they are used later (see the width calculations).
     nsresult scaleMaxErrorCode;
-    mScaleMaxFloat = maxScaleStr.ToFloat(&scaleMaxErrorCode);
+    mScaleMaxFloat = LayoutDeviceToScreenScale(maxScaleStr.ToFloat(&scaleMaxErrorCode));
 
     if (NS_FAILED(scaleMaxErrorCode)) {
       mScaleMaxFloat = kViewportMaxScale;
     }
 
-    mScaleMaxFloat = std::min((double)mScaleMaxFloat, kViewportMaxScale);
-    mScaleMaxFloat = std::max((double)mScaleMaxFloat, kViewportMinScale);
+    mScaleMaxFloat = mozilla::clamped(
+        mScaleMaxFloat, kViewportMinScale, kViewportMaxScale);
 
     nsAutoString scaleStr;
     GetHeaderData(nsGkAtoms::viewport_initial_scale, scaleStr);
 
     nsresult scaleErrorCode;
-    mScaleFloat = scaleStr.ToFloat(&scaleErrorCode);
+    mScaleFloat = LayoutDeviceToScreenScale(scaleStr.ToFloat(&scaleErrorCode));
 
     nsAutoString widthStr, heightStr;
 
@@ -6856,20 +6855,19 @@ nsDocument::GetViewportInfo(uint32_t aDisplayWidth,
 
     if (widthStr.IsEmpty() &&
         (heightStr.EqualsLiteral("device-height") ||
-         (mScaleFloat /* not adjusted for pixel ratio */ == 1.0)))
+         (mScaleFloat.scale == 1.0)))
     {
       mAutoSize = true;
     }
 
     nsresult widthErrorCode, heightErrorCode;
-    mViewportWidth = widthStr.ToInteger(&widthErrorCode);
-    mViewportHeight = heightStr.ToInteger(&heightErrorCode);
+    mViewportSize.width = widthStr.ToInteger(&widthErrorCode);
+    mViewportSize.height = heightStr.ToInteger(&heightErrorCode);
 
     // If width or height has not been set to a valid number by this point,
     // fall back to a default value.
-    mValidWidth = (!widthStr.IsEmpty() && NS_SUCCEEDED(widthErrorCode) && mViewportWidth > 0);
-    mValidHeight = (!heightStr.IsEmpty() && NS_SUCCEEDED(heightErrorCode) && mViewportHeight > 0);
-
+    mValidWidth = (!widthStr.IsEmpty() && NS_SUCCEEDED(widthErrorCode) && mViewportSize.width > 0);
+    mValidHeight = (!heightStr.IsEmpty() && NS_SUCCEEDED(heightErrorCode) && mViewportSize.height > 0);
 
     mAllowZoom = true;
     nsAutoString userScalable;
@@ -6890,63 +6888,62 @@ nsDocument::GetViewportInfo(uint32_t aDisplayWidth,
   }
   case Specified:
   default:
-    uint32_t width = mViewportWidth, height = mViewportHeight;
+    CSSIntSize size = mViewportSize;
 
     if (!mValidWidth) {
-      if (mValidHeight && aDisplayWidth > 0 && aDisplayHeight > 0) {
-        width = uint32_t((height * aDisplayWidth) / aDisplayHeight);
+      if (mValidHeight && !aDisplaySize.IsEmpty()) {
+        size.width = int32_t(size.height * aDisplaySize.width / aDisplaySize.height);
       } else {
-        width = Preferences::GetInt("browser.viewport.desktopWidth",
-                                             kViewportDefaultScreenWidth);
+        size.width = Preferences::GetInt("browser.viewport.desktopWidth",
+                                         kViewportDefaultScreenWidth);
       }
     }
 
     if (!mValidHeight) {
-      if (aDisplayWidth > 0 && aDisplayHeight > 0) {
-        height = uint32_t((width * aDisplayHeight) / aDisplayWidth);
+      if (!aDisplaySize.IsEmpty()) {
+        size.height = int32_t(size.width * aDisplaySize.height / aDisplaySize.width);
       } else {
-        height = width;
+        size.height = size.width;
       }
     }
     // Now convert the scale into device pixels per CSS pixel.
     nsIWidget *widget = nsContentUtils::WidgetForDocument(this);
-    double pixelRatio = widget ? widget->GetDefaultScale() : 1.0;
-    float scaleFloat = mScaleFloat * pixelRatio;
-    float scaleMinFloat= mScaleMinFloat * pixelRatio;
-    float scaleMaxFloat = mScaleMaxFloat * pixelRatio;
+    CSSToLayoutDeviceScale pixelRatio(widget ? widget->GetDefaultScale() : 1.0f);
+    CSSToScreenScale scaleFloat = mScaleFloat * pixelRatio;
+    CSSToScreenScale scaleMinFloat = mScaleMinFloat * pixelRatio;
+    CSSToScreenScale scaleMaxFloat = mScaleMaxFloat * pixelRatio;
 
     if (mAutoSize) {
-      // aDisplayWidth and aDisplayHeight are in device pixels; convert them to
-      // CSS pixels for the viewport size.
-      width = aDisplayWidth / pixelRatio;
-      height = aDisplayHeight / pixelRatio;
+      // aDisplaySize is in screen pixels; convert them to CSS pixels for the viewport size.
+      CSSToScreenScale defaultPixelScale = pixelRatio * LayoutDeviceToScreenScale(1.0f);
+      size = mozilla::gfx::RoundedToInt(ScreenSize(aDisplaySize) / defaultPixelScale);
     }
 
-    width = std::min(width, kViewportMaxWidth);
-    width = std::max(width, kViewportMinWidth);
+    size.width = clamped(size.width, kViewportMinSize.width, kViewportMaxSize.width);
 
     // Also recalculate the default zoom, if it wasn't specified in the metadata,
     // and the width is specified.
     if (mScaleStrEmpty && !mWidthStrEmpty) {
-      scaleFloat = std::max(scaleFloat, float(aDisplayWidth) / float(width));
+      CSSToScreenScale defaultScale(float(aDisplaySize.width) / float(size.width));
+      scaleFloat = (scaleFloat > defaultScale) ? scaleFloat : defaultScale;
     }
 
-    height = std::min(height, kViewportMaxHeight);
-    height = std::max(height, kViewportMinHeight);
+    size.height = clamped(size.height, kViewportMinSize.height, kViewportMaxSize.height);
 
     // We need to perform a conversion, but only if the initial or maximum
     // scale were set explicitly by the user.
     if (mValidScaleFloat) {
-      width = std::max(width, (uint32_t)(aDisplayWidth / scaleFloat));
-      height = std::max(height, (uint32_t)(aDisplayHeight / scaleFloat));
+      CSSIntSize displaySize = RoundedToInt(ScreenSize(aDisplaySize) / scaleFloat);
+      size.width = std::max(size.width, displaySize.width);
+      size.height = std::max(size.height, displaySize.height);
     } else if (mValidMaxScale) {
-      width = std::max(width, (uint32_t)(aDisplayWidth / scaleMaxFloat));
-      height = std::max(height, (uint32_t)(aDisplayHeight / scaleMaxFloat));
+      CSSIntSize displaySize = RoundedToInt(ScreenSize(aDisplaySize) / scaleMaxFloat);
+      size.width = std::max(size.width, displaySize.width);
+      size.height = std::max(size.height, displaySize.height);
     }
 
-    nsViewportInfo ret(scaleFloat, scaleMinFloat, scaleMaxFloat, width, height,
-                       mAutoSize, mAllowZoom);
-    return ret;
+    return nsViewportInfo(scaleFloat, scaleMinFloat, scaleMaxFloat, size,
+                          mAutoSize, mAllowZoom);
   }
 }
 
@@ -7245,13 +7242,13 @@ nsDocument::GetOrCreateRadioGroup(const nsAString& aName)
 
 void
 nsDocument::SetCurrentRadioButton(const nsAString& aName,
-                                  nsIDOMHTMLInputElement* aRadio)
+                                  HTMLInputElement* aRadio)
 {
   nsRadioGroupStruct* radioGroup = GetOrCreateRadioGroup(aName);
   radioGroup->mSelectedRadioButton = aRadio;
 }
 
-nsIDOMHTMLInputElement*
+HTMLInputElement*
 nsDocument::GetCurrentRadioButton(const nsAString& aName)
 {
   return GetOrCreateRadioGroup(aName)->mSelectedRadioButton;
@@ -7260,8 +7257,8 @@ nsDocument::GetCurrentRadioButton(const nsAString& aName)
 NS_IMETHODIMP
 nsDocument::GetNextRadioButton(const nsAString& aName,
                                const bool aPrevious,
-                               nsIDOMHTMLInputElement*  aFocusedRadio,
-                               nsIDOMHTMLInputElement** aRadioOut)
+                               HTMLInputElement* aFocusedRadio,
+                               HTMLInputElement** aRadioOut)
 {
   // XXX Can we combine the HTML radio button method impls of
   //     nsDocument and nsHTMLFormControl?
@@ -7273,7 +7270,7 @@ nsDocument::GetNextRadioButton(const nsAString& aName,
 
   // Return the radio button relative to the focused radio button.
   // If no radio is focused, get the radio relative to the selected one.
-  nsCOMPtr<nsIDOMHTMLInputElement> currentRadio;
+  nsRefPtr<HTMLInputElement> currentRadio;
   if (aFocusedRadio) {
     currentRadio = aFocusedRadio;
   }
@@ -7283,15 +7280,13 @@ nsDocument::GetNextRadioButton(const nsAString& aName,
       return NS_ERROR_FAILURE;
     }
   }
-  nsCOMPtr<nsIFormControl> radioControl(do_QueryInterface(currentRadio));
-  int32_t index = radioGroup->mRadioButtons.IndexOf(radioControl);
+  int32_t index = radioGroup->mRadioButtons.IndexOf(currentRadio);
   if (index < 0) {
     return NS_ERROR_FAILURE;
   }
 
   int32_t numRadios = radioGroup->mRadioButtons.Count();
-  bool disabled;
-  nsCOMPtr<nsIDOMHTMLInputElement> radio;
+  nsRefPtr<HTMLInputElement> radio;
   do {
     if (aPrevious) {
       if (--index < 0) {
@@ -7301,12 +7296,12 @@ nsDocument::GetNextRadioButton(const nsAString& aName,
     else if (++index >= numRadios) {
       index = 0;
     }
-    radio = do_QueryInterface(radioGroup->mRadioButtons[index]);
-    NS_ASSERTION(radio, "mRadioButtons holding a non-radio button");
-    radio->GetDisabled(&disabled);
-  } while (disabled && radio != currentRadio);
+    NS_ASSERTION(static_cast<nsGenericHTMLFormElement*>(radioGroup->mRadioButtons[index])->IsHTML(nsGkAtoms::input),
+                 "mRadioButtons holding a non-radio button");
+    radio = static_cast<HTMLInputElement*>(radioGroup->mRadioButtons[index]);
+  } while (radio->Disabled() && radio != currentRadio);
 
-  NS_IF_ADDREF(*aRadioOut = radio);
+  radio.forget(aRadioOut);
   return NS_OK;
 }
 
@@ -7553,7 +7548,7 @@ nsDocument::Sanitize()
   for (uint32_t i = 0; i < length; ++i) {
     NS_ASSERTION(nodes->Item(i), "null item in node list!");
 
-    nsCOMPtr<nsIDOMHTMLInputElement> input = do_QueryInterface(nodes->Item(i));
+    nsRefPtr<HTMLInputElement> input = HTMLInputElement::FromContentOrNull(nodes->Item(i));
     if (!input)
       continue;
 
@@ -7569,8 +7564,7 @@ nsDocument::Sanitize()
     }
 
     if (resetValue) {
-      nsCOMPtr<nsIFormControl> fc = do_QueryInterface(input);
-      fc->Reset();
+      input->Reset();
     }
   }
 
@@ -7585,7 +7579,8 @@ nsDocument::Sanitize()
     if (!form)
       continue;
 
-    form->GetAttribute(NS_LITERAL_STRING("autocomplete"), value);
+    nodes->Item(i)->AsElement()->GetAttr(kNameSpaceID_None,
+                                         nsGkAtoms::autocomplete, value);
     if (value.LowerCaseEqualsLiteral("off"))
       form->Reset();
   }
@@ -7760,7 +7755,7 @@ nsDocument::Destroy()
 
   // XXX We really should let cycle collection do this, but that currently still
   //     leaks (see https://bugzilla.mozilla.org/show_bug.cgi?id=406684).
-  nsContentUtils::ReleaseWrapper(static_cast<nsINode*>(this), this);
+  ReleaseWrapper(static_cast<nsINode*>(this));
 }
 
 void
@@ -8029,15 +8024,12 @@ nsDocument::OnPageShow(bool aPersisted,
   if (aPersisted && root) {
     // Send out notifications that our <link> elements are attached.
     nsRefPtr<nsContentList> links = NS_GetContentList(root,
-                                                      kNameSpaceID_Unknown,
+                                                      kNameSpaceID_XHTML,
                                                       NS_LITERAL_STRING("link"));
 
     uint32_t linkCount = links->Length(true);
     for (uint32_t i = 0; i < linkCount; ++i) {
-      nsCOMPtr<nsILink> link = do_QueryInterface(links->Item(i, false));
-      if (link) {
-        link->LinkAdded();
-      }
+      static_cast<HTMLLinkElement*>(links->Item(i, false))->LinkAdded();
     }
   }
 
@@ -8093,15 +8085,12 @@ nsDocument::OnPageHide(bool aPersisted,
   Element* root = GetRootElement();
   if (aPersisted && root) {
     nsRefPtr<nsContentList> links = NS_GetContentList(root,
-                                                      kNameSpaceID_Unknown,
+                                                      kNameSpaceID_XHTML,
                                                       NS_LITERAL_STRING("link"));
 
     uint32_t linkCount = links->Length(true);
     for (uint32_t i = 0; i < linkCount; ++i) {
-      nsCOMPtr<nsILink> link = do_QueryInterface(links->Item(i, false));
-      if (link) {
-        link->LinkRemoved();
-      }
+      static_cast<HTMLLinkElement*>(links->Item(i, false))->LinkRemoved();
     }
   }
 
@@ -8763,7 +8752,6 @@ nsIDocument::RegisterFreezableElement(nsIContent* aContent)
     mFreezableElements = new nsTHashtable<nsPtrHashKey<nsIContent> >();
     if (!mFreezableElements)
       return;
-    mFreezableElements->Init();
   }
   mFreezableElements->PutEntry(aContent);
 }
@@ -9030,7 +9018,7 @@ nsIDocument::WarnOnceAbout(DeprecatedOperations aOperation,
   uint32_t flags = asError ? nsIScriptError::errorFlag
                            : nsIScriptError::warningFlag;
   nsContentUtils::ReportToConsole(flags,
-                                  "DOM Core", this,
+                                  NS_LITERAL_CSTRING("DOM Core"), this,
                                   nsContentUtils::eDOM_PROPERTIES,
                                   kWarnings[aOperation]);
 }
@@ -9251,30 +9239,6 @@ nsDocument::SetImagesNeedAnimating(bool aAnimating)
   mAnimatingImages = aAnimating;
 }
 
-NS_IMETHODIMP
-nsDocument::CreateTouch(nsIDOMWindow* aView,
-                        nsIDOMEventTarget* aTarget,
-                        int32_t aIdentifier,
-                        int32_t aPageX,
-                        int32_t aPageY,
-                        int32_t aScreenX,
-                        int32_t aScreenY,
-                        int32_t aClientX,
-                        int32_t aClientY,
-                        int32_t aRadiusX,
-                        int32_t aRadiusY,
-                        float aRotationAngle,
-                        float aForce,
-                        nsIDOMTouch** aRetVal)
-{
-  nsCOMPtr<EventTarget> target = do_QueryInterface(aTarget);
-  *aRetVal = nsIDocument::CreateTouch(aView, target, aIdentifier, aPageX,
-                                      aPageY, aScreenX, aScreenY, aClientX,
-                                      aClientY, aRadiusX, aRadiusY,
-                                      aRotationAngle, aForce).get();
-  return NS_OK;
-}
-
 already_AddRefed<Touch>
 nsIDocument::CreateTouch(nsIDOMWindow* aView,
                          EventTarget* aTarget,
@@ -9295,47 +9259,6 @@ nsIDocument::CreateTouch(nsIDOMWindow* aView,
                                     aRotationAngle,
                                     aForce);
   return touch.forget();
-}
-
-NS_IMETHODIMP
-nsDocument::CreateTouchList(nsIVariant* aPoints,
-                            nsIDOMTouchList** aRetVal)
-{
-  nsRefPtr<nsDOMTouchList> retval = new nsDOMTouchList(ToSupports(this));
-  if (aPoints) {
-    uint16_t type;
-    aPoints->GetDataType(&type);
-    if (type == nsIDataType::VTYPE_INTERFACE ||
-        type == nsIDataType::VTYPE_INTERFACE_IS) {
-      nsCOMPtr<nsISupports> data;
-      aPoints->GetAsISupports(getter_AddRefs(data));
-      nsCOMPtr<nsIDOMTouch> point = do_QueryInterface(data);
-      if (point) {
-        retval->Append(static_cast<Touch*>(point.get()));
-      }
-    } else if (type == nsIDataType::VTYPE_ARRAY) {
-      uint16_t valueType;
-      nsIID iid;
-      uint32_t valueCount;
-      void* rawArray;
-      aPoints->GetAsArray(&valueType, &iid, &valueCount, &rawArray);
-      if (valueType == nsIDataType::VTYPE_INTERFACE ||
-          valueType == nsIDataType::VTYPE_INTERFACE_IS) {
-        nsISupports** values = static_cast<nsISupports**>(rawArray);
-        for (uint32_t i = 0; i < valueCount; ++i) {
-          nsCOMPtr<nsISupports> supports = dont_AddRef(values[i]);
-          nsCOMPtr<nsIDOMTouch> point = do_QueryInterface(supports);
-          if (point) {
-            retval->Append(static_cast<Touch*>(point.get()));
-          }
-        }
-      }
-      nsMemory::Free(rawArray);
-    }
-  }
-
-  *aRetVal = retval.forget().get();
-  return NS_OK;
 }
 
 already_AddRefed<nsDOMTouchList>
@@ -9388,8 +9311,8 @@ nsIDocument::CaretPositionFromPoint(float aX, float aY)
     return nullptr;
   }
 
-  nsIFrame *ptFrame = nsLayoutUtils::GetFrameForPoint(rootFrame, pt, true,
-                                                      false);
+  nsIFrame *ptFrame = nsLayoutUtils::GetFrameForPoint(rootFrame, pt,
+      nsLayoutUtils::IGNORE_PAINT_SUPPRESSION);
   if (!ptFrame) {
     return nullptr;
   }
@@ -9447,6 +9370,49 @@ nsDocument::CaretPositionFromPoint(float aX, float aY, nsISupports** aCaretPos)
   NS_ENSURE_ARG_POINTER(aCaretPos);
   *aCaretPos = nsIDocument::CaretPositionFromPoint(aX, aY).get();
   return NS_OK;
+}
+
+void
+nsIDocument::ObsoleteSheet(nsIURI *aSheetURI, ErrorResult& rv)
+{
+  nsresult res = CSSLoader()->ObsoleteSheet(aSheetURI);
+  if (NS_FAILED(res)) {
+    rv.Throw(res);
+  }
+}
+
+void
+nsIDocument::ObsoleteSheet(const nsAString& aSheetURI, ErrorResult& rv)
+{
+  nsCOMPtr<nsIURI> uri;
+  nsresult res = NS_NewURI(getter_AddRefs(uri), aSheetURI);
+  if (NS_FAILED(res)) {
+    rv.Throw(res);
+    return;
+  }
+  res = CSSLoader()->ObsoleteSheet(uri);
+  if (NS_FAILED(res)) {
+    rv.Throw(res);
+  }
+}
+
+nsIHTMLCollection*
+nsIDocument::Children()
+{
+  if (!mChildrenCollection) {
+    mChildrenCollection = new nsContentList(this, kNameSpaceID_Wildcard,
+                                            nsGkAtoms::_asterix,
+                                            nsGkAtoms::_asterix,
+                                            false);
+  }
+
+  return mChildrenCollection;
+}
+
+uint32_t
+nsIDocument::ChildElementCount()
+{
+  return Children()->Length();
 }
 
 namespace mozilla {
@@ -10036,7 +10002,7 @@ LogFullScreenDenied(bool aLogFailure, const char* aMessage, nsIDocument* aDoc)
                         false);
   e->PostDOMEvent();
   nsContentUtils::ReportToConsole(nsIScriptError::warningFlag,
-                                  "DOM", aDoc,
+                                  NS_LITERAL_CSTRING("DOM"), aDoc,
                                   nsContentUtils::eDOM_PROPERTIES,
                                   aMessage);
 }
@@ -11019,20 +10985,6 @@ nsDocument::XPCOMShutdown()
   gPendingPointerLockRequest = nullptr;
 }
 
-#define EVENT(name_, id_, type_, struct_)                                     \
-  NS_IMETHODIMP nsDocument::GetOn##name_(JSContext *cx, JS::Value *vp) {      \
-    return nsINode::GetOn##name_(cx, vp);                                     \
-  }                                                                           \
-  NS_IMETHODIMP nsDocument::SetOn##name_(JSContext *cx, const JS::Value &v) { \
-    return nsINode::SetOn##name_(cx, v);                                      \
-  }
-#define TOUCH_EVENT EVENT
-#define DOCUMENT_ONLY_EVENT EVENT
-#include "nsEventNameList.h"
-#undef DOCUMENT_ONLY_EVENT
-#undef TOUCH_EVENT
-#undef EVENT
-
 void
 nsDocument::UpdateVisibilityState()
 {
@@ -11248,15 +11200,16 @@ nsDocument::QuerySelectorAll(const nsAString& aSelector, nsIDOMNodeList **aRetur
 }
 
 already_AddRefed<nsIDocument>
-nsIDocument::Constructor(const GlobalObject& aGlobal, ErrorResult& rv)
+nsIDocument::Constructor(const GlobalObject& aGlobal,
+                         ErrorResult& rv)
 {
-  nsCOMPtr<nsIScriptGlobalObject> global = do_QueryInterface(aGlobal.Get());
+  nsCOMPtr<nsIScriptGlobalObject> global = do_QueryInterface(aGlobal.GetAsSupports());
   if (!global) {
     rv.Throw(NS_ERROR_UNEXPECTED);
     return nullptr;
   }
 
-  nsCOMPtr<nsIScriptObjectPrincipal> prin = do_QueryInterface(aGlobal.Get());
+  nsCOMPtr<nsIScriptObjectPrincipal> prin = do_QueryInterface(aGlobal.GetAsSupports());
   if (!prin) {
     rv.Throw(NS_ERROR_UNEXPECTED);
     return nullptr;
@@ -11297,31 +11250,14 @@ nsIDocument::CreateExpression(const nsAString& aExpression,
                               nsIDOMXPathNSResolver* aResolver,
                               ErrorResult& rv)
 {
-  nsCOMPtr<nsIDOMXPathEvaluator> evaluator = do_QueryInterface(this);
-  if (!evaluator) {
-    rv.Throw(NS_ERROR_FAILURE);
-    return nullptr;
-  }
-
-  nsCOMPtr<nsIDOMXPathExpression> expr;
-  rv = evaluator->CreateExpression(aExpression, aResolver, getter_AddRefs(expr));
-  return expr.forget();
+  return XPathEvaluator()->CreateExpression(aExpression, aResolver, rv);
 }
 
 already_AddRefed<nsIDOMXPathNSResolver>
 nsIDocument::CreateNSResolver(nsINode* aNodeResolver,
                               ErrorResult& rv)
 {
-  nsCOMPtr<nsIDOMXPathEvaluator> evaluator = do_QueryInterface(this);
-  if (!evaluator) {
-    rv.Throw(NS_ERROR_FAILURE);
-    return nullptr;
-  }
-
-  nsCOMPtr<nsIDOMNode> nodeResolver = do_QueryInterface(aNodeResolver);
-  nsCOMPtr<nsIDOMXPathNSResolver> res;
-  rv = evaluator->CreateNSResolver(nodeResolver, getter_AddRefs(res));
-  return res.forget();
+  return XPathEvaluator()->CreateNSResolver(aNodeResolver, rv);
 }
 
 already_AddRefed<nsISupports>
@@ -11329,18 +11265,33 @@ nsIDocument::Evaluate(const nsAString& aExpression, nsINode* aContextNode,
                       nsIDOMXPathNSResolver* aResolver, uint16_t aType,
                       nsISupports* aResult, ErrorResult& rv)
 {
-  nsCOMPtr<nsIDOMXPathEvaluator> evaluator = do_QueryInterface(this);
-  if (!evaluator) {
-    rv.Throw(NS_ERROR_FAILURE);
-    return nullptr;
-  }
-
-  nsCOMPtr<nsIDOMNode> contextNode = do_QueryInterface(aContextNode);
-  nsCOMPtr<nsISupports> res;
-  rv = evaluator->Evaluate(aExpression, contextNode, aResolver, aType,
-                           aResult, getter_AddRefs(res));
-  return res.forget();
+  return XPathEvaluator()->Evaluate(aExpression, aContextNode, aResolver, aType,
+                                    aResult, rv);
 }
+
+NS_IMETHODIMP
+nsDocument::CreateExpression(const nsAString& aExpression,
+                             nsIDOMXPathNSResolver* aResolver,
+                             nsIDOMXPathExpression** aResult)
+{
+  return XPathEvaluator()->CreateExpression(aExpression, aResolver, aResult);
+}
+
+NS_IMETHODIMP
+nsDocument::CreateNSResolver(nsIDOMNode* aNodeResolver,
+                             nsIDOMXPathNSResolver** aResult)
+{
+  return XPathEvaluator()->CreateNSResolver(aNodeResolver, aResult);
+}
+
+NS_IMETHODIMP
+nsDocument::Evaluate(const nsAString& aExpression, nsIDOMNode* aContextNode,
+                     nsIDOMXPathNSResolver* aResolver, uint16_t aType,
+                     nsISupports* aInResult, nsISupports** aResult)
+{
+  return XPathEvaluator()->Evaluate(aExpression, aContextNode, aResolver, aType,
+                                    aInResult, aResult);
+} 
 
 // This is just a hack around the fact that window.document is not
 // [Unforgeable] yet.
@@ -11391,6 +11342,15 @@ nsIDocument::WrapObject(JSContext *aCx, JS::Handle<JSObject*> aScope)
   }
 
   return obj;
+}
+
+XPathEvaluator*
+nsIDocument::XPathEvaluator()
+{
+  if (!mXPathEvaluator) {
+    mXPathEvaluator = new dom::XPathEvaluator(this);
+  }
+  return mXPathEvaluator;
 }
 
 bool

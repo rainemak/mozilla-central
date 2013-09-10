@@ -5,18 +5,15 @@
 #ifndef nsGeoLocation_h
 #define nsGeoLocation_h
 
-#include "mozilla/dom/PContentPermissionRequestChild.h"
 // Microsoft's API Name hackery sucks
 #undef CreateEvent
 
 #include "mozilla/StaticPtr.h"
 #include "nsCOMPtr.h"
 #include "nsAutoPtr.h"
-#include "nsCOMArray.h"
 #include "nsTArray.h"
 #include "nsITimer.h"
 #include "nsIObserver.h"
-#include "nsIURI.h"
 #include "nsWrapperCache.h"
 
 #include "nsWeakPtr.h"
@@ -28,20 +25,18 @@
 #include "nsIDOMGeoPositionError.h"
 #include "nsIDOMGeoPositionCallback.h"
 #include "nsIDOMGeoPositionErrorCallback.h"
-#include "nsIDOMNavigatorGeolocation.h"
 #include "mozilla/dom/GeolocationBinding.h"
 #include "mozilla/dom/PositionErrorBinding.h"
 #include "mozilla/dom/CallbackObject.h"
 
-#include "nsPIDOMWindow.h"
-
 #include "nsIGeolocationProvider.h"
 #include "nsIContentPermissionPrompt.h"
+#include "nsIDOMWindow.h"
 #include "DictionaryHelpers.h"
-#include "PCOMContentPermissionRequestChild.h"
 #include "mozilla/Attributes.h"
 
 class nsGeolocationService;
+class nsGeolocationRequest;
 
 namespace mozilla {
 namespace dom {
@@ -50,54 +45,6 @@ typedef CallbackObjectHolder<PositionCallback, nsIDOMGeoPositionCallback> GeoPos
 typedef CallbackObjectHolder<PositionErrorCallback, nsIDOMGeoPositionErrorCallback> GeoPositionErrorCallback;
 }
 }
-
-class nsGeolocationRequest
- : public nsIContentPermissionRequest
- , public nsITimerCallback
- , public nsIGeolocationUpdate
- , public PCOMContentPermissionRequestChild
-{
- public:
-  NS_DECL_CYCLE_COLLECTING_ISUPPORTS
-  NS_DECL_NSICONTENTPERMISSIONREQUEST
-  NS_DECL_NSITIMERCALLBACK
-  NS_DECL_NSIGEOLOCATIONUPDATE
-
-  NS_DECL_CYCLE_COLLECTION_CLASS_AMBIGUOUS(nsGeolocationRequest, nsIContentPermissionRequest)
-
-  nsGeolocationRequest(mozilla::dom::Geolocation* locator,
-                       const mozilla::dom::GeoPositionCallback& callback,
-                       const mozilla::dom::GeoPositionErrorCallback& errorCallback,
-                       mozilla::idl::GeoPositionOptions* aOptions,
-                       bool watchPositionRequest = false,
-                       int32_t watchId = 0);
-  void Shutdown();
-
-  void SendLocation(nsIDOMGeoPosition* location);
-  bool WantsHighAccuracy() {return mOptions && mOptions->enableHighAccuracy;}
-  void SetTimeoutTimer();
-  nsIPrincipal* GetPrincipal();
-
-  ~nsGeolocationRequest();
-
-  virtual bool Recv__delete__(const bool& allow) MOZ_OVERRIDE;
-  virtual void IPDLRelease() MOZ_OVERRIDE { Release(); }
-
-  bool IsWatch() { return mIsWatchPositionRequest; }
-  int32_t WatchId() { return mWatchId; }
- private:
-  bool mIsWatchPositionRequest;
-
-  nsCOMPtr<nsITimer> mTimeoutTimer;
-  mozilla::dom::GeoPositionCallback mCallback;
-  mozilla::dom::GeoPositionErrorCallback mErrorCallback;
-  nsAutoPtr<mozilla::idl::GeoPositionOptions> mOptions;
-
-  nsRefPtr<mozilla::dom::Geolocation> mLocator;
-
-  int32_t mWatchId;
-  bool mShutdown;
-};
 
 /**
  * Singleton that manages the geolocation provider
@@ -109,7 +56,7 @@ public:
   static already_AddRefed<nsGeolocationService> GetGeolocationService();
   static mozilla::StaticRefPtr<nsGeolocationService> sService;
 
-  NS_DECL_ISUPPORTS
+  NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSIGEOLOCATIONUPDATE
   NS_DECL_NSIOBSERVER
 
@@ -229,8 +176,8 @@ private:
 
   ~Geolocation();
 
-  nsresult GetCurrentPosition(GeoPositionCallback& aCallback, GeoPositionErrorCallback& aErrorCallback, mozilla::idl::GeoPositionOptions* aOptions);
-  nsresult WatchPosition(GeoPositionCallback& aCallback, GeoPositionErrorCallback& aErrorCallback, mozilla::idl::GeoPositionOptions* aOptions, int32_t* aRv);
+  nsresult GetCurrentPosition(GeoPositionCallback& aCallback, GeoPositionErrorCallback& aErrorCallback, PositionOptions* aOptions);
+  nsresult WatchPosition(GeoPositionCallback& aCallback, GeoPositionErrorCallback& aErrorCallback, PositionOptions* aOptions, int32_t* aRv);
 
   bool RegisterRequestWithPrompt(nsGeolocationRequest* request);
 
@@ -294,10 +241,6 @@ public:
 
   int16_t Code() const {
     return mCode;
-  }
-
-  void GetMessage(nsString& aRetVal) const {
-    aRetVal.Truncate();
   }
 
   void NotifyCallback(const GeoPositionErrorCallback& callback);

@@ -9,8 +9,6 @@
 
 #include "nsIScriptSecurityManager.h"
 #include "nsIPrincipal.h"
-#include "jsapi.h"
-#include "jsdbgapi.h"
 #include "nsIXPCSecurityManager.h"
 #include "nsInterfaceHashtable.h"
 #include "nsHashtable.h"
@@ -20,8 +18,9 @@
 #include "pldhash.h"
 #include "plstr.h"
 #include "nsIScriptExternalNameSet.h"
+#include "js/TypeDecls.h"
 
-#include "mozilla/StandardInteger.h"
+#include <stdint.h>
 
 class nsIDocShell;
 class nsString;
@@ -371,13 +370,13 @@ private:
 
     bool SubjectIsPrivileged();
 
-    static JSBool
+    static bool
     CheckObjectAccess(JSContext *cx, JS::Handle<JSObject*> obj,
                       JS::Handle<jsid> id, JSAccessMode mode,
                       JS::MutableHandle<JS::Value> vp);
     
     // Decides, based on CSP, whether or not eval() and stuff can be executed.
-    static JSBool
+    static bool
     ContentSecurityPolicyPermitsJSAction(JSContext *cx);
 
     // Returns null if a principal cannot be found; generally callers
@@ -429,20 +428,6 @@ private:
     // context.  Callers MUST pass in a non-null rv here.
     nsIPrincipal*
     GetSubjectPrincipal(JSContext* cx, nsresult* rv);
-
-    // Returns null if a principal cannot be found.  Note that rv can be NS_OK
-    // when this happens -- this means that there was no script.  Callers MUST
-    // pass in a non-null rv here.
-    static nsIPrincipal*
-    GetScriptPrincipal(JSScript* script, nsresult* rv);
-
-    // Returns null if a principal cannot be found.  Note that rv can be NS_OK
-    // when this happens -- this means that there was no script associated
-    // with the function object, and no global object associated with the scope
-    // of obj (the last object on its parent chain). Callers MUST pass in a
-    // non-null rv here.
-    static nsIPrincipal*
-    GetFunctionObjectPrincipal(JSContext* cx, JS::Handle<JSObject*> obj, nsresult* rv);
 
     /**
      * Check capability levels for an |aObj| that implements
@@ -502,9 +487,6 @@ private:
     nsresult
     InitDomainPolicy(JSContext* cx, const char* aPolicyName,
                      DomainPolicy* aDomainPolicy);
-
-    // JS strings we need to clean up on shutdown
-    static jsid sEnabledID;
 
     inline void
     ScriptSecurityPrefChanged();

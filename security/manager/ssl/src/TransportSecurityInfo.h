@@ -38,7 +38,7 @@ public:
   TransportSecurityInfo();
   virtual ~TransportSecurityInfo();
   
-  NS_DECL_ISUPPORTS
+  NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSITRANSPORTSECURITYINFO
   NS_DECL_NSIINTERFACEREQUESTOR
   NS_DECL_NSISSLSTATUSPROVIDER
@@ -134,9 +134,6 @@ public:
   static nsresult Init()
   {
     sInstance = new RememberCertErrorsTable();
-    if (!sInstance->mErrorHosts.IsInitialized())
-      return NS_ERROR_OUT_OF_MEMORY;
-
     return NS_OK;
   }
 

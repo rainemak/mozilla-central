@@ -59,6 +59,8 @@ nsSocketTransportService::nsSocketTransportService()
     , mIdleListSize(SOCKET_LIMIT_MIN)
     , mActiveCount(0)
     , mIdleCount(0)
+    , mSentBytesCount(0)
+    , mReceivedBytesCount(0)
     , mSendBufferSize(0)
     , mProbedMaxCount(false)
 {
@@ -178,6 +180,8 @@ nsSocketTransportService::DetachSocket(SocketContext *listHead, SocketContext *s
 
     // inform the handler that this socket is going away
     sock->mHandler->OnSocketDetached(sock->mFD);
+    mSentBytesCount += sock->mHandler->ByteCountSent();
+    mReceivedBytesCount += sock->mHandler->ByteCountReceived();
 
     // cleanup
     sock->mFD = nullptr;
@@ -401,13 +405,13 @@ nsSocketTransportService::Poll(bool wait, uint32_t *interval)
 //-----------------------------------------------------------------------------
 // xpcom api
 
-NS_IMPL_THREADSAFE_ISUPPORTS6(nsSocketTransportService,
-                              nsISocketTransportService,
-                              nsIEventTarget,
-                              nsIThreadObserver,
-                              nsIRunnable,
-                              nsPISocketTransportService,
-                              nsIObserver)
+NS_IMPL_ISUPPORTS6(nsSocketTransportService,
+                   nsISocketTransportService,
+                   nsIEventTarget,
+                   nsIThreadObserver,
+                   nsIRunnable,
+                   nsPISocketTransportService,
+                   nsIObserver)
 
 // called from main thread only
 NS_IMETHODIMP
@@ -566,6 +570,31 @@ nsSocketTransportService::CreateTransport(const char **types,
     }
 
     *result = trans;
+    return NS_OK;
+}
+
+NS_IMETHODIMP
+nsSocketTransportService::CreateUnixDomainTransport(nsIFile *aPath,
+                                                    nsISocketTransport **result)
+{
+    nsresult rv;
+
+    NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
+    nsAutoCString path;
+    rv = aPath->GetNativePath(path);
+    if (NS_FAILED(rv))
+        return rv;
+
+    nsRefPtr<nsSocketTransport> trans = new nsSocketTransport();
+    if (!trans)
+        return NS_ERROR_OUT_OF_MEMORY;
+
+    rv = trans->InitWithFilename(path.get());
+    if (NS_FAILED(rv))
+        return rv;
+
+    trans.forget(result);
     return NS_OK;
 }
 
@@ -1047,10 +1076,14 @@ nsSocketTransportService::DiscoverMaxCount()
     return PR_SUCCESS;
 }
 
+
+// Used to return connection info to Dashboard.cpp
 void
 nsSocketTransportService::AnalyzeConnection(nsTArray<SocketInfo> *data,
         struct SocketContext *context, bool aActive)
 {
+    if (context->mHandler->mIsPrivate)
+        return;
     PRFileDesc *aFD = context->mFD;
     bool tcp = (PR_GetDescType(aFD) == PR_DESC_SOCKET_TCP);
 

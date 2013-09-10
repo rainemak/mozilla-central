@@ -6,31 +6,19 @@
 #include "nsCSSAnonBoxes.h"
 #include "nsContainerFrame.h"
 #include "nsLegendFrame.h"
-#include "nsIDOMNode.h"
-#include "nsIDOMHTMLFieldSetElement.h"
-#include "nsIDOMHTMLLegendElement.h"
 #include "nsCSSRendering.h"
 #include <algorithm>
-#include "nsIContent.h"
 #include "nsIFrame.h"
-#include "nsISupports.h"
-#include "nsIAtom.h"
 #include "nsPresContext.h"
-#include "nsFrameManager.h"
-#include "nsHTMLParts.h"
+#include "RestyleManager.h"
 #include "nsGkAtoms.h"
 #include "nsStyleConsts.h"
-#include "nsFont.h"
-#include "nsCOMPtr.h"
-#include "nsIServiceManager.h"
 #include "nsDisplayList.h"
 #include "nsRenderingContext.h"
 #include "mozilla/Likely.h"
 
 using namespace mozilla;
 using namespace mozilla::layout;
-
-class nsLegendFrame;
 
 class nsFieldSetFrame MOZ_FINAL : public nsContainerFrame {
 public:
@@ -680,13 +668,13 @@ nsFieldSetFrame::AccessibleType()
 void
 nsFieldSetFrame::ReparentFrameList(const nsFrameList& aFrameList)
 {
-  nsFrameManager* frameManager = PresContext()->FrameManager();
+  RestyleManager* restyleManager = PresContext()->RestyleManager();
   nsIFrame* inner = GetInner();
   for (nsFrameList::Enumerator e(aFrameList); !e.AtEnd(); e.Next()) {
     NS_ASSERTION(GetLegend() || e.get()->GetType() != nsGkAtoms::legendFrame,
                  "The fieldset's legend is not allowed in this list");
     e.get()->SetParent(inner);
-    frameManager->ReparentStyleContext(e.get());
+    restyleManager->ReparentStyleContext(e.get());
   }
 }
 

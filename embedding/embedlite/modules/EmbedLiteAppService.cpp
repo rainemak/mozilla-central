@@ -31,6 +31,7 @@
 #include "nsCxPusher.h"
 #include "xpcprivate.h"
 #include "nsPIDOMWindow.h"
+#include "mozilla/AutoRestore.h"
 
 using namespace mozilla;
 using namespace mozilla::embedlite;
@@ -62,7 +63,6 @@ EmbedLiteAppService::EmbedLiteAppService()
   : mPushedSomething(0)
   , mHandlingMessages(false)
 {
-  mMessageListeners.Init();
 }
 
 EmbedLiteAppService::~EmbedLiteAppService()
@@ -196,7 +196,7 @@ EmbedLiteAppService::RemoveMessageListener(const char* name, nsIEmbedMessageList
 void
 EmbedLiteAppService::HandleAsyncMessage(const char* aMessage, const nsString& aData)
 {
-  mozilla::AutoRestore<bool> setVisited(mHandlingMessages);
+  AutoRestore<bool> setVisited(mHandlingMessages);
   mHandlingMessages = true;
 
   nsTArray<nsCOMPtr<nsIEmbedMessageListener> >* array;

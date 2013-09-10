@@ -41,14 +41,13 @@ protected:
   virtual bool DeallocPFTPChannelChild(PFTPChannelChild*);
   virtual PWebSocketChild* AllocPWebSocketChild(PBrowserChild*, const SerializedLoadContext&);
   virtual bool DeallocPWebSocketChild(PWebSocketChild*);
-  virtual PTCPSocketChild* AllocPTCPSocketChild(const nsString& aHost,
-                                                const uint16_t& aPort,
-                                                const bool& useSSL,
-                                                const nsString& aBinaryType,
-                                                PBrowserChild* aBrowser);
+  virtual PTCPSocketChild* AllocPTCPSocketChild();
   virtual bool DeallocPTCPSocketChild(PTCPSocketChild*);
-  virtual PRemoteOpenFileChild* AllocPRemoteOpenFileChild(const URIParams&,
-                                                          PBrowserChild*);
+  virtual PTCPServerSocketChild* AllocPTCPServerSocketChild(const uint16_t& aLocalPort,
+                                                       const uint16_t& aBacklog,
+                                                       const nsString& aBinaryType);
+  virtual bool DeallocPTCPServerSocketChild(PTCPServerSocketChild*);
+  virtual PRemoteOpenFileChild* AllocPRemoteOpenFileChild(const URIParams&);
   virtual bool DeallocPRemoteOpenFileChild(PRemoteOpenFileChild*);
 };
 

@@ -34,6 +34,7 @@
 #include "mozilla/dom/Element.h"
 #include "nsCSSFrameConstructor.h"
 #include "nsHashKeys.h"
+#include "RestyleManager.h"
 
 using namespace mozilla;
 using namespace mozilla::dom;
@@ -441,7 +442,7 @@ nsHTMLStyleSheet::ImplLinkColorSetter(nsRefPtr<HTMLColorRule>& aRule, nscolor aC
   if (mDocument && mDocument->GetShell()) {
     Element* root = mDocument->GetRootElement();
     if (root) {
-      mDocument->GetShell()->FrameConstructor()->
+      mDocument->GetShell()->GetPresContext()->RestyleManager()->
         PostRestyleEvent(root, eRestyle_Subtree, NS_STYLE_HINT_NONE);
     }
   }

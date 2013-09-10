@@ -4,21 +4,36 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "nsDeviceContext.h"
-#include "nsCRT.h"
-#include "nsFontMetrics.h"
-#include "nsRenderingContext.h"
-#include "nsIWidget.h"
-
-#include "mozilla/Attributes.h"
-#include "mozilla/Services.h"
-#include "mozilla/Preferences.h"
-#include "nsIServiceManager.h"
-#include "nsILanguageAtomService.h"
-#include "nsIObserver.h"
-#include "nsIObserverService.h"
-
-#include "gfxImageSurface.h"
-#include <algorithm>
+#include <algorithm>                    // for max
+#include "gfxASurface.h"                // for gfxASurface, etc
+#include "gfxFont.h"                    // for gfxFontGroup
+#include "gfxImageSurface.h"            // for gfxImageSurface
+#include "gfxPoint.h"                   // for gfxSize
+#include "mozilla/Attributes.h"         // for MOZ_FINAL
+#include "mozilla/Preferences.h"        // for Preferences
+#include "mozilla/Services.h"           // for GetObserverService
+#include "mozilla/mozalloc.h"           // for operator new
+#include "nsCRT.h"                      // for nsCRT
+#include "nsDebug.h"                    // for NS_NOTREACHED, NS_ASSERTION, etc
+#include "nsFont.h"                     // for nsFont
+#include "nsFontMetrics.h"              // for nsFontMetrics
+#include "nsIAtom.h"                    // for nsIAtom, do_GetAtom
+#include "nsID.h"
+#include "nsIDeviceContextSpec.h"       // for nsIDeviceContextSpec
+#include "nsILanguageAtomService.h"     // for nsILanguageAtomService, etc
+#include "nsIObserver.h"                // for nsIObserver, etc
+#include "nsIObserverService.h"         // for nsIObserverService
+#include "nsIScreen.h"                  // for nsIScreen
+#include "nsIScreenManager.h"           // for nsIScreenManager
+#include "nsISupportsUtils.h"           // for NS_ADDREF, NS_RELEASE
+#include "nsIWidget.h"                  // for nsIWidget, NS_NATIVE_WINDOW
+#include "nsRect.h"                     // for nsRect
+#include "nsRenderingContext.h"         // for nsRenderingContext
+#include "nsServiceManagerUtils.h"      // for do_GetService
+#include "nsStringGlue.h"               // for nsDependentString
+#include "nsTArray.h"                   // for nsTArray, nsTArray_Impl
+#include "nsThreadUtils.h"              // for NS_IsMainThread
+#include "nsTraceRefcnt.h"              // for MOZ_COUNT_CTOR, etc
 
 #if !XP_MACOSX
 #include "gfxPDFSurface.h"
@@ -276,7 +291,7 @@ nsDeviceContext::FontMetricsDeleted(const nsFontMetrics* aFontMetrics)
 bool
 nsDeviceContext::IsPrinterSurface()
 {
-    return(mPrintingSurface != NULL);
+    return mPrintingSurface != nullptr;
 }
 
 void
@@ -472,15 +487,15 @@ nsDeviceContext::InitForPrinting(nsIDeviceContextSpec *aDevice)
 }
 
 nsresult
-nsDeviceContext::BeginDocument(PRUnichar*  aTitle,
-                               PRUnichar*  aPrintToFileName,
-                               int32_t     aStartPage,
-                               int32_t     aEndPage)
+nsDeviceContext::BeginDocument(const nsAString& aTitle,
+                               PRUnichar*       aPrintToFileName,
+                               int32_t          aStartPage,
+                               int32_t          aEndPage)
 {
     static const PRUnichar kEmpty[] = { '\0' };
     nsresult rv;
 
-    rv = mPrintingSurface->BeginPrinting(nsDependentString(aTitle ? aTitle : kEmpty),
+    rv = mPrintingSurface->BeginPrinting(aTitle,
                                          nsDependentString(aPrintToFileName ? aPrintToFileName : kEmpty));
 
     if (NS_SUCCEEDED(rv) && mDeviceContextSpec)

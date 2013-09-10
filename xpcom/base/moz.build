@@ -22,6 +22,7 @@ XPIDL_SOURCES += [
     'nsIMessageLoop.idl',
     'nsIMutable.idl',
     'nsIProgrammingLanguage.idl',
+    'nsISecurityConsoleMessage.idl',
     'nsISupports.idl',
     'nsITraceRefcnt.idl',
     'nsIUUIDGenerator.idl',
@@ -42,10 +43,7 @@ MODULE = 'xpcom'
 
 EXPORTS += [
     'ErrorList.h',
-    'ErrorListCDefines.h',
-    'ErrorListCxxDefines.h',
     'nsAgg.h',
-    'nsAtomicRefcnt.h',
     'nsAutoPtr.h',
     'nsAutoRef.h',
     'nsCom.h',
@@ -104,6 +102,7 @@ CPP_SOURCES += [
     'nsMemoryInfoDumper.cpp',
     'nsMemoryReporterManager.cpp',
     'nsMessageLoop.cpp',
+    'nsSecurityConsoleMessage.cpp',
     'nsStackWalk.cpp',
     'nsSystemInfo.cpp',
     'nsTraceRefcntImpl.cpp',
@@ -124,3 +123,15 @@ elif CONFIG['MOZ_WIDGET_TOOLKIT'] == 'windows':
     CPP_SOURCES += [
         'nsCrashOnException.cpp',
     ]
+
+CSRCS += [
+    'nsErrorAssertsC.c',
+]
+
+
+LIBXUL_LIBRARY = True
+
+MSVC_ENABLE_PGO = True
+
+LIBRARY_NAME = 'xpcombase_s'
+

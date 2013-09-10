@@ -29,7 +29,7 @@ class DocManager : public nsIWebProgressListener,
 public:
   virtual ~DocManager() { }
 
-  NS_DECL_ISUPPORTS
+  NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSIWEBPROGRESSLISTENER
   NS_DECL_NSIDOMEVENTLISTENER
 
@@ -73,7 +73,7 @@ public:
 #endif
 
 protected:
-  DocManager() { }
+  DocManager();
 
   /**
    * Initialize the manager.

@@ -86,16 +86,16 @@ nsSVGOuterSVGFrame::RegisterForeignObject(nsSVGForeignObjectFrame* aFrame)
 {
   NS_ASSERTION(aFrame, "Who on earth is calling us?!");
 
-  if (!mForeignObjectHash.IsInitialized()) {
-    mForeignObjectHash.Init();
+  if (!mForeignObjectHash) {
+    mForeignObjectHash = new nsTHashtable<nsPtrHashKey<nsSVGForeignObjectFrame> >();
   }
 
-  NS_ASSERTION(!mForeignObjectHash.GetEntry(aFrame),
+  NS_ASSERTION(!mForeignObjectHash->GetEntry(aFrame),
                "nsSVGForeignObjectFrame already registered!");
 
-  mForeignObjectHash.PutEntry(aFrame);
+  mForeignObjectHash->PutEntry(aFrame);
 
-  NS_ASSERTION(mForeignObjectHash.GetEntry(aFrame),
+  NS_ASSERTION(mForeignObjectHash->GetEntry(aFrame),
                "Failed to register nsSVGForeignObjectFrame!");
 }
 
@@ -103,9 +103,9 @@ void
 nsSVGOuterSVGFrame::UnregisterForeignObject(nsSVGForeignObjectFrame* aFrame)
 {
   NS_ASSERTION(aFrame, "Who on earth is calling us?!");
-  NS_ASSERTION(mForeignObjectHash.GetEntry(aFrame),
+  NS_ASSERTION(mForeignObjectHash && mForeignObjectHash->GetEntry(aFrame),
                "nsSVGForeignObjectFrame not in registry!");
-  return mForeignObjectHash.RemoveEntry(aFrame);
+  return mForeignObjectHash->RemoveEntry(aFrame);
 }
 
 void
@@ -463,21 +463,21 @@ nsSVGOuterSVGFrame::Reflow(nsPresContext*           aPresContext,
   }
   mViewportInitialized = true;
 
-  if (!(GetStateBits() & NS_FRAME_IS_NONDISPLAY)) {
-    // Now that we've marked the necessary children as dirty, call
-    // ReflowSVG() on them:
-
-    mCallingReflowSVG = true;
-
+  // Now that we've marked the necessary children as dirty, call
+  // ReflowSVG() or ReflowSVGNonDisplayText() on them, depending
+  // on whether we are non-display.
+  mCallingReflowSVG = true;
+  if (GetStateBits() & NS_FRAME_IS_NONDISPLAY) {
+    ReflowSVGNonDisplayText(this);
+  } else {
     // Update the mRects and visual overflow rects of all our descendants,
     // including our anonymous wrapper kid:
     anonKid->AddStateBits(mState & NS_FRAME_IS_DIRTY);
     anonKid->ReflowSVG();
     NS_ABORT_IF_FALSE(!anonKid->GetNextSibling(),
       "We should have one anonymous child frame wrapping our real children");
-
-    mCallingReflowSVG = false;
   }
+  mCallingReflowSVG = false;
 
   // Set our anonymous kid's offset from our border box:
   anonKid->SetPosition(GetContentRectRelativeToSelf().TopLeft());
@@ -665,8 +665,8 @@ nsRegion
 nsSVGOuterSVGFrame::FindInvalidatedForeignObjectFrameChildren(nsIFrame* aFrame)
 {
   nsRegion result;
-  if (mForeignObjectHash.Count()) {
-    mForeignObjectHash.EnumerateEntries(CheckForeignObjectInvalidatedArea, &result);
+  if (mForeignObjectHash && mForeignObjectHash->Count()) {
+    mForeignObjectHash->EnumerateEntries(CheckForeignObjectInvalidatedArea, &result);
   }
   return result;
 }

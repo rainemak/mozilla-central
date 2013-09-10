@@ -456,17 +456,20 @@ DoSNISocketConfig(PRFileDesc *aFd, const SECItem *aSrvNameArr,
   }
 
 #if NSS_VERSION_MN >= 15 && NSS_VERSION_MJ >= 3
-  PLArenaPool arena;
-  PL_InitArenaPool(&arena, "OCSP response", 1024, 0);
-  // response is contained by the arena - finishing the arena will free it
-  SECItemArray *response = GetOCSPResponseForType(host->mOSRT, cert, &arena);
+  PLArenaPool *arena = PORT_NewArena(1024);
+  if (!arena) {
+    PrintPRError("PORT_NewArena failed");
+    return SSL_SNI_SEND_ALERT;
+  }
+  // response is contained by the arena - freeing the arena will free it
+  SECItemArray *response = GetOCSPResponseForType(host->mOSRT, cert, arena);
   if (!response) {
-    PL_FinishArenaPool(&arena);
+    PORT_FreeArena(arena, PR_FALSE);
     return SSL_SNI_SEND_ALERT;
   }
   // SSL_SetStapledOCSPResponses makes a deep copy of response
   SECStatus st = SSL_SetStapledOCSPResponses(aFd, response, certKEA);
-  PL_FinishArenaPool(&arena);
+  PORT_FreeArena(arena, PR_FALSE);
   if (st != SECSuccess) {
     PrintPRError("SSL_SetStapledOCSPResponses failed");
     return SSL_SNI_SEND_ALERT;

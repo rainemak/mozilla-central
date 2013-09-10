@@ -70,10 +70,14 @@ XPCJSContextStack::Push(JSContext *cx)
         // compartment that's same-origin with the current one, we can skip it.
         nsIScriptSecurityManager* ssm = XPCWrapper::GetSecurityManager();
         if ((e.cx == cx) && ssm) {
-            RootedObject defaultGlobal(cx, js::GetDefaultGlobalForContext(cx));
+            // DOM JSContexts don't store their default compartment object on
+            // the cx, so in those cases we need to fetch it via the scx
+            // instead.
+            RootedObject defaultScope(cx, GetDefaultScopeFromJSContext(cx));
+
             nsIPrincipal *currentPrincipal =
               GetCompartmentPrincipal(js::GetContextCompartment(cx));
-            nsIPrincipal *defaultPrincipal = GetObjectPrincipal(defaultGlobal);
+            nsIPrincipal *defaultPrincipal = GetObjectPrincipal(defaultScope);
             bool equal = false;
             currentPrincipal->Equals(defaultPrincipal, &equal);
             if (equal) {
@@ -104,10 +108,10 @@ XPCJSContextStack::HasJSContext(JSContext *cx)
     return false;
 }
 
-static JSBool
+static bool
 SafeGlobalResolve(JSContext *cx, HandleObject obj, HandleId id)
 {
-    JSBool resolved;
+    bool resolved;
     return JS_ResolveStandardClass(cx, obj, id, &resolved);
 }
 
@@ -121,18 +125,13 @@ SafeFinalize(JSFreeOp *fop, JSObject* obj)
     DestroyProtoAndIfaceCache(obj);
 }
 
-static JSClass global_class = {
+JSClass xpc::SafeJSContextGlobalClass = {
     "global_for_XPCJSContextStack_SafeJSContext",
     XPCONNECT_GLOBAL_FLAGS,
     JS_PropertyStub, JS_DeletePropertyStub, JS_PropertyStub, JS_StrictPropertyStub,
     JS_EnumerateStub, SafeGlobalResolve, JS_ConvertStub, SafeFinalize,
     NULL, NULL, NULL, NULL, TraceXPCGlobal
 };
-
-// We just use the same reporter as the component loader
-// XXX #include angels cry.
-extern void
-mozJSLoaderErrorReporter(JSContext *cx, const char *message, JSErrorReport *rep);
 
 JSContext*
 XPCJSContextStack::GetSafeJSContext()
@@ -158,17 +157,17 @@ XPCJSContextStack::GetSafeJSContext()
     JSAutoRequest req(mSafeJSContext);
 
     JS::RootedObject glob(mSafeJSContext);
-    JS_SetErrorReporter(mSafeJSContext, mozJSLoaderErrorReporter);
+    JS_SetErrorReporter(mSafeJSContext, xpc::SystemErrorReporter);
 
     JS::CompartmentOptions options;
     options.setZone(JS::SystemZone);
-    glob = xpc::CreateGlobalObject(mSafeJSContext, &global_class, principal, options);
+    glob = xpc::CreateGlobalObject(mSafeJSContext, &SafeJSContextGlobalClass, principal, options);
     if (!glob)
         MOZ_CRASH();
 
     // Make sure the context is associated with a proper compartment
     // and not the default compartment.
-    JS_SetGlobalObject(mSafeJSContext, glob);
+    js::SetDefaultObjectForContext(mSafeJSContext, glob);
 
     // Note: make sure to set the private before calling
     // InitClasses
@@ -181,6 +180,8 @@ XPCJSContextStack::GetSafeJSContext()
     // hook.
     if (NS_FAILED(xpc->InitClasses(mSafeJSContext, glob)))
         MOZ_CRASH();
+
+    JS_FireOnNewGlobalObject(mSafeJSContext, glob);
 
     // Save it off so we can destroy it later.
     mOwnSafeJSContext = mSafeJSContext;

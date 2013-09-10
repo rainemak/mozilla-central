@@ -42,11 +42,15 @@ public:
   nsIPrincipal* GetPrincipal() { return mPrincipal; }
 
   virtual bool DoLoadFrameScript(const nsAString& aURL);
-  virtual bool DoSendSyncMessage(const nsAString& aMessage,
+  virtual bool DoSendSyncMessage(JSContext* aCx,
+                                 const nsAString& aMessage,
                                  const mozilla::dom::StructuredCloneData& aData,
+                                 JS::Handle<JSObject *> aCpows,
                                  InfallibleTArray<nsString>* aJSONRetVal);
-  virtual bool DoSendAsyncMessage(const nsAString& aMessage,
-                                  const mozilla::dom::StructuredCloneData& aData);
+  virtual bool DoSendAsyncMessage(JSContext* aCx,
+                                  const nsAString& aMessage,
+                                  const mozilla::dom::StructuredCloneData& aData,
+                                  JS::Handle<JSObject *> aCpows);
   virtual bool CheckPermission(const nsAString& aPermission);
 
   bool RecvAsyncMessage(const nsAString& aMessage,

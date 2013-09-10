@@ -171,7 +171,7 @@ BrowserElementChild.prototype = {
                      /* wantsUntrusted = */ false);
 
     addEventListener('DOMLinkAdded',
-                     this._iconChangedHandler.bind(this),
+                     this._linkAddedHandler.bind(this),
                      /* useCapture = */ true,
                      /* wantsUntrusted = */ false);
 
@@ -239,6 +239,9 @@ BrowserElementChild.prototype = {
     els.addSystemEventListener(global, 'DOMWindowCreated',
                                this._windowCreatedHandler.bind(this),
                                /* useCapture = */ true);
+    els.addSystemEventListener(global, 'DOMWindowResize',
+                               this._windowResizeHandler.bind(this),
+                               /* useCapture = */ false);
     els.addSystemEventListener(global, 'contextmenu',
                                this._contextmenuHandler.bind(this),
                                /* useCapture = */ false);
@@ -264,8 +267,9 @@ BrowserElementChild.prototype = {
   },
 
   observe: function(subject, topic, data) {
-    // Ignore notifications not about our document.
-    if (subject != content.document)
+    // Ignore notifications not about our document.  (Note that |content| /can/
+    // be null; see bug 874900.)
+    if (!content || subject != content.document)
       return;
     switch (topic) {
       case 'fullscreen-origin-change':
@@ -345,12 +349,7 @@ BrowserElementChild.prototype = {
     debug("Entering modal state (outerWindowID=" + outerWindowID + ", " +
                                 "innerWindowID=" + innerWindowID + ")");
 
-    // In theory, we're supposed to pass |modalStateWin| back to
-    // leaveModalStateWithWindow.  But in practice, the window is always null,
-    // because it's the window associated with this script context, which
-    // doesn't have a window.  But we'll play along anyway in case this
-    // changes.
-    var modalStateWin = utils.enterModalStateWithWindow();
+    utils.enterModalState();
 
     // We'll decrement win.modalDepth when we receive a unblock-modal-prompt message
     // for the window.
@@ -387,7 +386,7 @@ BrowserElementChild.prototype = {
     delete win.modalReturnValue;
 
     if (!this._shuttingDown) {
-      utils.leaveModalStateWithWindow(modalStateWin);
+      utils.leaveModalState();
     }
 
     debug("Leaving modal state (outerID=" + outerWindowID + ", " +
@@ -447,22 +446,45 @@ BrowserElementChild.prototype = {
   },
 
   _iconChangedHandler: function(e) {
-    debug("Got iconchanged: (" + e.target.href + ")");
-    var hasIcon = e.target.rel.split(' ').some(function(x) {
-      return x.toLowerCase() === 'icon';
-    });
+    debug('Got iconchanged: (' + e.target.href + ')');
 
-    if (hasIcon) {
-      var win = e.target.ownerDocument.defaultView;
-      // Ignore iconchanges which don't come from the top-level
-      // <iframe mozbrowser> window.
-      if (win == content) {
-        sendAsyncMsg('iconchange', { _payload_: e.target.href });
-      }
-      else {
-        debug("Not top level!");
-      }
+    sendAsyncMsg('iconchange', { _payload_: e.target.href });
+  },
+
+  _openSearchHandler: function(e) {
+    debug('Got opensearch: (' + e.target.href + ')');
+
+    if (e.target.type !== "application/opensearchdescription+xml") {
+      return;
     }
+
+    sendAsyncMsg('opensearch', { title: e.target.title,
+                                 href: e.target.href });
+
+  },
+
+  // Processes the "rel" field in <link> tags and forward to specific handlers.
+  _linkAddedHandler: function(e) {
+    let win = e.target.ownerDocument.defaultView;
+    // Ignore links which don't come from the top-level
+    // <iframe mozbrowser> window.
+    if (win != content) {
+      debug('Not top level!');
+      return;
+    }
+
+    let handlers = {
+      'icon': this._iconChangedHandler,
+      'search': this._openSearchHandler
+    };
+
+    debug('Got linkAdded: (' + e.target.href + ') ' + e.target.rel);
+    e.target.rel.split(' ').forEach(function(x) {
+      let token = x.toLowerCase();
+      if (handlers[token]) {
+        handlers[token](e);
+      }
+    }, this);
   },
 
   _addMozAfterPaintHandler: function(callback) {
@@ -529,6 +551,19 @@ BrowserElementChild.prototype = {
         sendAsyncMsg('documentfirstpaint');
       });
     }
+  },
+
+  _windowResizeHandler: function(e) {
+    let win = e.target;
+    if (win != content || e.defaultPrevented) {
+      return;
+    }
+
+    debug("resizing window " + win);
+    sendAsyncMsg('resize', { width: e.detail.width, height: e.detail.height });
+
+    // Inform the window implementation that we handled this resize ourselves.
+    e.preventDefault();
   },
 
   _contextmenuHandler: function(e) {
@@ -674,6 +709,13 @@ BrowserElementChild.prototype = {
     debug("Taking a screenshot: maxWidth=" + maxWidth +
           ", maxHeight=" + maxHeight +
           ", domRequestID=" + domRequestID + ".");
+
+    if (!content) {
+      // If content is not loaded yet, bail out since even sendAsyncMessage
+      // fails...
+      debug("No content yet!");
+      return;
+    }
 
     let scaleWidth = Math.min(1, maxWidth / content.innerWidth);
     let scaleHeight = Math.min(1, maxHeight / content.innerHeight);

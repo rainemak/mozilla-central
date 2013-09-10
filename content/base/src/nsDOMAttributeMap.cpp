@@ -33,7 +33,6 @@ nsDOMAttributeMap::nsDOMAttributeMap(Element* aContent)
 {
   // We don't add a reference to our content. If it goes away,
   // we'll be told to drop our reference
-  mAttributeCache.Init();
   SetIsDOMBinding();
 }
 
@@ -60,6 +59,8 @@ nsDOMAttributeMap::DropReference()
   mAttributeCache.Enumerate(RemoveMapRef, nullptr);
   mContent = nullptr;
 }
+
+NS_IMPL_CYCLE_COLLECTION_CLASS(nsDOMAttributeMap)
 
 NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(nsDOMAttributeMap)
   tmp->DropReference();
@@ -281,7 +282,7 @@ nsDOMAttributeMap::SetNamedItemInternal(Attr& aAttr,
   }
 
   nsresult rv;
-  if (!mContent->HasSameOwnerDoc(&aAttr)) {
+  if (mContent->OwnerDoc() != aAttr.OwnerDoc()) {
     nsCOMPtr<nsINode> adoptedNode =
       mContent->OwnerDoc()->AdoptNode(aAttr, aError);
     if (aError.Failed()) {

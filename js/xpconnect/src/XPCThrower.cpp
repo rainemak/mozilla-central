@@ -9,8 +9,9 @@
 #include "xpcprivate.h"
 #include "xpcpublic.h"
 #include "XPCWrapper.h"
+#include "jsprf.h"
 
-JSBool XPCThrower::sVerbose = true;
+bool XPCThrower::sVerbose = true;
 
 // static
 void
@@ -41,7 +42,7 @@ Throw(JSContext *cx, nsresult rv)
  * should be the current call context.
  */
 // static
-JSBool
+bool
 XPCThrower::CheckForPendingException(nsresult result, JSContext *cx)
 {
     nsCOMPtr<nsIException> e;
@@ -172,7 +173,7 @@ XPCThrower::Verbosify(XPCCallContext& ccx,
 void
 XPCThrower::BuildAndThrowException(JSContext* cx, nsresult rv, const char* sz)
 {
-    JSBool success = false;
+    bool success = false;
 
     /* no need to set an expection if the security manager already has */
     if (rv == NS_ERROR_XPC_SECURITY_MANAGER_VETO && JS_IsExceptionPending(cx))
@@ -222,10 +223,10 @@ IsCallerChrome(JSContext* cx)
 }
 
 // static
-JSBool
+bool
 XPCThrower::ThrowExceptionObject(JSContext* cx, nsIException* e)
 {
-    JSBool success = false;
+    bool success = false;
     if (e) {
         nsCOMPtr<nsIXPCException> xpcEx;
         JS::RootedValue thrown(cx);
@@ -242,7 +243,7 @@ XPCThrower::ThrowExceptionObject(JSContext* cx, nsIException* e)
             JS_SetPendingException(cx, thrown);
             success = true;
         } else if ((xpc = nsXPConnect::XPConnect())) {
-            JS::RootedObject glob(cx, JS_GetGlobalForScopeChain(cx));
+            JS::RootedObject glob(cx, JS::CurrentGlobalOrNull(cx));
             if (!glob)
                 return false;
 

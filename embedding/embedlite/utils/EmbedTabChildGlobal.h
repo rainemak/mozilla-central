@@ -10,6 +10,7 @@
 #include "nsDOMEventTargetHelper.h"
 #include "nsIScriptObjectPrincipal.h"
 #include "nsITabChild.h"
+#include "nsEventDispatcher.h"
 
 namespace mozilla {
 namespace embedlite {
@@ -29,24 +30,27 @@ public:
   NS_FORWARD_SAFE_NSIMESSAGELISTENERMANAGER(mMessageManager)
   NS_FORWARD_SAFE_NSIMESSAGESENDER(mMessageManager)
   NS_IMETHOD SendSyncMessage(const nsAString& aMessageName,
-                             const jsval& aObject,
+                             const JS::Value& aObject,
+                             const JS::Value& aRemote,
                              JSContext* aCx,
                              uint8_t aArgc,
-                             jsval* aRetval) {
+                             JS::Value* aRetval)
+  {
     return mMessageManager
-           ? mMessageManager->SendSyncMessage(aMessageName, aObject, aCx, aArgc, aRetval)
-           : NS_ERROR_NULL_POINTER;
+      ? mMessageManager->SendSyncMessage(aMessageName, aObject, aRemote, aCx, aArgc, aRetval)
+      : NS_ERROR_NULL_POINTER;
   }
-  NS_IMETHOD GetContent(nsIDOMWindow** aContent);
-  NS_IMETHOD GetDocShell(nsIDocShell** aDocShell);
-  NS_IMETHOD Dump(const nsAString& aStr) {
+  NS_IMETHOD GetContent(nsIDOMWindow** aContent) MOZ_OVERRIDE;
+  NS_IMETHOD GetDocShell(nsIDocShell** aDocShell) MOZ_OVERRIDE;
+  NS_IMETHOD Dump(const nsAString& aStr) MOZ_OVERRIDE
+  {
     return mMessageManager ? mMessageManager->Dump(aStr) : NS_OK;
   }
-  NS_IMETHOD PrivateNoteIntentionalCrash();
+  NS_IMETHOD PrivateNoteIntentionalCrash() MOZ_OVERRIDE;
   NS_IMETHOD Btoa(const nsAString& aBinaryData,
-                  nsAString& aAsciiBase64String);
+                  nsAString& aAsciiBase64String) MOZ_OVERRIDE;
   NS_IMETHOD Atob(const nsAString& aAsciiString,
-                  nsAString& aBinaryData);
+                  nsAString& aBinaryData) MOZ_OVERRIDE;
 
   NS_IMETHOD AddEventListener(const nsAString& aType,
                               nsIDOMEventListener* aListener,
@@ -60,7 +64,7 @@ public:
   NS_IMETHOD AddEventListener(const nsAString& aType,
                               nsIDOMEventListener* aListener,
                               bool aUseCapture, bool aWantsUntrusted,
-                              uint8_t optional_argc)
+                              uint8_t optional_argc) MOZ_OVERRIDE
   {
     return nsDOMEventTargetHelper::AddEventListener(aType, aListener,
                                                     aUseCapture,
@@ -68,11 +72,18 @@ public:
                                                     optional_argc);
   }
 
+  nsresult
+  PreHandleEvent(nsEventChainPreVisitor& aVisitor)
+  {
+    aVisitor.mForceContentDispatch = true;
+    return NS_OK;
+  }
+
   virtual nsIScriptObjectPrincipal* GetObjectPrincipal() {
     return this;
   }
-  virtual JSContext* GetJSContextForEventHandlers();
-  virtual nsIPrincipal* GetPrincipal();
+  virtual JSContext* GetJSContextForEventHandlers() MOZ_OVERRIDE;
+  virtual nsIPrincipal* GetPrincipal() MOZ_OVERRIDE;
 
   TabChildHelper* mTabChild;
   nsRefPtr<nsFrameMessageManager> mMessageManager;

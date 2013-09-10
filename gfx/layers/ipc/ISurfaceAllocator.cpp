@@ -6,15 +6,18 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "ISurfaceAllocator.h"
-#include "mozilla/ipc/SharedMemory.h"
-#include "gfxSharedImageSurface.h"
-#include "gfxPlatform.h"
-#include "gfxASurface.h"
-#include "mozilla/layers/LayersSurfaces.h"
-#include "mozilla/layers/SharedPlanarYCbCrImage.h"
-#include "mozilla/layers/SharedRGBImage.h"
-#include "nsXULAppAPI.h"
-
+#include <sys/types.h>                  // for int32_t
+#include "gfxASurface.h"                // for gfxASurface, etc
+#include "gfxPlatform.h"                // for gfxPlatform, gfxImageFormat
+#include "gfxSharedImageSurface.h"      // for gfxSharedImageSurface
+#include "mozilla/Assertions.h"         // for MOZ_ASSERT, etc
+#include "mozilla/ipc/SharedMemory.h"   // for SharedMemory, etc
+#include "mozilla/layers/LayersSurfaces.h"  // for SurfaceDescriptor, etc
+#include "ShadowLayerUtils.h"
+#include "mozilla/mozalloc.h"           // for operator delete[], etc
+#include "nsAutoPtr.h"                  // for nsRefPtr, getter_AddRefs, etc
+#include "nsDebug.h"                    // for NS_RUNTIMEABORT
+#include "nsXULAppAPI.h"                // for XRE_GetProcessType, etc
 #ifdef DEBUG
 #include "prenv.h"
 #endif
@@ -26,16 +29,7 @@ namespace layers {
 
 SharedMemory::SharedMemoryType OptimalShmemType()
 {
-#if defined(MOZ_PLATFORM_MAEMO) && defined(MOZ_HAVE_SHAREDMEMORYSYSV)
-  // Use SysV memory because maemo5 on the N900 only allots 64MB to
-  // /dev/shm, even though it has 1GB(!!) of system memory.  Sys V shm
-  // is allocated from a different pool.  We don't want an arbitrary
-  // cap that's much much lower than available memory on the memory we
-  // use for layers.
-  return SharedMemory::TYPE_SYSV;
-#else
   return SharedMemory::TYPE_BASIC;
-#endif
 }
 
 bool
@@ -90,7 +84,10 @@ ISurfaceAllocator::AllocSurfaceDescriptorWithCaps(const gfxIntSize& aSize,
     gfxImageFormat format =
       gfxPlatform::GetPlatform()->OptimalFormatForContent(aContent);
     int32_t stride = gfxASurface::FormatStrideForWidth(format, aSize.width);
-    uint8_t *data = new uint8_t[stride * aSize.height];
+    uint8_t *data = new (std::nothrow) uint8_t[stride * aSize.height];
+    if (!data) {
+      return false;
+    }
 #ifdef XP_MACOSX
     // Workaround a bug in Quartz where drawing an a8 surface to another a8
     // surface with OPERATOR_SOURCE still requires the destination to be clear.
@@ -120,10 +117,6 @@ ISurfaceAllocator::DestroySharedSurface(SurfaceDescriptor* aSurface)
   if (!aSurface) {
     return;
   }
-  if (!IsOnCompositorSide() && ReleaseOwnedSurfaceDescriptor(*aSurface)) {
-    *aSurface = SurfaceDescriptor();
-    return;
-  }
   if (PlatformDestroySharedSurface(aSurface)) {
     return;
   }
@@ -137,6 +130,7 @@ ISurfaceAllocator::DestroySharedSurface(SurfaceDescriptor* aSurface)
     case SurfaceDescriptor::TRGBImage:
       DeallocShmem(aSurface->get_RGBImage().data());
       break;
+    case SurfaceDescriptor::TSurfaceDescriptorD3D9:
     case SurfaceDescriptor::TSurfaceDescriptorD3D10:
       break;
     case SurfaceDescriptor::TMemoryImage:
@@ -149,37 +143,6 @@ ISurfaceAllocator::DestroySharedSurface(SurfaceDescriptor* aSurface)
       NS_RUNTIMEABORT("surface type not implemented!");
   }
   *aSurface = SurfaceDescriptor();
-}
-
-bool IsSurfaceDescriptorOwned(const SurfaceDescriptor& aDescriptor)
-{
-  switch (aDescriptor.type()) {
-    case SurfaceDescriptor::TYCbCrImage: {
-      const YCbCrImage& ycbcr = aDescriptor.get_YCbCrImage();
-      return ycbcr.owner() != 0;
-    }
-    case SurfaceDescriptor::TRGBImage: {
-      const RGBImage& rgb = aDescriptor.get_RGBImage();
-      return rgb.owner() != 0;
-    }
-    default:
-      return false;
-  }
-  return false;
-}
-bool ReleaseOwnedSurfaceDescriptor(const SurfaceDescriptor& aDescriptor)
-{
-  SharedPlanarYCbCrImage* sharedYCbCr = SharedPlanarYCbCrImage::FromSurfaceDescriptor(aDescriptor);
-  if (sharedYCbCr) {
-    sharedYCbCr->Release();
-    return true;
-  }
-  SharedRGBImage* sharedRGB = SharedRGBImage::FromSurfaceDescriptor(aDescriptor);
-  if (sharedRGB) {
-    sharedRGB->Release();
-    return true;
-  }
-  return false;
 }
 
 #if !defined(MOZ_HAVE_PLATFORM_SPECIFIC_LAYER_BUFFERS)

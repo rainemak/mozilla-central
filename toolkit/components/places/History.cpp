@@ -1,6 +1,6 @@
-/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- * vim: sw=2 ts=2 et lcs=trail\:.,tab\:>~ :
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* vim: set ts=8 sts=2 et sw=2 tw=80: */
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
@@ -30,11 +30,12 @@
 #include "nsNetUtil.h"
 #include "nsIXPConnect.h"
 #include "mozilla/unused.h"
-#include "nsContentUtils.h"
+#include "nsContentUtils.h" // for nsAutoScriptBlocker
 #include "nsIMemoryReporter.h"
 #include "mozilla/ipc/URIUtils.h"
 #include "nsPrintfCString.h"
 #include "nsTHashtable.h"
+#include "jsapi.h"
 
 // Initial size for the cache holding visited status observers.
 #define VISIT_OBSERVERS_INITIAL_CACHE_SIZE 128
@@ -76,6 +77,7 @@ struct VisitData {
   , visitTime(0)
   , frecency(-1)
   , titleChanged(false)
+  , shouldUpdateFrecency(true)
   {
     guid.SetIsVoid(true);
     title.SetIsVoid(true);
@@ -91,6 +93,7 @@ struct VisitData {
   , visitTime(0)
   , frecency(-1)
   , titleChanged(false)
+  , shouldUpdateFrecency(true)
   {
     (void)aURI->GetSpec(spec);
     (void)GetReversedHostname(aURI, revHost);
@@ -157,6 +160,9 @@ struct VisitData {
 
   // TODO bug 626836 hook up hidden and typed change tracking too!
   bool titleChanged;
+
+  // Indicates whether frecency should be updated for this visit.
+  bool shouldUpdateFrecency;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,7 +252,7 @@ GetJSArrayFromJSValue(const JS::Value& aValue,
   *_array = JS_NewArrayObject(aCtx, 0, nullptr);
   NS_ENSURE_TRUE(*_array, NS_ERROR_OUT_OF_MEMORY);
 
-  JSBool rc = JS_DefineElement(aCtx, *_array, 0, aValue, nullptr, nullptr, 0);
+  bool rc = JS_DefineElement(aCtx, *_array, 0, aValue, nullptr, nullptr, 0);
   NS_ENSURE_TRUE(rc, NS_ERROR_UNEXPECTED);
   return NS_OK;
 }
@@ -292,7 +298,7 @@ GetURIFromJSObject(JSContext* aCtx,
                    const char* aProperty)
 {
   JS::Rooted<JS::Value> uriVal(aCtx);
-  JSBool rc = JS_GetProperty(aCtx, aObject, aProperty, uriVal.address());
+  bool rc = JS_GetProperty(aCtx, aObject, aProperty, &uriVal);
   NS_ENSURE_TRUE(rc, nullptr);
   return GetJSValueAsURI(aCtx, uriVal);
 }
@@ -350,7 +356,7 @@ GetStringFromJSObject(JSContext* aCtx,
                       nsString& _string)
 {
   JS::Rooted<JS::Value> val(aCtx);
-  JSBool rc = JS_GetProperty(aCtx, aObject, aProperty, val.address());
+  bool rc = JS_GetProperty(aCtx, aObject, aProperty, &val);
   if (!rc) {
     _string.SetIsVoid(true);
     return;
@@ -380,7 +386,7 @@ GetIntFromJSObject(JSContext* aCtx,
                    IntType* _int)
 {
   JS::Rooted<JS::Value> value(aCtx);
-  JSBool rc = JS_GetProperty(aCtx, aObject, aProperty, value.address());
+  bool rc = JS_GetProperty(aCtx, aObject, aProperty, &value);
   NS_ENSURE_TRUE(rc, NS_ERROR_UNEXPECTED);
   if (JSVAL_IS_VOID(value)) {
     return NS_ERROR_INVALID_ARG;
@@ -421,7 +427,7 @@ GetJSObjectFromArray(JSContext* aCtx,
                   "Must provide an object that is an array!");
 
   JS::Rooted<JS::Value> value(aCtx);
-  JSBool rc = JS_GetElement(aCtx, aArray, aIndex, value.address());
+  bool rc = JS_GetElement(aCtx, aArray, aIndex, &value);
   NS_ENSURE_TRUE(rc, NS_ERROR_UNEXPECTED);
   NS_ENSURE_ARG(!JSVAL_IS_PRIMITIVE(value));
   *_rooter = JSVAL_TO_OBJECT(value);
@@ -997,8 +1003,12 @@ private:
 
     // TODO (bug 623969) we shouldn't update this after each visit, but
     // rather only for each unique place to save disk I/O.
-    rv = UpdateFrecency(aPlace);
-    NS_ENSURE_SUCCESS(rv, rv);
+
+    // Don't update frecency if the page should not appear in autocomplete.
+    if (aPlace.shouldUpdateFrecency) {
+      rv = UpdateFrecency(aPlace);
+      NS_ENSURE_SUCCESS(rv, rv);
+    }
 
     return NS_OK;
   }
@@ -1168,10 +1178,7 @@ private:
    */
   nsresult UpdateFrecency(const VisitData& aPlace)
   {
-    // Don't update frecency if the page should not appear in autocomplete.
-    if (aPlace.frecency == 0) {
-      return NS_OK;
-    }
+    MOZ_ASSERT(aPlace.shouldUpdateFrecency);
 
     nsresult rv;
     { // First, set our frecency to the proper value.
@@ -1574,11 +1581,11 @@ class NotifyRemoveVisits : public nsRunnable
 public:
 
   NotifyRemoveVisits(nsTHashtable<PlaceHashKey>& aPlaces)
-  : mHistory(History::GetService())
+    : mPlaces(VISITS_REMOVAL_INITIAL_HASH_SIZE)
+    , mHistory(History::GetService())
   {
     MOZ_ASSERT(!NS_IsMainThread(),
                "This should not be called on the main thread");
-    mPlaces.Init(VISITS_REMOVAL_INITIAL_HASH_SIZE);
     aPlaces.EnumerateEntries(TransferHashEntries, &mPlaces);
   }
 
@@ -1679,8 +1686,7 @@ public:
 
     // Find all the visits relative to the current filters and whether their
     // pages will be removed or not.
-    nsTHashtable<PlaceHashKey> places;
-    places.Init(VISITS_REMOVAL_INITIAL_HASH_SIZE);
+    nsTHashtable<PlaceHashKey> places(VISITS_REMOVAL_INITIAL_HASH_SIZE);
     nsresult rv = FindRemovableVisits(places);
     NS_ENSURE_SUCCESS(rv, rv);
 
@@ -1902,22 +1908,22 @@ StoreAndNotifyEmbedVisit(VisitData& aPlace,
   (void)NS_DispatchToMainThread(event);
 }
 
-NS_MEMORY_REPORTER_MALLOC_SIZEOF_FUN(HistoryLinksHashtableMallocSizeOf)
-
-int64_t GetHistoryObserversSize()
+class HistoryLinksHashtableReporter MOZ_FINAL : public MemoryReporterBase
 {
-  History* history = History::GetService();
-  return history ?
-         history->SizeOfIncludingThis(HistoryLinksHashtableMallocSizeOf) : 0;
-}
-
-NS_MEMORY_REPORTER_IMPLEMENT(HistoryService,
-  "explicit/history-links-hashtable",
-  KIND_HEAP,
-  UNITS_BYTES,
-  GetHistoryObserversSize,
-  "Memory used by the hashtable of observers Places uses to notify objects of "
-  "changes to links' visited state.")
+public:
+  HistoryLinksHashtableReporter()
+    : MemoryReporterBase("explicit/history-links-hashtable",
+                         KIND_HEAP, UNITS_BYTES,
+"Memory used by the hashtable that records changes to the visited state of "
+"links.")
+    {}
+private:
+  int64_t Amount() MOZ_OVERRIDE
+  {
+    History* history = History::GetService();
+    return history ? history->SizeOfIncludingThis(MallocSizeOf) : 0;
+  }
+};
 
 } // anonymous namespace
 
@@ -1929,6 +1935,7 @@ History* History::gService = NULL;
 History::History()
   : mShuttingDown(false)
   , mShutdownMutex("History::mShutdownMutex")
+  , mObservers(VISIT_OBSERVERS_INITIAL_CACHE_SIZE)
   , mRecentlyVisitedURIsNextIndex(0)
 {
   NS_ASSERTION(!gService, "Ruh-roh!  This service has already been created!");
@@ -1940,19 +1947,18 @@ History::History()
     (void)os->AddObserver(this, TOPIC_PLACES_SHUTDOWN, false);
   }
 
-  NS_RegisterMemoryReporter(new NS_MEMORY_REPORTER_NAME(HistoryService));
+  mReporter = new HistoryLinksHashtableReporter();
+  NS_RegisterMemoryReporter(mReporter);
 }
 
 History::~History()
 {
-  gService = NULL;
+  NS_UnregisterMemoryReporter(mReporter);
 
-#ifdef DEBUG
-  if (mObservers.IsInitialized()) {
-    NS_ASSERTION(mObservers.Count() == 0,
-                 "Not all Links were removed before we disappear!");
-  }
-#endif
+  gService = nullptr;
+
+  NS_ASSERTION(mObservers.Count() == 0,
+               "Not all Links were removed before we disappear!");
 }
 
 NS_IMETHODIMP
@@ -1975,14 +1981,7 @@ History::NotifyVisited(nsIURI* aURI)
     }
   }
 
-  // If the hash table has not been initialized, then we have nothing to notify
-  // about.
-  if (!mObservers.IsInitialized()) {
-    return NS_OK;
-  }
-
-  // Additionally, if we have no observers for this URI, we have nothing to
-  // notify about.
+  // If we have no observers for this URI, we have nothing to notify about.
   KeyClass* key = mObservers.GetEntry(aURI);
   if (!key) {
     return NS_OK;
@@ -2064,7 +2063,10 @@ History::InsertPlace(const VisitData& aPlace)
   NS_ENSURE_SUCCESS(rv, rv);
   rv = stmt->BindInt32ByName(NS_LITERAL_CSTRING("typed"), aPlace.typed);
   NS_ENSURE_SUCCESS(rv, rv);
-  rv = stmt->BindInt32ByName(NS_LITERAL_CSTRING("frecency"), aPlace.frecency);
+  // When inserting a page for a first visit that should not appear in
+  // autocomplete, for example an error page, use a zero frecency.
+  int32_t frecency = aPlace.shouldUpdateFrecency ? aPlace.frecency : 0;
+  rv = stmt->BindInt32ByName(NS_LITERAL_CSTRING("frecency"), frecency);
   NS_ENSURE_SUCCESS(rv, rv);
   rv = stmt->BindInt32ByName(NS_LITERAL_CSTRING("hidden"), aPlace.hidden);
   NS_ENSURE_SUCCESS(rv, rv);
@@ -2417,7 +2419,7 @@ History::VisitURI(nsIURI* aURI,
 
   // Error pages should never be autocompleted.
   if (aFlags & IHistory::UNRECOVERABLE_ERROR) {
-    place.frecency = 0;
+    place.shouldUpdateFrecency = false;
   }
 
   // EMBED visits are session-persistent and should not go through the database.
@@ -2450,11 +2452,6 @@ History::RegisterVisitedCallback(nsIURI* aURI,
   NS_ASSERTION(aURI, "Must pass a non-null URI!");
   if (XRE_GetProcessType() == GeckoProcessType_Content) {
     NS_PRECONDITION(aLink, "Must pass a non-null Link!");
-  }
-
-  // First, ensure that our hash table is setup.
-  if (!mObservers.IsInitialized()) {
-    mObservers.Init(VISIT_OBSERVERS_INITIAL_CACHE_SIZE);
   }
 
   // Obtain our array of observers for this URI.
@@ -2697,8 +2694,8 @@ History::GetPlacesInfo(const JS::Value& aPlaceIdentifiers,
   nsTArray<VisitData> placesInfo;
   placesInfo.SetCapacity(placesIndentifiersLength);
   for (uint32_t i = 0; i < placesIndentifiersLength; i++) {
-    JS::Value placeIdentifier;
-    JSBool rc = JS_GetElement(aCtx, placesIndentifiers, i, &placeIdentifier);
+    JS::Rooted<JS::Value> placeIdentifier(aCtx);
+    bool rc = JS_GetElement(aCtx, placesIndentifiers, i, &placeIdentifier);
     NS_ENSURE_TRUE(rc, NS_ERROR_UNEXPECTED);
 
     // GUID
@@ -2799,7 +2796,7 @@ History::UpdatePlaces(const JS::Value& aPlaceInfos,
     JS::Rooted<JSObject*> visits(aCtx, nullptr);
     {
       JS::Rooted<JS::Value> visitsVal(aCtx);
-      JSBool rc = JS_GetProperty(aCtx, info, "visits", visitsVal.address());
+      bool rc = JS_GetProperty(aCtx, info, "visits", &visitsVal);
       NS_ENSURE_TRUE(rc, NS_ERROR_UNEXPECTED);
       if (!JSVAL_IS_PRIMITIVE(visitsVal)) {
         visits = JSVAL_TO_OBJECT(visitsVal);
@@ -2921,7 +2918,7 @@ History::Observe(nsISupports* aSubject, const char* aTopic,
 ////////////////////////////////////////////////////////////////////////////////
 //// nsISupports
 
-NS_IMPL_THREADSAFE_ISUPPORTS4(
+NS_IMPL_ISUPPORTS4(
   History
 , IHistory
 , nsIDownloadHistory

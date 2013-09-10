@@ -35,7 +35,7 @@ interface Element : Node {
   [Constant]
   readonly attribute DOMTokenList? classList;
 
-  [Constant]
+  [SameObject]
   readonly attribute MozNamedAttrMap attributes;
   DOMString? getAttribute(DOMString name);
   DOMString? getAttributeNS(DOMString? namespace, DOMString localName);
@@ -54,19 +54,6 @@ interface Element : Node {
   [Throws]
   HTMLCollection getElementsByTagNameNS(DOMString? namespace, DOMString localName);
   HTMLCollection getElementsByClassName(DOMString classNames);
-
-  [Constant]
-  readonly attribute HTMLCollection children;
-  [Pure]
-  readonly attribute Element? firstElementChild;
-  [Pure]
-  readonly attribute Element? lastElementChild;
-  [Pure]
-  readonly attribute Element? previousElementSibling;
-  [Pure]
-  readonly attribute Element? nextElementSibling;
-  [Pure]
-  readonly attribute unsigned long childElementCount;
 
   /**
    * The ratio of font-size-inflated text font size to computed font
@@ -199,3 +186,4 @@ partial interface Element {
 };
 
 Element implements ChildNode;
+Element implements ParentNode;

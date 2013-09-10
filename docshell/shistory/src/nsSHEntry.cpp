@@ -5,18 +5,16 @@
 
 // Local Includes
 #include "nsSHEntry.h"
-#include "nsXPIDLString.h"
-#include "nsReadableUtils.h"
 #include "nsIDocShellLoadInfo.h"
 #include "nsIDocShellTreeItem.h"
-#include "nsISHistory.h"
-#include "nsISHistoryInternal.h"
 #include "nsDocShellEditorData.h"
 #include "nsSHEntryShared.h"
 #include "nsILayoutHistoryState.h"
 #include "nsIContentViewer.h"
 #include "nsISupportsArray.h"
 #include "nsIStructuredCloneContainer.h"
+#include "nsIInputStream.h"
+#include "nsIURI.h"
 #include <algorithm>
 
 namespace dom = mozilla::dom;
@@ -77,8 +75,7 @@ nsSHEntry::~nsSHEntry()
 //    nsSHEntry: nsISupports
 //*****************************************************************************
 
-NS_IMPL_ISUPPORTS4(nsSHEntry, nsISHContainer, nsISHEntry, nsIHistoryEntry,
-                   nsISHEntryInternal)
+NS_IMPL_ISUPPORTS3(nsSHEntry, nsISHContainer, nsISHEntry, nsISHEntryInternal)
 
 //*****************************************************************************
 //    nsSHEntry: nsISHEntry
@@ -373,6 +370,9 @@ nsSHEntry::Create(nsIURI * aURI, const nsAString &aTitle,
 
   //By default the page is not expired
   mShared->mExpired = false;
+
+  mIsSrcdocEntry = false;
+  mSrcdocData = NullString();
 
   return NS_OK;
 }

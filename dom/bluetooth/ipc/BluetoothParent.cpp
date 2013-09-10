@@ -206,12 +206,8 @@ BluetoothParent::RecvPBluetoothRequestConstructor(
       return actor->DoRequest(aRequest.get_SetPasskeyRequest());
     case Request::TConfirmPairingConfirmationRequest:
       return actor->DoRequest(aRequest.get_ConfirmPairingConfirmationRequest());
-    case Request::TConfirmAuthorizationRequest:
-      return actor->DoRequest(aRequest.get_ConfirmAuthorizationRequest());
     case Request::TDenyPairingConfirmationRequest:
       return actor->DoRequest(aRequest.get_DenyPairingConfirmationRequest());
-    case Request::TDenyAuthorizationRequest:
-      return actor->DoRequest(aRequest.get_DenyAuthorizationRequest());
     case Request::TConnectRequest:
       return actor->DoRequest(aRequest.get_ConnectRequest());
     case Request::TDisconnectRequest:
@@ -230,6 +226,10 @@ BluetoothParent::RecvPBluetoothRequestConstructor(
       return actor->DoRequest(aRequest.get_DisconnectScoRequest());
     case Request::TIsScoConnectedRequest:
       return actor->DoRequest(aRequest.get_IsScoConnectedRequest());
+    case Request::TSendMetaDataRequest:
+      return actor->DoRequest(aRequest.get_SendMetaDataRequest());
+    case Request::TSendPlayStatusRequest:
+      return actor->DoRequest(aRequest.get_SendPlayStatusRequest());
     default:
       MOZ_CRASH("Unknown type!");
   }
@@ -388,13 +388,14 @@ BluetoothRequestParent::DoRequest(const PairedDevicePropertiesRequest& aRequest)
   NS_ENSURE_SUCCESS(rv, false);
   return true;
 }
+
 bool
 BluetoothRequestParent::DoRequest(const ConnectedDevicePropertiesRequest& aRequest)
 {
   MOZ_ASSERT(mService);
   MOZ_ASSERT(mRequestType == Request::TConnectedDevicePropertiesRequest);
   nsresult rv =
-    mService->GetConnectedDevicePropertiesInternal(aRequest.profileId(),
+    mService->GetConnectedDevicePropertiesInternal(aRequest.serviceUuid(),
                                                 mReplyRunnable.get());
   NS_ENSURE_SUCCESS(rv, false);
 
@@ -451,22 +452,6 @@ BluetoothRequestParent::DoRequest(const ConfirmPairingConfirmationRequest&
 }
 
 bool
-BluetoothRequestParent::DoRequest(const ConfirmAuthorizationRequest& aRequest)
-{
-  MOZ_ASSERT(mService);
-  MOZ_ASSERT(mRequestType == Request::TConfirmAuthorizationRequest);
-
-  bool result =
-    mService->SetAuthorizationInternal(aRequest.path(),
-                                       true,
-                                       mReplyRunnable.get());
-
-  NS_ENSURE_TRUE(result, false);
-
-  return true;
-}
-
-bool
 BluetoothRequestParent::DoRequest(const DenyPairingConfirmationRequest&
                                   aRequest)
 {
@@ -484,29 +469,14 @@ BluetoothRequestParent::DoRequest(const DenyPairingConfirmationRequest&
 }
 
 bool
-BluetoothRequestParent::DoRequest(const DenyAuthorizationRequest& aRequest)
-{
-  MOZ_ASSERT(mService);
-  MOZ_ASSERT(mRequestType == Request::TDenyAuthorizationRequest);
-
-  bool result =
-    mService->SetAuthorizationInternal(aRequest.path(),
-                                       false,
-                                       mReplyRunnable.get());
-
-  NS_ENSURE_TRUE(result, false);
-
-  return true;
-}
-
-bool
 BluetoothRequestParent::DoRequest(const ConnectRequest& aRequest)
 {
   MOZ_ASSERT(mService);
   MOZ_ASSERT(mRequestType == Request::TConnectRequest);
 
   mService->Connect(aRequest.address(),
-                    aRequest.profileId(),
+                    aRequest.cod(),
+                    aRequest.serviceUuid(),
                     mReplyRunnable.get());
 
   return true;
@@ -518,7 +488,8 @@ BluetoothRequestParent::DoRequest(const DisconnectRequest& aRequest)
   MOZ_ASSERT(mService);
   MOZ_ASSERT(mRequestType == Request::TDisconnectRequest);
 
-  mService->Disconnect(aRequest.profileId(),
+  mService->Disconnect(aRequest.address(),
+                       aRequest.serviceUuid(),
                        mReplyRunnable.get());
 
   return true;
@@ -601,5 +572,34 @@ BluetoothRequestParent::DoRequest(const IsScoConnectedRequest& aRequest)
   MOZ_ASSERT(mRequestType == Request::TIsScoConnectedRequest);
 
   mService->IsScoConnected(mReplyRunnable.get());
+  return true;
+}
+
+bool
+BluetoothRequestParent::DoRequest(const SendMetaDataRequest& aRequest)
+{
+  MOZ_ASSERT(mService);
+  MOZ_ASSERT(mRequestType == Request::TSendMetaDataRequest);
+
+  mService->SendMetaData(aRequest.title(),
+                         aRequest.artist(),
+                         aRequest.album(),
+                         aRequest.mediaNumber(),
+                         aRequest.totalMediaCount(),
+                         aRequest.duration(),
+                         mReplyRunnable.get());
+  return true;
+}
+
+bool
+BluetoothRequestParent::DoRequest(const SendPlayStatusRequest& aRequest)
+{
+  MOZ_ASSERT(mService);
+  MOZ_ASSERT(mRequestType == Request::TSendPlayStatusRequest);
+
+  mService->SendPlayStatus(aRequest.duration(),
+                           aRequest.position(),
+                           aRequest.playStatus(),
+                           mReplyRunnable.get());
   return true;
 }

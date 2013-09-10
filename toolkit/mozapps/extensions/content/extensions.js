@@ -2085,6 +2085,9 @@ var gSearchView = {
     this._emptyNotice = document.getElementById("search-list-empty");
     this._allResultsLink = document.getElementById("search-allresults-link");
 
+    if (!AddonManager.isInstallEnabled("application/x-xpinstall"))
+      this._filter.hidden = true;
+
     var self = this;
     this._listBox.addEventListener("keydown", function listbox_onKeydown(aEvent) {
       if (aEvent.keyCode == aEvent.DOM_VK_ENTER ||
@@ -2226,6 +2229,10 @@ var gSearchView = {
 
   updateView: function gSearchView_updateView() {
     var showLocal = this._filter.value == "local";
+
+    if (!showLocal && !AddonManager.isInstallEnabled("application/x-xpinstall"))
+      showLocal = true;
+
     this._listBox.setAttribute("local", showLocal);
     this._listBox.setAttribute("remote", !showLocal);
 
@@ -2973,7 +2980,7 @@ var gDetailView = {
         var settings = xml.querySelectorAll(":root > setting");
 
         var firstSetting = null;
-        for (let setting of settings) {
+        for (var setting of settings) {
 
           var desc = stripTextNodes(setting).trim();
           if (!setting.hasAttribute("desc"))
@@ -2982,6 +2989,13 @@ var gDetailView = {
           var type = setting.getAttribute("type");
           if (type == "file" || type == "directory")
             setting.setAttribute("fullpath", "true");
+
+          setting = document.importNode(setting, true);
+          var style = setting.getAttribute("style");
+          if (style) {
+            setting.removeAttribute("style");
+            setting.setAttribute("style", style);
+          }
 
           rows.appendChild(setting);
           var visible = window.getComputedStyle(setting, null).getPropertyValue("display") != "none";

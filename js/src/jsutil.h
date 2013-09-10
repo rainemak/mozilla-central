@@ -11,18 +11,14 @@
 #ifndef jsutil_h
 #define jsutil_h
 
-#include "mozilla/Attributes.h"
 #include "mozilla/Compiler.h"
 #include "mozilla/GuardObjects.h"
-
-#include "js/Utility.h"
 
 #ifdef USE_ZLIB
 #include <zlib.h>
 #endif
 
-/* Forward declarations. */
-struct JSContext;
+#include "js/Utility.h"
 
 static JS_ALWAYS_INLINE void *
 js_memcpy(void *dst_, const void *src_, size_t len)

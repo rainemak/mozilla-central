@@ -5,7 +5,6 @@
 
 #include "mozilla/layers/CompositorParent.h"
 #include "mozilla/layers/PLayerTransactionChild.h"
-#include "nsIDocShell.h"
 #include "nsPresContext.h"
 #include "nsDOMClassInfoID.h"
 #include "nsError.h"
@@ -18,16 +17,14 @@
 #include "nsEventStateManager.h"
 #include "nsFrameManager.h"
 #include "nsRefreshDriver.h"
-#include "nsDOMTouchEvent.h"
 #include "mozilla/dom/Touch.h"
-#include "nsIDOMTouchEvent.h"
-#include "nsObjectLoadingContent.h"
+#include "nsIObjectLoadingContent.h"
 #include "nsFrame.h"
+#include "mozilla/layers/ShadowLayers.h"
 
 #include "nsIScrollableFrame.h"
 
 #include "nsContentUtils.h"
-#include "nsLayoutUtils.h"
 
 #include "nsIFrame.h"
 #include "nsIWidget.h"
@@ -39,7 +36,6 @@
 #include "nsViewManager.h"
 
 #include "nsIDOMHTMLCanvasElement.h"
-#include "gfxContext.h"
 #include "gfxImageSurface.h"
 #include "nsLayoutUtils.h"
 #include "nsComputedDOMStyle.h"
@@ -47,7 +43,6 @@
 #include "nsStyleAnimation.h"
 #include "nsCSSProps.h"
 #include "nsDOMFile.h"
-#include "BasicLayers.h"
 #include "nsTArrayHelpers.h"
 #include "nsIDocShell.h"
 #include "nsIContentViewer.h"
@@ -61,12 +56,11 @@
 #endif
 
 #include "Layers.h"
-#include "nsIIOService.h"
+#include "mozilla/layers/ShadowLayers.h"
 
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/indexedDB/IndexedDatabaseManager.h"
 #include "mozilla/dom/quota/QuotaManager.h"
-#include "GeckoProfiler.h"
 #include "nsDOMBlobBuilder.h"
 #include "nsIDOMFileHandle.h"
 #include "nsPrintfCString.h"
@@ -78,6 +72,9 @@
 #include "FrameLayerBuilder.h"
 #include "nsDisplayList.h"
 #include "nsROCSSPrimitiveValue.h"
+#include "nsIBaseWindow.h"
+#include "nsIDocShellTreeOwner.h"
+#include "nsIInterfaceRequestorUtils.h"
 
 #ifdef XP_WIN
 #undef GetClassName
@@ -87,6 +84,8 @@ using namespace mozilla;
 using namespace mozilla::dom;
 using namespace mozilla::layers;
 using namespace mozilla::widget;
+
+class gfxContext;
 
 static NS_DEFINE_CID(kAppShellCID, NS_APPSHELL_CID);
 
@@ -282,13 +281,13 @@ nsDOMWindowUtils::GetViewportInfo(uint32_t aDisplayWidth,
   nsCOMPtr<nsIDocument> doc = window->GetExtantDoc();
   NS_ENSURE_STATE(doc);
 
-  nsViewportInfo info = nsContentUtils::GetViewportInfo(doc, aDisplayWidth, aDisplayHeight);
-  *aDefaultZoom = info.GetDefaultZoom();
+  nsViewportInfo info = nsContentUtils::GetViewportInfo(doc, ScreenIntSize(aDisplayWidth, aDisplayHeight));
+  *aDefaultZoom = info.GetDefaultZoom().scale;
   *aAllowZoom = info.IsZoomAllowed();
-  *aMinZoom = info.GetMinZoom();
-  *aMaxZoom = info.GetMaxZoom();
-  *aWidth = info.GetWidth();
-  *aHeight = info.GetHeight();
+  *aMinZoom = info.GetMinZoom().scale;
+  *aMaxZoom = info.GetMaxZoom().scale;
+  *aWidth = info.GetSize().width;
+  *aHeight = info.GetSize().height;
   *aAutoSize = info.IsAutoSizeEnabled();
   return NS_OK;
 }
@@ -620,14 +619,13 @@ nsDOMWindowUtils::SendMouseEventToWindow(const nsAString& aType,
                               aInputSourceArg, true, nullptr);
 }
 
-static nsIntPoint
-ToWidgetPoint(float aX, float aY, const nsPoint& aOffset,
+static LayoutDeviceIntPoint
+ToWidgetPoint(const CSSPoint& aPoint, const nsPoint& aOffset,
               nsPresContext* aPresContext)
 {
-  double appPerDev = aPresContext->AppUnitsPerDevPixel();
-  nscoord appPerCSS = nsPresContext::AppUnitsPerCSSPixel();
-  return nsIntPoint(NSToIntRound((aX*appPerCSS + aOffset.x)/appPerDev),
-                    NSToIntRound((aY*appPerCSS + aOffset.y)/appPerDev));
+  return LayoutDeviceIntPoint::FromAppUnitsRounded(
+    CSSPoint::ToAppUnits(aPoint) + aOffset,
+    aPresContext->AppUnitsPerDevPixel());
 }
 
 static inline int16_t
@@ -714,7 +712,7 @@ nsDOMWindowUtils::SendMouseEventCommon(const nsAString& aType,
   if (!presContext)
     return NS_ERROR_FAILURE;
 
-  event.refPoint = ToWidgetPoint(aX, aY, offset, presContext);
+  event.refPoint = ToWidgetPoint(CSSPoint(aX, aY), offset, presContext);
   event.ignoreRootScrollFrame = aIgnoreRootScrollFrame;
 
   nsEventStatus status;
@@ -786,7 +784,7 @@ nsDOMWindowUtils::SendWheelEvent(float aX,
   nsPresContext* presContext = GetPresContext();
   NS_ENSURE_TRUE(presContext, NS_ERROR_FAILURE);
 
-  wheelEvent.refPoint = ToWidgetPoint(aX, aY, offset, presContext);
+  wheelEvent.refPoint = ToWidgetPoint(CSSPoint(aX, aY), offset, presContext);
 
   nsEventStatus status;
   nsresult rv = widget->DispatchEvent(&wheelEvent, status);
@@ -882,9 +880,10 @@ nsDOMWindowUtils::SendTouchEvent(const nsAString& aType,
   }
   event.touches.SetCapacity(aCount);
   for (uint32_t i = 0; i < aCount; ++i) {
-    nsIntPoint pt = ToWidgetPoint(aXs[i], aYs[i], offset, presContext);
+    LayoutDeviceIntPoint pt =
+      ToWidgetPoint(CSSPoint(aXs[i], aYs[i]), offset, presContext);
     nsRefPtr<Touch> t = new Touch(aIdentifiers[i],
-                                  pt,
+                                  LayoutDeviceIntPoint::ToUntyped(pt),
                                   nsIntPoint(aRxs[i], aRys[i]),
                                   aRotationAngles[i],
                                   aForces[i]);
@@ -1266,7 +1265,7 @@ nsDOMWindowUtils::SendSimpleGestureEvent(const nsAString& aType,
   if (!presContext)
     return NS_ERROR_FAILURE;
 
-  event.refPoint = ToWidgetPoint(aX, aY, offset, presContext);
+  event.refPoint = ToWidgetPoint(CSSPoint(aX, aY), offset, presContext);
 
   nsEventStatus status;
   return widget->DispatchEvent(&event, status);
@@ -1696,6 +1695,16 @@ nsDOMWindowUtils::FindElementWithViewId(nsViewID aID,
 }
 
 NS_IMETHODIMP
+nsDOMWindowUtils::GetViewId(nsIDOMElement* aElement, nsViewID* aResult)
+{
+  nsCOMPtr<nsIContent> content = do_QueryInterface(aElement);
+  if (content && nsLayoutUtils::FindIDFor(content, aResult)) {
+    return NS_OK;
+  }
+  return NS_ERROR_NOT_AVAILABLE;
+}
+
+NS_IMETHODIMP
 nsDOMWindowUtils::GetScreenPixelsPerCSSPixel(float* aScreenPixels)
 {
   nsCOMPtr<nsPIDOMWindow> window = do_QueryReferent(mWindow);
@@ -1756,7 +1765,7 @@ nsDOMWindowUtils::DispatchDOMEventViaPresShell(nsIDOMNode* aTarget,
 }
 
 static void
-InitEvent(nsGUIEvent &aEvent, nsIntPoint *aPt = nullptr)
+InitEvent(nsGUIEvent& aEvent, LayoutDeviceIntPoint* aPt = nullptr)
 {
   if (aPt) {
     aEvent.refPoint = *aPt;
@@ -1924,7 +1933,7 @@ nsDOMWindowUtils::SendQueryContentEvent(uint32_t aType,
   }
 
   nsCOMPtr<nsIWidget> targetWidget = widget;
-  nsIntPoint pt(aX, aY);
+  LayoutDeviceIntPoint pt(aX, aY);
 
   if (aType == QUERY_CHARACTER_AT_POINT) {
     // Looking for the widget at the point.
@@ -1940,7 +1949,8 @@ nsDOMWindowUtils::SendQueryContentEvent(uint32_t aType,
 
     // There is no popup frame at the point and the point isn't in our widget,
     // we cannot process this request.
-    NS_ENSURE_TRUE(popupFrame || widgetBounds.Contains(pt),
+    NS_ENSURE_TRUE(popupFrame ||
+                   widgetBounds.Contains(LayoutDeviceIntPoint::ToUntyped(pt)),
                    NS_ERROR_FAILURE);
 
     // Fire the event on the widget at the point
@@ -1949,7 +1959,8 @@ nsDOMWindowUtils::SendQueryContentEvent(uint32_t aType,
     }
   }
 
-  pt += widget->WidgetToScreenOffset() - targetWidget->WidgetToScreenOffset();
+  pt += LayoutDeviceIntPoint::FromUntyped(
+    widget->WidgetToScreenOffset() - targetWidget->WidgetToScreenOffset());
 
   nsQueryContentEvent queryEvent(true, aType, targetWidget);
   InitEvent(queryEvent, &pt);
@@ -2117,36 +2128,7 @@ nsDOMWindowUtils::LeaveModalState()
   nsCOMPtr<nsPIDOMWindow> window = do_QueryReferent(mWindow);
   NS_ENSURE_STATE(window);
 
-  window->LeaveModalState(nullptr);
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-nsDOMWindowUtils::EnterModalStateWithWindow(nsIDOMWindow **aWindow)
-{
-  if (!nsContentUtils::IsCallerChrome()) {
-    return NS_ERROR_DOM_SECURITY_ERR;
-  }
-
-  nsCOMPtr<nsPIDOMWindow> window = do_QueryReferent(mWindow);
-  NS_ENSURE_STATE(window);
-
-  *aWindow = window->EnterModalState();
-  NS_IF_ADDREF(*aWindow);
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-nsDOMWindowUtils::LeaveModalStateWithWindow(nsIDOMWindow *aWindow)
-{
-  if (!nsContentUtils::IsCallerChrome()) {
-    return NS_ERROR_DOM_SECURITY_ERR;
-  }
-
-  nsCOMPtr<nsPIDOMWindow> window = do_QueryReferent(mWindow);
-  NS_ENSURE_STATE(window);
-
-  window->LeaveModalState(aWindow);
+  window->LeaveModalState();
   return NS_OK;
 }
 
@@ -2505,15 +2487,9 @@ nsDOMWindowUtils::RenderDocument(const nsRect& aRect,
     nsCOMPtr<nsPIDOMWindow> window = do_QueryReferent(mWindow);
     NS_ENSURE_TRUE(window, NS_ERROR_FAILURE);
 
-    // Get DOM Document
-    nsresult rv;
-    nsCOMPtr<nsIDOMDocument> ddoc;
-    rv = window->GetDocument(getter_AddRefs(ddoc));
-    NS_ENSURE_SUCCESS(rv, rv);
-
     // Get Document
-    nsCOMPtr<nsIDocument> doc = do_QueryInterface(ddoc, &rv);
-    NS_ENSURE_SUCCESS(rv, rv);
+    nsCOMPtr<nsIDocument> doc = window->GetDoc();
+    NS_ENSURE_TRUE(doc, NS_ERROR_FAILURE);
 
     // Get Primary Shell
     nsCOMPtr<nsIPresShell> presShell = doc->GetShell();
@@ -2589,7 +2565,7 @@ nsDOMWindowUtils::GetOuterWindowWithId(uint64_t aWindowID,
 
   // XXX This method is deprecated.  See bug 865664.
   nsContentUtils::ReportToConsole(nsIScriptError::warningFlag,
-                                  "DOM",
+                                  NS_LITERAL_CSTRING("DOM"),
                                   nsContentUtils::GetDocumentFromCaller(),
                                   nsContentUtils::eDOM_PROPERTIES,
                                   "GetWindowWithOuterIdWarning");
@@ -3165,7 +3141,8 @@ nsDOMWindowUtils::SelectAtPoint(float aX, float aY, uint32_t aSelectBehavior,
   // Get the target frame at the client coordinates passed to us
   nsPoint offset;
   nsCOMPtr<nsIWidget> widget = GetWidget(&offset);
-  nsIntPoint pt = ToWidgetPoint(aX, aY, offset, GetPresContext());
+  nsIntPoint pt = LayoutDeviceIntPoint::ToUntyped(
+    ToWidgetPoint(CSSPoint(aX, aY), offset, GetPresContext()));
   nsPoint ptInRoot =
     nsLayoutUtils::GetEventCoordinatesRelativeTo(widget, pt, rootFrame);
   nsIFrame* targetFrame = nsLayoutUtils::GetFrameForPoint(rootFrame, ptInRoot);
@@ -3217,23 +3194,15 @@ nsDOMWindowUtils::LoadSheet(nsIURI *aSheetURI, uint32_t aSheetType)
                 aSheetType == USER_SHEET ||
                 aSheetType == AUTHOR_SHEET);
 
-  nsCOMPtr<nsIDOMWindow> window = do_QueryReferent(mWindow);
+  nsCOMPtr<nsPIDOMWindow> window = do_QueryReferent(mWindow);
   NS_ENSURE_TRUE(window, NS_ERROR_INVALID_ARG);
-  
-  nsCOMPtr<nsIDOMDocument> ddoc;
-  nsresult rv = window->GetDocument(getter_AddRefs(ddoc));
-  NS_ENSURE_SUCCESS(rv, rv);
-  NS_ENSURE_TRUE(ddoc, NS_ERROR_FAILURE);
 
-  nsCOMPtr<nsIDocument> doc = do_QueryInterface(ddoc);
-  NS_ENSURE_TRUE(doc, NS_ERROR_INVALID_ARG);
+  nsCOMPtr<nsIDocument> doc = window->GetDoc();
+  NS_ENSURE_TRUE(doc, NS_ERROR_FAILURE);
 
   nsIDocument::additionalSheetType type = convertSheetType(aSheetType);
 
-  rv = doc->LoadAdditionalStyleSheet(type, aSheetURI);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  return NS_OK;
+  return doc->LoadAdditionalStyleSheet(type, aSheetURI);
 }
 
 NS_IMETHODIMP
@@ -3248,16 +3217,11 @@ nsDOMWindowUtils::RemoveSheet(nsIURI *aSheetURI, uint32_t aSheetType)
                 aSheetType == USER_SHEET ||
                 aSheetType == AUTHOR_SHEET);
 
-  nsCOMPtr<nsIDOMWindow> window = do_QueryReferent(mWindow);
+  nsCOMPtr<nsPIDOMWindow> window = do_QueryReferent(mWindow);
   NS_ENSURE_TRUE(window, NS_ERROR_INVALID_ARG);
 
-  nsCOMPtr<nsIDOMDocument> ddoc;
-  nsresult rv = window->GetDocument(getter_AddRefs(ddoc));
-  NS_ENSURE_SUCCESS(rv, rv);
-  NS_ENSURE_TRUE(ddoc, NS_ERROR_FAILURE);
-
-  nsCOMPtr<nsIDocument> doc = do_QueryInterface(ddoc);
-  NS_ENSURE_TRUE(doc, NS_ERROR_INVALID_ARG);
+  nsCOMPtr<nsIDocument> doc = window->GetDoc();
+  NS_ENSURE_TRUE(doc, NS_ERROR_FAILURE);
 
   nsIDocument::additionalSheetType type = convertSheetType(aSheetType);
 
@@ -3347,7 +3311,7 @@ nsDOMWindowUtils::SetPaintFlashing(bool aPaintFlashing)
 {
   nsPresContext* presContext = GetPresContext();
   if (presContext) {
-    presContext->RefreshDriver()->SetPaintFlashing(aPaintFlashing);
+    presContext->SetPaintFlashing(aPaintFlashing);
     // Clear paint flashing colors
     nsIPresShell* presShell = GetPresShell();
     if (!aPaintFlashing && presShell) {
@@ -3366,7 +3330,7 @@ nsDOMWindowUtils::GetPaintFlashing(bool* aRetVal)
   *aRetVal = false;
   nsPresContext* presContext = GetPresContext();
   if (presContext) {
-    *aRetVal = presContext->RefreshDriver()->GetPaintFlashing();
+    *aRetVal = presContext->GetPaintFlashing();
   }
   return NS_OK;
 }

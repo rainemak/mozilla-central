@@ -21,9 +21,7 @@ public:
     nsHashPropertyBag() { }
     virtual ~nsHashPropertyBag() {}
 
-    nsresult Init();
-
-    NS_DECL_ISUPPORTS
+    NS_DECL_THREADSAFE_ISUPPORTS
 
     NS_DECL_NSIPROPERTYBAG
 
