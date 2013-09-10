@@ -1,0 +1,86 @@
+diff --git a/dom/ipc/TabChild.cpp b/dom/ipc/TabChild.cpp
+index 46590e4..5f924fd 100644
+--- a/dom/ipc/TabChild.cpp
++++ b/dom/ipc/TabChild.cpp
+@@ -559,6 +559,7 @@ TabChild::SetCSSViewport(const CSSSize& aSize)
+ void
+ TabChild::HandlePossibleViewportChange()
+ {
++  printf("QWQWQWQWQWASASAS\n");
+   if (!IsAsyncPanZoomEnabled()) {
+     return;
+   }
+@@ -1600,6 +1601,7 @@ TabChild::ProcessUpdateFrame(const FrameMetrics& aFrameMetrics)
+             data += nsPrintfCString(" }");
+     data += nsPrintfCString(" }");
+ 
++    printf("IIIOOPP\n");
+     DispatchMessageManagerMessage(NS_LITERAL_STRING("Viewport:Change"), data);
+ 
+     nsCOMPtr<nsIDOMWindowUtils> utils(GetDOMWindowUtils());
+diff --git a/embedding/embedlite/embedthread/EmbedLiteViewThreadChild.cpp b/embedding/embedlite/embedthread/EmbedLiteViewThreadChild.cpp
+index a1c9239..ca9f3c0 100644
+--- a/embedding/embedlite/embedthread/EmbedLiteViewThreadChild.cpp
++++ b/embedding/embedlite/embedthread/EmbedLiteViewThreadChild.cpp
+@@ -569,6 +569,7 @@ EmbedLiteViewThreadChild::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
+   }
+ 
+   if (sPostAZPCAsJson.viewport) {
++      printf("AHHHHHUU\n");
+     nsString data;
+     mozilla::CSSToScreenScale resolution = aFrameMetrics.mZoom;
+     data.AppendPrintf("{ \"x\" : %d", NS_lround(aFrameMetrics.mScrollOffset.x));
+@@ -884,6 +885,7 @@ EmbedLiteViewThreadChild::OnSecurityChanged(const char* aStatus, uint32_t aState
+ NS_IMETHODIMP
+ EmbedLiteViewThreadChild::OnFirstPaint(int32_t aX, int32_t aY)
+ {
++    printf("OnFirstPaint: %i %i. viewsize: %i %i\n", aX, aY, mViewSize.width, mViewSize.height);
+   nsresult rv = NS_OK;
+   nsCOMPtr <nsIDOMWindow> window;
+   rv = mWebBrowser->GetContentDOMWindow(getter_AddRefs(window));
+diff --git a/embedding/embedlite/embedthread/EmbedLiteViewThreadParent.cpp b/embedding/embedlite/embedthread/EmbedLiteViewThreadParent.cpp
+index 57d025c..8eeedaa 100644
+--- a/embedding/embedlite/embedthread/EmbedLiteViewThreadParent.cpp
++++ b/embedding/embedlite/embedthread/EmbedLiteViewThreadParent.cpp
+@@ -36,6 +36,7 @@ class EmbedContentController : public GeckoContentController
+       // We always need to post requests into the "UI thread" otherwise the
+       // requests may get processed out of order.
+       LOGT();
++        printf("SSSSS RequestContentRepaint\n");
+       mUILoop->PostTask(
+         FROM_HERE,
+         NewRunnableMethod(this, &EmbedContentController::DoRequestContentRepaint,
+@@ -158,6 +159,7 @@ class EmbedContentController : public GeckoContentController
+     }
+ 
+     void DoRequestContentRepaint(const FrameMetrics& aFrameMetrics) {
++        printf("RRRRR DoRequestContentRepaint\n");
+       EmbedLiteViewListener* listener = GetListener();
+       if (listener && !listener->RequestContentRepaint()) {
+         unused << mRenderFrame->SendUpdateFrame(aFrameMetrics);
+diff --git a/gfx/layers/ipc/Axis.cpp b/gfx/layers/ipc/Axis.cpp
+index 36f80a5..feed8a2 100644
+--- a/gfx/layers/ipc/Axis.cpp
++++ b/gfx/layers/ipc/Axis.cpp
+@@ -368,7 +368,7 @@ bool Axis::ScaleWillOverscrollBothSides(ScreenToScreenScale aScale) {
+   CSSToScreenScale scale = metrics.mZoom * aScale;
+   CSSIntRect cssCompositionBounds = RoundedIn(metrics.mCompositionBounds / scale);
+ 
+-  return GetRectLength(cssContentRect) < GetRectLength(CSSRect(cssCompositionBounds));
++  return GetRectLength(cssContentRect) < (GetRectLength(CSSRect(cssCompositionBounds)) / metrics.mDevPixelsPerCSSPixel.scale);
+ }
+ 
+ AxisX::AxisX(AsyncPanZoomController* aAsyncPanZoomController)
+diff --git a/toolkit/content/buildconfig.html b/toolkit/content/buildconfig.html
+index 9b4cce1..958e2e3 100644
+--- a/toolkit/content/buildconfig.html
++++ b/toolkit/content/buildconfig.html
+@@ -32,7 +32,7 @@
+ #endif
+ #else ifdef SOURCE_GIT_COMMIT
+ <h2>Source</h2>
+-<p>Built from git commit <a href="#">@SOURCE_GIT_COMMIT@</a></p>
++<p>Built from git commit <a href="#">HEAD</a></p>
+ #endif
+ <h2>Build platform</h2>
+ <table>
