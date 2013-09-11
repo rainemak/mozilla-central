@@ -5,3 +5,5 @@
 toolkit.jar:
     content/global/embedScrollStyles.css               (content/embedScrollStyles.css)
     content/global/embedTestScript.js                  (content/embedTestScript.js)
+% skin embedlite classic/1.0 %skin/classic/embedlite/
+    skin/classic/embedlite/images/dropmarker.svg                   (images/dropmarker.svg)

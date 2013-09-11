@@ -120,6 +120,7 @@ xul|button,
 * > input:not([type="image"]) {
   -moz-appearance: none !important;  /* See bug 598421 for fixing the platform */
   border-radius: 3px;
+  font-size: inherit;
 }
 
 select[size],
@@ -206,7 +207,7 @@ select > button {
 
   background-size: auto auto, 100% 90%;
   background-color: transparent;
-  background-image: url("chrome://browser/skin/images/dropmarker.svg"),
+  background-image: url("chrome://embedlite/skin/images/dropmarker.svg"),
                     -moz-radial-gradient(bottom left, #bbbbbb 40%, #f5f5f5) !important;
   background-position: -moz-calc(50% + 1px) center, -15px center !important;
   background-repeat: no-repeat !important;
