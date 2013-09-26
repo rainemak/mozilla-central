@@ -20,6 +20,7 @@ BuildRequires:  pkgconfig(alsa)
 BuildRequires:  pkgconfig(gstreamer-0.10)
 BuildRequires:  pkgconfig(gstreamer-app-0.10)
 BuildRequires:  pkgconfig(gstreamer-plugins-base-0.10)
+BuildRequires:  pkgconfig(nemo-gstreamer-interfaces-0.10)
 BuildRequires:  pkgconfig(nspr) >= 4.9.6
 BuildRequires:  pkgconfig(nss) >= 3.14.3
 BuildRequires:  qt5-qttools

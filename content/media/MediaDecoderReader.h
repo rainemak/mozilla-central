@@ -190,6 +190,11 @@ public:
                            int64_t aTimecode,
                            nsIntRect aPicture);
 
+  static VideoData* Create(VideoInfo& aInfo,
+                           ImageContainer* aContainer,
+                           void* aMagicHandle,
+                           nsIntRect aPicture);
+
   static VideoData* CreateFromImage(VideoInfo& aInfo,
                                     ImageContainer* aContainer,
                                     int64_t aOffset,

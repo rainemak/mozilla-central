@@ -35,7 +35,7 @@ void gst_message_unref_impl(GstMessage *msg);
 bool
 load_gstreamer()
 {
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(HAS_NEMO_INTERFACE)
   return true;
 #endif
   static bool loaded = false;

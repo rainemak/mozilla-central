@@ -28,6 +28,7 @@ enum SharedTextureBufferType {
 #ifdef XP_MACOSX
     , IOSurface
 #endif
+    , GstreamerMagicHandle
 };
 
 enum ContextFlags {

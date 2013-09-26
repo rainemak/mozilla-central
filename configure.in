@@ -5743,6 +5743,18 @@ if test "$MOZ_GSTREAMER"; then
                       gstreamer-app-$GST_API_VERSION
                       gstreamer-plugins-base-$GST_API_VERSION, ,
                       AC_MSG_ERROR([gstreamer and gstreamer-plugins-base development packages are needed to build gstreamer backend. Install them or disable gstreamer support with --disable-gstreamer]))
+
+    PKG_CHECK_MODULES(NEMO_GST, nemo-gstreamer-interfaces-$GST_API_VERSION,
+                      HAS_NEMO_INTERFACE=1,
+                      HAS_NEMO_INTERFACE=)
+
+    if test "$HAS_NEMO_INTERFACE"; then
+        HAS_NEMO_INTERFACE=1
+        AC_DEFINE(HAS_NEMO_INTERFACE)
+        GSTREAMER_LIBS="$GSTREAMER_LIBS $NEMO_GST_LIBS"
+        GSTREAMER_CFLAGS="$GSTREAMER_LIBS $NEMO_GST_CFLAGS"
+    fi
+
     if test -n "$GSTREAMER_LIBS"; then
        _SAVE_LDFLAGS=$LDFLAGS
        LDFLAGS="$LDFLAGS $GSTREAMER_LIBS -lgstvideo-$GST_API_VERSION"
@@ -5760,6 +5772,7 @@ fi
 AC_SUBST(GSTREAMER_CFLAGS)
 AC_SUBST(GSTREAMER_LIBS)
 AC_SUBST(MOZ_GSTREAMER)
+AC_SUBST(HAS_NEMO_INTERFACE)
 
 if test -n "$MOZ_GSTREAMER"; then
    AC_DEFINE(MOZ_GSTREAMER)

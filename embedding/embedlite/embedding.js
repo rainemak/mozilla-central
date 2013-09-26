@@ -48,6 +48,7 @@ pref("layers.acceleration.draw-fps", false);
 // Bug 706179 async animation temporary prefs
 pref("layers.offmainthreadcomposition.animate-opacity", true);
 pref("layers.offmainthreadcomposition.animate-transform", true);
+pref("layers.use-deprecated-textures", false);
 pref("font.size.inflation.disabledInMasterProcess", true);
 pref("gfx.azpc.pan_repaint_interval", 5050);
 pref("gfx.azpc.fling_repaint_interval", 75);
@@ -65,6 +66,7 @@ pref("ui.dragThresholdX", 25);
 pref("ui.dragThresholdY", 25);
 pref("embedlite.dispatch_mouse_events", false); // Will dispatch mouse events if page using them
 pref("media.gstreamer.enabled", true);
+pref("media.prefer-gstreamer", true);
 // Disable X backend on GTK
 pref("gfx.xrender.enabled", false);
 pref("gfx.qt.rgb16.force", true);
