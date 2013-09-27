@@ -13,16 +13,19 @@
 #include "nsIWidget.h"
 #include "InputData.h"
 #include "nsDataHashtable.h"
+#include "nsIDOMEventListener.h"
 
 class CancelableTask;
 class nsPresContext;
+class nsIDOMWindowUtils;
 
 namespace mozilla {
 namespace embedlite {
 
 class EmbedTabChildGlobal;
 class EmbedLiteViewThreadChild;
-class TabChildHelper : public nsIObserver,
+class TabChildHelper : public nsIDOMEventListener,
+                       public nsIObserver,
                        public nsFrameScriptExecutor,
                        public mozilla::dom::ipc::MessageManagerCallback
 {
@@ -31,6 +34,7 @@ public:
   virtual ~TabChildHelper();
 
   NS_DECL_ISUPPORTS
+  NS_DECL_NSIDOMEVENTLISTENER
   NS_DECL_NSIOBSERVER
 
   bool RecvUpdateFrame(const mozilla::layers::FrameMetrics& aFrameMetrics);
@@ -75,13 +79,30 @@ private:
   bool InitTabChildGlobal();
   void Disconnect();
   void Unload();
+  bool ProcessUpdateFrame(const mozilla::layers::FrameMetrics& aFrameMetrics);
+  bool ProcessUpdateSubframe(nsIContent* aContent, const mozilla::layers::FrameMetrics& aMetrics);
+
+  // Get the DOMWindowUtils for the top-level window in this tab.
+  already_AddRefed<nsIDOMWindowUtils> GetDOMWindowUtils();
+
+  // Wrapper for nsIDOMWindowUtils.setCSSViewport(). This updates some state
+  // variables local to this class before setting it.
+  void SetCSSViewport(const CSSSize& aSize);
+
+  // Recalculates the display state, including the CSS
+  // viewport. This should be called whenever we believe the
+  // viewport data on a document may have changed. If it didn't
+  // change, this function doesn't do anything.  However, it should
+  // not be called all the time as it is fairly expensive.
+  void HandlePossibleViewportChange();
 
   friend class EmbedLiteViewThreadChild;
   EmbedLiteViewThreadChild* mView;
   bool mContentDocumentIsDisplayed;
-  nsIntSize mInnerSize;
+  ScreenIntSize mInnerSize;
   float mOldViewportWidth;
   nsRefPtr<EmbedTabChildGlobal> mTabChildGlobal;
+  mozilla::layers::FrameMetrics mLastMetrics; // TODO: probably it needs to be updated on the "scroll" event (TabChild.cpp:361)
 };
 
 }

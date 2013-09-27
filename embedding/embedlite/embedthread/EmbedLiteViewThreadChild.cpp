@@ -500,6 +500,7 @@ EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
     return true;
   }
 
+  mHelper->mInnerSize = ScreenIntSize::FromUnknownSize(gfx::IntSize(aSize.width, aSize.height));
   nsCOMPtr<nsIBaseWindow> baseWindow = do_QueryInterface(mWebBrowser);
   baseWindow->SetPositionAndSize(0, 0, mViewSize.width, mViewSize.height, true);
   baseWindow->SetVisibility(true);
@@ -566,43 +567,6 @@ EmbedLiteViewThreadChild::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
 
   for (unsigned int i = 0; i < mControllerListeners.Length(); i++) {
     mControllerListeners[i]->RequestContentRepaint(aFrameMetrics);
-  }
-
-  if (sPostAZPCAsJson.viewport) {
-    nsString data;
-    mozilla::CSSToScreenScale resolution = aFrameMetrics.mZoom;
-    data.AppendPrintf("{ \"x\" : %d", NS_lround(aFrameMetrics.mScrollOffset.x));
-    data.AppendPrintf(", \"y\" : %d", NS_lround(aFrameMetrics.mScrollOffset.y));
-    data.AppendPrintf(", \"viewport\" : ");
-    data.AppendPrintf("{ \"width\" : %f", aFrameMetrics.mViewport.width);
-    data.AppendPrintf(", \"height\" : %f", aFrameMetrics.mViewport.height);
-    data.AppendPrintf(" }");
-    data.AppendPrintf(", \"displayPort\" : ");
-    data.AppendPrintf("{ \"x\" : %f", aFrameMetrics.mDisplayPort.x);
-    data.AppendPrintf(", \"y\" : %f", aFrameMetrics.mDisplayPort.y);
-    data.AppendPrintf(", \"width\" : %f", aFrameMetrics.mDisplayPort.width);
-    data.AppendPrintf(", \"height\" : %f", aFrameMetrics.mDisplayPort.height);
-    data.AppendPrintf(" }");
-    data.AppendPrintf(", \"compositionBounds\" : ");
-    data.AppendPrintf("{ \"x\" : %d", aFrameMetrics.mCompositionBounds.x);
-    data.AppendPrintf(", \"y\" : %d", aFrameMetrics.mCompositionBounds.y);
-    data.AppendPrintf(", \"width\" : %d", aFrameMetrics.mCompositionBounds.width);
-    data.AppendPrintf(", \"height\" : %d", aFrameMetrics.mCompositionBounds.height);
-    data.AppendPrintf(" }");
-    data.AppendPrintf(", \"cssPageRect\" : ");
-    data.AppendPrintf("{ \"x\" : %f", aFrameMetrics.mScrollableRect.x);
-    data.AppendPrintf(", \"y\" : %f", aFrameMetrics.mScrollableRect.y);
-    data.AppendPrintf(", \"width\" : %f", aFrameMetrics.mScrollableRect.width);
-    data.AppendPrintf(", \"height\" : %f", aFrameMetrics.mScrollableRect.height);
-    data.AppendPrintf(" }");
-    data.AppendPrintf(", \"resolution\" : ");
-    data.AppendPrintf("{ \"width\" : %f", resolution.scale);
-    data.AppendPrintf(", \"height\" : %f", resolution.scale);
-    data.AppendPrintf(", \"scale\" : %f", resolution.scale);
-    data.AppendPrintf(" }");
-    data.AppendPrintf(" }");
-
-    mHelper->RecvAsyncMessage(NS_LITERAL_STRING("Viewport:Change"), data);
   }
 
   bool ret = true;

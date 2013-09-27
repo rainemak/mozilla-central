@@ -129,7 +129,7 @@ private:
   gfxSize mViewSize;
   gfxSize mGLViewSize;
 
-  nsCOMPtr<TabChildHelper> mHelper;
+  nsRefPtr<TabChildHelper> mHelper;
   bool mDispatchSynthMouseEvents;
   bool mIMEComposing;
   CancelableTask* mInitWindowTask;
