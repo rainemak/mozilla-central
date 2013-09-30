@@ -16,7 +16,9 @@
 #include "gc/Marking.h"
 #include "jit/AsmJS.h"
 #include "jit/IonMacroAssembler.h"
-#include "jit/PerfSpewer.h"
+#ifdef JS_ION_PERF
+# include "jit/PerfSpewer.h"
+#endif
 #include "jit/RegisterSets.h"
 #include "vm/TypedArrayObject.h"
 
@@ -417,7 +419,7 @@ class AsmJSModule
     }
 
     ScriptSource *scriptSource() const {
-        JS_ASSERT(scriptSource_ != NULL);
+        JS_ASSERT(scriptSource_ != nullptr);
         return scriptSource_;
     }
     uint32_t charsBegin() const {
@@ -435,7 +437,7 @@ class AsmJSModule
         JS_ASSERT(pod.funcPtrTableAndExitBytes_ == 0);
         if (pod.numGlobalVars_ == UINT32_MAX)
             return false;
-        Global g(Global::Variable, NULL);
+        Global g(Global::Variable, nullptr);
         g.pod.u.var.initKind_ = Global::InitConstant;
         g.pod.u.var.init.constant_ = v;
         g.pod.u.var.index_ = *globalIndex = pod.numGlobalVars_++;

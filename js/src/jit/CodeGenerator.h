@@ -47,7 +47,7 @@ class CodeGenerator : public CodeGeneratorSpecific
     bool generateBody();
 
   public:
-    CodeGenerator(MIRGenerator *gen, LIRGraph *graph, MacroAssembler *masm = NULL);
+    CodeGenerator(MIRGenerator *gen, LIRGraph *graph, MacroAssembler *masm = nullptr);
     ~CodeGenerator();
 
   public:
@@ -237,7 +237,10 @@ class CodeGenerator : public CodeGeneratorSpecific
     bool visitIteratorMore(LIteratorMore *lir);
     bool visitIteratorEnd(LIteratorEnd *lir);
     bool visitArgumentsLength(LArgumentsLength *lir);
-    bool visitGetArgument(LGetArgument *lir);
+    bool visitGetFrameArgument(LGetFrameArgument *lir);
+    bool visitSetFrameArgumentT(LSetFrameArgumentT *lir);
+    bool visitSetFrameArgumentC(LSetFrameArgumentC *lir);
+    bool visitSetFrameArgumentV(LSetFrameArgumentV *lir);
     bool visitRunOncePrologue(LRunOncePrologue *lir);
     bool emitRest(LInstruction *lir, Register array, Register numActuals,
                   Register temp0, Register temp1, unsigned numFormals,
@@ -323,7 +326,7 @@ class CodeGenerator : public CodeGeneratorSpecific
 
     IonScriptCounts *extractUnassociatedScriptCounts() {
         IonScriptCounts *counts = unassociatedScriptCounts_;
-        unassociatedScriptCounts_ = NULL;  // prevent delete in dtor
+        unassociatedScriptCounts_ = nullptr;  // prevent delete in dtor
         return counts;
     }
 
