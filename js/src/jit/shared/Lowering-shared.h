@@ -10,7 +10,6 @@
 // This file declares the structures that are used for attaching LIR to a
 // MIRGraph.
 
-#include "jit/IonAllocPolicy.h"
 #include "jit/LIR.h"
 
 namespace js {
@@ -180,6 +179,11 @@ class LIRGeneratorShared : public MInstructionVisitorWithDefaults
     // Whether to generate typed array accesses on statically known objects.
     static bool allowStaticTypedArrayAccesses() {
         return false;
+    }
+
+     // Whether we can emit Float32 specific optimizations.
+    static bool allowFloat32Optimizations() {
+       return false;
     }
 };
 

@@ -18,14 +18,16 @@
 #include "nsIDocShell.h"
 #include "nsIDOMElement.h"
 #include "nsCOMArray.h"
-#include "nsThreadUtils.h"
+#include "nsIRunnable.h"
 #include "nsIGlobalObject.h"
+#include "nsIScriptObjectPrincipal.h"
 #include "nsWeakReference.h"
 
 class nsInProcessTabChildGlobal : public nsDOMEventTargetHelper,
                                   public nsFrameScriptExecutor,
                                   public nsIInProcessContentFrameMessageManager,
                                   public nsIGlobalObject,
+                                  public nsIScriptObjectPrincipal,
                                   public nsSupportsWeakReference,
                                   public mozilla::dom::ipc::MessageManagerCallback
 {

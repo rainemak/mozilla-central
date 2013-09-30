@@ -47,7 +47,7 @@ struct SelfHostedClass
      */
     static JSObject *newPrototype(JSContext *cx, uint32_t numSlots);
 
-    static bool is(JSContext *cx, Class *clasp);
+    static bool is(JSContext *cx, const Class *clasp);
 
     SelfHostedClass(const char *name, uint32_t numSlots);
 };
@@ -72,7 +72,7 @@ SelfHostedClass::newPrototype(JSContext *cx, uint32_t numSlots)
 }
 
 bool
-SelfHostedClass::is(JSContext *cx, Class *clasp)
+SelfHostedClass::is(JSContext *cx, const Class *clasp)
 {
     SelfHostedClass *shClass = cx->runtime()->selfHostedClasses();
     while (shClass) {
@@ -104,7 +104,7 @@ selfHosting_ErrorReporter(JSContext *cx, const char *message, JSErrorReport *rep
     PrintError(cx, stderr, message, report, true);
 }
 
-static JSClass self_hosting_global_class = {
+static const JSClass self_hosting_global_class = {
     "self-hosting-global", JSCLASS_GLOBAL_FLAGS,
     JS_PropertyStub,  JS_DeletePropertyStub,
     JS_PropertyStub,  JS_StrictPropertyStub,
@@ -981,11 +981,9 @@ JSRuntime::cloneSelfHostedValue(JSContext *cx, Handle<PropertyName*> name, Mutab
 }
 
 bool
-JSRuntime::maybeWrappedSelfHostedFunction(JSContext *cx, Handle<PropertyName*> name,
-                                          MutableHandleValue funVal)
+JSRuntime::maybeWrappedSelfHostedFunction(JSContext *cx, HandleId id, MutableHandleValue funVal)
 {
     RootedObject shg(cx, selfHostingGlobal_);
-    RootedId id(cx, NameToId(name));
     if (!GetUnclonedValue(cx, shg, id, funVal))
         return false;
 

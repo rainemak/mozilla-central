@@ -8,11 +8,13 @@
 #define vm_RegExpStatics_h
 
 #include "gc/Marking.h"
-#include "vm/GlobalObject.h"
 #include "vm/MatchPairs.h"
+#include "vm/RegExpObject.h"
 #include "vm/Runtime.h"
 
 namespace js {
+
+class GlobalObject;
 
 class RegExpStatics
 {
@@ -88,12 +90,27 @@ class RegExpStatics
     inline void updateLazily(JSContext *cx, JSLinearString *input,
                              RegExpShared *shared, size_t lastIndex);
     inline bool updateFromMatchPairs(JSContext *cx, JSLinearString *input, MatchPairs &newPairs);
-    inline void setMultiline(JSContext *cx, bool enabled);
+
+    void setMultiline(JSContext *cx, bool enabled) {
+        aboutToWrite();
+        if (enabled) {
+            flags = RegExpFlag(flags | MultilineFlag);
+            markFlagsSet(cx);
+        } else {
+            flags = RegExpFlag(flags & ~MultilineFlag);
+        }
+    }
 
     inline void clear();
 
     /* Corresponds to JSAPI functionality to set the pending RegExp input. */
-    inline void reset(JSContext *cx, JSString *newInput, bool newMultiline);
+    void reset(JSContext *cx, JSString *newInput, bool newMultiline) {
+        aboutToWrite();
+        clear();
+        pendingInput = newInput;
+        setMultiline(cx, newMultiline);
+        checkInvariants();
+    }
 
     inline void setPendingInput(JSString *newInput);
 
@@ -199,13 +216,6 @@ class PreserveRegExpStatics
 
     ~PreserveRegExpStatics() { original->restore(); }
 };
-
-inline js::RegExpStatics *
-js::GlobalObject::getRegExpStatics() const
-{
-    JSObject &resObj = getSlot(REGEXP_STATICS).toObject();
-    return static_cast<RegExpStatics *>(resObj.getPrivate());
-}
 
 inline bool
 RegExpStatics::createDependent(JSContext *cx, size_t start, size_t end, MutableHandleValue out)

@@ -25,6 +25,7 @@
 #include "GLContextTypes.h"
 #include "mozilla/Mutex.h"
 #include "nsRegion.h"
+#include "mozilla/MouseEvents.h"
 
 #include "nsString.h"
 #include "nsIDragService.h"
@@ -288,7 +289,7 @@ typedef NSInteger NSEventGestureAxis;
 
 #ifdef __LP64__
   // Support for fluid swipe tracking.
-  void (^mCancelSwipeAnimation)();
+  BOOL* mCancelSwipeAnimation;
 #endif
 
   // Whether this uses off-main-thread compositing.
@@ -333,6 +334,7 @@ typedef NSInteger NSEventGestureAxis;
 
 - (void)setGLContext:(NSOpenGLContext *)aGLContext;
 - (void)preRender:(NSOpenGLContext *)aGLContext;
+- (void)postRender:(NSOpenGLContext *)aGLContext;
 
 - (BOOL)isCoveringTitlebar;
 
@@ -377,9 +379,14 @@ public:
                                  ChildView* aView, BOOL isClickThrough = NO);
   static void MouseExitedWindow(NSEvent* aEvent);
   static void MouseEnteredWindow(NSEvent* aEvent);
-  static void ReEvaluateMouseEnterState(NSEvent* aEvent = nil);
+  static void ReEvaluateMouseEnterState(NSEvent* aEvent = nil, ChildView* aOldView = nil);
   static void ResendLastMouseMoveEvent();
   static ChildView* ViewForEvent(NSEvent* aEvent);
+  static void AttachPluginEvent(nsMouseEvent_base& aMouseEvent,
+                                ChildView* aView,
+                                NSEvent* aNativeMouseEvent,
+                                int aPluginEventType,
+                                void* aPluginEventHolder);
 
   static ChildView* sLastMouseEventView;
   static NSEvent* sLastMouseMoveEvent;
@@ -531,6 +538,7 @@ public:
   virtual void PrepareWindowEffects() MOZ_OVERRIDE;
   virtual void CleanupWindowEffects() MOZ_OVERRIDE;
   virtual void PreRender(LayerManager* aManager) MOZ_OVERRIDE;
+  virtual void PostRender(LayerManager* aManager) MOZ_OVERRIDE;
   virtual void DrawWindowOverlay(LayerManager* aManager, nsIntRect aRect) MOZ_OVERRIDE;
 
   virtual void UpdateThemeGeometries(const nsTArray<ThemeGeometry>& aThemeGeometries);

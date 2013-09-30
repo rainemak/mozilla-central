@@ -7,11 +7,7 @@
 #ifndef mozilla_dom_ContentParent_h
 #define mozilla_dom_ContentParent_h
 
-#include "base/waitable_event_watcher.h"
-
 #include "mozilla/dom/PContentParent.h"
-#include "mozilla/dom/PMemoryReportRequestParent.h"
-#include "mozilla/dom/TabContext.h"
 #include "mozilla/ipc/GeckoChildProcessHost.h"
 #include "mozilla/dom/ipc/Blob.h"
 #include "mozilla/Attributes.h"
@@ -22,12 +18,7 @@
 #include "nsFrameMessageManager.h"
 #include "nsIObserver.h"
 #include "nsIThreadInternal.h"
-#include "nsNetUtil.h"
-#include "nsIPermissionManager.h"
 #include "nsIDOMGeoPositionCallback.h"
-#include "nsCOMArray.h"
-#include "nsDataHashtable.h"
-#include "nsHashKeys.h"
 #include "PermissionMessageUtils.h"
 
 #define CHILD_PROCESS_SHUTDOWN_MESSAGE NS_LITERAL_STRING("child-process-shutdown")
@@ -36,6 +27,7 @@ class mozIApplication;
 class nsConsoleService;
 class nsIDOMBlob;
 class nsIMemoryReporter;
+template<class KeyClass,class DataType> class nsDataHashtable;
 
 namespace mozilla {
 
@@ -59,6 +51,8 @@ class Element;
 class TabParent;
 class PStorageParent;
 class ClonedMessageData;
+class MemoryReport;
+class TabContext;
 
 class ContentParent : public PContentParent
                     , public nsIObserver
@@ -143,8 +137,9 @@ public:
     bool IsAlive();
     bool IsForApp();
 
-    void SetChildMemoryReporters(const InfallibleTArray<MemoryReport>& report);
-    void ClearChildMemoryReporters();
+    void SetChildMemoryReports(const InfallibleTArray<MemoryReport>&
+                               childReports);
+    void UnregisterChildMemoryReporter();
 
     GeckoChildProcessHost* Process() {
         return mSubprocess;
@@ -255,10 +250,10 @@ private:
      */
     void ShutDownProcess(bool aCloseWithError);
 
-    PCompositorParent*
+    bool
     AllocPCompositorParent(mozilla::ipc::Transport* aTransport,
                            base::ProcessId aOtherProcess) MOZ_OVERRIDE;
-    PImageBridgeParent*
+    bool
     AllocPImageBridgeParent(mozilla::ipc::Transport* aTransport,
                             base::ProcessId aOtherProcess) MOZ_OVERRIDE;
 
@@ -315,11 +310,15 @@ private:
             const nsCString& aContentDisposition,
             const bool& aForceSave,
             const int64_t& aContentLength,
-            const OptionalURIParams& aReferrer);
+            const OptionalURIParams& aReferrer,
+            PBrowserParent* aBrowser);
     virtual bool DeallocPExternalHelperAppParent(PExternalHelperAppParent* aService);
 
     virtual PSmsParent* AllocPSmsParent();
     virtual bool DeallocPSmsParent(PSmsParent*);
+
+    virtual PTelephonyParent* AllocPTelephonyParent();
+    virtual bool DeallocPTelephonyParent(PTelephonyParent*);
 
     virtual PStorageParent* AllocPStorageParent();
     virtual bool DeallocPStorageParent(PStorageParent* aActor);
@@ -410,16 +409,21 @@ private:
 
     virtual bool RecvFirstIdle();
 
-    virtual bool RecvAudioChannelGetMuted(const AudioChannelType& aType,
+    virtual bool RecvAudioChannelGetState(const AudioChannelType& aType,
                                           const bool& aElementHidden,
                                           const bool& aElementWasHidden,
-                                          bool* aValue);
+                                          AudioChannelState* aValue);
 
-    virtual bool RecvAudioChannelRegisterType(const AudioChannelType& aType);
+    virtual bool RecvAudioChannelRegisterType(const AudioChannelType& aType,
+                                              const bool& aWithVideo);
     virtual bool RecvAudioChannelUnregisterType(const AudioChannelType& aType,
-                                                const bool& aElementHidden);
+                                                const bool& aElementHidden,
+                                                const bool& aWithVideo);
 
     virtual bool RecvAudioChannelChangedNotification();
+
+    virtual bool RecvAudioChannelChangeDefVolChannel(
+      const AudioChannelType& aType, const bool& aHidden);
 
     virtual bool RecvBroadcastVolume(const nsString& aVolumeName);
 
@@ -446,11 +450,13 @@ private:
     uint64_t mChildID;
     int32_t mGeolocationWatchID;
 
-    // This is a cache of all of the memory reporters
-    // registered in the child process.  To update this, one
-    // can broadcast the topic "child-memory-reporter-request" using
-    // the nsIObserverService.
-    nsCOMArray<nsIMemoryReporter> mMemoryReporters;
+    // This is a reporter holding the reports from the child's last
+    // "child-memory-reporter-update" notification.  To update this, one can
+    // broadcast the topic "child-memory-reporter-request" using the
+    // nsIObserverService.
+    //
+    // Note that this assumes there is at most one child process at a time!
+    nsCOMPtr<nsIMemoryReporter> mChildReporter;
 
     nsString mAppManifestURL;
 

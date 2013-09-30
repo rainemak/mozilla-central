@@ -76,7 +76,7 @@ class ImageData;
 
 struct WebGLContextAttributes;
 struct WebGLContextAttributesInitializer;
-template<typename> class Nullable;
+template<typename> struct Nullable;
 }
 
 using WebGLTexelConversions::WebGLTexelFormat;
@@ -118,7 +118,7 @@ class WebGLContext :
 {
     friend class WebGLContextUserData;
     friend class WebGLMemoryPressureObserver;
-    friend class WebGLMemoryMultiReporterWrapper;
+    friend class WebGLMemoryReporterWrapper;
     friend class WebGLExtensionLoseContext;
     friend class WebGLExtensionCompressedTextureS3TC;
     friend class WebGLExtensionCompressedTextureATC;
@@ -160,7 +160,6 @@ public:
     NS_IMETHOD Render(gfxContext *ctx,
                       gfxPattern::GraphicsFilter f,
                       uint32_t aFlags = RenderFlagPremultAlpha) MOZ_OVERRIDE;
-    virtual void GetImageBuffer(uint8_t** aImageBuffer, int32_t* aFormat);
     NS_IMETHOD GetInputStream(const char* aMimeType,
                               const PRUnichar* aEncoderOptions,
                               nsIInputStream **aStream) MOZ_OVERRIDE;
@@ -778,6 +777,7 @@ private:
     bool DrawArrays_check(GLint first, GLsizei count, GLsizei primcount, const char* info);
     bool DrawElements_check(GLsizei count, GLenum type, WebGLintptr byteOffset,
                             GLsizei primcount, const char* info);
+    bool DrawInstanced_check(const char* info);
     void Draw_cleanup();
 
     void VertexAttrib1fv_base(GLuint idx, uint32_t arrayLength, const GLfloat* ptr);

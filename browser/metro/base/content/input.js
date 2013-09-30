@@ -95,6 +95,7 @@ var TouchModule = {
     window.addEventListener("CancelTouchSequence", this, true);
     window.addEventListener("dblclick", this, true);
     window.addEventListener("keydown", this, true);
+    window.addEventListener("MozMouseHittest", this, true);
 
     // bubble phase
     window.addEventListener("contextmenu", this, false);
@@ -159,6 +160,13 @@ var TouchModule = {
             break;
           case "keydown":
             this._handleKeyDown(aEvent);
+            break;
+          case "MozMouseHittest":
+            // Used by widget to hit test chrome vs content
+            if (aEvent.target.ownerDocument == document) {
+              aEvent.preventDefault();
+            }
+            aEvent.stopPropagation();
             break;
         }
       }
@@ -311,8 +319,15 @@ var TouchModule = {
     if (this._isCancellable) {
       // only the first touchmove is cancellable.
       this._isCancellable = false;
-      if (aEvent.defaultPrevented)
+      if (aEvent.defaultPrevented) {
         this._isCancelled = true;
+      }
+      // Help out chrome ui elements that want input.js vs. apz scrolling: call
+      // preventDefault when apz is enabled on anything that isn't in the
+      // browser.
+      if (APZCObserver.enabled && aEvent.target.ownerDocument == document) {
+        aEvent.preventDefault();
+      }
     }
 
     if (this._isCancelled)
@@ -352,8 +367,6 @@ var TouchModule = {
 
         // Let everyone know when mousemove begins a pan
         if (!oldIsPan && dragData.isPan()) {
-          //this._longClickTimeout.clear();
-
           let event = document.createEvent("Events");
           event.initEvent("PanBegin", true, false);
           this._targetScrollbox.dispatchEvent(event);
@@ -1190,6 +1203,7 @@ var InputSourceHelper = {
     window.addEventListener("mousedown", this, true);
     window.addEventListener("touchstart", this, true);
     window.addEventListener("touchend", this, true);
+    window.addEventListener("touchcancel", this, true);
   },
 
   _precise: function () {
@@ -1213,6 +1227,7 @@ var InputSourceHelper = {
         this.touchIsActive = true;
         break;
       case "touchend":
+      case "touchcancel":
         this.touchIsActive = false;
         break;
       default:

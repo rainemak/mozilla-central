@@ -7,10 +7,6 @@
 #include "vm/ProxyObject.h"
 
 #include "jsgcinlines.h"
-#include "jsobjinlines.h"
-
-#include "gc/Barrier-inl.h"
-#include "vm/ObjectImpl-inl.h"
 
 using namespace js;
 

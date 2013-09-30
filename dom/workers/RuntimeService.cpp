@@ -202,8 +202,6 @@ struct PrefTraits<int32_t>
 {
   typedef int32_t PrefValueType;
 
-  static const PrefValueType kDefaultValue = 0;
-
   static inline PrefValueType
   Get(const char* aPref)
   {
@@ -674,8 +672,10 @@ public:
     if (csp) {
       NS_NAMED_LITERAL_STRING(scriptSample,
          "Call to eval() or related function blocked by CSP.");
-      csp->LogViolationDetails(nsIContentSecurityPolicy::VIOLATION_TYPE_EVAL,
-                               mFileName, scriptSample, mLineNum);
+      if (mWorkerPrivate->GetReportCSPViolations()) {
+        csp->LogViolationDetails(nsIContentSecurityPolicy::VIOLATION_TYPE_EVAL,
+                                 mFileName, scriptSample, mLineNum);
+      }
     }
 
     nsRefPtr<LogViolationDetailsResponseRunnable> response =
@@ -698,7 +698,7 @@ ContentSecurityPolicyAllows(JSContext* aCx)
     nsString fileName;
     uint32_t lineNum = 0;
 
-    JSScript* script;
+    JS::RootedScript script(aCx);
     const char* file;
     if (JS_DescribeScriptedCaller(aCx, &script, &lineNum) &&
         (file = JS_GetScriptFilename(aCx, script))) {
@@ -833,15 +833,7 @@ public:
   : CycleCollectedJSRuntime(WORKER_DEFAULT_RUNTIME_HEAPSIZE,
                             JS_NO_HELPER_THREADS),
     mWorkerPrivate(aWorkerPrivate)
-  {
-    // We need to ensure that a JSContext outlives the cycle collector, and
-    // that the internal JSContext created by ctypes is not the last JSContext
-    // to die.  So we create an unused JSContext here and destroy it after
-    // the cycle collector shuts down.  Thus all cycles will be broken before
-    // the last GC and all finalizers will be run.
-    mLastJSContext = JS_NewContext(Runtime(), 0);
-    MOZ_ASSERT(mLastJSContext);
-  }
+  { }
 
   ~WorkerJSRuntime()
   {
@@ -849,18 +841,15 @@ public:
     delete rtPrivate;
     JS_SetRuntimePrivate(Runtime(), nullptr);
 
-    // All JSContexts except mLastJSContext should be destroyed now.  The
-    // worker global will be unrooted and the shutdown cycle collection
-    // should break all remaining cycles.  Destroying mLastJSContext will run
-    // the GC the final time and finalize any JSObjects that were participating
+    // The worker global should be unrooted and the shutdown cycle collection
+    // should break all remaining cycles. The superclass destructor will run
+    // the GC one final time and finalize any JSObjects that were participating
     // in cycles that were broken during CC shutdown.
     nsCycleCollector_shutdown();
 
-    // The CC is shutdown, and this will GC, so make sure we don't try to CC
-    // again.
+    // The CC is shut down, and the superclass destructor will GC, so make sure
+    // we don't try to CC again.
     mWorkerPrivate = nullptr;
-    JS_DestroyContext(mLastJSContext);
-    mLastJSContext = nullptr;
   }
 
   void
@@ -888,7 +877,6 @@ public:
 
 private:
   WorkerPrivate* mWorkerPrivate;
-  JSContext* mLastJSContext;
 };
 
 class WorkerThreadRunnable : public nsRunnable
@@ -1112,18 +1100,30 @@ GetWorkerPrivateFromContext(JSContext* aCx)
   return static_cast<WorkerThreadRuntimePrivate*>(JS_GetRuntimePrivate(JS_GetRuntime(aCx)))->mWorkerPrivate;
 }
 
-bool
-IsCurrentThreadRunningChromeWorker()
+WorkerPrivate*
+GetCurrentThreadWorkerPrivate()
 {
-  NS_ASSERTION(!NS_IsMainThread(), "Wrong thread!");
-  CycleCollectedJSRuntime* ccrt = nsCycleCollector_currentJSRuntime();
+  MOZ_ASSERT(!NS_IsMainThread(), "Wrong thread!");
+  CycleCollectedJSRuntime* ccrt = CycleCollectedJSRuntime::Get();
   if (!ccrt) {
-    return false;
+    return nullptr;
   }
 
   JSRuntime* rt = ccrt->Runtime();
   return static_cast<WorkerThreadRuntimePrivate*>(JS_GetRuntimePrivate(rt))->
-    mWorkerPrivate->UsesSystemPrincipal();
+    mWorkerPrivate;
+}
+
+bool
+IsCurrentThreadRunningChromeWorker()
+{
+  return GetCurrentThreadWorkerPrivate()->UsesSystemPrincipal();
+}
+
+JSContext*
+GetCurrentThreadJSContext()
+{
+  return GetCurrentThreadWorkerPrivate()->GetJSContext();
 }
 
 END_WORKERS_NAMESPACE
@@ -1499,6 +1499,9 @@ RuntimeService::Init()
     obs->AddObserver(this, NS_XPCOM_SHUTDOWN_THREADS_OBSERVER_ID, false);
   NS_ENSURE_SUCCESS(rv, rv);
 
+  rv = obs->AddObserver(this, NS_XPCOM_SHUTDOWN_OBSERVER_ID, false);
+  NS_ENSURE_SUCCESS(rv, rv);
+
   mObserved = true;
 
   if (NS_FAILED(obs->AddObserver(this, GC_REQUEST_OBSERVER_TOPIC, false))) {
@@ -1586,12 +1589,14 @@ RuntimeService::Init()
   return NS_OK;
 }
 
-// This spins the event loop until all workers are finished and their threads
-// have been joined.
 void
-RuntimeService::Cleanup()
+RuntimeService::Shutdown()
 {
   AssertIsOnMainThread();
+
+  MOZ_ASSERT(!mShuttingDown);
+  // That's it, no more workers.
+  mShuttingDown = true;
 
   nsCOMPtr<nsIObserverService> obs = services::GetObserverService();
   NS_WARN_IF_FALSE(obs, "Failed to get observer service?!");
@@ -1602,8 +1607,40 @@ RuntimeService::Cleanup()
     NS_WARNING("NotifyObservers failed!");
   }
 
-  // That's it, no more workers.
-  mShuttingDown = true;
+  {
+    MutexAutoLock lock(mMutex);
+
+    nsAutoTArray<WorkerPrivate*, 100> workers;
+    mDomainMap.EnumerateRead(AddAllTopLevelWorkersToArray, &workers);
+
+    if (!workers.IsEmpty()) {
+
+      // Cancel all top-level workers.
+      {
+        MutexAutoUnlock unlock(mMutex);
+
+        AutoSafeJSContext cx;
+        JSAutoRequest ar(cx);
+
+        for (uint32_t index = 0; index < workers.Length(); index++) {
+          if (!workers[index]->Kill(cx)) {
+            NS_WARNING("Failed to cancel worker!");
+          }
+        }
+      }
+    }
+  }
+}
+
+// This spins the event loop until all workers are finished and their threads
+// have been joined.
+void
+RuntimeService::Cleanup()
+{
+  AssertIsOnMainThread();
+
+  nsCOMPtr<nsIObserverService> obs = services::GetObserverService();
+  NS_WARN_IF_FALSE(obs, "Failed to get observer service?!");
 
   if (mIdleThreadTimer) {
     if (NS_FAILED(mIdleThreadTimer->Cancel())) {
@@ -1619,24 +1656,8 @@ RuntimeService::Cleanup()
     mDomainMap.EnumerateRead(AddAllTopLevelWorkersToArray, &workers);
 
     if (!workers.IsEmpty()) {
-      nsIThread* currentThread;
-
-      // Cancel all top-level workers.
-      {
-        MutexAutoUnlock unlock(mMutex);
-
-        currentThread = NS_GetCurrentThread();
-        NS_ASSERTION(currentThread, "This should never be null!");
-
-        AutoSafeJSContext cx;
-        JSAutoRequest ar(cx);
-
-        for (uint32_t index = 0; index < workers.Length(); index++) {
-          if (!workers[index]->Kill(cx)) {
-            NS_WARNING("Failed to cancel worker!");
-          }
-        }
-      }
+      nsIThread* currentThread = NS_GetCurrentThread();
+      NS_ASSERTION(currentThread, "This should never be null!");
 
       // Shut down any idle threads.
       if (!mIdleThreadArray.IsEmpty()) {
@@ -1722,9 +1743,9 @@ RuntimeService::Cleanup()
         NS_WARNING("Failed to unregister for memory pressure notifications!");
       }
 
-      nsresult rv =
-        obs->RemoveObserver(this, NS_XPCOM_SHUTDOWN_THREADS_OBSERVER_ID);
-      mObserved = NS_FAILED(rv);
+      obs->RemoveObserver(this, NS_XPCOM_SHUTDOWN_THREADS_OBSERVER_ID);
+      obs->RemoveObserver(this, NS_XPCOM_SHUTDOWN_OBSERVER_ID);
+      mObserved = false;
     }
   }
 
@@ -1923,6 +1944,10 @@ RuntimeService::Observe(nsISupports* aSubject, const char* aTopic,
 {
   AssertIsOnMainThread();
 
+  if (!strcmp(aTopic, NS_XPCOM_SHUTDOWN_OBSERVER_ID)) {
+    Shutdown();
+    return NS_OK;
+  }
   if (!strcmp(aTopic, NS_XPCOM_SHUTDOWN_THREADS_OBSERVER_ID)) {
     Cleanup();
     return NS_OK;

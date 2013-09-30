@@ -6,13 +6,10 @@
 
 #include "jit/ParallelFunctions.h"
 
-#include "jit/IonSpewer.h"
 #include "vm/ArrayObject.h"
 
-#include "jsfuninlines.h"
 #include "jsgcinlines.h"
 #include "jsobjinlines.h"
-#include "jsscriptinlines.h"
 
 using namespace js;
 using namespace jit;
@@ -56,16 +53,14 @@ printTrace(const char *prefix, struct IonLIRTraceData *cached)
 {
     fprintf(stderr, "%s / Block %3u / LIR %3u / Mode %u / LIR %s\n",
             prefix,
-            cached->bblock, cached->lir, cached->execModeInt, cached->lirOpName);
+            cached->blockIndex, cached->lirIndex, cached->execModeInt, cached->lirOpName);
 }
 
 struct IonLIRTraceData seqTraceData;
 #endif
 
 void
-jit::TraceLIR(uint32_t bblock, uint32_t lir, uint32_t execModeInt,
-              const char *lirOpName, const char *mirOpName,
-              JSScript *script, jsbytecode *pc)
+jit::TraceLIR(IonLIRTraceData *current)
 {
 #ifdef DEBUG
     static enum { NotSet, All, Bailouts } traceMode;
@@ -75,7 +70,7 @@ jit::TraceLIR(uint32_t bblock, uint32_t lir, uint32_t execModeInt,
     // You can either modify it to do whatever you like, or use gdb scripting.
     // For example:
     //
-    // break TracePar
+    // break TraceLIR
     // commands
     // continue
     // exit
@@ -90,27 +85,19 @@ jit::TraceLIR(uint32_t bblock, uint32_t lir, uint32_t execModeInt,
     }
 
     IonLIRTraceData *cached;
-    if (execModeInt == 0)
+    if (current->execModeInt == 0)
         cached = &seqTraceData;
     else
         cached = &ForkJoinSlice::Current()->traceData;
 
-    if (bblock == 0xDEADBEEF) {
-        if (execModeInt == 0)
+    if (current->blockIndex == 0xDEADBEEF) {
+        if (current->execModeInt == 0)
             printTrace("BAILOUT", cached);
         else
-            SpewBailoutIR(cached->bblock, cached->lir,
-                          cached->lirOpName, cached->mirOpName,
-                          cached->script, cached->pc);
+            SpewBailoutIR(cached);
     }
 
-    cached->bblock = bblock;
-    cached->lir = lir;
-    cached->execModeInt = execModeInt;
-    cached->lirOpName = lirOpName;
-    cached->mirOpName = mirOpName;
-    cached->script = script;
-    cached->pc = pc;
+    memcpy(cached, current, sizeof(IonLIRTraceData));
 
     if (traceMode == All)
         printTrace("Exec", cached);
@@ -211,7 +198,7 @@ jit::IntToStringPar(ForkJoinSlice *slice, int i, MutableHandleString out)
 ParallelResult
 jit::DoubleToStringPar(ForkJoinSlice *slice, double d, MutableHandleString out)
 {
-    JSString *str = js_NumberToString<NoGC>(slice, d);
+    JSString *str = NumberToString<NoGC>(slice, d);
     if (!str)
         return TP_RETRY_SEQUENTIALLY;
     out.set(str);

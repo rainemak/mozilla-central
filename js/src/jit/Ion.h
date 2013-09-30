@@ -15,7 +15,6 @@
 #include "jscompartment.h"
 
 #include "jit/CompileInfo.h"
-#include "jit/IonCode.h"
 
 namespace js {
 namespace jit {
@@ -374,7 +373,7 @@ IsIonInlinablePC(jsbytecode *pc) {
     // CALL, FUNCALL, FUNAPPLY, EVAL, NEW (Normal Callsites)
     // GETPROP, CALLPROP, and LENGTH. (Inlined Getters)
     // SETPROP, SETNAME, SETGNAME (Inlined Setters)
-    return IsCallPC(pc) || IsGetterPC(pc) || IsSetterPC(pc);
+    return IsCallPC(pc) || IsGetPropPC(pc) || IsSetPropPC(pc);
 }
 
 void ForbidCompilation(JSContext *cx, JSScript *script);

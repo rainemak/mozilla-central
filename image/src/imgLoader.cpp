@@ -49,7 +49,7 @@ using namespace mozilla::image;
 NS_MEMORY_REPORTER_MALLOC_SIZEOF_FUN(ImagesMallocSizeOf)
 
 class imgMemoryReporter MOZ_FINAL :
-  public nsIMemoryMultiReporter
+  public nsIMemoryReporter
 {
 public:
   imgMemoryReporter()
@@ -64,7 +64,7 @@ public:
     return NS_OK;
   }
 
-  NS_IMETHOD CollectReports(nsIMemoryMultiReporterCallback *callback,
+  NS_IMETHOD CollectReports(nsIMemoryReporterCallback *callback,
                             nsISupports *closure)
   {
     AllSizes chrome;
@@ -137,7 +137,7 @@ public:
     return NS_OK;
   }
 
-  static int64_t GetImagesContentUsedUncompressed()
+  static int64_t ImagesContentUsedUncompressedDistinguishedAmount()
   {
     size_t n = 0;
     for (uint32_t i = 0; i < imgLoader::sMemReporter->mKnownLoaders.Length(); i++) {
@@ -221,27 +221,7 @@ private:
   }
 };
 
-NS_IMPL_ISUPPORTS1(imgMemoryReporter, nsIMemoryMultiReporter)
-
-// This is used by telemetry.
-class ImagesContentUsedUncompressedReporter MOZ_FINAL
-  : public MemoryReporterBase
-{
-public:
-  ImagesContentUsedUncompressedReporter()
-    : MemoryReporterBase("images-content-used-uncompressed",
-                         KIND_OTHER, UNITS_BYTES,
-"This is the sum of the 'explicit/images/content/used/uncompressed-heap' "
-"and 'explicit/images/content/used/uncompressed-nonheap' numbers.  However, "
-"it is measured at a different time and so may give slightly different "
-"results.")
-  {}
-private:
-  int64_t Amount() MOZ_OVERRIDE
-  {
-    return imgMemoryReporter::GetImagesContentUsedUncompressed();
-  }
-};
+NS_IMPL_ISUPPORTS1(imgMemoryReporter, nsIMemoryReporter)
 
 NS_IMPL_ISUPPORTS3(nsProgressNotificationProxy,
                      nsIProgressEventSink,
@@ -838,8 +818,8 @@ void imgLoader::GlobalInit()
     sCacheMaxSize = 5 * 1024 * 1024;
 
   sMemReporter = new imgMemoryReporter();
-  NS_RegisterMemoryMultiReporter(sMemReporter);
-  NS_RegisterMemoryReporter(new ImagesContentUsedUncompressedReporter());
+  NS_RegisterMemoryReporter(sMemReporter);
+  RegisterImagesContentUsedUncompressedDistinguishedAmount(imgMemoryReporter::ImagesContentUsedUncompressedDistinguishedAmount);
 }
 
 nsresult imgLoader::InitCache()

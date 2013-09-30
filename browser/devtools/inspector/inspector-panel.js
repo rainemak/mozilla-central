@@ -56,8 +56,8 @@ InspectorPanel.prototype = {
   _deferredOpen: function(defaultSelection) {
     let deferred = promise.defer();
 
-    this.onNavigatedAway = this.onNavigatedAway.bind(this);
-    this.target.on("navigate", this.onNavigatedAway);
+    this.onNewRoot = this.onNewRoot.bind(this);
+    this.walker.on("new-root", this.onNewRoot);
 
     this.nodemenu = this.panelDoc.getElementById("inspector-node-popup");
     this.lastNodemenuItem = this.nodemenu.lastChild;
@@ -81,20 +81,6 @@ InspectorPanel.prototype = {
       this.browser = this.target.tab.linkedBrowser;
       this.scheduleLayoutChange = this.scheduleLayoutChange.bind(this);
       this.browser.addEventListener("resize", this.scheduleLayoutChange, true);
-
-      this.highlighter = new Highlighter(this.target, this, this._toolbox);
-      let button = this.panelDoc.getElementById("inspector-inspect-toolbutton");
-      button.hidden = false;
-      this.onLockStateChanged = function() {
-        if (this.highlighter.locked) {
-          button.removeAttribute("checked");
-          this._toolbox.raise();
-        } else {
-          button.setAttribute("checked", "true");
-        }
-      }.bind(this);
-      this.highlighter.on("locked", this.onLockStateChanged);
-      this.highlighter.on("unlocked", this.onLockStateChanged);
 
       // Show a warning when the debugger is paused.
       // We show the warning only when the inspector
@@ -123,6 +109,19 @@ InspectorPanel.prototype = {
       this._toolbox.on("select", this.updateDebuggerPausedWarning);
       this.updateDebuggerPausedWarning();
     }
+
+    this.highlighter = new Highlighter(this.target, this, this._toolbox);
+    let button = this.panelDoc.getElementById("inspector-inspect-toolbutton");
+    this.onLockStateChanged = function() {
+      if (this.highlighter.locked) {
+        button.removeAttribute("checked");
+        this._toolbox.raise();
+      } else {
+        button.setAttribute("checked", "true");
+      }
+    }.bind(this);
+    this.highlighter.on("locked", this.onLockStateChanged);
+    this.highlighter.on("unlocked", this.onLockStateChanged);
 
     this._initMarkup();
     this.isReady = false;
@@ -169,7 +168,7 @@ InspectorPanel.prototype = {
     // as default selected, else set documentElement
     return walker.getRootNode().then(aRootNode => {
       rootNode = aRootNode;
-      return walker.querySelector(aRootNode, this.selectionCssSelector);
+      return walker.querySelector(rootNode, this.selectionCssSelector);
     }).then(front => {
       if (front) {
         return front;
@@ -293,9 +292,9 @@ InspectorPanel.prototype = {
   },
 
   /**
-   * Reset the inspector on navigate away.
+   * Reset the inspector on new root mutation.
    */
-  onNavigatedAway: function InspectorPanel_onNavigatedAway() {
+  onNewRoot: function InspectorPanel_onNewRoot() {
     this._defaultNode = null;
     this.selection.setNodeFront(null);
     this._destroyMarkup();
@@ -448,7 +447,15 @@ InspectorPanel.prototype = {
     if (this._destroyPromise) {
       return this._destroyPromise;
     }
+
+    if (this.highlighter) {
+      this.highlighter.off("locked", this.onLockStateChanged);
+      this.highlighter.off("unlocked", this.onLockStateChanged);
+      this.highlighter.destroy();
+    }
+
     if (this.walker) {
+      this.walker.off("new-root", this.onNewRoot);
       this._destroyPromise = this.walker.release().then(null, console.error);
       delete this.walker;
       delete this.pageStyle;
@@ -462,14 +469,6 @@ InspectorPanel.prototype = {
     if (this.browser) {
       this.browser.removeEventListener("resize", this.scheduleLayoutChange, true);
       this.browser = null;
-    }
-
-    this.target.off("navigate", this.onNavigatedAway);
-
-    if (this.highlighter) {
-      this.highlighter.off("locked", this.onLockStateChanged);
-      this.highlighter.off("unlocked", this.onLockStateChanged);
-      this.highlighter.destroy();
     }
 
     this.target.off("thread-paused", this.updateDebuggerPausedWarning);

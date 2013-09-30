@@ -157,7 +157,7 @@ void Axis::StartTouch(int32_t aPos) {
   mLocked = false;
 }
 
-float Axis::GetDisplacementForDuration(float aScale, const TimeDuration& aDelta) {
+float Axis::AdjustDisplacement(float aDisplacement, float& aOverscrollAmountOut) {
   if (mLocked) {
     return 0.0f;
   }
@@ -166,13 +166,8 @@ float Axis::GetDisplacementForDuration(float aScale, const TimeDuration& aDelta)
     mAcceleration = 0;
   }
 
-  float displacement;
-  if (aDelta.ToMilliseconds()) {
-    float accelerationFactor = GetAccelerationFactor();
-    displacement = mVelocity * aScale * aDelta.ToMilliseconds() * accelerationFactor;
-  } else {
-    displacement = (mLastPos - mPos) * aScale;
-  }
+  float accelerationFactor = GetAccelerationFactor();
+  float displacement = aDisplacement * accelerationFactor;
   // If this displacement will cause an overscroll, throttle it. Can potentially
   // bring it to 0 even if the velocity is high.
   if (DisplacementWillOverscroll(displacement) != OVERSCROLL_NONE) {
@@ -180,7 +175,8 @@ float Axis::GetDisplacementForDuration(float aScale, const TimeDuration& aDelta)
     // anywhere, so we're just spinning needlessly.
     mVelocity = 0.0f;
     mAcceleration = 0;
-    displacement -= DisplacementWillOverscrollAmount(displacement);
+    aOverscrollAmountOut = DisplacementWillOverscrollAmount(displacement);
+    displacement -= aOverscrollAmountOut;
   }
   return displacement;
 }

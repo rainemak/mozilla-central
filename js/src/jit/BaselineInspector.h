@@ -40,6 +40,7 @@ class SetElemICInspector : public ICInspector
     bool sawOOBDenseWrite() const;
     bool sawOOBTypedArrayWrite() const;
     bool sawDenseWrite() const;
+    bool sawTypedArrayWrite() const;
 };
 
 class BaselineInspector
@@ -93,7 +94,8 @@ class BaselineInspector
     bool dimorphicStub(jsbytecode *pc, ICStub **pfirst, ICStub **psecond);
 
   public:
-    bool maybeShapesForPropertyOp(jsbytecode *pc, Vector<Shape *> &shapes);
+    typedef Vector<Shape *, 4, IonAllocPolicy> ShapeVector;
+    bool maybeShapesForPropertyOp(jsbytecode *pc, ShapeVector &shapes);
 
     SetElemICInspector setElemICInspector(jsbytecode *pc) {
         return makeICInspector<SetElemICInspector>(pc, ICStub::SetElem_Fallback);

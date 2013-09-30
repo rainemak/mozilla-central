@@ -581,7 +581,8 @@ NS_IMPL_CYCLE_COLLECTION_CAN_SKIP_BEGIN(WebSocket)
       tmp->mListenerManager->MarkForCC();
     }
     if (!isBlack && tmp->PreservingWrapper()) {
-      xpc_UnmarkGrayObject(tmp->GetWrapperPreserveColor());
+      // This marks the wrapper black.
+      tmp->GetWrapper();
     }
     return true;
   }
@@ -670,7 +671,7 @@ WebSocket::Init(JSContext* aCx,
   NS_ENSURE_SUCCESS(rv, rv);
 
   unsigned lineno;
-  JSScript* script;
+  JS::RootedScript script(aCx);
   if (JS_DescribeScriptedCaller(aCx, &script, &lineno)) {
     mScriptFile = JS_GetScriptFilename(aCx, script);
     mScriptLine = lineno;

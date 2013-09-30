@@ -10,6 +10,7 @@
 #include "nsIClassInfo.h"
 #include "nsIContentSecurityPolicy.h"
 #include "nsIConsoleService.h"
+#include "nsIDOMDOMException.h"
 #include "nsIDOMFile.h"
 #include "nsIDocument.h"
 #include "nsIDocShell.h"
@@ -32,6 +33,7 @@
 #include "js/OldDebugAPI.h"
 #include "js/MemoryMetrics.h"
 #include "mozilla/Attributes.h"
+#include "mozilla/ContentEvents.h"
 #include "mozilla/Likely.h"
 #include "mozilla/dom/BindingUtils.h"
 #include "mozilla/dom/ImageData.h"
@@ -41,7 +43,6 @@
 #include "nsCxPusher.h"
 #include "nsError.h"
 #include "nsDOMJSUtils.h"
-#include "nsGUIEvent.h"
 #include "nsJSEnvironment.h"
 #include "nsJSUtils.h"
 #include "nsNetUtil.h"
@@ -55,7 +56,7 @@
 #endif
 
 #include "Events.h"
-#include "Exceptions.h"
+#include "mozilla/dom/Exceptions.h"
 #include "File.h"
 #include "Principal.h"
 #include "RuntimeService.h"
@@ -70,10 +71,11 @@
 // GC will run five seconds after the last event is processed.
 #define IDLE_GC_TIMER_DELAY_MS 5000
 
+using mozilla::InternalScriptErrorEvent;
 using mozilla::MutexAutoLock;
 using mozilla::TimeDuration;
 using mozilla::TimeStamp;
-using mozilla::dom::workers::exceptions::ThrowDOMExceptionForNSResult;
+using mozilla::dom::Throw;
 using mozilla::AutoPushJSContext;
 using mozilla::AutoSafeJSContext;
 
@@ -84,9 +86,6 @@ using namespace mozilla::dom;
 NS_MEMORY_REPORTER_MALLOC_SIZEOF_FUN(JsWorkerMallocSizeOf)
 
 namespace {
-
-const char gErrorChars[] = "error";
-const char gMessageChars[] = "message";
 
 template <class T>
 class AutoPtrComparator
@@ -277,7 +276,7 @@ struct WorkerStructuredCloneCallbacks
   static void
   Error(JSContext* aCx, uint32_t /* aErrorId */)
   {
-    ThrowDOMExceptionForNSResult(aCx, NS_ERROR_DOM_DATA_CLONE_ERR);
+    Throw(aCx, NS_ERROR_DOM_DATA_CLONE_ERR);
   }
 };
 
@@ -322,7 +321,7 @@ struct MainThreadWorkerStructuredCloneCallbacks
                                                  &NS_GET_IID(nsIDOMFile),
                                                  wrappedFile.address());
         if (NS_FAILED(rv)) {
-          Error(aCx, DATA_CLONE_ERR);
+          Error(aCx, nsIDOMDOMException::DATA_CLONE_ERR);
           return nullptr;
         }
 
@@ -356,7 +355,7 @@ struct MainThreadWorkerStructuredCloneCallbacks
                                                  &NS_GET_IID(nsIDOMBlob),
                                                  wrappedBlob.address());
         if (NS_FAILED(rv)) {
-          Error(aCx, DATA_CLONE_ERR);
+          Error(aCx, nsIDOMDOMException::DATA_CLONE_ERR);
           return nullptr;
         }
 
@@ -1060,8 +1059,8 @@ public:
           }
         }
         else {
-          // Icky, we have to fire an nsScriptErrorEvent...
-          nsScriptErrorEvent event(true, NS_LOAD_ERROR);
+          // Icky, we have to fire an InternalScriptErrorEvent...
+          InternalScriptErrorEvent event(true, NS_LOAD_ERROR);
           event.lineNr = aLineNumber;
           event.errorMsg = aMessage.get();
           event.fileName = aFilename.get();
@@ -1766,7 +1765,7 @@ struct WorkerPrivate::TimeoutInfo
   bool mCanceled;
 };
 
-class WorkerPrivate::MemoryReporter MOZ_FINAL : public nsIMemoryMultiReporter
+class WorkerPrivate::MemoryReporter MOZ_FINAL : public nsIMemoryReporter
 {
   friend class WorkerPrivate;
 
@@ -1807,7 +1806,7 @@ public:
   }
 
   NS_IMETHOD
-  CollectReports(nsIMemoryMultiReporterCallback* aCallback,
+  CollectReports(nsIMemoryReporterCallback* aCallback,
                  nsISupports* aClosure)
   {
     AssertIsOnMainThread();
@@ -1883,7 +1882,7 @@ private:
   }
 };
 
-NS_IMPL_ISUPPORTS1(WorkerPrivate::MemoryReporter, nsIMemoryMultiReporter)
+NS_IMPL_ISUPPORTS1(WorkerPrivate::MemoryReporter, nsIMemoryReporter)
 
 template <class Derived>
 WorkerPrivateParent<Derived>::WorkerPrivateParent(
@@ -2689,7 +2688,7 @@ WorkerPrivate::Create(JSContext* aCx, JS::Handle<JSObject*> aObj, WorkerPrivate*
 
       // We're being created outside of a window. Need to figure out the script
       // that is creating us in order for us to use relative URIs later on.
-      JSScript *script;
+      JS::RootedScript script(aCx);
       if (JS_DescribeScriptedCaller(aCx, &script, nullptr)) {
         if (NS_FAILED(NS_NewURI(getter_AddRefs(baseURI),
                                 JS_GetScriptFilename(aCx, script)))) {
@@ -3093,7 +3092,7 @@ WorkerPrivate::EnableMemoryReporter()
   // successfully registered the reporter.
   mMemoryReporter = new MemoryReporter(this);
 
-  if (NS_FAILED(NS_RegisterMemoryMultiReporter(mMemoryReporter))) {
+  if (NS_FAILED(NS_RegisterMemoryReporter(mMemoryReporter))) {
     NS_WARNING("Failed to register memory reporter!");
     // No need to lock here since a failed registration means our memory
     // reporter can't start running. Just clean up.
@@ -3148,7 +3147,7 @@ WorkerPrivate::DisableMemoryReporter()
   }
 
   // Finally unregister the memory reporter.
-  if (NS_FAILED(NS_UnregisterMemoryMultiReporter(memoryReporter))) {
+  if (NS_FAILED(NS_UnregisterMemoryReporter(memoryReporter))) {
     NS_WARNING("Failed to unregister memory reporter!");
   }
 }

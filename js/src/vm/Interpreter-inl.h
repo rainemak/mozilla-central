@@ -15,7 +15,6 @@
 #include "jsstr.h"
 
 #include "jit/Ion.h"
-#include "jit/IonCompartment.h"
 #include "vm/ArgumentsObject.h"
 #include "vm/ForkJoin.h"
 
@@ -23,8 +22,8 @@
 #include "jsinferinlines.h"
 #include "jsobjinlines.h"
 
-#include "vm/GlobalObject-inl.h"
 #include "vm/Stack-inl.h"
+#include "vm/String-inl.h"
 
 namespace js {
 
@@ -49,11 +48,12 @@ ComputeThis(JSContext *cx, AbstractFramePtr frame)
          */
         JS_ASSERT_IF(frame.isEvalFrame(), thisv.isUndefined() || thisv.isNull());
     }
-    bool modified;
-    if (!BoxNonStrictThis(cx, &thisv, &modified))
+
+    JSObject *thisObj = BoxNonStrictThis(cx, thisv);
+    if (!thisObj)
         return false;
 
-    frame.thisValue() = thisv;
+    frame.thisValue().setObject(*thisObj);
     return true;
 }
 
@@ -129,7 +129,7 @@ ValuePropertyBearer(JSContext *cx, StackFrame *fp, HandleValue v, int spindex)
 
 inline bool
 NativeGet(JSContext *cx, JSObject *objArg, JSObject *pobjArg, Shape *shapeArg,
-          unsigned getHow, MutableHandleValue vp)
+          MutableHandleValue vp)
 {
     if (shapeArg->isDataDescriptor() && shapeArg->hasDefaultGetter()) {
         /* Fast path for Object instance properties. */
@@ -139,7 +139,7 @@ NativeGet(JSContext *cx, JSObject *objArg, JSObject *pobjArg, Shape *shapeArg,
         RootedObject obj(cx, objArg);
         RootedObject pobj(cx, pobjArg);
         RootedShape shape(cx, shapeArg);
-        if (!js_NativeGet(cx, obj, pobj, shape, getHow, vp))
+        if (!js_NativeGet(cx, obj, pobj, shape, vp))
             return false;
     }
     return true;
@@ -203,7 +203,7 @@ FetchName(JSContext *cx, HandleObject obj, HandleObject obj2, HandlePropertyName
         Rooted<JSObject*> normalized(cx, obj);
         if (normalized->getClass() == &WithObject::class_ && !shape->hasDefaultGetter())
             normalized = &normalized->as<WithObject>().object();
-        if (!NativeGet(cx, normalized, obj2, shape, 0, vp))
+        if (!NativeGet(cx, normalized, obj2, shape, vp))
             return false;
     }
     return true;
@@ -471,10 +471,17 @@ GetElementOperation(JSContext *cx, JSOp op, MutableHandleValue lref, HandleValue
 }
 
 static JS_ALWAYS_INLINE JSString *
-TypeOfOperation(JSContext *cx, HandleValue v)
+TypeOfOperation(const Value &v, JSRuntime *rt)
 {
-    JSType type = JS_TypeOfValue(cx, v);
-    return TypeName(type, cx);
+    JSType type = js::TypeOfValue(v);
+    return TypeName(type, rt);
+}
+
+static inline JSString *
+TypeOfObjectOperation(JSObject *obj, JSRuntime *rt)
+{
+    JSType type = js::TypeOfObject(obj);
+    return TypeName(type, rt);
 }
 
 static JS_ALWAYS_INLINE bool

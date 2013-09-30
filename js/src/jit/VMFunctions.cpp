@@ -7,9 +7,9 @@
 #include "jit/VMFunctions.h"
 
 #include "builtin/ParallelArray.h"
+#include "builtin/TypedObject.h"
 #include "frontend/BytecodeCompiler.h"
 #include "jit/BaselineIC.h"
-#include "jit/Ion.h"
 #include "jit/IonCompartment.h"
 #include "jit/IonFrames.h"
 #include "vm/ArrayObject.h"
@@ -94,9 +94,9 @@ InvokeFunction(JSContext *cx, HandleObject obj0, uint32_t argc, Value *argv, Val
 }
 
 JSObject *
-NewGCThing(JSContext *cx, gc::AllocKind allocKind, size_t thingSize)
+NewGCThing(JSContext *cx, gc::AllocKind allocKind, size_t thingSize, gc::InitialHeap initialHeap)
 {
-    return gc::NewGCThing<JSObject, CanGC>(cx, allocKind, thingSize, gc::DefaultHeap);
+    return gc::NewGCThing<JSObject, CanGC>(cx, allocKind, thingSize, initialHeap);
 }
 
 bool
@@ -115,6 +115,22 @@ CheckOverRecursed(JSContext *cx)
     // and in the interim we might just fire a few useless calls to
     // CheckOverRecursed.
     JS_CHECK_RECURSION(cx, return false);
+
+    if (cx->runtime()->interrupt)
+        return InterruptCheck(cx);
+
+    return true;
+}
+
+bool
+CheckOverRecursedWithExtra(JSContext *cx, uint32_t extra)
+{
+    // See |CheckOverRecursed| above.  This is a variant of that function which
+    // accepts an argument holding the extra stack space needed for the Baseline
+    // frame that's about to be pushed.
+    uint8_t spDummy;
+    uint8_t *checkSp = (&spDummy) - extra;
+    JS_CHECK_RECURSION_WITH_SP(cx, checkSp, return false);
 
     if (cx->runtime()->interrupt)
         return InterruptCheck(cx);
@@ -253,6 +269,8 @@ NewInitArray(JSContext *cx, uint32_t count, types::TypeObject *typeArg)
 {
     RootedTypeObject type(cx, typeArg);
     NewObjectKind newKind = !type ? SingletonObject : GenericObject;
+    if (type && type->isLongLivedForJITAlloc())
+        newKind = TenuredObject;
     RootedObject obj(cx, NewDenseAllocatedArray(cx, count, NULL, newKind));
     if (!obj)
         return NULL;
@@ -269,6 +287,8 @@ JSObject*
 NewInitObject(JSContext *cx, HandleObject templateObject)
 {
     NewObjectKind newKind = templateObject->hasSingletonType() ? SingletonObject : GenericObject;
+    if (!templateObject->hasLazyType() && templateObject->type()->isLongLivedForJITAlloc())
+        newKind = TenuredObject;
     RootedObject obj(cx, CopyInitializerObject(cx, templateObject, newKind));
 
     if (!obj)
@@ -286,11 +306,16 @@ JSObject *
 NewInitObjectWithClassPrototype(JSContext *cx, HandleObject templateObject)
 {
     JS_ASSERT(!templateObject->hasSingletonType());
+    JS_ASSERT(!templateObject->hasLazyType());
 
+    NewObjectKind newKind = templateObject->type()->isLongLivedForJITAlloc()
+                            ? TenuredObject
+                            : GenericObject;
     JSObject *obj = NewObjectWithGivenProto(cx,
                                             templateObject->getClass(),
                                             templateObject->getProto(),
-                                            cx->global());
+                                            cx->global(),
+                                            newKind);
     if (!obj)
         return NULL;
 
@@ -605,6 +630,16 @@ PostWriteBarrier(JSRuntime *rt, JSObject *obj)
     JS_ASSERT(!IsInsideNursery(rt, obj));
     rt->gcStoreBuffer.putWholeCell(obj);
 }
+
+void
+PostGlobalWriteBarrier(JSRuntime *rt, JSObject *obj)
+{
+    JS_ASSERT(obj->is<GlobalObject>());
+    if (!obj->compartment()->globalWriteBarriered) {
+        PostWriteBarrier(rt, obj);
+        obj->compartment()->globalWriteBarriered = true;
+    }
+}
 #endif
 
 uint32_t
@@ -735,7 +770,10 @@ InitRestParameter(JSContext *cx, uint32_t length, Value *rest, HandleObject temp
         return arrRes;
     }
 
-    ArrayObject *arrRes = NewDenseCopiedArray(cx, length, rest, NULL);
+    NewObjectKind newKind = templateObj->type()->isLongLivedForJITAlloc()
+                            ? TenuredObject
+                            : GenericObject;
+    ArrayObject *arrRes = NewDenseCopiedArray(cx, length, rest, NULL, newKind);
     if (arrRes)
         arrRes->setType(templateObj->type());
     return arrRes;
@@ -843,6 +881,13 @@ InitBaselineFrameForOsr(BaselineFrame *frame, StackFrame *interpFrame, uint32_t 
 {
     return frame->initForOsr(interpFrame, numStackValues);
 }
+
+JSObject *CreateDerivedTypedObj(JSContext *cx, HandleObject type,
+                                HandleObject owner, int32_t offset)
+{
+    return BinaryBlock::createDerived(cx, type, owner, offset);
+}
+
 
 } // namespace jit
 } // namespace js

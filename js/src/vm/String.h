@@ -16,6 +16,7 @@
 
 #include "gc/Barrier.h"
 #include "gc/Heap.h"
+#include "gc/Marking.h"
 #include "gc/Rooting.h"
 #include "js/CharacterEncoding.h"
 #include "js/RootingAPI.h"
@@ -129,7 +130,7 @@ static const size_t UINT32_CHAR_BUFFER_LENGTH = sizeof("4294967295") - 1;
  * at least X (e.g., ensureLinear will change a JSRope to be a JSFlatString).
  */
 
-class JSString : public js::gc::Cell
+class JSString : public js::gc::BarrieredCell<JSString>
 {
   protected:
     static const size_t NUM_INLINE_CHARS = 2 * sizeof(void *) / sizeof(jschar);
@@ -426,16 +427,7 @@ class JSString : public js::gc::Cell
         return offsetof(JSString, d.u1.chars);
     }
 
-    JS::Zone *zone() const { return tenuredZone(); }
-    bool isInsideZone(JS::Zone *zone_) { return tenuredIsInsideZone(zone_); }
     js::gc::AllocKind getAllocKind() const { return tenuredGetAllocKind(); }
-
-    static inline void writeBarrierPre(JSString *str);
-    static void writeBarrierPost(JSString *str, void *addr) {}
-    static void writeBarrierPostRelocate(JSString *str, void *addr) {}
-    static void writeBarrierPostRemove(JSString *str, void *addr) {}
-    static inline bool needWriteBarrierPre(JS::Zone *zone);
-    static inline void readBarrier(JSString *str);
 
     static inline js::ThingRootKind rootKind() { return js::THING_ROOT_STRING; }
 

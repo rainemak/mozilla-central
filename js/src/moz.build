@@ -70,6 +70,7 @@ EXPORTS.js += [
     '../public/RequiredDefines.h',
     '../public/RootingAPI.h',
     '../public/StructuredClone.h',
+    '../public/Tracer.h',
     '../public/TypeDecls.h',
     '../public/Utility.h',
     '../public/Value.h',
@@ -78,7 +79,7 @@ EXPORTS.js += [
 
 CPP_SOURCES += [
     'ArgumentsObject.cpp',
-    'TypedObject.cpp',
+    'Barrier.cpp',
     'BytecodeCompiler.cpp',
     'BytecodeEmitter.cpp',
     'CallNonGenericMethod.cpp',
@@ -98,6 +99,7 @@ CPP_SOURCES += [
     'MapObject.cpp',
     'Marking.cpp',
     'Memory.cpp',
+    'MemoryMetrics.cpp',
     'Module.cpp',
     'Monitor.cpp',
     'NameFunctions.cpp',
@@ -132,8 +134,10 @@ CPP_SOURCES += [
     'TestingFunctions.cpp',
     'ThreadPool.cpp',
     'TokenStream.cpp',
+    'Tracer.cpp',
     'TypeRepresentation.cpp',
     'TypedArrayObject.cpp',
+    'TypedObject.cpp',
     'Unicode.cpp',
     'Value.cpp',
     'Verifier.cpp',
@@ -161,7 +165,6 @@ CPP_SOURCES += [
     'jsinfer.cpp',
     'jsiter.cpp',
     'jsmath.cpp',
-    'jsmemorymetrics.cpp',
     'jsnativestack.cpp',
     'jsnum.cpp',
     'jsobj.cpp',
@@ -245,6 +248,7 @@ if CONFIG['ENABLE_ION']:
         'Snapshots.cpp',
         'StupidAllocator.cpp',
         'TypePolicy.cpp',
+        'TypeRepresentationSet.cpp',
         'UnreachableCodeElimination.cpp',
         'VMFunctions.cpp',
         'ValueNumbering.cpp',
@@ -346,3 +350,7 @@ else:
 
 MSVC_ENABLE_PGO = True
 
+HOST_CPPSRCS += [
+    'jskwgen.cpp',
+    'jsoplengen.cpp',
+]

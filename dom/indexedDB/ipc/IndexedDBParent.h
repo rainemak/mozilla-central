@@ -205,22 +205,30 @@ protected:
   virtual bool
   RecvPIndexedDBDatabaseConstructor(PIndexedDBDatabaseParent* aActor,
                                     const nsString& aName,
-                                    const uint64_t& aVersion) MOZ_OVERRIDE;
+                                    const uint64_t& aVersion,
+                                    const PersistenceType& aPersistenceType)
+                                    MOZ_OVERRIDE;
 
   virtual bool
   RecvPIndexedDBDeleteDatabaseRequestConstructor(
                                   PIndexedDBDeleteDatabaseRequestParent* aActor,
-                                  const nsString& aName) MOZ_OVERRIDE;
+                                  const nsString& aName,
+                                  const PersistenceType& aPersistenceType)
+                                  MOZ_OVERRIDE;
 
   virtual PIndexedDBDatabaseParent*
-  AllocPIndexedDBDatabaseParent(const nsString& aName, const uint64_t& aVersion)
+  AllocPIndexedDBDatabaseParent(const nsString& aName, const uint64_t& aVersion,
+                                const PersistenceType& aPersistenceType)
                                 MOZ_OVERRIDE;
 
   virtual bool
   DeallocPIndexedDBDatabaseParent(PIndexedDBDatabaseParent* aActor) MOZ_OVERRIDE;
 
   virtual PIndexedDBDeleteDatabaseRequestParent*
-  AllocPIndexedDBDeleteDatabaseRequestParent(const nsString& aName) MOZ_OVERRIDE;
+  AllocPIndexedDBDeleteDatabaseRequestParent(
+                                        const nsString& aName,
+                                        const PersistenceType& aPersistenceType)
+                                        MOZ_OVERRIDE;
 
   virtual bool
   DeallocPIndexedDBDeleteDatabaseRequestParent(
@@ -699,6 +707,7 @@ class IndexedDBObjectStoreRequestParent : public IndexedDBRequestParentBase
   typedef ipc::DeleteParams DeleteParams;
   typedef ipc::GetParams GetParams;
   typedef ipc::GetAllParams GetAllParams;
+  typedef ipc::GetAllKeysParams GetAllKeysParams;
   typedef ipc::CountParams CountParams;
   typedef ipc::OpenCursorParams OpenCursorParams;
 
@@ -712,6 +721,9 @@ public:
 
   bool
   GetAll(const GetAllParams& aParams);
+
+  bool
+  GetAllKeys(const GetAllKeysParams& aParams);
 
   bool
   Add(const AddParams& aParams);

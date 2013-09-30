@@ -37,7 +37,7 @@ class MacroAssembler;
 class CodeOffsetLabel;
 class PatchableBackedge;
 
-class IonCode : public gc::Cell
+class IonCode : public gc::BarrieredCell<IonCode>
 {
   protected:
     uint8_t *code_;
@@ -133,10 +133,6 @@ class IonCode : public gc::Cell
     static IonCode *New(JSContext *cx, uint8_t *code, uint32_t bufferSize, JSC::ExecutablePool *pool);
 
   public:
-    JS::Zone *zone() const { return tenuredZone(); }
-    static void readBarrier(IonCode *code);
-    static void writeBarrierPre(IonCode *code);
-    static void writeBarrierPost(IonCode *code, void *addr) {}
     static inline ThingRootKind rootKind() { return THING_ROOT_ION_CODE; }
 };
 
@@ -576,7 +572,7 @@ struct IonBlockCounts
         offset_ = offset;
         numSuccessors_ = numSuccessors;
         if (numSuccessors) {
-            successors_ = (uint32_t *) js_calloc(numSuccessors * sizeof(uint32_t));
+            successors_ = js_pod_calloc<uint32_t>(numSuccessors);
             if (!successors_)
                 return false;
         }
@@ -674,7 +670,7 @@ struct IonScriptCounts
 
     bool init(size_t numBlocks) {
         numBlocks_ = numBlocks;
-        blocks_ = (IonBlockCounts *) js_calloc(numBlocks * sizeof(IonBlockCounts));
+        blocks_ = js_pod_calloc<IonBlockCounts>(numBlocks);
         return blocks_ != NULL;
     }
 

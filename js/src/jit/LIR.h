@@ -20,8 +20,6 @@
 #include "jit/MIRGraph.h"
 #include "jit/Registers.h"
 #include "jit/Safepoints.h"
-#include "jit/shared/Assembler-shared.h"
-#include "jit/VMFunctions.h"
 
 namespace js {
 namespace jit {
@@ -540,6 +538,7 @@ class LDefinition
           case MIRType_Object:
             return LDefinition::OBJECT;
           case MIRType_Double:
+          case MIRType_Float32:
             return LDefinition::DOUBLE;
 #if defined(JS_PUNBOX64)
           case MIRType_Value:

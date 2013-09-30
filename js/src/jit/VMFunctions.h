@@ -10,7 +10,6 @@
 #include "jspubtd.h"
 
 #include "jit/CompileInfo.h"
-#include "jit/Ion.h"
 #include "jit/IonFrames.h"
 
 namespace js {
@@ -575,9 +574,11 @@ class AutoDetectInvalidation
 };
 
 bool InvokeFunction(JSContext *cx, HandleObject obj0, uint32_t argc, Value *argv, Value *rval);
-JSObject *NewGCThing(JSContext *cx, gc::AllocKind allocKind, size_t thingSize);
+JSObject *NewGCThing(JSContext *cx, gc::AllocKind allocKind, size_t thingSize,
+                     gc::InitialHeap initialHeap);
 
 bool CheckOverRecursed(JSContext *cx);
+bool CheckOverRecursedWithExtra(JSContext *cx, uint32_t extra);
 
 bool DefVarOrConst(JSContext *cx, HandlePropertyName dn, unsigned attrs, HandleObject scopeChain);
 bool SetConst(JSContext *cx, HandlePropertyName name, HandleObject scopeChain, HandleValue rval);
@@ -639,6 +640,7 @@ bool FilterArguments(JSContext *cx, JSString *str);
 
 #ifdef JSGC_GENERATIONAL
 void PostWriteBarrier(JSRuntime *rt, JSObject *obj);
+void PostGlobalWriteBarrier(JSRuntime *rt, JSObject *obj);
 #endif
 
 uint32_t GetIndexFromString(JSString *str);
@@ -662,6 +664,9 @@ bool LeaveBlock(JSContext *cx, BaselineFrame *frame);
 
 bool InitBaselineFrameForOsr(BaselineFrame *frame, StackFrame *interpFrame,
                              uint32_t numStackValues);
+
+JSObject *CreateDerivedTypedObj(JSContext *cx, HandleObject type,
+                                HandleObject owner, int32_t offset);
 
 } // namespace jit
 } // namespace js

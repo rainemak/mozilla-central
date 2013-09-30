@@ -26,6 +26,12 @@ SetElemICInspector::sawOOBDenseWrite() const
         if (stub->isSetElem_DenseAdd())
             return true;
     }
+
+    // Check for a write hole bit on the SetElem_Fallback stub.
+    ICStub *stub = icEntry_->fallbackStub();
+    if (stub->isSetElem_Fallback())
+        return stub->toSetElem_Fallback()->hasArrayWriteHole();
+
     return false;
 }
 
@@ -60,7 +66,21 @@ SetElemICInspector::sawDenseWrite() const
 }
 
 bool
-BaselineInspector::maybeShapesForPropertyOp(jsbytecode *pc, Vector<Shape *> &shapes)
+SetElemICInspector::sawTypedArrayWrite() const
+{
+    if (!icEntry_)
+        return false;
+
+    // Check for a SetElem_TypedArray stub.
+    for (ICStub *stub = icEntry_->firstStub(); stub; stub = stub->next()) {
+        if (stub->isSetElem_TypedArray())
+            return true;
+    }
+    return false;
+}
+
+bool
+BaselineInspector::maybeShapesForPropertyOp(jsbytecode *pc, ShapeVector &shapes)
 {
     // Return a list of shapes seen by the baseline IC for the current op.
     // An empty list indicates no shapes are known, or there was an uncacheable

@@ -6,13 +6,10 @@
 
 #include "jit/BaselineFrame-inl.h"
 
-#include "jit/BaselineIC.h"
 #include "jit/BaselineJIT.h"
 #include "jit/Ion.h"
 #include "vm/Debugger.h"
 #include "vm/ScopeObject.h"
-
-#include "jsobjinlines.h"
 
 #include "jit/IonFrames-inl.h"
 #include "vm/Stack-inl.h"
@@ -33,8 +30,9 @@ BaselineFrame::trace(JSTracer *trc)
         gc::MarkValueRootRange(trc, numArgs, argv(), "baseline-args");
     }
 
-    // Mark scope chain.
-    gc::MarkObjectRoot(trc, &scopeChain_, "baseline-scopechain");
+    // Mark scope chain, if it exists.
+    if (scopeChain_)
+        gc::MarkObjectRoot(trc, &scopeChain_, "baseline-scopechain");
 
     // Mark return value.
     if (hasReturnValue())
