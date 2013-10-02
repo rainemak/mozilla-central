@@ -55,7 +55,9 @@ WindowCreator::CreateChromeWindow2(nsIWebBrowserChrome* aParent,
   }
 
   nsCString spec;
-  aURI->GetSpec(spec);
+  if (aURI) {
+    aURI->GetSpec(spec);
+  }
   LOGF("parent:%p, chrfl:%u, contfl:%u, spec:%s", aParent, aChromeFlags, aContextFlags, spec.get());
 
   EmbedLiteViewThreadChild* parent = mChild->GetViewByChromeParent(aParent);

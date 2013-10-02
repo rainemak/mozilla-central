@@ -14,8 +14,6 @@ export CXXFLAGS="$CXXFLAGS -DFORCE_BASICTILEDTHEBESLAYER=1 -DEGL_HAS_BACKING_SUR
 ac_add_options --prefix=/usr
 
 ac_add_options --with-system-jpeg
-ac_add_options --with-system-nspr
-ac_add_options --with-system-nss
 
 ac_add_options --with-gl-provider=EGL
 
