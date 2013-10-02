@@ -58,6 +58,7 @@
 #include "ImageContainer.h"
 #include "nsStyleSet.h"
 #include "nsBlockFrame.h"
+#include "nsStyleStructInlines.h"
 
 #include "mozilla/Preferences.h"
 
@@ -265,8 +266,8 @@ nsImageFrame::UpdateIntrinsicSize(imgIContainer* aImage)
   if (!aImage)
     return false;
 
-  nsIFrame::IntrinsicSize oldIntrinsicSize = mIntrinsicSize;
-  mIntrinsicSize = nsIFrame::IntrinsicSize();
+  IntrinsicSize oldIntrinsicSize = mIntrinsicSize;
+  mIntrinsicSize = IntrinsicSize();
 
   // Set intrinsic size to match aImage's reported intrinsic width & height.
   nsSize intrinsicSize;
@@ -793,7 +794,7 @@ nsImageFrame::GetPrefWidth(nsRenderingContext *aRenderingContext)
     mIntrinsicSize.width.GetCoordValue() : 0;
 }
 
-/* virtual */ nsIFrame::IntrinsicSize
+/* virtual */ IntrinsicSize
 nsImageFrame::GetIntrinsicSize()
 {
   return mIntrinsicSize;
