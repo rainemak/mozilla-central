@@ -29,7 +29,8 @@ typedef int16_t    int16;
 typedef unsigned short ushort;
 typedef unsigned long  ulong;
 #endif
+#ifndef __GNUC_STDC_INLINE__
 #define inline
-
+#endif
 
 #endif /* _SDP_OS_DEFS_H_ */
