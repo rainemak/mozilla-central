@@ -102,7 +102,7 @@ private:
   ScreenIntSize mInnerSize;
   float mOldViewportWidth;
   nsRefPtr<EmbedTabChildGlobal> mTabChildGlobal;
-  mozilla::layers::FrameMetrics mLastMetrics; // TODO: probably it needs to be updated on the "scroll" event (TabChild.cpp:361)
+  mozilla::layers::FrameMetrics mLastMetrics;
 };
 
 }
