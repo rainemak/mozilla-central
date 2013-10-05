@@ -33,6 +33,10 @@ ifeq ($(MOZ_WIDGET_TOOLKIT),android)
 DEFINES += -DANDROID_PACKAGE_NAME='"$(ANDROID_PACKAGE_NAME)"'
 endif
 
+ifeq ($(MOZ_WIDGET_TOOLKIT),qt)
+CPPSRC += moc_nsNativeAppSupportQt.cpp
+endif
+
 SHARED_LIBRARY_LIBS += \
   ../profile/$(LIB_PREFIX)profile_s.$(LIB_SUFFIX) \
   $(NULL)

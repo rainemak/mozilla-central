@@ -115,3 +115,8 @@ export:: $(export-preqs)
 	echo "#include <event.h>" > $(DIST)/third_party/libevent/event.h
 
 endif # }
+
+ifdef MOZ_ENABLE_QT
+CPPSRC += moc_message_pump_qt.cc
+endif
+

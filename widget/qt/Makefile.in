@@ -39,3 +39,18 @@ ifdef MOZ_X11
 INCLUDES   	+= -I$(srcdir)/../shared/x11
 endif
 INCLUDES   	+= -I$(srcdir)/../shared
+
+CPPSRC += moc_moziqwidget.cpp \
+	moc_mozqwidget.cpp \
+	moc_nsAppShell.cpp \
+	$(NULL)
+
+ifdef MOZ_ENABLE_CONTENTMANAGER
+CPPSRC += moc_nsMFilePicker.cpp
+endif
+
+ifdef MOZ_ENABLE_QTMOBILITY
+CPPSRC += moc_mozqorientationsensorfilter.cpp
+endif
+
+

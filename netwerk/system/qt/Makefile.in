@@ -7,3 +7,5 @@ include $(topsrcdir)/config/rules.mk
 
 OS_INCLUDES += $(MOZ_QT_CFLAGS)
 LOCAL_INCLUDES += -I$(srcdir)/../../base/src
+
+CPPSRC += moc_nsQtNetworkManager.cpp

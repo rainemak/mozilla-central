@@ -20,6 +20,10 @@ LOCAL_INCLUDES += \
   $(NULL)
 endif
 
+ifdef MOZ_ENABLE_QT
+CPPSRC += moc_NestedLoopTimer.cpp
+endif
+
 include $(topsrcdir)/config/rules.mk
 include $(topsrcdir)/ipc/chromium/chromium-config.mk
 

@@ -32,4 +32,11 @@ LOCAL_INCLUDES += \
 	$(MOZ_QT_CFLAGS) \
 	$(NULL)
 
+CPPSRC += \
+	moc_moziqwidget.cpp \
+	moc_nsFastStartupQt.cpp \
+	mozqglwidgetwrapper.cpp \
+	nsQAppInstance.cpp \
+	$(NULL)
+
 DEFINES += -DLIBRARY_FILENAME="$(SHARED_LIBRARY)" -DMOZ_NO_MOZALLOC -DXPCOM_GLUE
