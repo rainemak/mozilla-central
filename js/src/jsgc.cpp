@@ -883,6 +883,11 @@ js::SetGCZeal(JSRuntime *rt, uint8_t zeal, uint32_t frequency)
     rt->gcZeal_ = zeal;
     rt->gcZealFrequency = frequency;
     rt->gcNextScheduled = schedule ? frequency : 0;
+
+#ifdef JSGC_GENERATIONAL
+    if (zeal == ZealGenerationalGCValue)
+        rt->gcNursery.enterZealMode();
+#endif
 }
 
 static bool
@@ -912,7 +917,7 @@ InitGCZeal(JSRuntime *rt)
                 "  4: Verify pre write barriers between instructions\n"
                 "  5: Verify pre write barriers between paints\n"
                 "  6: Verify stack rooting\n"
-                "  7: Verify stack rooting (yes, it's the same as 6)\n"
+                "  7: Collect the nursery every N nursery allocations\n"
                 "  8: Incremental GC in two slices: 1) mark roots 2) finish collection\n"
                 "  9: Incremental GC in two slices: 1) mark all 2) new marking and finish\n"
                 " 10: Incremental GC in multiple slices\n"
@@ -2859,7 +2864,7 @@ BeginMarkPhase(JSRuntime *rt)
     if (rt->gcIsIncremental) {
         for (GCZonesIter zone(rt); !zone.done(); zone.next()) {
             gcstats::AutoPhase ap(rt->gcStats, gcstats::PHASE_MARK_DISCARD_CODE);
-            zone->discardJitCode(rt->defaultFreeOp(), false);
+            zone->discardJitCode(rt->defaultFreeOp());
         }
     }
 
@@ -3734,7 +3739,7 @@ BeginSweepingZoneGroup(JSRuntime *rt)
 
         for (GCZoneGroupIter zone(rt); !zone.done(); zone.next()) {
             gcstats::AutoPhase ap(rt->gcStats, gcstats::PHASE_SWEEP_DISCARD_CODE);
-            zone->discardJitCode(&fop, !zone->isPreservingCode());
+            zone->discardJitCode(&fop);
         }
 
         bool releaseTypes = ReleaseObservedTypes(rt);
@@ -4888,13 +4893,16 @@ gc::RunDebugGC(JSContext *cx)
 {
 #ifdef JS_GC_ZEAL
     JSRuntime *rt = cx->runtime();
+    int type = rt->gcZeal();
 
     if (rt->mainThread.suppressGC)
         return;
 
+    if (type == js::gc::ZealGenerationalGCValue)
+        return MinorGC(rt, JS::gcreason::DEBUG_GC);
+
     PrepareForDebugGC(cx->runtime());
 
-    int type = rt->gcZeal();
     if (type == ZealIncrementalRootsThenFinish ||
         type == ZealIncrementalMarkAllThenFinish ||
         type == ZealIncrementalMultipleSlices)
@@ -5001,7 +5009,7 @@ js::ReleaseAllJITCode(FreeOp *fop)
 
     /* Sweep now invalidated compiler outputs from each compartment. */
     for (CompartmentsIter comp(fop->runtime()); !comp.done(); comp.next())
-        comp->types.sweepCompilerOutputs(fop, false);
+        comp->types.clearCompilerOutputs(fop);
 #endif
 }
 

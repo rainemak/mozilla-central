@@ -1,5 +1,5 @@
 /* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
-/* vim: set sw=4 ts=8 et tw=80 : */
+/* vim: set sw=2 ts=8 et tw=80 : */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -111,6 +111,7 @@ Axis::Axis(AsyncPanZoomController* aAsyncPanZoomController)
     mVelocity(0.0f),
     mAcceleration(0),
     mLastPos(0),
+    mScrollingDisabled(false),
     mAsyncPanZoomController(aAsyncPanZoomController),
     mLocked(false)
 {
@@ -128,7 +129,7 @@ void Axis::UpdateWithTouchAtDevicePoint(int32_t aPos, const TimeDuration& aTimeD
     return;
   }
 
-  float newVelocity = (mPos - aPos) / aTimeDelta.ToMilliseconds() * gVelocityMultiplier;
+  float newVelocity = mScrollingDisabled ? 0 : (mPos - aPos) / aTimeDelta.ToMilliseconds() * gVelocityMultiplier;
 
   bool curVelocityBelowThreshold = fabsf(newVelocity) < gVelocityThreshold;
   bool directionChange = (mVelocity > 0) != (newVelocity > 0);
@@ -155,11 +156,17 @@ void Axis::StartTouch(int32_t aPos) {
   mPos = aPos;
   mLastPos = aPos;
   mLocked = false;
+  mScrollingDisabled = false;
 }
 
 float Axis::AdjustDisplacement(float aDisplacement, float& aOverscrollAmountOut) {
   if (mLocked) {
     return 0.0f;
+  }
+
+  if (mScrollingDisabled) {
+    aOverscrollAmountOut = 0;
+    return 0;
   }
 
   if (fabsf(mVelocity) < gVelocityThreshold) {
@@ -190,6 +197,10 @@ void Axis::Lock() {
   CancelTouch();
 }
 
+float Axis::PanDistance(float aPos) {
+  return fabsf(aPos - mStartPos);
+}
+
 void Axis::EndTouch() {
   if (mLocked) {
     mLocked = false;
@@ -216,6 +227,13 @@ void Axis::CancelTouch() {
   while (!mVelocityQueue.IsEmpty()) {
     mVelocityQueue.RemoveElementAt(0);
   }
+}
+
+bool Axis::Scrollable() {
+    if (mScrollingDisabled) {
+        return false;
+    }
+    return GetCompositionLength() < GetPageLength();
 }
 
 bool Axis::FlingApplyFrictionOrCancel(const TimeDuration& aDelta) {
@@ -320,7 +338,7 @@ float Axis::ScaleWillOverscrollAmount(ScreenToScreenScale aScale, float aFocus) 
 }
 
 float Axis::GetVelocity() {
-  return mVelocity;
+  return mScrollingDisabled ? 0 : mVelocity;
 }
 
 float Axis::GetAccelerationFactor() {
