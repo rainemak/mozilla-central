@@ -389,8 +389,8 @@ private:
             mPinchEvent.prevDistance = distance;
         }
         if (mMoveEvent.needDispatch) {
-            WidgetMouseEvent event(true, NS_MOUSE_MOVE, this,
-                                   WidgetMouseEvent::eReal);
+            mozilla::WidgetMouseEvent event(true, NS_MOUSE_MOVE, this,
+                                            mozilla::WidgetMouseEvent::eReal);
 
             event.refPoint.x = nscoord(mMoveEvent.pos.x());
             event.refPoint.y = nscoord(mMoveEvent.pos.y());
