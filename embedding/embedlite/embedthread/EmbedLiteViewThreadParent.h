@@ -101,8 +101,7 @@ protected:
   virtual bool
   RecvOnScrollChanged(
     const int32_t& offSetX,
-    const int32_t& offSetY,
-    const bool& aFromApzc);
+    const int32_t& offSetY);
 
   virtual bool
   RecvOnTitleChanged(const nsString& aTitle);
@@ -114,6 +113,7 @@ protected:
                                InfallibleTArray<nsString>* aJSONRetVal);
   virtual bool
   RecvUpdateZoomConstraints(const bool&, const float&, const float&);
+  virtual bool RecvUpdateScrollOffset(const uint32_t& aPresShellId, const ViewID& aViewId, const CSSIntPoint& aScrollOffset);
   virtual bool RecvZoomToRect(const CSSRect& aRect);
   virtual bool RecvSetBackgroundColor(const nscolor& aColor);
   virtual bool RecvCancelDefaultPanZoom() MOZ_OVERRIDE;

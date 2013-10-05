@@ -388,8 +388,7 @@ EmbedLiteViewThreadParent::RecvOnScrolledAreaChanged(const uint32_t& aWidth,
 
 bool
 EmbedLiteViewThreadParent::RecvOnScrollChanged(const int32_t& offSetX,
-                                               const int32_t& offSetY,
-                                               const bool& aFromApzc)
+                                               const int32_t& offSetY)
 {
   LOGNI("off[%i,%i]", offSetX, offSetY);
   if (mViewAPIDestroyed) {
@@ -397,9 +396,6 @@ EmbedLiteViewThreadParent::RecvOnScrollChanged(const int32_t& offSetX,
   }
 
   NS_ENSURE_TRUE(mView, false);
-  if (mController && !aFromApzc) {
-    mController->ContentScrollPerformed();
-  }
   mView->GetListener()->OnScrollChanged(offSetX, offSetY);
   return true;
 }
@@ -420,6 +416,18 @@ EmbedLiteViewThreadParent::RecvUpdateZoomConstraints(const bool& val, const floa
 {
   if (mController) {
     mController->UpdateZoomConstraints(val, CSSToScreenScale(min), CSSToScreenScale(max));
+  }
+  return true;
+}
+
+bool
+EmbedLiteViewThreadParent::RecvUpdateScrollOffset(const uint32_t& aPresShellId,
+                                  const ViewID& aViewId,
+                                  const CSSIntPoint& aScrollOffset)
+{
+  if (mController) {
+    // TODO: currently aPresShelId and aViewId aren't used (But they're used in TabChild to dispatch many APZCs).
+    mController->UpdateScrollOffset(aScrollOffset);
   }
   return true;
 }

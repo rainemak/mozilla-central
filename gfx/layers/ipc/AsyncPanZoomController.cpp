@@ -289,7 +289,6 @@ AsyncPanZoomController::AsyncPanZoomController(uint64_t aLayersId,
      mDisableNextTouchBatch(false),
      mHandlingTouchQueue(false),
      mDelayPanning(false),
-     mContentScrollHappend(false),
      mTreeManager(aTreeManager)
 {
   MOZ_COUNT_CTOR(AsyncPanZoomController);
@@ -304,11 +303,6 @@ AsyncPanZoomController::AsyncPanZoomController(uint64_t aLayersId,
 
 AsyncPanZoomController::~AsyncPanZoomController() {
   MOZ_COUNT_DTOR(AsyncPanZoomController);
-}
-
-void AsyncPanZoomController::ContentScrollPerformed()
-{
-  mContentScrollHappend = true;
 }
 
 already_AddRefed<GeckoContentController>
@@ -1343,11 +1337,6 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aLayerMetri
   bool isDefault = mFrameMetrics.IsDefault();
   mFrameMetrics.mMayHaveTouchListeners = aLayerMetrics.mMayHaveTouchListeners;
 
-  if (mContentScrollHappend) {
-    mFrameMetrics.mScrollOffset = aLayerMetrics.mScrollOffset;
-    mContentScrollHappend = false;
-  }
-
   mPaintThrottler.TaskComplete(GetFrameTime());
   bool needContentRepaint = false;
   if (aLayerMetrics.mCompositionBounds.width == mFrameMetrics.mCompositionBounds.width &&
@@ -1610,6 +1599,7 @@ void AsyncPanZoomController::SendAsyncScrollEvent() {
   CSSRect contentRect;
   CSSSize scrollableSize;
   CSSToScreenScale resolution;
+  CSSPoint scrollOffset;
   {
     ReentrantMonitorAutoEnter lock(mMonitor);
 
@@ -1618,10 +1608,11 @@ void AsyncPanZoomController::SendAsyncScrollEvent() {
     contentRect = mFrameMetrics.CalculateCompositedRectInCssPixels();
     contentRect.MoveTo(mCurrentAsyncScrollOffset);
     resolution = mFrameMetrics.mZoom;
+    scrollOffset = mFrameMetrics.mScrollOffset;
   }
 
   controller->SendAsyncScrollDOMEvent(scrollId, contentRect, scrollableSize);
-  controller->ScrollUpdate(mCurrentAsyncScrollOffset, resolution.scale);
+  controller->ScrollUpdate(scrollOffset, resolution.scale);
 }
 
 void AsyncPanZoomController::UpdateScrollOffset(const CSSPoint& aScrollOffset)

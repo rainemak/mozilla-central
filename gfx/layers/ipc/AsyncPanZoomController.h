@@ -247,11 +247,6 @@ public:
   nsEventStatus HandleInputEvent(const InputData& aEvent);
 
   /**
-   * APZC must be notified here about possible scroll update change initiated by content
-   */
-  void ContentScrollPerformed();
-
-  /**
    * Returns true if this APZC instance is for the layer identified by the guid.
    */
   bool Matches(const ScrollableLayerGuid& aGuid);
@@ -643,8 +638,6 @@ private:
   // touchmove events to GestureListener until BrowserElementScrolling
   // decides whether it wants to handle panning for this touch series.
   bool mDelayPanning;
-
-  bool mContentScrollHappend;
 
   friend class Axis;
 

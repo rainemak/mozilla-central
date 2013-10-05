@@ -14,11 +14,13 @@ using CSSRect;
 using gfxPoint;
 using nsIntPoint;
 using mozilla::layers::FrameMetrics;
+using FrameMetrics::ViewID;
 using nscolor;
 using nsKeyEvent;
 using nsMouseEvent;
 using InputData;
 using MultiTouchInput;
+using mozilla::CSSIntPoint;
 
 namespace mozilla {
 namespace embedlite {
@@ -74,9 +76,17 @@ parent:
     async OnSecurityChanged(nsCString aStatus, uint32_t aState);
     async OnFirstPaint(int32_t aX, int32_t aY);
     async OnScrolledAreaChanged(uint32_t aWidth, uint32_t aHeight);
-    async OnScrollChanged(int32_t offSetX, int32_t offSetY, bool fromApzc);
+    async OnScrollChanged(int32_t offSetX, int32_t offSetY);
     async OnTitleChanged(nsString aTitle);
     UpdateZoomConstraints(bool aAllowZoom, float aMinZoom, float aMaxZoom);
+
+    /**
+      * Notifies the parent about a scroll event. The pres shell ID and
+      * view ID identify which scrollable (sub-)frame was scrolled, and
+      * the new scroll offset for that frame is sent.
+      */
+    UpdateScrollOffset(uint32_t aPresShellId, ViewID aViewId, CSSIntPoint aScrollOffset);
+
     ZoomToRect(CSSRect aRect);
     async SetBackgroundColor(nscolor color);
     async CancelDefaultPanZoom();
