@@ -25,15 +25,16 @@
 #include <gst/interfaces/nemovideotexture.h>
 #endif
 
-#include "GLContext.h"
-#include "mozilla/Util.h"
-
 #if defined(MOZ_X11)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include "mozilla/X11Util.h"
 #include "gfxXlibSurface.h"
 #endif
+
+#include "GLContext.h"
+#include "mozilla/Util.h"
+
 
 #if defined(ANDROID)
 /* from widget */
@@ -2119,7 +2120,7 @@ GLContextProviderEGL::CreateSharedHandle(SharedTextureShareType shareType,
                                          SharedTextureBufferType bufferType)
 {
 #ifdef HAS_NEMO_INTERFACE
-  if (shareType == SameProcess &&
+  if (shareType == gl::SameProcess &&
       bufferType == gl::GstreamerMagicHandle) {
 
     GstVideoSyncWrapper* wrap = new GstVideoSyncWrapper(static_cast<GstElement*>(buffer));

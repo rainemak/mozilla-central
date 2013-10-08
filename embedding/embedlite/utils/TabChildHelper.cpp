@@ -12,12 +12,11 @@
 #include "EmbedTabChildGlobal.h"
 #include "EmbedLiteViewThreadChild.h"
 #include "mozilla/layers/AsyncPanZoomController.h"
+#include "nsIDOMDocument.h"
 
 #include "nsNetUtil.h"
 #include "nsEventListenerManager.h"
 #include "nsIDOMWindowUtils.h"
-#include "nsIDOMDocument.h"
-#include "nsIDocument.h"
 #include "mozilla/dom/Element.h"
 #include "nsIDOMHTMLBodyElement.h"
 #include "mozilla/dom/HTMLBodyElement.h"
@@ -605,12 +604,11 @@ TabChildHelper::RecvAsyncMessage(const nsAString& aMessage,
                                  const nsAString& aJSONData)
 {
   NS_ENSURE_TRUE(InitTabChildGlobal(), false);
-  MOZ_ASSERT(NS_IsMainThread());
-  AutoSafeJSContext cx;
-  JS::Rooted<JS::Value> json(cx, JSVAL_NULL);
+  JSAutoRequest ar(GetJSContext());
+  JS::Rooted<JS::Value> json(GetJSContext(), JS::NullValue());
   StructuredCloneData cloneData;
   JSAutoStructuredCloneBuffer buffer;
-  if (JS_ParseJSON(cx,
+  if (JS_ParseJSON(GetJSContext(),
                    static_cast<const jschar*>(aJSONData.BeginReading()),
                    aJSONData.Length(),
                    &json)) {
@@ -623,7 +621,6 @@ TabChildHelper::RecvAsyncMessage(const nsAString& aMessage,
     static_cast<nsFrameMessageManager*>(mTabChildGlobal->mMessageManager.get());
   mm->ReceiveMessage(static_cast<EventTarget*>(mTabChildGlobal),
                      aMessage, false, &cloneData, nullptr, nullptr);
-
   return true;
 }
 
@@ -785,7 +782,6 @@ TabChildHelper::DispatchSynthesizedMouseEvent(const nsTouchEvent& aEvent)
       break;
     default:
       NS_ERROR("Unknown touch event message");
-      return nsEventStatus_eIgnore;
   }
 
   // get the widget to send the event to

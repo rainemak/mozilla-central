@@ -571,17 +571,15 @@ void EmbedLitePuppetWidget::CreateCompositor(int aWidth, int aHeight)
   mCompositorChild->Open(parentChannel, childMessageLoop, childSide);
 
   TextureFactoryIdentifier textureFactoryIdentifier;
-  PLayerTransactionChild* shadowManager = nullptr;
+  PLayerTransactionChild* shadowManager;
   nsTArray<LayersBackend> backendHints;
   GetPreferredCompositorBackends(backendHints);
 
   CheckForBasicBackends(backendHints);
 
   bool success = false;
-  if (!backendHints.IsEmpty()) {
-    shadowManager = mCompositorChild->SendPLayerTransactionConstructor(
-      backendHints, 0, &textureFactoryIdentifier, &success);
-  }
+  shadowManager = mCompositorChild->SendPLayerTransactionConstructor(
+   backendHints, 0, &textureFactoryIdentifier, &success);
 
   if (success) {
     ShadowLayerForwarder* lf = lm->AsShadowForwarder();
@@ -596,7 +594,6 @@ void EmbedLitePuppetWidget::CreateCompositor(int aWidth, int aHeight)
     WindowUsesOMTC();
 
     mLayerManager = lm;
-    return;
   } else {
     // We don't currently want to support not having a LayersChild
     if (ViewIsValid()) {

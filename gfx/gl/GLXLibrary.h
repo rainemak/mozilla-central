@@ -6,8 +6,9 @@
 #ifndef GFX_GLXLIBRARY_H
 #define GFX_GLXLIBRARY_H
 
-#ifndef GLboolean_defined
+#include "GLContext.h"
 #include "GLContextTypes.h"
+#ifndef GLboolean_defined
 typedef realGLboolean GLboolean;
 #endif
 #include <GL/glx.h>

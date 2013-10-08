@@ -145,7 +145,7 @@ void Axis::UpdateWithTouchAtDevicePoint(int32_t aPos, const TimeDuration& aTimeD
 
   // Keep last gMaxVelocityQueueSize or less velocities in the queue.
   mVelocityQueue.AppendElement(mVelocity);
-  if (mVelocityQueue.Length() > (uint32_t)gMaxVelocityQueueSize) {
+  if (mVelocityQueue.Length() > gMaxVelocityQueueSize) {
     mVelocityQueue.RemoveElementAt(0);
   }
 }

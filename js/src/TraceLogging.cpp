@@ -65,7 +65,7 @@ rdtsc(void)
 }
 #endif
 
-const char* const TraceLogging::typeName[] = {
+const char* const TraceLogging::type_name[] = {
     "1,s",  // start script
     "0,s",  // stop script
     "1,c",  // start ion compilation
@@ -86,31 +86,27 @@ const char* const TraceLogging::typeName[] = {
     "e,b",  // engine baseline
     "e,o"   // engine ionmonkey
 };
-TraceLogging* TraceLogging::loggers[] = {NULL, NULL};
-bool TraceLogging::atexitSet = false;
-uint64_t TraceLogging::startupTime = 0;
+TraceLogging* TraceLogging::_defaultLogger = NULL;
 
-TraceLogging::TraceLogging(Logger id)
+TraceLogging::TraceLogging()
   : loggingTime(0),
-    nextTextId(1),
+    startupTime(rdtsc()),
     entries(NULL),
     curEntry(0),
     numEntries(1000000),
     fileno(0),
-    out(NULL),
-    id(id)
+    out(NULL)
 {
-    textMap.init();
 }
 
 TraceLogging::~TraceLogging()
 {
-    if (out) {
+    if (out != NULL) {
         fclose(out);
         out = NULL;
     }
 
-    if (entries) {
+    if (entries != NULL) {
         flush();
         free(entries);
         entries = NULL;
@@ -124,7 +120,7 @@ TraceLogging::grow()
 
     // Allocating a bigger array failed.
     // Keep using the current storage, but remove all entries by flushing them.
-    if (!nentries) {
+    if (nentries == NULL) {
         flush();
         return;
     }
@@ -134,36 +130,24 @@ TraceLogging::grow()
 }
 
 void
-TraceLogging::log(Type type, const char* text /* = NULL */, unsigned int number /* = 0 */)
+TraceLogging::log(Type type, const char* file, unsigned int lineno)
 {
     uint64_t now = rdtsc() - startupTime;
 
     // Create array containing the entries if not existing.
-    if (!entries) {
+    if (entries == NULL) {
         entries = (Entry*) malloc(numEntries*sizeof(Entry));
-        if (!entries)
+        if (entries == NULL)
             return;
     }
 
-    uint32_t textId = 0;
-    char *text_ = NULL;
+    // Copy the logging information,
+    // because original could already be freed before writing the log file.
+    char *copy = NULL;
+    if (file != NULL)
+        copy = strdup(file);
 
-    if (text) {
-        TextHashMap::AddPtr p = textMap.lookupForAdd(text);
-        if (!p) {
-            // Copy the text, because original could already be freed before writing the log file.
-            text_ = strdup(text);
-            if (!text_)
-                return;
-            textId = nextTextId++;
-            if (!textMap.add(p, text, textId))
-                return;
-        } else {
-            textId = p->value;
-        }
-    }
-
-    entries[curEntry++] = Entry(now - loggingTime, text_, textId, number, type);
+    entries[curEntry++] = Entry(now - loggingTime, copy, lineno, type);
 
     // Increase length when not enough place in the array
     if (curEntry >= numEntries)
@@ -194,91 +178,76 @@ TraceLogging::log(const char* log)
 }
 
 void
+TraceLogging::log(Type type)
+{
+    this->log(type, NULL, 0);
+}
+
+void
 TraceLogging::flush()
 {
     // Open the logging file, when not opened yet.
-    if (!out) {
-        switch(id) {
-          case DEFAULT:
-            out = fopen(TRACE_LOG_DIR "tracelogging.log", "w");
-            break;
-          case ION_BACKGROUND_COMPILER:
-            out = fopen(TRACE_LOG_DIR "tracelogging-compile.log", "w");
-            break;
-          default:
-            MOZ_ASSUME_UNREACHABLE("Bad trigger");
-            return;
-        }
-    }
+    if (out == NULL)
+        out = fopen(TRACE_LOG_DIR "tracelogging.log", "w");
 
     // Print all log entries into the file
     for (unsigned int i = 0; i < curEntry; i++) {
-        Entry entry = entries[i];
         int written;
-        if (entry.type() == INFO) {
-            written = fprintf(out, "I,%s\n", entry.text());
+        if (entries[i].type() == INFO) {
+            written = fprintf(out, "I,%s\n", entries[i].file());
         } else {
-            if (entry.textId() > 0) {
-                if (entry.text()) {
-                    written = fprintf(out, "%llu,%s,%s,%d\n",
-                                      (unsigned long long)entry.tick(),
-                                      typeName[entry.type()],
-                                      entry.text(),
-                                      entry.lineno());
-                } else {
-                    written = fprintf(out, "%llu,%s,%d,%d\n",
-                                      (unsigned long long)entry.tick(),
-                                      typeName[entry.type()],
-                                      entry.textId(),
-                                      entry.lineno());
-                }
-            } else {
+            if (entries[i].file() == NULL) {
                 written = fprintf(out, "%llu,%s\n",
-                                  (unsigned long long)entry.tick(),
-                                  typeName[entry.type()]);
+                                  (unsigned long long)entries[i].tick(),
+                                  type_name[entries[i].type()]);
+            } else {
+                written = fprintf(out, "%llu,%s,%s:%d\n",
+                                  (unsigned long long)entries[i].tick(),
+                                  type_name[entries[i].type()],
+                                  entries[i].file(),
+                                  entries[i].lineno());
             }
         }
 
         // A logging file can only be 2GB of length (fwrite limit).
+        // When we exceed this limit, the writing will fail.
+        // In that case try creating a extra file to write the log entries.
         if (written < 0) {
-            fprintf(stderr, "Writing tracelog to disk failed,");
-            fprintf(stderr, "probably because the file would've exceeded the maximum size of 2GB");
             fclose(out);
-            exit(-1);
+            if (fileno >= 9999)
+                exit(-1);
+
+            char filename[21 + sizeof(TRACE_LOG_DIR)];
+            sprintf (filename, TRACE_LOG_DIR "tracelogging-%d.log", ++fileno);
+            out = fopen(filename, "w");
+            i--; // Try to print message again
+            continue;
         }
 
-        if (entries[i].text() != NULL) {
-            free(entries[i].text());
-            entries[i].text_ = NULL;
+        if (entries[i].file() != NULL) {
+            free(entries[i].file());
+            entries[i].file_ = NULL;
         }
     }
     curEntry = 0;
 }
 
 TraceLogging*
-TraceLogging::getLogger(Logger id)
+TraceLogging::defaultLogger()
 {
-    if (!loggers[id]) {
-        loggers[id] = new TraceLogging(id);
-        if (!atexitSet) {
-            startupTime = rdtsc();
-            atexit (releaseLoggers);
-            atexitSet = true;
-        }
+    if (_defaultLogger == NULL) {
+        _defaultLogger = new TraceLogging();
+        atexit (releaseDefaultLogger);
     }
-
-    return loggers[id];
+    return _defaultLogger;
 }
 
 void
-TraceLogging::releaseLoggers()
+TraceLogging::releaseDefaultLogger()
 {
-    for (size_t i = 0; i < LAST_LOGGER; i++) {
-        if (!loggers[i])
-            continue;
-
-        delete loggers[i];
-        loggers[i] = NULL;
+    if (_defaultLogger != NULL) {
+        delete _defaultLogger;
+        _defaultLogger = NULL;
     }
 }
 

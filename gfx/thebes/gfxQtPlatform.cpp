@@ -586,13 +586,13 @@ gfxQtPlatform::FindFontForChar(uint32_t aCh, gfxFont *aFont)
 bool
 gfxQtPlatform::GetPrefFontEntries(const nsCString& aKey, nsTArray<nsRefPtr<gfxFontEntry> > *array)
 {
-    return gPrefFonts->Get(aKey, array);
+    return mPrefFonts.Get(aKey, array);
 }
 
 void
 gfxQtPlatform::SetPrefFontEntries(const nsCString& aKey, nsTArray<nsRefPtr<gfxFontEntry> >& array)
 {
-    gPrefFonts->Put(aKey, array);
+    mPrefFonts.Put(aKey, array);
 }
 
 #endif

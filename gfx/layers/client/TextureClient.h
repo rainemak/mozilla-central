@@ -106,7 +106,7 @@ public:
 
   virtual bool Lock(OpenMode aMode)
   {
-    return IsValid();
+    return true;
   }
 
   virtual void Unlock() {}
@@ -158,15 +158,6 @@ public:
   bool IsSharedWithCompositor() const { return mShared; }
 
   bool ShouldDeallocateInDestructor() const;
-
-  /**
-   * If this method returns false users of TextureClient are not allowed
-   * to access the shared data.
-   */
-  bool IsValid() const { return mValid; }
-
-  void MarkInvalid() { mValid = false; }
-
 protected:
   void AddFlags(TextureFlags  aFlags)
   {
@@ -184,7 +175,6 @@ protected:
   uint64_t mID;
   TextureFlags mFlags;
   bool mShared;
-  bool mValid;
 };
 
 /**
@@ -513,8 +503,7 @@ class DeprecatedTextureClientTile : public DeprecatedTextureClient
 public:
   DeprecatedTextureClientTile(const DeprecatedTextureClientTile& aOther);
   DeprecatedTextureClientTile(CompositableForwarder* aForwarder,
-                              const TextureInfo& aTextureInfo,
-                              gfxReusableSurfaceWrapper* aSurface = nullptr);
+                    const TextureInfo& aTextureInfo);
   ~DeprecatedTextureClientTile();
 
   virtual bool EnsureAllocated(gfx::IntSize aSize,

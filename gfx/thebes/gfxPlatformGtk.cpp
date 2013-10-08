@@ -770,5 +770,14 @@ gfxPlatformGtk::GetGdkDrawable(gfxASurface *target)
 TemporaryRef<ScaledFont>
 gfxPlatformGtk::GetScaledFontForFont(DrawTarget* aTarget, gfxFont *aFont)
 {
-    return Factory::GetScaledFontForFontWithCairoSkia(aTarget, aFont);
+    NativeFont nativeFont;
+
+    if (aTarget->GetType() == BACKEND_CAIRO || aTarget->GetType() == BACKEND_SKIA) {
+        nativeFont.mType = NATIVE_FONT_CAIRO_FONT_FACE;
+        nativeFont.mFont = aFont->GetCairoScaledFont();
+        return Factory::CreateScaledFontForNativeFont(nativeFont, aFont->GetAdjustedSize());
+    }
+
+    return nullptr;
+
 }

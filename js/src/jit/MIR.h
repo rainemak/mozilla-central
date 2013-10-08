@@ -6651,33 +6651,6 @@ class MDeleteProperty
     }
 };
 
-class MDeleteElement
-  : public MBinaryInstruction,
-    public BoxInputsPolicy
-{
-    MDeleteElement(MDefinition *value, MDefinition *index)
-      : MBinaryInstruction(value, index)
-    {
-        setResultType(MIRType_Boolean);
-    }
-
-  public:
-    INSTRUCTION_HEADER(DeleteElement)
-
-    static MDeleteElement *New(MDefinition *value, MDefinition *index) {
-        return new MDeleteElement(value, index);
-    }
-    MDefinition *value() const {
-        return getOperand(0);
-    }
-    MDefinition *index() const {
-        return getOperand(1);
-    }
-    virtual TypePolicy *typePolicy() {
-        return this;
-    }
-};
-
 // Note: This uses CallSetElementPolicy to always box its second input,
 // ensuring we don't need two LIR instructions to lower this.
 class MCallSetProperty
@@ -8158,31 +8131,18 @@ class MAsmJSUMod : public MBinaryInstruction
     }
 };
 
-class MAsmJSHeapAccess
-{
-    ArrayBufferView::ViewType viewType_;
-    bool skipBoundsCheck_;
-
-  public:
-    MAsmJSHeapAccess(ArrayBufferView::ViewType vt, bool s)
-      : viewType_(vt), skipBoundsCheck_(s)
-    {}
-
-    ArrayBufferView::ViewType viewType() const { return viewType_; }
-    bool skipBoundsCheck() const { return skipBoundsCheck_; }
-    void setSkipBoundsCheck(bool v) { skipBoundsCheck_ = v; }
-};
-
-class MAsmJSLoadHeap : public MUnaryInstruction, public MAsmJSHeapAccess
+class MAsmJSLoadHeap : public MUnaryInstruction
 {
     MAsmJSLoadHeap(ArrayBufferView::ViewType vt, MDefinition *ptr)
-      : MUnaryInstruction(ptr), MAsmJSHeapAccess(vt, false)
+      : MUnaryInstruction(ptr), viewType_(vt)
     {
         if (vt == ArrayBufferView::TYPE_FLOAT32 || vt == ArrayBufferView::TYPE_FLOAT64)
             setResultType(MIRType_Double);
         else
             setResultType(MIRType_Int32);
     }
+
+    ArrayBufferView::ViewType viewType_;
 
   public:
     INSTRUCTION_HEADER(AsmJSLoadHeap);
@@ -8191,14 +8151,17 @@ class MAsmJSLoadHeap : public MUnaryInstruction, public MAsmJSHeapAccess
         return new MAsmJSLoadHeap(vt, ptr);
     }
 
+    ArrayBufferView::ViewType viewType() const { return viewType_; }
     MDefinition *ptr() const { return getOperand(0); }
 };
 
-class MAsmJSStoreHeap : public MBinaryInstruction, public MAsmJSHeapAccess
+class MAsmJSStoreHeap : public MBinaryInstruction
 {
     MAsmJSStoreHeap(ArrayBufferView::ViewType vt, MDefinition *ptr, MDefinition *v)
-      : MBinaryInstruction(ptr, v) , MAsmJSHeapAccess(vt, false)
+      : MBinaryInstruction(ptr, v), viewType_(vt)
     {}
+
+    ArrayBufferView::ViewType viewType_;
 
   public:
     INSTRUCTION_HEADER(AsmJSStoreHeap);
@@ -8207,6 +8170,7 @@ class MAsmJSStoreHeap : public MBinaryInstruction, public MAsmJSHeapAccess
         return new MAsmJSStoreHeap(vt, ptr, v);
     }
 
+    ArrayBufferView::ViewType viewType() const { return viewType_; }
     MDefinition *ptr() const { return getOperand(0); }
     MDefinition *value() const { return getOperand(1); }
 };
@@ -8510,17 +8474,17 @@ bool ElementAccessIsTypedArray(MDefinition *obj, MDefinition *id,
                                ScalarTypeRepresentation::Type *arrayType);
 bool ElementAccessIsPacked(JSContext *cx, MDefinition *obj);
 bool ElementAccessHasExtraIndexedProperty(JSContext *cx, MDefinition *obj);
-bool DenseNativeElementType(JSContext *cx, MDefinition *obj, MIRType *result);
+MIRType DenseNativeElementType(JSContext *cx, MDefinition *obj);
 bool PropertyReadNeedsTypeBarrier(JSContext *cx, types::TypeObject *object, PropertyName *name,
-                                  types::StackTypeSet *observed, bool updateObserved, bool *result);
+                                  types::StackTypeSet *observed, bool updateObserved = true);
 bool PropertyReadNeedsTypeBarrier(JSContext *cx, MDefinition *obj, PropertyName *name,
-                                  types::StackTypeSet *observed, bool *result);
-bool PropertyReadIsIdempotent(JSContext *cx, MDefinition *obj, PropertyName *name, bool *result);
-bool AddObjectsForPropertyRead(JSContext *cx, MDefinition *obj, PropertyName *name,
+                                  types::StackTypeSet *observed);
+bool PropertyReadIsIdempotent(JSContext *cx, MDefinition *obj, PropertyName *name);
+void AddObjectsForPropertyRead(JSContext *cx, MDefinition *obj, PropertyName *name,
                                types::StackTypeSet *observed);
 bool PropertyWriteNeedsTypeBarrier(JSContext *cx, MBasicBlock *current, MDefinition **pobj,
                                    PropertyName *name, MDefinition **pvalue,
-                                   bool canModify, bool *result);
+                                   bool canModify = true);
 
 } // namespace jit
 } // namespace js

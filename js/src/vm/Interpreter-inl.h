@@ -9,6 +9,7 @@
 
 #include "vm/Interpreter.h"
 
+#include "jsapi.h"
 #include "jscompartment.h"
 #include "jsinfer.h"
 #include "jsnum.h"
@@ -275,27 +276,27 @@ DefVarOrConstOperation(JSContext *cx, HandleObject varobj, HandlePropertyName dn
                                       JS_StrictPropertyStub, attrs)) {
             return false;
         }
-    } else if (attrs & JSPROP_READONLY) {
+    } else {
         /*
          * Extension: ordinarily we'd be done here -- but for |const|.  If we
          * see a redeclaration that's |const|, we consider it a conflict.
          */
         unsigned oldAttrs;
-        RootedId id(cx, NameToId(dn));
-        if (!JSObject::getGenericAttributes(cx, varobj, id, &oldAttrs))
+        if (!JSObject::getPropertyAttributes(cx, varobj, dn, &oldAttrs))
             return false;
-
-        JSAutoByteString bytes;
-        if (AtomToPrintableString(cx, dn, &bytes)) {
-            JS_ALWAYS_FALSE(JS_ReportErrorFlagsAndNumber(cx, JSREPORT_ERROR,
-                                                         js_GetErrorMessage,
-                                                         NULL, JSMSG_REDECLARED_VAR,
-                                                         (oldAttrs & JSPROP_READONLY)
-                                                         ? "const"
-                                                         : "var",
-                                                         bytes.ptr()));
+        if (attrs & JSPROP_READONLY) {
+            JSAutoByteString bytes;
+            if (AtomToPrintableString(cx, dn, &bytes)) {
+                JS_ALWAYS_FALSE(JS_ReportErrorFlagsAndNumber(cx, JSREPORT_ERROR,
+                                                             js_GetErrorMessage,
+                                                             NULL, JSMSG_REDECLARED_VAR,
+                                                             (oldAttrs & JSPROP_READONLY)
+                                                             ? "const"
+                                                             : "var",
+                                                             bytes.ptr()));
+            }
+            return false;
         }
-        return false;
     }
 
     return true;

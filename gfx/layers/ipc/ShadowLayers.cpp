@@ -20,7 +20,7 @@
 #include "ipc/IPCMessageUtils.h"        // for gfxContentType, null_t
 #include "mozilla/Assertions.h"         // for MOZ_ASSERT, etc
 #include "mozilla/layers/CompositableClient.h"  // for CompositableClient, etc
-#include "mozilla/layers/LayersMessages.h"  // for Edit, etc
+#include "mozilla/layers/LayerTransaction.h"  // for Edit, etc
 #include "mozilla/layers/LayersSurfaces.h"  // for SurfaceDescriptor, etc
 #include "mozilla/layers/LayersTypes.h"  // for MOZ_LAYERS_LOG
 #include "mozilla/layers/PLayerTransactionChild.h"
@@ -306,10 +306,12 @@ ShadowLayerForwarder::RepositionChild(ShadowableLayer* aContainer,
 
 void
 ShadowLayerForwarder::PaintedTiledLayerBuffer(CompositableClient* aCompositable,
-                                              const SurfaceDescriptorTiles& aTileLayerDescriptor)
+                                              BasicTiledLayerBuffer* aTiledLayerBuffer)
 {
+  if (XRE_GetProcessType() != GeckoProcessType_Default)
+    NS_RUNTIMEABORT("PaintedTiledLayerBuffer must be made IPC safe (not share pointers)");
   mTxn->AddNoSwapPaint(OpPaintTiledLayerBuffer(nullptr, aCompositable->GetIPDLActor(),
-                                               aTileLayerDescriptor));
+                                               uintptr_t(aTiledLayerBuffer)));
 }
 
 void

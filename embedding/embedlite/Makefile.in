@@ -3,6 +3,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+DEPTH		= @DEPTH@
+topsrcdir	= @top_srcdir@
+srcdir		= @srcdir@
+VPATH		= @srcdir@
+
 VPATH += \
   $(srcdir) \
   $(srcdir)/embedhelpers \
@@ -10,6 +15,8 @@ VPATH += \
   $(srcdir)/embedthread \
   $(srcdir)/modules \
   $(NULL)
+
+include $(DEPTH)/config/autoconf.mk
 
 EXPORT_LIBRARY = 1
 
@@ -25,6 +32,7 @@ LOCAL_INCLUDES += \
     $(NULL)
 
 DEFINES += -DEMBED_LITE_INTERNAL=1
+DEFINES += -DMOZILLA_INTERNAL_API=1
 
 DEFINES += \
   -DOS_TARGET=\"$(OS_TARGET)\" \

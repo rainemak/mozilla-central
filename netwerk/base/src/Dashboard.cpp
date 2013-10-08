@@ -2,14 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http:mozilla.org/MPL/2.0/. */
 
-#include "mozilla/dom/NetDashboardBinding.h"
 #include "mozilla/net/Dashboard.h"
+
+#include "jsapi.h"
+#include "mozilla/dom/NetDashboardBinding.h"
 #include "mozilla/net/HttpInfo.h"
 #include "nsCxPusher.h"
-#include "nsHttp.h"
-#include "nsIDNSService.h"
-#include "nsIThread.h"
-#include "nsSocketTransport2.h"
 
 using mozilla::AutoSafeJSContext;
 namespace mozilla {
@@ -19,11 +17,6 @@ NS_IMPL_ISUPPORTS5(Dashboard, nsIDashboard, nsIDashboardEventNotifier,
                               nsITransportEventSink, nsITimerCallback,
                               nsIDNSListener)
 using mozilla::dom::Sequence;
-
-struct ConnStatus
-{
-    nsString creationSts;
-};
 
 Dashboard::Dashboard()
 {
@@ -585,8 +578,7 @@ Dashboard::RequestConnection(const nsACString& aHost, uint32_t aPort,
     if (NS_FAILED(rv)) {
         ConnStatus status;
         CopyASCIItoUTF16(GetErrorString(rv), status.creationSts);
-        nsCOMPtr<nsIRunnable> event =
-            NS_NewRunnableMethodWithArg<ConnStatus>(this, &Dashboard::GetConnectionStatus, status);
+        nsCOMPtr<nsIRunnable> event = new DashConnStatusRunnable(this, status);
         mConn.thread->Dispatch(event, NS_DISPATCH_NORMAL);
         return rv;
     }
@@ -656,7 +648,7 @@ Dashboard::OnTransportStatus(nsITransport *aTransport, nsresult aStatus,
 
     ConnStatus status;
     CopyASCIItoUTF16(GetErrorString(aStatus), status.creationSts);
-    nsCOMPtr<nsIRunnable> event = NS_NewRunnableMethodWithArg<ConnStatus>(this, &Dashboard::GetConnectionStatus, status);
+    nsCOMPtr<nsIRunnable> event = new DashConnStatusRunnable(this, status);
     mConn.thread->Dispatch(event, NS_DISPATCH_NORMAL);
 
     return NS_OK;
@@ -675,7 +667,7 @@ Dashboard::Notify(nsITimer *timer)
 
     ConnStatus status;
     status.creationSts.Assign(NS_LITERAL_STRING("NS_ERROR_NET_TIMEOUT"));
-    nsCOMPtr<nsIRunnable> event = NS_NewRunnableMethodWithArg<ConnStatus>(this, &Dashboard::GetConnectionStatus, status);
+    nsCOMPtr<nsIRunnable> event = new DashConnStatusRunnable(this, status);
     mConn.thread->Dispatch(event, NS_DISPATCH_NORMAL);
 
     return NS_OK;

@@ -3,14 +3,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-MODULE = 'embedlite'
+TOOL_DIRS += ['tests']
 
+MODULE = 'embedlite'
 LIBRARY_NAME = 'embedlite'
 FAIL_ON_WARNINGS = True
 LIBXUL_LIBRARY = True
-MSVC_ENABLE_PGO = True
-
-TOOL_DIRS += ['tests']
 
 XPIDL_SOURCES += [
     'modules/nsIEmbedAppService.idl',
@@ -18,7 +16,7 @@ XPIDL_SOURCES += [
     'utils/nsIEmbedBrowserChromeListener.idl',
 ]
 
-XPIDL_MODULE = 'embedLite_base'
+XPIDL_MODULE = 'embedLite'
 
 EXPORTS.mozilla.embedlite += [
     'EmbedInitGlue.h',
