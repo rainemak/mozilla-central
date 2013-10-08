@@ -91,7 +91,7 @@ echo "ac_add_options --disable-javaxpcom" >> mozconfig
 echo "ac_add_options --disable-crashreporter" >> mozconfig
 echo "ac_add_options --without-x" >> mozconfig
 echo "ac_add_options --with-app-name=%{name}" >> mozconfig
-export MOZCONFIG=mozconfig
+export MOZCONFIG=$PWD/mozconfig
 %{__make} -f client.mk build STRIP="/bin/true" %{?jobs:MOZ_MAKE_FLAGS="-j%jobs"}
 
 %install
@@ -102,7 +102,7 @@ for i in $(find $PWD/python $PWD/testing/mozbase -mindepth 1 -maxdepth 1 -type d
 done
 export SBOX_REDIRECT_FORCE=/usr/bin/python
 
-export MOZCONFIG=mozconfig
+export MOZCONFIG=$PWD/mozconfig
 %{__make} -f client.mk install DESTDIR=%{buildroot}
 %{__chmod} +x %{buildroot}%{_libdir}/%{name}-%{greversion}/*.so
 %fdupes -s %{buildroot}%{_includedir}
