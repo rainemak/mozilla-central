@@ -106,10 +106,7 @@ EmbedTabChildGlobal::Atob(const nsAString& aAsciiString,
 JSContext*
 EmbedTabChildGlobal::GetJSContextForEventHandlers()
 {
-  if (!mTabChild) {
-    return nullptr;
-  }
-  return mTabChild->GetJSContext();
+  return nsContentUtils::GetSafeJSContext();
 }
 
 nsIPrincipal*

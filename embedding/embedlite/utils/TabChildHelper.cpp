@@ -604,11 +604,12 @@ TabChildHelper::RecvAsyncMessage(const nsAString& aMessage,
                                  const nsAString& aJSONData)
 {
   NS_ENSURE_TRUE(InitTabChildGlobal(), false);
-  JSAutoRequest ar(GetJSContext());
-  JS::Rooted<JS::Value> json(GetJSContext(), JS::NullValue());
+  MOZ_ASSERT(NS_IsMainThread());
+  AutoSafeJSContext cx;
+  JS::Rooted<JS::Value> json(cx, JSVAL_NULL);
   StructuredCloneData cloneData;
   JSAutoStructuredCloneBuffer buffer;
-  if (JS_ParseJSON(GetJSContext(),
+  if (JS_ParseJSON(cx,
                    static_cast<const jschar*>(aJSONData.BeginReading()),
                    aJSONData.Length(),
                    &json)) {
@@ -782,6 +783,7 @@ TabChildHelper::DispatchSynthesizedMouseEvent(const nsTouchEvent& aEvent)
       break;
     default:
       NS_ERROR("Unknown touch event message");
+      return nsEventStatus_eIgnore;
   }
 
   // get the widget to send the event to
