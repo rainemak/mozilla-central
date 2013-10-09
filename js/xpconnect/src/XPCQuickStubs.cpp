@@ -3,8 +3,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "mozilla/Util.h"
-
 #include "jsapi.h"
 #include "jsfriendapi.h"
 #include "jsprf.h"
@@ -13,6 +11,7 @@
 #include "XPCInlines.h"
 #include "XPCQuickStubs.h"
 #include "mozilla/dom/BindingUtils.h"
+#include "mozilla/dom/Exceptions.h"
 
 using namespace mozilla;
 using namespace JS;
@@ -250,7 +249,7 @@ ThrowCallFailed(JSContext *cx, nsresult rv,
                          format, rv, ifaceName, memberName);
     }
 
-    XPCThrower::BuildAndThrowException(cx, rv, sz);
+    dom::Throw(cx, rv, sz);
 
     if (sz)
         JS_smprintf_free(sz);
@@ -336,7 +335,7 @@ ThrowBadArg(JSContext *cx, nsresult rv, const char *ifaceName,
     sz = JS_smprintf("%s arg %u [%s.%s]",
                      format, (unsigned int) paramnum, ifaceName, memberName);
 
-    XPCThrower::BuildAndThrowException(cx, rv, sz);
+    dom::Throw(cx, rv, sz);
 
     if (sz)
         JS_smprintf_free(sz);

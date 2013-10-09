@@ -386,7 +386,13 @@ class NewObjectCache
         js_memcpy(&entry->templateObject, obj, entry->nbytes);
     }
 
-    static inline void copyCachedToObject(JSObject *dst, JSObject *src, gc::AllocKind kind);
+    static void copyCachedToObject(JSObject *dst, JSObject *src, gc::AllocKind kind) {
+        js_memcpy(dst, src, gc::Arena::thingSize(kind));
+#ifdef JSGC_GENERATIONAL
+        Shape::writeBarrierPost(dst->shape_, &dst->shape_);
+        types::TypeObject::writeBarrierPost(dst->type_, &dst->type_);
+#endif
+    }
 };
 
 /*
@@ -1226,10 +1232,6 @@ struct JSRuntime : public JS::shadow::Runtime,
         needsBarrier_ = needs;
     }
 
-    bool needsBarrier() const {
-        return needsBarrier_;
-    }
-
     struct ExtraTracer {
         JSTraceDataOp op;
         void *data;
@@ -1599,9 +1601,9 @@ struct JSRuntime : public JS::shadow::Runtime,
 
     /* Number of helper threads which should be created for this runtime. */
     size_t helperThreadCount() const {
-#ifdef JS_THREADSAFE
+#ifdef JS_WORKER_THREADS
         if (requestedHelperThreadCount < 0)
-            return js::GetCPUCount() - 1;
+            return js::GetCPUCount();
         return requestedHelperThreadCount;
 #else
         return 0;
@@ -1874,7 +1876,14 @@ class ThreadDataIter {
     PerThreadData *iter;
 
 public:
-    explicit inline ThreadDataIter(JSRuntime *rt);
+    explicit ThreadDataIter(JSRuntime *rt) {
+#ifdef JS_WORKER_THREADS
+        // Only allow iteration over a runtime's threads when those threads are
+        // paused, to avoid racing when reading data from the PerThreadData.
+        JS_ASSERT(rt->exclusiveThreadsPaused);
+#endif
+        iter = rt->threadList.getFirst();
+    }
 
     bool done() const {
         return !iter;

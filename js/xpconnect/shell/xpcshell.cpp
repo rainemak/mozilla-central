@@ -18,16 +18,9 @@
 #include "nsXULAppAPI.h"
 #include "nsServiceManagerUtils.h"
 #include "nsComponentManagerUtils.h"
-#include "nsStringAPI.h"
 #include "nsIXPConnect.h"
-#include "nsIXPCScriptable.h"
-#include "nsIInterfaceInfo.h"
-#include "nsIInterfaceInfoManager.h"
 #include "nsIJSNativeInitializer.h"
-#include "nsIXPCScriptable.h"
 #include "nsIServiceManager.h"
-#include "nsIComponentManager.h"
-#include "nsIComponentRegistrar.h"
 #include "nsIFile.h"
 #include "nsStringAPI.h"
 #include "nsIDirectoryService.h"
@@ -37,15 +30,11 @@
 #include "nsArrayEnumerator.h"
 #include "nsCOMArray.h"
 #include "nsDirectoryServiceUtils.h"
-#include "nsMemory.h"
-#include "nsISupportsImpl.h"
 #include "nsIJSRuntimeService.h"
 #include "nsCOMPtr.h"
 #include "nsAutoPtr.h"
-#include "nsIXPCSecurityManager.h"
 #include "nsJSPrincipals.h"
 #include "xpcpublic.h"
-#include "nsXULAppAPI.h"
 #include "BackstagePass.h"
 #include "nsCxPusher.h"
 #ifdef XP_MACOSX
@@ -1675,6 +1664,11 @@ main(int argc, char **argv, char **envp)
             printf("failed to get nsXPConnect service!\n");
             return 1;
         }
+
+        // Force the SafeJSContext to be created. This is a workaround for our
+        // implicit dependency on keeping at least one JSContext alive until the
+        // end of shutdown. This can go away when we get bug 905926 landed.
+        xpc->GetSafeJSContext();
 
         nsCOMPtr<nsIPrincipal> systemprincipal;
         // Fetch the system principal and store it away in a global, to use for

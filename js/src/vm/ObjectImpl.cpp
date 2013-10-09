@@ -12,21 +12,7 @@
 
 #include "jsobjinlines.h"
 
-#include "gc/Barrier-inl.h"
-
 using namespace js;
-
-bool
-js::ObjectImpl::uninlinedIsNative() const
-{
-    return isNative();
-}
-
-uint32_t
-js::ObjectImpl::uninlinedSlotSpan() const
-{
-    return slotSpan();
-}
 
 PropDesc::PropDesc()
   : pd_(UndefinedValue()),
@@ -297,6 +283,12 @@ js::ObjectImpl::copySlotRange(uint32_t start, const Value *vector, uint32_t leng
 }
 
 #ifdef DEBUG
+bool
+js::ObjectImpl::isProxy() const
+{
+    return asObjectPtr()->is<ProxyObject>();
+}
+
 bool
 js::ObjectImpl::slotInRange(uint32_t slot, SentinelAllowed sentinel) const
 {

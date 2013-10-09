@@ -8,10 +8,7 @@
 /* JavaScript JSClasses and JSOps for our Wrapped Native JS Objects. */
 
 #include "xpcprivate.h"
-#include "XPCWrapper.h"
-#include "AccessCheck.h"
 #include "jsprf.h"
-#include "nsWrapperCacheInlines.h"
 #include "mozilla/dom/BindingUtils.h"
 #include "mozilla/Preferences.h"
 
@@ -735,13 +732,7 @@ XPCWrappedNativeJSClass XPC_WN_NoHelper_JSClass = {
         nullptr, // setElement
         nullptr, // setSpecial
         nullptr, // getGenericAttributes
-        nullptr, // getAttributes
-        nullptr, // getElementAttributes
-        nullptr, // getSpecialAttributes
         nullptr, // setGenericAttributes
-        nullptr, // setAttributes
-        nullptr, // setElementAttributes
-        nullptr, // setSpecialAttributes
         nullptr, // deleteProperty
         nullptr, // deleteElement
         nullptr, // deleteSpecial

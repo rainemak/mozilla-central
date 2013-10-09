@@ -64,6 +64,7 @@
 #include "nsCycleCollectionParticipant.h"
 #include "nsCycleCollector.h"
 #include "nsDOMJSUtils.h"
+#include "nsIException.h"
 #include "nsThreadUtils.h"
 #include "xpcpublic.h"
 
@@ -463,6 +464,9 @@ CycleCollectedJSRuntime::~CycleCollectedJSRuntime()
   MOZ_ASSERT(!mDeferredFinalizerTable.Count());
   MOZ_ASSERT(!mDeferredSupports.Length());
 
+  // Clear mPendingException first, since it might be cycle collected.
+  mPendingException = nullptr;
+
   nsCycleCollector_forgetJSRuntime();
 
   JS_DestroyRuntime(mJSRuntime);
@@ -720,7 +724,7 @@ CycleCollectedJSRuntime::ContextCallback(JSContext* aContext,
 
   MOZ_ASSERT(JS_GetRuntime(aContext) == self->Runtime());
 
-  return self->OnContext(aContext, aOperation);
+  return self->CustomContextCallback(aContext, aOperation);
 }
 
 struct JsGcTracer : public TraceCallbacks
@@ -827,6 +831,19 @@ CycleCollectedJSRuntime::AssertNoObjectsToTrace(void* aPossibleJSHolder)
   }
 }
 #endif
+
+already_AddRefed<nsIException>
+CycleCollectedJSRuntime::GetPendingException() const
+{
+  nsCOMPtr<nsIException> out = mPendingException;
+  return out.forget();
+}
+
+void
+CycleCollectedJSRuntime::SetPendingException(nsIException* aException)
+{
+  mPendingException = aException;
+}
 
 nsCycleCollectionParticipant*
 CycleCollectedJSRuntime::GCThingParticipant()
@@ -1115,10 +1132,4 @@ CycleCollectedJSRuntime::OnGC(JSGCStatus aStatus)
   }
 
   CustomGCCallback(aStatus);
-}
-
-bool
-CycleCollectedJSRuntime::OnContext(JSContext* aCx, unsigned aOperation)
-{
-  return CustomContextCallback(aCx, aOperation);
 }

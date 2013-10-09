@@ -35,11 +35,9 @@
 #include "js/MemoryMetrics.h"
 #include "vm/Shape.h"
 
-#include "jsanalyzeinlines.h"
 #include "jsatominlines.h"
 #include "jsgcinlines.h"
 #include "jsobjinlines.h"
-#include "jsopcodeinlines.h"
 #include "jsscriptinlines.h"
 
 using namespace js;
@@ -1104,6 +1102,32 @@ StackTypeSet::isDOMClass()
     }
 
     return true;
+}
+
+bool
+StackTypeSet::maybeCallable()
+{
+    if (!maybeObject())
+        return false;
+
+    if (unknownObject())
+        return true;
+
+    unsigned count = getObjectCount();
+    for (unsigned i = 0; i < count; i++) {
+        Class *clasp;
+        if (JSObject *object = getSingleObject(i))
+            clasp = object->getClass();
+        else if (TypeObject *object = getTypeObject(i))
+            clasp = object->clasp;
+        else
+            continue;
+
+        if (clasp->isCallable())
+            return true;
+    }
+
+    return false;
 }
 
 JSObject *
@@ -2573,8 +2597,8 @@ TypeObject::clearAddendum(ExclusiveContext *cx)
         clearNewScriptAddendum(cx);
         break;
 
-      case TypeObjectAddendum::BinaryData:
-        clearBinaryDataAddendum(cx);
+      case TypeObjectAddendum::TypedObject:
+        clearTypedObjectAddendum(cx);
         break;
     }
 
@@ -2691,7 +2715,7 @@ TypeObject::clearNewScriptAddendum(ExclusiveContext *cx)
 }
 
 void
-TypeObject::clearBinaryDataAddendum(ExclusiveContext *cx)
+TypeObject::clearTypedObjectAddendum(ExclusiveContext *cx)
 {
 }
 
@@ -4401,7 +4425,7 @@ TypeScript::printTypes(JSContext *cx, HandleScript script) const
 /////////////////////////////////////////////////////////////////////
 
 bool
-TypeObject::addBinaryDataAddendum(JSContext *cx, TypeRepresentation *repr)
+TypeObject::addTypedObjectAddendum(JSContext *cx, TypeRepresentation *repr)
 {
     if (!cx->typeInferenceEnabled())
         return true;
@@ -4414,15 +4438,15 @@ TypeObject::addBinaryDataAddendum(JSContext *cx, TypeRepresentation *repr)
     JS_ASSERT(!unknownProperties());
 
     if (addendum) {
-        JS_ASSERT(hasBinaryData());
-        JS_ASSERT(binaryData()->typeRepr == repr);
+        JS_ASSERT(hasTypedObject());
+        JS_ASSERT(typedObject()->typeRepr == repr);
         return true;
     }
 
-    TypeBinaryData *binaryData = js_new<TypeBinaryData>(repr);
-    if (!binaryData)
+    TypeTypedObject *typedObject = js_new<TypeTypedObject>(repr);
+    if (!typedObject)
         return false;
-    addendum = binaryData;
+    addendum = typedObject;
     return true;
 }
 
@@ -4438,8 +4462,8 @@ TypeNewScript::TypeNewScript()
   : TypeObjectAddendum(NewScript)
 {}
 
-TypeBinaryData::TypeBinaryData(TypeRepresentation *repr)
-  : TypeObjectAddendum(BinaryData),
+TypeTypedObject::TypeTypedObject(TypeRepresentation *repr)
+  : TypeObjectAddendum(TypedObject),
     typeRepr(repr)
 {
 }
