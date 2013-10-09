@@ -13,6 +13,7 @@
 #include "XPCQuickStubs.h"
 #include "nsJSUtils.h"
 #include "nsDOMJSUtils.h"
+#include "nsContentUtils.h"
 
 using namespace mozilla;
 
