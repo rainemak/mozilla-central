@@ -15,6 +15,7 @@
 #include "mozilla/dom/TimeRanges.h"
 #include "mozilla/Preferences.h"
 #include "GStreamerLoader.h"
+#include "GStreamerResourceHandler.h"
 
 namespace mozilla {
 
@@ -266,19 +267,21 @@ void GStreamerReader::PlayBinSourceSetup(GstAppSrc* aSource)
 
 bool GStreamerReader::IsWaitingMediaResources()
 {
-    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
-    return false;
+    return mResourcesSet ? mResourcesSet->IsWaitingMediaResources() : false;
 }
 
 bool GStreamerReader::IsDormantNeeded()
 {
-    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
-    return true;
+    return mResourcesSet ? mResourcesSet->IsDormantNeeded() : false;
 }
 
 void GStreamerReader::ReleaseMediaResources()
 {
-    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
+    if (mResourcesSet)
+    {
+        delete mResourcesSet;
+        mResourcesSet = nullptr;
+    }
 }
 
 nsresult GStreamerReader::ReadMetadata(VideoInfo* aInfo,
@@ -286,7 +289,6 @@ nsresult GStreamerReader::ReadMetadata(VideoInfo* aInfo,
 {
   NS_ASSERTION(mDecoder->OnDecodeThread(), "Should be on decode thread.");
   nsresult ret = NS_OK;
-    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
 
   /* We do 3 attempts here: decoding audio and video, decoding video only,
    * decoding audio only. This allows us to play streams that have one broken
@@ -406,6 +408,8 @@ nsresult GStreamerReader::ReadMetadata(VideoInfo* aInfo,
   /* set the pipeline to PLAYING so that it starts decoding and queueing data in
    * the appsinks */
   gst_element_set_state(mPlayBin, GST_STATE_PLAYING);
+
+  mResourcesSet = new GStreamerResourceHandler();
 
   return NS_OK;
 }

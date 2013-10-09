@@ -27,6 +27,7 @@ class TimeRanges;
 }
 
 class AbstractMediaDecoder;
+class GStreamerResourceHandler;
 
 class GStreamerReader : public MediaDecoderReader
 {
@@ -174,6 +175,7 @@ private:
   int fpsNum;
   int fpsDen;
   GstElement* mPlaySink;
+  GStreamerResourceHandler* mResourcesSet;
 };
 
 } // namespace mozilla
