@@ -1167,7 +1167,6 @@ AuthCertificateHook(void *arg, PRFileDesc *fd, PRBool checkSig, PRBool isServer)
   // This value of "now" is used both here for OCSP stapling and later
   // when calling CreateCertErrorRunnable.
   PRTime now = PR_Now();
-#if NSS_VERSION_MN >= 15 && NSS_VERSION_MJ >= 3
   // SSL_PeerStapledOCSPResponses will never return a non-empty response if
   // OCSP stapling wasn't enabled because libssl wouldn't have let the server
   // return a stapled OCSP response.
@@ -1182,7 +1181,6 @@ AuthCertificateHook(void *arg, PRFileDesc *fd, PRBool checkSig, PRBool isServer)
           return SECFailure;
       }
   }
-#endif
 
   if (BlockServerCertChangeForSpdy(socketInfo, serverCert) != SECSuccess)
     return SECFailure;

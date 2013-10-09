@@ -932,14 +932,10 @@ void nsNSSComponent::setValidationOptions(nsIPrefBranch * pref)
     firstNetworkRevo = FIRST_REVO_METHOD_DEFAULT;
 
   bool ocspStaplingEnabled;
-#if NSS_VERSION_MN >= 15 && NSS_VERSION_MJ >= 3
   rv = pref->GetBoolPref("security.ssl.enable_ocsp_stapling", &ocspStaplingEnabled);
   if (NS_FAILED(rv)) {
     ocspStaplingEnabled = OCSP_STAPLING_ENABLED_DEFAULT;
   }
-#else
-    ocspStaplingEnabled = false;
-#endif
   if (!ocspEnabled) {
     ocspStaplingEnabled = false;
   }

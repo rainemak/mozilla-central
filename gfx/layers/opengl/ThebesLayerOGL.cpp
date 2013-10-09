@@ -943,4 +943,3 @@ ThebesLayerOGL::CleanupResources()
 
 } // layers
 } // mozilla
-

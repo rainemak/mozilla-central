@@ -264,11 +264,29 @@ void GStreamerReader::PlayBinSourceSetup(GstAppSrc* aSource)
   gst_caps_unref(caps);
 }
 
+bool GStreamerReader::IsWaitingMediaResources()
+{
+    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
+    return false;
+}
+
+bool GStreamerReader::IsDormantNeeded()
+{
+    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
+    return true;
+}
+
+void GStreamerReader::ReleaseMediaResources()
+{
+    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
+}
+
 nsresult GStreamerReader::ReadMetadata(VideoInfo* aInfo,
                                        MetadataTags** aTags)
 {
   NS_ASSERTION(mDecoder->OnDecodeThread(), "Should be on decode thread.");
   nsresult ret = NS_OK;
+    printf(">>>>>>Func:%s::%d\n", __PRETTY_FUNCTION__, __LINE__);
 
   /* We do 3 attempts here: decoding audio and video, decoding video only,
    * decoding audio only. This allows us to play streams that have one broken

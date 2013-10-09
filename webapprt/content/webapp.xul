@@ -8,12 +8,10 @@
 
 <?xul-overlay href="chrome://global/content/editMenuOverlay.xul"?>
 
-#ifndef MOZ_XULRUNNER
 <!DOCTYPE window [
 <!ENTITY % webappDTD SYSTEM "chrome://webapprt/locale/webapp.dtd">
 %webappDTD;
 ]>
-#endif
 
 <window windowtype="webapprt:webapp"
         id="default"
@@ -31,7 +29,6 @@
   <commandset id="editMenuCommands"/>
 </commandset>
 
-#ifndef MOZ_XULRUNNER
 <keyset id="mainKeyset">
   <key id="key_undo"
        key="&undoCmd.key;"
@@ -157,7 +154,6 @@
       </menupopup>
     </menu>
   </menubar>
-#endif
 
   <browser type="content-primary" id="content" flex="1" context="contentAreaContextMenu" />
 

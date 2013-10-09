@@ -55,6 +55,10 @@ public:
     return mInfo.mHasVideo;
   }
 
+  virtual bool IsWaitingMediaResources();
+  virtual bool IsDormantNeeded();
+  virtual void ReleaseMediaResources();
+
 private:
 
   void ReadAndPushData(guint aLength);

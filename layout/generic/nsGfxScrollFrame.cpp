@@ -2293,9 +2293,6 @@ nsGfxScrollFrameInner::BuildDisplayList(nsDisplayListBuilder*   aBuilder,
        (styles.mVertical   != NS_STYLE_OVERFLOW_HIDDEN && mVScrollbarBox));
     // TODO Turn this on for inprocess OMTC
     bool wantSubAPZC = (XRE_GetProcessType() == GeckoProcessType_Content);
-    static bool wrapScrollableViewIntoLayers =
-        Preferences::GetBool("layout.build_sub_apzc_layers", wantSubAPZC);
-    wantSubAPZC = wrapScrollableViewIntoLayers;
     mShouldBuildLayer =
       wantSubAPZC &&
       hasScrollableOverflow &&
