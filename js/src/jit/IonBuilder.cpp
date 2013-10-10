@@ -3629,10 +3629,8 @@ IonBuilder::jsop_binary(JSOp op, MDefinition *left, MDefinition *right)
         MOZ_ASSUME_UNREACHABLE("unexpected binary opcode");
     }
 
-    bool overflowed = types::HasOperationOverflowed(script(), pc);
-
     current->add(ins);
-    ins->infer(inspector, pc, overflowed);
+    ins->infer(inspector, pc);
     current->push(ins);
 
     if (ins->isEffectful())
@@ -7672,7 +7670,7 @@ IonBuilder::jsop_not()
 }
 
 inline bool
-TestClassHasAccessorHook(Class *clasp, bool isGetter)
+TestClassHasAccessorHook(const Class *clasp, bool isGetter)
 {
     if (isGetter && clasp->ops.getGeneric)
         return true;
