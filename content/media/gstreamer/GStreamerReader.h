@@ -19,11 +19,16 @@
 #pragma GCC diagnostic pop
 #include <map>
 #include "MediaDecoderReader.h"
+#include "nsRect.h"
 
 namespace mozilla {
 
 namespace dom {
 class TimeRanges;
+}
+
+namespace layers {
+class PlanarYCbCrImage;
 }
 
 class AbstractMediaDecoder;
@@ -55,6 +60,14 @@ public:
   virtual bool HasVideo() {
     return mInfo.mHasVideo;
   }
+
+  // True if this reader is waiting media resource allocation
+  virtual bool IsWaitingMediaResources();
+  // True when this reader need to become dormant state
+  virtual bool IsDormantNeeded();
+  // Release media resources they should be released in dormant state
+  virtual void ReleaseMediaResources();
+
 
 private:
 
