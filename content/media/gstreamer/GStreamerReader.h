@@ -56,6 +56,12 @@ public:
     return mInfo.mHasVideo;
   }
 
+  virtual bool IsWaitingMediaResources();
+  // True when this reader need to become dormant state
+  virtual bool IsDormantNeeded();
+  // Release media resources they should be released in dormant state
+  virtual void ReleaseMediaResources();
+
 private:
 
   void ReadAndPushData(guint aLength);
