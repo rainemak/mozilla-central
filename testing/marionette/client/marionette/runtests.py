@@ -92,7 +92,7 @@ class MarionetteTestResult(unittest._TextTestResult):
                         break
                 if skip_log:
                     return
-                self.stream.writeln('START LOG:')
+                self.stream.writeln('\nSTART LOG:')
                 for line in testcase.loglines:
                     self.stream.writeln(' '.join(line).encode('ascii', 'replace'))
                 self.stream.writeln('END LOG:')
@@ -159,8 +159,8 @@ class MarionetteTextTestRunner(unittest.TextTestRunner):
                 stopTestRun()
         stopTime = time.time()
         timeTaken = stopTime - startTime
-        result.printErrors()
         result.printLogs(test)
+        result.printErrors()
         if hasattr(result, 'separator2'):
             self.stream.writeln(result.separator2)
         run = result.testsRun
@@ -330,7 +330,8 @@ class MarionetteTestRunner(object):
                                          bin=self.bin,
                                          profile=self.profile,
                                          baseurl=self.baseurl,
-                                         timeout=self.timeout)
+                                         timeout=self.timeout,
+                                         device_serial=self.device_serial)
         elif self.address:
             host, port = self.address.split(':')
             try:
