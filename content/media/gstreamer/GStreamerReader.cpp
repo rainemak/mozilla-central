@@ -504,7 +504,6 @@ bool GStreamerReader::DecodeAudioData()
     ReentrantMonitorAutoEnter mon(mGstThreadsMonitor);
 
     if (mReachedEos) {
-      mAudioQueue.Finish();
       return false;
     }
 
@@ -601,7 +600,6 @@ bool GStreamerReader::DecodeVideoFrame(bool &aKeyFrameSkip,
     ReentrantMonitorAutoEnter mon(mGstThreadsMonitor);
 
     if (mReachedEos) {
-      mVideoQueue.Finish();
       return false;
     }
 
@@ -1136,8 +1134,6 @@ void GStreamerReader::Eos()
   {
     ReentrantMonitorAutoEnter mon(mDecoder->GetReentrantMonitor());
     /* Potentially unblock the decode thread in ::DecodeLoop */
-    mVideoQueue.Finish();
-    mAudioQueue.Finish();
     mon.NotifyAll();
   }
 }
