@@ -36,7 +36,7 @@ BuildRequires:  yasm
 BuildRequires:  fdupes
 
 %description
-Mozilla XUL runner
+Mozilla XUL runner. Embedlite edition.
 
 %package devel
 Group: Applications/Internet
