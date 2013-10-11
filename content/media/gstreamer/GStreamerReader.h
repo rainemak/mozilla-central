@@ -56,6 +56,7 @@ public:
     return mInfo.mHasVideo;
   }
 
+  // True if this reader is waiting media resource allocation
   virtual bool IsWaitingMediaResources();
   // True when this reader need to become dormant state
   virtual bool IsDormantNeeded();
