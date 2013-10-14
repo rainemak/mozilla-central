@@ -2514,6 +2514,10 @@ public:
                                      SharedTextureHandle sharedHandle)
     { }
 
+    virtual bool NeedDestroyTempTexture(SharedTextureShareType shareType,
+                                        SharedTextureHandle sharedHandle)
+    { return false; }
+
 
     typedef struct {
         GLenum mTarget;
