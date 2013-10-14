@@ -44,7 +44,9 @@
 #include "ImageLayers.h"
 #include "ImageContainer.h"
 #include "nsCanvasFrame.h"
+#include "StickyScrollContainer.h"
 #include "mozilla/LookAndFeel.h"
+#include "mozilla/Preferences.h"
 
 #include <stdint.h>
 #include <algorithm>
@@ -614,8 +616,18 @@ static void UnmarkFrameForDisplay(nsIFrame* aFrame) {
   }
 }
 
+static void AdjustForScrollBars(ScreenIntRect& aToAdjust, nsIScrollableFrame* aScrollableFrame) {
+  if (aScrollableFrame && !LookAndFeel::GetInt(LookAndFeel::eIntID_UseOverlayScrollbars)) {
+    nsMargin sizes = aScrollableFrame->GetActualScrollbarSizes();
+    // Scrollbars are not subject to scaling, so CSS pixels = screen pixels for them.
+    ScreenIntMargin boundMargins = RoundedToInt(CSSMargin::FromAppUnits(sizes) * CSSToScreenScale(1.0f));
+    aToAdjust.Deflate(boundMargins);
+  }
+}
+
 static void RecordFrameMetrics(nsIFrame* aForFrame,
                                nsIFrame* aScrollFrame,
+                               const nsIFrame* aReferenceFrame,
                                ContainerLayer* aRoot,
                                const nsRect& aVisibleRect,
                                const nsRect& aViewport,
@@ -662,47 +674,79 @@ static void RecordFrameMetrics(nsIFrame* aForFrame,
 
   nsIPresShell* presShell = presContext->GetPresShell();
   if (metrics.mScrollId == FrameMetrics::ROOT_SCROLL_ID) {
-    metrics.mResolution = LayoutDeviceToLayerScale(presShell->GetXResolution(),
-                                                   presShell->GetYResolution());
+    metrics.mResolution = ParentLayerToLayerScale(presShell->GetXResolution(),
+                                                  presShell->GetYResolution());
   } else {
     // Only the root scrollable frame for a given presShell should pick up
     // the presShell's resolution. All the other subframes are 1.0.
-    metrics.mResolution = LayoutDeviceToLayerScale(1.0f);
+    metrics.mResolution = ParentLayerToLayerScale(1.0f);
   }
+
+  metrics.mCumulativeResolution = LayoutDeviceToLayerScale(1.0f);
+  nsIPresShell* curPresShell = presShell;
+  while (curPresShell != nullptr) {
+    ParentLayerToLayerScale presShellResolution(curPresShell->GetXResolution(),
+                                                curPresShell->GetYResolution());
+    metrics.mCumulativeResolution.scale *= presShellResolution.scale;
+    nsPresContext* parentContext = curPresShell->GetPresContext()->GetParentPresContext();
+    curPresShell = parentContext ? parentContext->GetPresShell() : nullptr;
+  }
+#ifdef MOZ_WIDGET_ANDROID
+  if (presContext->IsRootContentDocument() && aScrollFrame == presShell->GetRootScrollFrame()) {
+    // On Android we set the resolution on a different presshell (bug 732971) so we
+    // need some special handling here to make things work properly. Once bug 732971 is
+    // fixed we should remove this ifdef block, and adjust any other pieces that need
+    // adjusting to make this work properly.
+    metrics.mResolution.scale = metrics.mCumulativeResolution.scale;
+  }
+#endif
+
   metrics.mDevPixelsPerCSSPixel = CSSToLayoutDeviceScale(
     (float)nsPresContext::AppUnitsPerCSSPixel() / auPerDevPixel);
 
   // Initially, AsyncPanZoomController should render the content to the screen
   // at the painted resolution.
   const LayerToScreenScale layerToScreenScale(1.0f);
-  metrics.mZoom = metrics.mResolution * metrics.mDevPixelsPerCSSPixel
+  metrics.mZoom = metrics.mCumulativeResolution * metrics.mDevPixelsPerCSSPixel
                 * layerToScreenScale;
 
   metrics.mMayHaveTouchListeners = aMayHaveTouchListeners;
 
-  if (aScrollFrame) {
-    metrics.mCompositionBounds = RoundedToInt(LayoutDeviceRect::FromAppUnits(
-        aScrollFrame->GetScreenRectInAppUnits(), auPerDevPixel)
-                               * metrics.mResolution
-                               * layerToScreenScale);
+  // Calculate the composition bounds as the size of the scroll frame and
+  // its origin relative to the reference frame.
+  // If aScrollFrame is null, we are in a document without a root scroll frame,
+  // so it's a xul document. In this case, use the size of the viewport frame.
+  nsIFrame* frameForCompositionBoundsCalculation = aScrollFrame ? aScrollFrame : aForFrame;
+  nsRect compositionBounds(frameForCompositionBoundsCalculation->GetOffsetToCrossDoc(aReferenceFrame),
+                           frameForCompositionBoundsCalculation->GetSize());
+  metrics.mCompositionBounds = RoundedToInt(LayoutDeviceRect::FromAppUnits(compositionBounds, auPerDevPixel)
+                             * metrics.mCumulativeResolution
+                             * layerToScreenScale);
 
-    // Adjust for the size of scroll bars.
-    if (scrollableFrame && !LookAndFeel::GetInt(LookAndFeel::eIntID_UseOverlayScrollbars)) {
-      nsMargin sizes = scrollableFrame->GetActualScrollbarSizes();
-      // Scrollbars are not subject to scaling, so CSS pixels = screen pixels for them.
-      ScreenIntMargin boundMargins(nsPresContext::AppUnitsToIntCSSPixels(sizes.top),
-                                   nsPresContext::AppUnitsToIntCSSPixels(sizes.right),
-                                   nsPresContext::AppUnitsToIntCSSPixels(sizes.bottom),
-                                   nsPresContext::AppUnitsToIntCSSPixels(sizes.left));
-      metrics.mCompositionBounds.Deflate(boundMargins);
+  // For the root scroll frame of the root content document, clamp the
+  // composition bounds to the widget bounds. This is necessary because, if
+  // the page is zoomed in, the frame's size might be larger than the widget
+  // bounds, but we don't want the composition bounds to be.
+  bool useWidgetBounds = false;
+  bool isRootContentDocRootScrollFrame = aForFrame->GetParent() == nullptr
+                                      && presContext->IsRootContentDocument();
+  if (isRootContentDocRootScrollFrame) {
+    if (nsIWidget* widget = aForFrame->GetNearestWidget()) {
+      nsIntRect bounds;
+      widget->GetBounds(bounds);
+      ScreenIntRect screenBounds = ScreenIntRect::FromUnknownRect(mozilla::gfx::IntRect(
+          bounds.x, bounds.y, bounds.width, bounds.height));
+      AdjustForScrollBars(screenBounds, scrollableFrame);
+      metrics.mCompositionBounds = screenBounds.ClampRect(metrics.mCompositionBounds);
+      useWidgetBounds = true;
     }
-  } else {
-    // We are in a document without a root scroll frame, so it's a xul document.
-    // In this case, use the size of the viewport frame.
-    metrics.mCompositionBounds = RoundedToInt(LayoutDeviceRect::FromAppUnits(
-        aForFrame->GetScreenRectInAppUnits(), auPerDevPixel)
-                               * metrics.mResolution
-                               * layerToScreenScale);
+  }
+
+  // Adjust composition bounds for the size of scroll bars.
+  // If the widget bounds were used to clamp the composition bounds,
+  // this adjustment was already made to the widget bounds.
+  if (!useWidgetBounds) {
+    AdjustForScrollBars(metrics.mCompositionBounds, scrollableFrame);
   }
 
   metrics.mPresShellId = presShell->GetPresShellId();
@@ -1206,6 +1250,7 @@ void nsDisplayList::PaintForFrame(nsDisplayListBuilder* aBuilder,
   nsRect viewport(aBuilder->ToReferenceFrame(aForFrame), aForFrame->GetSize());
 
   RecordFrameMetrics(aForFrame, rootScrollFrame,
+                     aBuilder->FindReferenceFrameFor(aForFrame),
                      root, mVisibleRect, viewport,
                      (usingDisplayport ? &displayport : nullptr),
                      (usingCriticalDisplayport ? &criticalDisplayport : nullptr),
@@ -3117,42 +3162,29 @@ nsDisplayFixedPosition::~nsDisplayFixedPosition() {
 }
 #endif
 
-already_AddRefed<Layer>
-nsDisplayFixedPosition::BuildLayer(nsDisplayListBuilder* aBuilder,
-                                   LayerManager* aManager,
-                                   const ContainerParameters& aContainerParameters) {
-  nsRefPtr<Layer> layer =
-    nsDisplayOwnLayer::BuildLayer(aBuilder, aManager, aContainerParameters);
+void nsDisplayFixedPosition::SetFixedPositionLayerData(Layer* const aLayer,
+                                                       nsIFrame* aViewportFrame,
+                                                       nsSize aViewportSize,
+                                                       nsPresContext* aPresContext,
+                                                       const ContainerParameters& aContainerParameters) {
+  // Find out the rect of the viewport frame relative to the reference frame.
+  // This, in conjunction with the container scale, will correspond to the
+  // coordinate-space of the built layer.
+  float factor = aPresContext->AppUnitsPerDevPixel();
+  nsPoint origin = aViewportFrame->GetOffsetToCrossDoc(ReferenceFrame());
+  LayerRect anchorRect(NSAppUnitsToFloatPixels(origin.x, factor) *
+                         aContainerParameters.mXScale,
+                       NSAppUnitsToFloatPixels(origin.y, factor) *
+                         aContainerParameters.mYScale,
+                       NSAppUnitsToFloatPixels(aViewportSize.width, factor) *
+                         aContainerParameters.mXScale,
+                       NSAppUnitsToFloatPixels(aViewportSize.height, factor) *
+                         aContainerParameters.mYScale);
 
   // Work out the anchor point for this fixed position layer. We assume that
   // any positioning set (left/top/right/bottom) indicates that the
   // corresponding side of its container should be the anchor point,
   // defaulting to top-left.
-  nsIFrame* viewportFrame = mFixedPosFrame->GetParent();
-  nsPresContext *presContext = viewportFrame->PresContext();
-
-  // Fixed position frames are reflowed into the scroll-port size if one has
-  // been set.
-  nsSize containingBlockSize = viewportFrame->GetSize();
-  if (presContext->PresShell()->IsScrollPositionClampingScrollPortSizeSet()) {
-    containingBlockSize = presContext->PresShell()->
-      GetScrollPositionClampingScrollPortSize();
-  }
-
-  // Find out the rect of the viewport frame relative to the reference frame.
-  // This, in conjunction with the container scale, will correspond to the
-  // coordinate-space of the built layer.
-  float factor = presContext->AppUnitsPerDevPixel();
-  nsPoint origin = viewportFrame->GetOffsetToCrossDoc(ReferenceFrame());
-  LayerRect anchorRect(NSAppUnitsToFloatPixels(origin.x, factor) *
-                         aContainerParameters.mXScale,
-                       NSAppUnitsToFloatPixels(origin.y, factor) *
-                         aContainerParameters.mYScale,
-                       NSAppUnitsToFloatPixels(containingBlockSize.width, factor) *
-                         aContainerParameters.mXScale,
-                       NSAppUnitsToFloatPixels(containingBlockSize.height, factor) *
-                         aContainerParameters.mYScale);
-
   LayerPoint anchor = anchorRect.TopLeft();
 
   const nsStylePosition* position = mFixedPosFrame->StylePosition();
@@ -3161,11 +3193,11 @@ nsDisplayFixedPosition::BuildLayer(nsDisplayListBuilder* aBuilder,
   if (position->mOffset.GetBottomUnit() != eStyleUnit_Auto)
     anchor.y = anchorRect.YMost();
 
-  layer->SetFixedPositionAnchor(anchor);
+  aLayer->SetFixedPositionAnchor(anchor);
 
   // Also make sure the layer is aware of any fixed position margins that have
   // been set.
-  nsMargin fixedMargins = presContext->PresShell()->GetContentDocumentFixedPositionMargins();
+  nsMargin fixedMargins = aPresContext->PresShell()->GetContentDocumentFixedPositionMargins();
   LayerMargin fixedLayerMargins(NSAppUnitsToFloatPixels(fixedMargins.top, factor) *
                                   aContainerParameters.mYScale,
                                 NSAppUnitsToFloatPixels(fixedMargins.right, factor) *
@@ -3187,7 +3219,29 @@ nsDisplayFixedPosition::BuildLayer(nsDisplayListBuilder* aBuilder,
     fixedLayerMargins.top = -1;
   }
 
-  layer->SetFixedPositionMargins(fixedLayerMargins);
+  aLayer->SetFixedPositionMargins(fixedLayerMargins);
+}
+
+already_AddRefed<Layer>
+nsDisplayFixedPosition::BuildLayer(nsDisplayListBuilder* aBuilder,
+                                   LayerManager* aManager,
+                                   const ContainerParameters& aContainerParameters) {
+  nsRefPtr<Layer> layer =
+    nsDisplayOwnLayer::BuildLayer(aBuilder, aManager, aContainerParameters);
+
+  nsIFrame* viewportFrame = mFixedPosFrame->GetParent();
+  nsPresContext *presContext = viewportFrame->PresContext();
+
+  // Fixed position frames are reflowed into the scroll-port size if one has
+  // been set.
+  nsSize viewportSize = viewportFrame->GetSize();
+  if (presContext->PresShell()->IsScrollPositionClampingScrollPortSizeSet()) {
+    viewportSize = presContext->PresShell()->
+      GetScrollPositionClampingScrollPortSize();
+  }
+
+  SetFixedPositionLayerData(layer, viewportFrame, viewportSize, presContext,
+                            aContainerParameters);
 
   return layer.forget();
 }
@@ -3203,6 +3257,76 @@ bool nsDisplayFixedPosition::TryMerge(nsDisplayListBuilder* aBuilder, nsDisplayI
     return false;
   MergeFromTrackingMergedFrames(other);
   return true;
+}
+
+nsDisplayStickyPosition::nsDisplayStickyPosition(nsDisplayListBuilder* aBuilder,
+                                                 nsIFrame* aFrame,
+                                                 nsIFrame* aStickyPosFrame,
+                                                 nsDisplayList* aList)
+    : nsDisplayFixedPosition(aBuilder, aFrame, aStickyPosFrame, aList) {
+  MOZ_COUNT_CTOR(nsDisplayStickyPosition);
+}
+
+#ifdef NS_BUILD_REFCNT_LOGGING
+nsDisplayStickyPosition::~nsDisplayStickyPosition() {
+  MOZ_COUNT_DTOR(nsDisplayStickyPosition);
+}
+#endif
+
+already_AddRefed<Layer>
+nsDisplayStickyPosition::BuildLayer(nsDisplayListBuilder* aBuilder,
+                                    LayerManager* aManager,
+                                    const ContainerParameters& aContainerParameters) {
+  nsRefPtr<Layer> layer =
+    nsDisplayOwnLayer::BuildLayer(aBuilder, aManager, aContainerParameters);
+
+  StickyScrollContainer* stickyScrollContainer = StickyScrollContainer::
+    GetStickyScrollContainerForFrame(mFrame);
+  if (!stickyScrollContainer) {
+    return layer.forget();
+  }
+
+  nsIFrame* scrollFrame = do_QueryFrame(stickyScrollContainer->ScrollFrame());
+  nsPresContext* presContext = scrollFrame->PresContext();
+
+  // Sticky position frames whose scroll frame is the root scroll frame are
+  // reflowed into the scroll-port size if one has been set.
+  nsSize scrollFrameSize = scrollFrame->GetSize();
+  if (scrollFrame == presContext->PresShell()->GetRootScrollFrame() &&
+      presContext->PresShell()->IsScrollPositionClampingScrollPortSizeSet()) {
+    scrollFrameSize = presContext->PresShell()->
+      GetScrollPositionClampingScrollPortSize();
+  }
+
+  SetFixedPositionLayerData(layer, scrollFrame, scrollFrameSize, presContext,
+                            aContainerParameters);
+
+  ViewID scrollId = nsLayoutUtils::FindOrCreateIDFor(
+    stickyScrollContainer->ScrollFrame()->GetScrolledFrame()->GetContent());
+
+  float factor = presContext->AppUnitsPerDevPixel();
+  nsRect outer;
+  nsRect inner;
+  stickyScrollContainer->GetScrollRanges(mFrame, &outer, &inner);
+  LayerRect stickyOuter(NSAppUnitsToFloatPixels(outer.x, factor) *
+                          aContainerParameters.mXScale,
+                        NSAppUnitsToFloatPixels(outer.y, factor) *
+                          aContainerParameters.mYScale,
+                        NSAppUnitsToFloatPixels(outer.width, factor) *
+                          aContainerParameters.mXScale,
+                        NSAppUnitsToFloatPixels(outer.height, factor) *
+                          aContainerParameters.mYScale);
+  LayerRect stickyInner(NSAppUnitsToFloatPixels(inner.x, factor) *
+                          aContainerParameters.mXScale,
+                        NSAppUnitsToFloatPixels(inner.y, factor) *
+                          aContainerParameters.mYScale,
+                        NSAppUnitsToFloatPixels(inner.width, factor) *
+                          aContainerParameters.mXScale,
+                        NSAppUnitsToFloatPixels(inner.height, factor) *
+                          aContainerParameters.mYScale);
+  layer->SetStickyPositionData(scrollId, stickyOuter, stickyInner);
+
+  return layer.forget();
 }
 
 nsDisplayScrollLayer::nsDisplayScrollLayer(nsDisplayListBuilder* aBuilder,
@@ -3287,7 +3411,8 @@ nsDisplayScrollLayer::BuildLayer(nsDisplayListBuilder* aBuilder,
     usingCriticalDisplayport =
       nsLayoutUtils::GetCriticalDisplayPort(content, &criticalDisplayport);
   }
-  RecordFrameMetrics(mScrolledFrame, mScrollFrame, layer, mVisibleRect, viewport,
+  RecordFrameMetrics(mScrolledFrame, mScrollFrame, ReferenceFrame(), layer,
+                     mVisibleRect, viewport,
                      (usingDisplayport ? &displayport : nullptr),
                      (usingCriticalDisplayport ? &criticalDisplayport : nullptr),
                      scrollId, aContainerParameters, false);

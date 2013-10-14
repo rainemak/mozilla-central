@@ -31,7 +31,6 @@
 #include "nsEvent.h"
 #include "nsCompatibility.h"
 #include "nsFrameManagerBase.h"
-#include "nsRect.h"
 #include "mozFlushType.h"
 #include "nsWeakReference.h"
 #include <stdio.h> // for FILE definition
@@ -40,6 +39,7 @@
 #include "nsEventStates.h"
 #include "nsPresArena.h"
 #include "nsIImageLoadingContent.h"
+#include "nsMargin.h"
 
 class nsIContent;
 class nsIDocument;
@@ -73,9 +73,11 @@ class nsPIDOMWindow;
 struct nsPoint;
 struct nsIntPoint;
 struct nsIntRect;
+struct nsRect;
 class nsRegion;
 class nsRefreshDriver;
 class nsARefreshObserver;
+class nsAPostRefreshObserver;
 #ifdef ACCESSIBILITY
 class nsAccessibilityService;
 namespace mozilla {
@@ -123,10 +125,11 @@ typedef struct CapturingContentInfo {
   nsIContent* mContent;
 } CapturingContentInfo;
 
-// fac033dd-938d-45bc-aaa5-dc2fa7ef5a40
+
+// d39cd4ce-6b38-4793-8c1a-00985c56d931
 #define NS_IPRESSHELL_IID \
-{ 0xfac033dd, 0x938d, 0x45bc, \
-  { 0xaa, 0xa5, 0xdc, 0x2f, 0xa7, 0xef, 0x5a, 0x40 } }
+{ 0xd39cd4ce, 0x6b38, 0x4793, \
+  { 0x8c, 0x1a, 0x00, 0x98, 0x5c, 0x56, 0xd9, 0x31 } }
 
 // debug VerifyReflow flags
 #define VERIFY_REFLOW_ON                    0x01
@@ -1357,18 +1360,24 @@ public:
   // Ensures the image is in the list of visible images.
   virtual void EnsureImageInVisibleList(nsIImageLoadingContent* aImage) = 0;
 
+  // Removes the image from the list of visible images if it is present there.
+  virtual void RemoveImageFromVisibleList(nsIImageLoadingContent* aImage) = 0;
+
+  // Whether we should assume all images are visible.
+  virtual bool AssumeAllImagesVisible() = 0;
+
   /**
    * Refresh observer management.
    */
 protected:
   virtual bool AddRefreshObserverExternal(nsARefreshObserver* aObserver,
-                                            mozFlushType aFlushType);
+                                          mozFlushType aFlushType);
   bool AddRefreshObserverInternal(nsARefreshObserver* aObserver,
-                                    mozFlushType aFlushType);
+                                  mozFlushType aFlushType);
   virtual bool RemoveRefreshObserverExternal(nsARefreshObserver* aObserver,
-                                               mozFlushType aFlushType);
+                                             mozFlushType aFlushType);
   bool RemoveRefreshObserverInternal(nsARefreshObserver* aObserver,
-                                       mozFlushType aFlushType);
+                                     mozFlushType aFlushType);
 
   /**
    * Do computations necessary to determine if font size inflation is enabled.
@@ -1379,7 +1388,7 @@ protected:
 
 public:
   bool AddRefreshObserver(nsARefreshObserver* aObserver,
-                            mozFlushType aFlushType) {
+                          mozFlushType aFlushType) {
 #ifdef MOZILLA_INTERNAL_API
     return AddRefreshObserverInternal(aObserver, aFlushType);
 #else
@@ -1388,13 +1397,16 @@ public:
   }
 
   bool RemoveRefreshObserver(nsARefreshObserver* aObserver,
-                               mozFlushType aFlushType) {
+                             mozFlushType aFlushType) {
 #ifdef MOZILLA_INTERNAL_API
     return RemoveRefreshObserverInternal(aObserver, aFlushType);
 #else
     return RemoveRefreshObserverExternal(aObserver, aFlushType);
 #endif
   }
+
+  virtual bool AddPostRefreshObserver(nsAPostRefreshObserver* aObserver);
+  virtual bool RemovePostRefreshObserver(nsAPostRefreshObserver* aObserver);
 
   /**
    * Initialize and shut down static variables.

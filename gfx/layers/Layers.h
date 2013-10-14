@@ -9,7 +9,6 @@
 #include <stdint.h>                     // for uint32_t, uint64_t, uint8_t
 #include <stdio.h>                      // for FILE
 #include <sys/types.h>                  // for int32_t, int64_t
-#include "mozilla-config.h"             // for MOZ_DUMP_PAINTING
 #include "FrameMetrics.h"               // for FrameMetrics
 #include "Units.h"                      // for LayerMargin, LayerPoint
 #include "gfx3DMatrix.h"                // for gfx3DMatrix
@@ -910,6 +909,32 @@ public:
     }
   }
 
+  /**
+   * CONSTRUCTION PHASE ONLY
+   * If a layer is "sticky position", |aScrollId| holds the scroll identifier
+   * of the scrollable content that contains it. The difference between the two
+   * rectangles |aOuter| and |aInner| is treated as two intervals in each
+   * dimension, with the current scroll position at the origin. For each
+   * dimension, while that component of the scroll position lies within either
+   * interval, the layer should not move relative to its scrolling container.
+   */
+  void SetStickyPositionData(FrameMetrics::ViewID aScrollId, LayerRect aOuter,
+                             LayerRect aInner)
+  {
+    if (!mStickyPositionData ||
+        !mStickyPositionData->mOuter.IsEqualEdges(aOuter) ||
+        !mStickyPositionData->mInner.IsEqualEdges(aInner)) {
+      MOZ_LAYERS_LOG_IF_SHADOWABLE(this, ("Layer::Mutated(%p) StickyPositionData", this));
+      if (!mStickyPositionData) {
+        mStickyPositionData = new StickyPositionData;
+      }
+      mStickyPositionData->mScrollId = aScrollId;
+      mStickyPositionData->mOuter = aOuter;
+      mStickyPositionData->mInner = aInner;
+      Mutated();
+    }
+  }
+
   // These getters can be used anytime.
   float GetOpacity() { return mOpacity; }
   const nsIntRect* GetClipRect() { return mUseClipRect ? &mClipRect : nullptr; }
@@ -927,8 +952,12 @@ public:
   float GetPostXScale() const { return mPostXScale; }
   float GetPostYScale() const { return mPostYScale; }
   bool GetIsFixedPosition() { return mIsFixedPosition; }
+  bool GetIsStickyPosition() { return mStickyPositionData; }
   LayerPoint GetFixedPositionAnchor() { return mAnchor; }
   const LayerMargin& GetFixedPositionMargins() { return mMargins; }
+  FrameMetrics::ViewID GetStickyScrollContainerId() { return mStickyPositionData->mScrollId; }
+  const LayerRect& GetStickyScrollRangeOuter() { return mStickyPositionData->mOuter; }
+  const LayerRect& GetStickyScrollRangeInner() { return mStickyPositionData->mInner; }
   Layer* GetMaskLayer() const { return mMaskLayer; }
 
   // Note that all lengths in animation data are either in CSS pixels or app
@@ -1284,6 +1313,12 @@ protected:
   bool mIsFixedPosition;
   LayerPoint mAnchor;
   LayerMargin mMargins;
+  struct StickyPositionData {
+    FrameMetrics::ViewID mScrollId;
+    LayerRect mOuter;
+    LayerRect mInner;
+  };
+  nsAutoPtr<StickyPositionData> mStickyPositionData;
   DebugOnly<uint32_t> mDebugColorIndex;
   // If this layer is used for OMTA, then this counter is used to ensure we
   // stay in sync with the animation manager

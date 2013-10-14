@@ -5,7 +5,7 @@
 
 package org.mozilla.gecko.home;
 
-import org.mozilla.gecko.Favicons;
+import org.mozilla.gecko.favicons.Favicons;
 import org.mozilla.gecko.R;
 import org.mozilla.gecko.Tabs;
 import org.mozilla.gecko.animation.PropertyAnimator;
@@ -287,6 +287,7 @@ public class BookmarksPage extends HomeFragment {
         inflater.inflate(R.menu.top_bookmarks_contextmenu, menu);
 
         TopBookmarksContextMenuInfo info = (TopBookmarksContextMenuInfo) menuInfo;
+        menu.setHeaderTitle(info.getDisplayTitle());
 
         if (!TextUtils.isEmpty(info.url)) {
             if (info.isPinned) {
@@ -597,7 +598,7 @@ public class BookmarksPage extends HomeFragment {
                     if (bitmap != null) {
                         // Favicons.scaleImage can return several different size favicons,
                         // but will at least prevent this from being too large.
-                        thumbnails.put(url, new Thumbnail(Favicons.getInstance().scaleImage(bitmap), false));
+                        thumbnails.put(url, new Thumbnail(Favicons.scaleImage(bitmap), false));
                     }
                 }
             }

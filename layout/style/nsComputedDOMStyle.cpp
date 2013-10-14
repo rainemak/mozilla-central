@@ -43,7 +43,6 @@
 #include "mozilla/dom/Element.h"
 #include "prtime.h"
 #include "nsWrapperCacheInlines.h"
-#include "nsUTF8Utils.h"
 #include <algorithm>
 
 using namespace mozilla;
@@ -3708,6 +3707,8 @@ nsComputedDOMStyle::GetOffsetWidthFor(mozilla::css::Side aSide)
       return GetStaticOffset(aSide);
     case NS_STYLE_POSITION_RELATIVE:
       return GetRelativeOffset(aSide);
+    case NS_STYLE_POSITION_STICKY:
+      return GetStickyOffset(aSide);
     case NS_STYLE_POSITION_ABSOLUTE:
     case NS_STYLE_POSITION_FIXED:
       return GetAbsoluteOffset(aSide);
@@ -3807,6 +3808,36 @@ nsComputedDOMStyle::GetRelativeOffset(mozilla::css::Side aSide)
   val->SetAppUnits(sign * StyleCoordToNSCoord(coord, baseGetter, 0, false));
   return val;
 }
+
+CSSValue*
+nsComputedDOMStyle::GetStickyOffset(mozilla::css::Side aSide)
+{
+  nsROCSSPrimitiveValue *val = new nsROCSSPrimitiveValue;
+
+  const nsStylePosition* positionData = StylePosition();
+  nsStyleCoord coord = positionData->mOffset.Get(aSide);
+
+  NS_ASSERTION(coord.GetUnit() == eStyleUnit_Coord ||
+               coord.GetUnit() == eStyleUnit_Percent ||
+               coord.GetUnit() == eStyleUnit_Auto ||
+               coord.IsCalcUnit(),
+               "Unexpected unit");
+
+  if (coord.GetUnit() == eStyleUnit_Auto) {
+    val->SetIdent(eCSSKeyword_auto);
+    return val;
+  }
+  PercentageBaseGetter baseGetter;
+  if (aSide == NS_SIDE_LEFT || aSide == NS_SIDE_RIGHT) {
+    baseGetter = &nsComputedDOMStyle::GetScrollFrameContentWidth;
+  } else {
+    baseGetter = &nsComputedDOMStyle::GetScrollFrameContentHeight;
+  }
+
+  val->SetAppUnits(StyleCoordToNSCoord(coord, baseGetter, 0, false));
+  return val;
+}
+
 
 CSSValue*
 nsComputedDOMStyle::GetStaticOffset(mozilla::css::Side aSide)
@@ -4127,6 +4158,50 @@ nsComputedDOMStyle::GetCBContentHeight(nscoord& aHeight)
 }
 
 bool
+nsComputedDOMStyle::GetScrollFrameContentWidth(nscoord& aWidth)
+{
+  if (!mOuterFrame) {
+    return false;
+  }
+
+  AssertFlushedPendingReflows();
+
+  nsIScrollableFrame* scrollableFrame =
+    nsLayoutUtils::GetNearestScrollableFrame(mOuterFrame->GetParent(),
+      nsLayoutUtils::SCROLLABLE_SAME_DOC |
+      nsLayoutUtils::SCROLLABLE_INCLUDE_HIDDEN);
+
+  if (!scrollableFrame) {
+    return false;
+  }
+  aWidth =
+    scrollableFrame->GetScrolledFrame()->GetContentRectRelativeToSelf().width;
+  return true;
+}
+
+bool
+nsComputedDOMStyle::GetScrollFrameContentHeight(nscoord& aHeight)
+{
+  if (!mOuterFrame) {
+    return false;
+  }
+
+  AssertFlushedPendingReflows();
+
+  nsIScrollableFrame* scrollableFrame =
+    nsLayoutUtils::GetNearestScrollableFrame(mOuterFrame->GetParent(),
+      nsLayoutUtils::SCROLLABLE_SAME_DOC |
+      nsLayoutUtils::SCROLLABLE_INCLUDE_HIDDEN);
+
+  if (!scrollableFrame) {
+    return false;
+  }
+  aHeight =
+    scrollableFrame->GetScrolledFrame()->GetContentRectRelativeToSelf().height;
+  return true;
+}
+
+bool
 nsComputedDOMStyle::GetFrameBorderRectWidth(nscoord& aWidth)
 {
   if (!mInnerFrame) {
@@ -4218,14 +4293,14 @@ nsComputedDOMStyle::GetSVGPaintFor(bool aFill)
       SetToRGBAColor(fallback, paint->mFallbackColor);
       return valueList;
     }
-    case eStyleSVGPaintType_ObjectFill:
+    case eStyleSVGPaintType_ContextFill:
     {
-      val->SetIdent(eCSSKeyword__moz_objectfill);
+      val->SetIdent(eCSSKeyword_context_fill);
       break;
     }
-    case eStyleSVGPaintType_ObjectStroke:
+    case eStyleSVGPaintType_ContextStroke:
     {
-      val->SetIdent(eCSSKeyword__moz_objectstroke);
+      val->SetIdent(eCSSKeyword_context_stroke);
       break;
     }
   }

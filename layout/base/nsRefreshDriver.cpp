@@ -753,9 +753,7 @@ nsRefreshDriver::AddRefreshObserver(nsARefreshObserver* aObserver,
 {
   ObserverArray& array = ArrayFor(aFlushType);
   bool success = array.AppendElement(aObserver) != nullptr;
-
   EnsureTimerStarted(false);
-
   return success;
 }
 
@@ -765,6 +763,18 @@ nsRefreshDriver::RemoveRefreshObserver(nsARefreshObserver* aObserver,
 {
   ObserverArray& array = ArrayFor(aFlushType);
   return array.RemoveElement(aObserver);
+}
+
+void
+nsRefreshDriver::AddPostRefreshObserver(nsAPostRefreshObserver* aObserver)
+{
+  mPostRefreshObservers.AppendElement(aObserver);
+}
+
+void
+nsRefreshDriver::RemovePostRefreshObserver(nsAPostRefreshObserver* aObserver)
+{
+  mPostRefreshObservers.RemoveElement(aObserver);
 }
 
 bool
@@ -1157,7 +1167,17 @@ nsRefreshDriver::Tick(int64_t aNowEpoch, TimeStamp aNowTime)
   mStartTable.EnumerateRead(nsRefreshDriver::StartTableRefresh, &parms);
 
   if (mRequests.Count()) {
-    mRequests.EnumerateEntries(nsRefreshDriver::ImageRequestEnumerator, &parms);
+    // RequestRefresh may run scripts, so it's not safe to directly call it
+    // while using a hashtable enumerator to enumerate mRequests in case
+    // script modifies the hashtable. Instead, we build a (local) array of
+    // images to refresh, and then we refresh each image in that array.
+    nsCOMArray<imgIContainer> imagesToRefresh(mRequests.Count());
+    mRequests.EnumerateEntries(nsRefreshDriver::ImageRequestEnumerator,
+                               &imagesToRefresh);
+
+    for (uint32_t i = 0; i < imagesToRefresh.Length(); i++) {
+      imagesToRefresh[i]->RequestRefresh(aNowTime);
+    }
   }
 
   for (uint32_t i = 0; i < mPresShellsToInvalidateIfHidden.Length(); i++) {
@@ -1188,20 +1208,23 @@ nsRefreshDriver::Tick(int64_t aNowEpoch, TimeStamp aNowTime)
     }
 #endif
   }
+
+  for (uint32_t i = 0; i < mPostRefreshObservers.Length(); ++i) {
+    mPostRefreshObservers[i]->DidRefresh();
+  }
 }
 
 /* static */ PLDHashOperator
 nsRefreshDriver::ImageRequestEnumerator(nsISupportsHashKey* aEntry,
                                         void* aUserArg)
 {
-  ImageRequestParameters* parms =
-    static_cast<ImageRequestParameters*> (aUserArg);
-  mozilla::TimeStamp mostRecentRefresh = parms->mCurrent;
+  nsCOMArray<imgIContainer>* imagesToRefresh =
+    static_cast<nsCOMArray<imgIContainer>*> (aUserArg);
   imgIRequest* req = static_cast<imgIRequest*>(aEntry->GetKey());
   NS_ABORT_IF_FALSE(req, "Unable to retrieve the image request");
   nsCOMPtr<imgIContainer> image;
   if (NS_SUCCEEDED(req->GetImage(getter_AddRefs(image)))) {
-    image->RequestRefresh(mostRecentRefresh);
+    imagesToRefresh->AppendElement(image);
   }
 
   return PL_DHASH_NEXT;

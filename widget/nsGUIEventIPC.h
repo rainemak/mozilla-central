@@ -15,9 +15,9 @@ namespace IPC
 {
 
 template<>
-struct ParamTraits<mozilla::widget::BaseEventFlags>
+struct ParamTraits<mozilla::BaseEventFlags>
 {
-  typedef mozilla::widget::BaseEventFlags paramType;
+  typedef mozilla::BaseEventFlags paramType;
 
   static void Write(Message* aMsg, const paramType& aParam)
   {
@@ -121,9 +121,9 @@ struct ParamTraits<nsMouseEvent_base>
 };
 
 template<>
-struct ParamTraits<mozilla::widget::WheelEvent>
+struct ParamTraits<mozilla::WheelEvent>
 {
-  typedef mozilla::widget::WheelEvent paramType;
+  typedef mozilla::WheelEvent paramType;
 
   static void Write(Message* aMsg, const paramType& aParam)
   {
@@ -160,7 +160,7 @@ struct ParamTraits<mozilla::widget::WheelEvent>
       ReadParam(aMsg, aIter, &aResult->overflowDeltaX) &&
       ReadParam(aMsg, aIter, &aResult->overflowDeltaY);
     aResult->scrollType =
-      static_cast<mozilla::widget::WheelEvent::ScrollType>(scrollType);
+      static_cast<mozilla::WheelEvent::ScrollType>(scrollType);
     return rv;
   }
 };
@@ -261,6 +261,7 @@ struct ParamTraits<nsKeyEvent>
     WriteParam(aMsg, aParam.charCode);
     WriteParam(aMsg, aParam.isChar);
     WriteParam(aMsg, aParam.location);
+    WriteParam(aMsg, aParam.mUniqueId);
     // An OS-specific native event might be attached in |mNativeKeyEvent|,  but
     // that cannot be copied across process boundaries.
   }
@@ -273,9 +274,10 @@ struct ParamTraits<nsKeyEvent>
         ReadParam(aMsg, aIter, &aResult->keyCode) &&
         ReadParam(aMsg, aIter, &aResult->charCode) &&
         ReadParam(aMsg, aIter, &aResult->isChar) &&
-        ReadParam(aMsg, aIter, &aResult->location))
+        ReadParam(aMsg, aIter, &aResult->location) &&
+        ReadParam(aMsg, aIter, &aResult->mUniqueId))
     {
-      aResult->mKeyNameIndex = static_cast<mozilla::widget::KeyNameIndex>(keyNameIndex);
+      aResult->mKeyNameIndex = static_cast<mozilla::KeyNameIndex>(keyNameIndex);
       aResult->mNativeKeyEvent = NULL;
       return true;
     }

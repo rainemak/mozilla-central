@@ -2531,15 +2531,16 @@ Assembler::patchWrite_NearCall(CodeLocationLabel start, CodeLocationLabel toCall
 
 }
 void
-Assembler::patchDataWithValueCheck(CodeLocationLabel label, ImmWord newValue, ImmWord expectedValue)
+Assembler::patchDataWithValueCheck(CodeLocationLabel label, ImmPtr newValue, ImmPtr expectedValue)
 {
     Instruction *ptr = (Instruction *) label.raw();
     InstructionIterator iter(ptr);
     Register dest;
     Assembler::RelocStyle rs;
     DebugOnly<const uint32_t *> val = getPtr32Target(&iter, &dest, &rs);
-    JS_ASSERT((uint32_t)(const uint32_t *)val == expectedValue.value);
-    reinterpret_cast<MacroAssemblerARM*>(dummy)->ma_movPatchable(Imm32(newValue.value), dest, Always, rs, ptr);
+    JS_ASSERT((uint32_t)(const uint32_t *)val == uint32_t(expectedValue.value));
+    reinterpret_cast<MacroAssemblerARM*>(dummy)->ma_movPatchable(Imm32(int32_t(newValue.value)),
+                                                                 dest, Always, rs, ptr);
     // L_LDR won't cause any instructions to be updated.
     if (rs != L_LDR) {
         AutoFlushCache::updateTop(uintptr_t(ptr), 4);
@@ -2725,23 +2726,23 @@ Assembler::ToggleCall(CodeLocationLabel inst_, bool enabled)
     AutoFlushCache::updateTop(uintptr_t(inst), 4);
 }
 
-void Assembler::updateBoundsCheck(uint32_t logHeapSize, Instruction *inst)
+void Assembler::updateBoundsCheck(uint32_t heapSize, Instruction *inst)
 {
-    JS_ASSERT(inst->is<InstMOV>());
-    InstMOV *mov = inst->as<InstMOV>();
-    JS_ASSERT(mov->checkDest(ScratchRegister));
+    JS_ASSERT(inst->is<InstCMP>());
+    InstCMP *cmp = inst->as<InstCMP>();
 
-    Operand2 op = mov->extractOp2();
-    JS_ASSERT(op.isO2Reg());
-
-    Op2Reg reg = op.toOp2Reg();
     Register index;
-    reg.getRM(&index);
-    JS_ASSERT(reg.isO2RegImmShift());
-    // O2RegImmShift shift = reg.toO2RegImmShift();
+    cmp->extractOp1(&index);
 
-    *inst = InstALU(ScratchRegister, InvalidReg, lsr(index, logHeapSize), op_mov, SetCond, Always);
-    AutoFlushCache::updateTop(uintptr_t(inst), 4);
+    Operand2 op = cmp->extractOp2();
+    JS_ASSERT(op.isImm8());
+
+    Imm8 imm8 = Imm8(heapSize);
+    JS_ASSERT(!imm8.invalid);
+
+    *inst = InstALU(InvalidReg, index, imm8, op_cmp, SetCond, Always);
+    // NOTE: we don't update the Auto Flush Cache!  this function is currently only called from
+    // within AsmJSModule::patchHeapAccesses, which does that for us.  Don't call this!
 }
 
 void

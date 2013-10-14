@@ -281,7 +281,7 @@ public:
 #ifdef DEBUG
         printf_stderr("Initializing context %p surface %p on display %p\n", mContext, mSurface, EGL_DISPLAY());
 #endif
-#if defined(MOZ_WIDGET_GONK) && ANDROID_VERSION <= 15
+#if defined(MOZ_WIDGET_GONK)
         if (!mIsOffscreen) {
             mHwc = HwcComposer2D::GetInstance();
             MOZ_ASSERT(!mHwc->Initialized());
@@ -665,6 +665,8 @@ public:
                                     SharedTextureHandle sharedHandle);
     virtual void DetachSharedHandle(SharedTextureShareType shareType,
                                     SharedTextureHandle sharedHandle);
+    virtual bool NeedDestroyTempTexture(SharedTextureShareType shareType,
+                                        SharedTextureHandle sharedHandle);
 
 protected:
     friend class GLContextProviderEGL;
@@ -1139,6 +1141,28 @@ bool GLContextEGL::AttachSharedHandle(SharedTextureShareType shareType,
     }
 
     return true;
+}
+
+bool
+GLContextEGL::NeedDestroyTempTexture(SharedTextureShareType shareType,
+                                     SharedTextureHandle sharedHandle)
+{
+    if (shareType != SameProcess)
+        return false;
+
+    SharedTextureHandleWrapper* wrapper = reinterpret_cast<SharedTextureHandleWrapper*>(sharedHandle);
+
+    switch (wrapper->Type()) {
+#ifdef HAS_NEMO_INTERFACE
+    case SharedHandleType_GstreamerMagicHandle: {
+        return true;
+    }
+#endif
+    default:
+        return false;
+    }
+
+    return false;
 }
 
 bool

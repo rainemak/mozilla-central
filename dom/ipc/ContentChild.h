@@ -146,11 +146,15 @@ public:
             const nsCString& aContentDisposition,
             const bool& aForceSave,
             const int64_t& aContentLength,
-            const OptionalURIParams& aReferrer);
+            const OptionalURIParams& aReferrer,
+            PBrowserChild* aBrowser);
     virtual bool DeallocPExternalHelperAppChild(PExternalHelperAppChild *aService);
 
     virtual PSmsChild* AllocPSmsChild();
     virtual bool DeallocPSmsChild(PSmsChild*);
+
+    virtual PTelephonyChild* AllocPTelephonyChild();
+    virtual bool DeallocPTelephonyChild(PTelephonyChild*);
 
     virtual PStorageChild* AllocPStorageChild();
     virtual bool DeallocPStorageChild(PStorageChild* aActor);
@@ -222,6 +226,7 @@ public:
     virtual bool RecvLoadAndRegisterSheet(const URIParams& aURI, const uint32_t& aType);
     virtual bool RecvUnregisterSheet(const URIParams& aURI, const uint32_t& aType);
 
+    virtual bool RecvNotifyPhoneStateChange(const nsString& state);
 #ifdef ANDROID
     gfxIntSize GetScreenSize() { return mScreenSize; }
 #endif

@@ -19,9 +19,7 @@
 #include "jit/Ion.h"
 #include "jit/PerfSpewer.h"
 
-#include "jsfuninlines.h"
 #include "jsobjinlines.h"
-#include "jsscriptinlines.h"
 
 using namespace js;
 using namespace js::jit;
@@ -195,6 +193,7 @@ DynamicallyLinkModule(JSContext *cx, CallArgs args, AsmJSModule &module)
                             "once. This limitation should be removed in a future release. To "
                             "work around this, compile a second module (e.g., using the "
                             "Function constructor).");
+    module.setIsLinked();
 
     RootedValue globalVal(cx, UndefinedValue());
     if (args.length() > 0)
@@ -218,10 +217,16 @@ DynamicallyLinkModule(JSContext *cx, CallArgs args, AsmJSModule &module)
         if (!IsPowerOfTwo(heap->byteLength()) || heap->byteLength() < AsmJSAllocationGranularity)
             return LinkFail(cx, "ArrayBuffer byteLength must be a power of two greater than or equal to 4096");
 
+        // This check is sufficient without considering the size of the loaded datum because heap
+        // loads and stores start on an aligned boundary and the heap byteLength has larger alignment.
+        JS_ASSERT((module.minHeapLength() - 1) <= INT32_MAX);
+        if (heap->byteLength() < module.minHeapLength())
+            return LinkFail(cx, "ArrayBuffer byteLength less than the largest source code heap length constraint.");
+
         if (!ArrayBufferObject::prepareForAsmJS(cx, heap))
             return LinkFail(cx, "Unable to prepare ArrayBuffer for asm.js use");
 
-        module.patchHeapAccesses(heap, cx);
+        module.initHeap(heap, cx);
     }
 
     AutoObjectVector ffis(cx);
@@ -257,7 +262,6 @@ DynamicallyLinkModule(JSContext *cx, CallArgs args, AsmJSModule &module)
     for (unsigned i = 0; i < module.numExits(); i++)
         module.exitIndexToGlobalDatum(i).fun = &ffis[module.exit(i).ffiIndex()]->as<JSFunction>();
 
-    module.setIsLinked(heap);
     return true;
 }
 

@@ -42,9 +42,11 @@ CanvasClient::CreateCanvasClient(CanvasClientType aType,
 {
   if (aType == CanvasClientGLContext &&
       aForwarder->GetCompositorBackendType() == LAYERS_OPENGL) {
+    aFlags &= ~TEXTURE_DEALLOCATE_HOST;
     return new DeprecatedCanvasClientSurfaceStream(aForwarder, aFlags);
   }
   if (gfxPlatform::GetPlatform()->UseDeprecatedTextures()) {
+    aFlags &= ~TEXTURE_DEALLOCATE_HOST;
     return new DeprecatedCanvasClient2D(aForwarder, aFlags);
   }
   return new CanvasClient2D(aForwarder, aFlags);
@@ -206,17 +208,13 @@ DeprecatedCanvasClientSurfaceStream::Update(gfx::IntSize aSize, ClientCanvasLaye
 #endif
   } else {
     SurfaceStreamHandle handle = stream->GetShareHandle();
-    SurfaceDescriptor *desc = mDeprecatedTextureClient->GetDescriptor();
-    if (desc->type() != SurfaceDescriptor::TSurfaceStreamDescriptor ||
-        desc->get_SurfaceStreamDescriptor().handle() != handle) {
-      *desc = SurfaceStreamDescriptor(handle, false);
+    mDeprecatedTextureClient->SetDescriptor(SurfaceStreamDescriptor(handle, false));
 
-      // Bug 894405
-      //
-      // Ref this so the SurfaceStream doesn't disappear unexpectedly. The
-      // Compositor will need to unref it when finished.
-      aLayer->mGLContext->AddRef();
-    }
+    // Bug 894405
+    //
+    // Ref this so the SurfaceStream doesn't disappear unexpectedly. The
+    // Compositor will need to unref it when finished.
+    aLayer->mGLContext->AddRef();
   }
 
   aLayer->Painted();

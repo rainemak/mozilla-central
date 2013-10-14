@@ -544,7 +544,6 @@ statuspanel {
   -moz-binding: url("chrome://browser/content/tabbrowser.xml#statuspanel");
   position: fixed;
   margin-top: -3em;
-  left: 0;
   max-width: calc(100% - 5px);
   pointer-events: none;
 }
@@ -654,6 +653,14 @@ html|*#gcli-output-frame,
 
 toolbarbutton[type="badged"] {
   -moz-binding: url("chrome://browser/content/urlbarBindings.xml#toolbarbutton-badged");
+}
+
+toolbarbutton[type="socialmark"] {
+  -moz-binding: url("chrome://browser/content/socialmarks.xml#toolbarbutton-marks");
+}
+toolbarbutton[type="socialmark"] > .toolbarbutton-icon {
+  width: 16px;
+  height: 16px;
 }
 
 /* Note the chatbox 'width' values are duplicated in socialchat.xml */

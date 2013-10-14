@@ -9,7 +9,7 @@ const CHILD_SCRIPT = "chrome://specialpowers/content/specialpowers.js";
 const CHILD_SCRIPT_API = "chrome://specialpowers/content/specialpowersAPI.js";
 const CHILD_LOGGER_SCRIPT = "chrome://specialpowers/content/MozillaLogger.js";
 
-let homescreen = document.getElementById('homescreen');
+let homescreen = document.getElementById('systemapp');
 let container = homescreen.contentWindow.document.getElementById('test-container');
 
 function openWindow(aEvent) {
@@ -46,6 +46,8 @@ if (outOfProcess) {
   mm.addMessageListener("SpecialPowers.Quit", specialPowersObserver);
   mm.addMessageListener("SpecialPowers.Focus", specialPowersObserver);
   mm.addMessageListener("SPPermissionManager", specialPowersObserver);
+  mm.addMessageListener("SPLoadChromeScript", specialPowersObserver);
+  mm.addMessageListener("SPChromeScriptMessage", specialPowersObserver);
 
   mm.loadFrameScript(CHILD_LOGGER_SCRIPT, true);
   mm.loadFrameScript(CHILD_SCRIPT_API, true);

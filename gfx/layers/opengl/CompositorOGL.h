@@ -6,9 +6,8 @@
 #ifndef MOZILLA_GFX_COMPOSITOROGL_H
 #define MOZILLA_GFX_COMPOSITOROGL_H
 
-#include "GLContext.h"                  // for GLContext
-#include "GLContextTypes.h"             // for GLuint, GLenum, GLint
-#include "GLDefs.h"                     // for GLintptr, GLvoid, etc
+#include "GLContextTypes.h"             // for GLContext, etc
+#include "GLDefs.h"                     // for GLuint, LOCAL_GL_TEXTURE_2D, etc
 #include "LayerManagerOGLProgram.h"     // for ShaderProgramOGL, etc
 #include "Units.h"                      // for ScreenPoint
 #include "gfxContext.h"                 // for gfxContext

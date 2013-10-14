@@ -48,6 +48,7 @@
 #include "nsThemeConstants.h"
 #include "nsSVGIntegrationUtils.h"
 #include "nsIScrollPositionListener.h"
+#include "StickyScrollContainer.h"
 #include <algorithm>
 #include <cstdlib> // for std::abs(int/long)
 #include <cmath> // for std::abs(float/double)
@@ -418,7 +419,7 @@ nsHTMLScrollFrame::ReflowScrolledFrame(ScrollReflowState* aState,
   nsHTMLReflowState kidReflowState(presContext, aState->mReflowState,
                                    mInner.mScrolledFrame,
                                    nsSize(availWidth, NS_UNCONSTRAINEDSIZE),
-                                   -1, -1, false);
+                                   -1, -1, nsHTMLReflowState::CALLER_WILL_INIT);
   kidReflowState.Init(presContext, -1, -1, nullptr,
                       &aState->mReflowState.mComputedPadding);
   kidReflowState.mFlags.mAssumingHScrollbar = aAssumeHScroll;
@@ -827,6 +828,7 @@ nsHTMLScrollFrame::Reflow(nsPresContext*           aPresContext,
       state.mContentsOverflowAreas + mInner.mScrolledFrame->GetPosition());
   }
 
+  mInner.UpdateSticky();
   FinishReflowWithAbsoluteFrames(aPresContext, aDesiredSize, aReflowState, aStatus);
 
   if (!InInitialReflow() && !mInner.mHadNonInitialReflow) {
@@ -1532,6 +1534,8 @@ nsGfxScrollFrameInner::nsGfxScrollFrameInner(nsContainerFrame* aOuter,
   if (LookAndFeel::GetInt(LookAndFeel::eIntID_UseOverlayScrollbars) != 0) {
     mScrollbarActivity = new ScrollbarActivity(do_QueryFrame(aOuter));
   }
+
+  EnsureImageVisPrefsCached();
 }
 
 nsGfxScrollFrameInner::~nsGfxScrollFrameInner()
@@ -1977,24 +1981,12 @@ nsGfxScrollFrameInner::ScrollToImpl(nsPoint aPt, const nsRect& aRange)
 
   bool needImageVisibilityUpdate = (mLastUpdateImagesPos == nsPoint(-1,-1));
 
-  static bool sImageVisPrefsCached = false;
-  // The fraction of the scrollport we allow to scroll by before we schedule
-  // an update of image visibility.
-  static int32_t sHorzScrollFraction = 2;
-  static int32_t sVertScrollFraction = 2;
-  if (!sImageVisPrefsCached) {
-    Preferences::AddIntVarCache(&sHorzScrollFraction,
-      "layout.imagevisibility.amountscrollbeforeupdatehorizontal", 2);
-    Preferences::AddIntVarCache(&sVertScrollFraction,
-      "layout.imagevisibility.amountscrollbeforeupdatevertical", 2);
-    sImageVisPrefsCached = true;
-  }
-
   nsPoint dist(std::abs(pt.x - mLastUpdateImagesPos.x),
                std::abs(pt.y - mLastUpdateImagesPos.y));
-  nscoord horzAllowance = std::max(mScrollPort.width / std::max(sHorzScrollFraction, 1),
+  nsSize scrollPortSize = GetScrollPositionClampingScrollPortSize();
+  nscoord horzAllowance = std::max(scrollPortSize.width / std::max(sHorzScrollFraction, 1),
                                    nsPresContext::AppUnitsPerCSSPixel());
-  nscoord vertAllowance = std::max(mScrollPort.height / std::max(sVertScrollFraction, 1),
+  nscoord vertAllowance = std::max(scrollPortSize.height / std::max(sVertScrollFraction, 1),
                                    nsPresContext::AppUnitsPerCSSPixel());
   if (dist.x >= horzAllowance || dist.y >= vertAllowance) {
     needImageVisibilityUpdate = true;
@@ -2148,6 +2140,60 @@ protected:
   nsIFrame* mScrolledFrame;
 };
 
+/* static */ bool nsGfxScrollFrameInner::sImageVisPrefsCached = false;
+/* static */ uint32_t nsGfxScrollFrameInner::sHorzExpandScrollPort = 0;
+/* static */ uint32_t nsGfxScrollFrameInner::sVertExpandScrollPort = 1;
+/* static */ int32_t nsGfxScrollFrameInner::sHorzScrollFraction = 2;
+/* static */ int32_t nsGfxScrollFrameInner::sVertScrollFraction = 2;
+
+/* static */ void
+nsGfxScrollFrameInner::EnsureImageVisPrefsCached()
+{
+  if (!sImageVisPrefsCached) {
+    Preferences::AddUintVarCache(&sHorzExpandScrollPort,
+      "layout.imagevisibility.numscrollportwidths", (uint32_t)0);
+    Preferences::AddUintVarCache(&sVertExpandScrollPort,
+      "layout.imagevisibility.numscrollportheights", 1);
+
+    Preferences::AddIntVarCache(&sHorzScrollFraction,
+      "layout.imagevisibility.amountscrollbeforeupdatehorizontal", 2);
+    Preferences::AddIntVarCache(&sVertScrollFraction,
+      "layout.imagevisibility.amountscrollbeforeupdatevertical", 2);
+
+    sImageVisPrefsCached = true;
+  }
+}
+
+nsRect
+nsGfxScrollFrameInner::ExpandRect(const nsRect& aRect) const
+{
+  // We don't want to expand a rect in a direction that we can't scroll, so we
+  // check the scroll range.
+  nsRect scrollRange = GetScrollRangeForClamping();
+  nsPoint scrollPos = GetScrollPosition();
+  nsMargin expand(0, 0, 0, 0);
+
+  nscoord vertShift = sVertExpandScrollPort * aRect.height;
+  if (scrollRange.y < scrollPos.y) {
+    expand.top = vertShift;
+  }
+  if (scrollPos.y < scrollRange.YMost()) {
+    expand.bottom = vertShift;
+  }
+
+  nscoord horzShift = sHorzExpandScrollPort * aRect.width;
+  if (scrollRange.x < scrollPos.x) {
+    expand.left = horzShift;
+  }
+  if (scrollPos.x < scrollRange.XMost()) {
+    expand.right = horzShift;
+  }
+
+  nsRect rect = aRect;
+  rect.Inflate(expand);
+  return rect;
+}
+
 void
 nsGfxScrollFrameInner::BuildDisplayList(nsDisplayListBuilder*   aBuilder,
                                         const nsRect&           aDirtyRect,
@@ -2224,30 +2270,11 @@ nsGfxScrollFrameInner::BuildDisplayList(nsDisplayListBuilder*   aBuilder,
   }
 
   if (aBuilder->IsForImageVisibility()) {
-    static bool sImageVisPrefsCached = false;
-    // The number of scrollports wide/high to expand when looking for images.
-    static uint32_t sHorzExpandScrollPort = 0;
-    static uint32_t sVertExpandScrollPort = 1;
-    if (!sImageVisPrefsCached) {
-      Preferences::AddUintVarCache(&sHorzExpandScrollPort,
-        "layout.imagevisibility.numscrollportwidths", (uint32_t)0);
-      Preferences::AddUintVarCache(&sVertExpandScrollPort,
-        "layout.imagevisibility.numscrollportheights", 1);
-      sImageVisPrefsCached = true;
-    }
-
     // We expand the dirty rect to catch images just outside of the scroll port.
-    // We could be smarter and not expand the dirty rect in a direction in which
-    // we are not able to scroll.
-    nsRect dirtyRectBefore = dirtyRect;
-
-    nsPoint vertShift = nsPoint(0, sVertExpandScrollPort * dirtyRectBefore.height);
-    dirtyRect = dirtyRect.Union(dirtyRectBefore - vertShift);
-    dirtyRect = dirtyRect.Union(dirtyRectBefore + vertShift);
-
-    nsPoint horzShift = nsPoint(sHorzExpandScrollPort * dirtyRectBefore.width, 0);
-    dirtyRect = dirtyRect.Union(dirtyRectBefore - horzShift);
-    dirtyRect = dirtyRect.Union(dirtyRectBefore + horzShift);
+    // We use the dirty rect instead of the whole scroll port to prevent
+    // too much expansion in the presence of very large (bigger than the
+    // viewport) scroll ports.
+    dirtyRect = ExpandRect(dirtyRect);
   }
 
   nsDisplayListCollection set;
@@ -2322,6 +2349,15 @@ nsGfxScrollFrameInner::BuildDisplayList(nsDisplayListBuilder*   aBuilder,
   // Now display overlay scrollbars and the resizer, if we have one.
   AppendScrollPartsTo(aBuilder, aDirtyRect, aLists, createLayersForScrollbars,
                       true);
+}
+
+bool
+nsGfxScrollFrameInner::IsRectNearlyVisible(const nsRect& aRect) const
+{
+  // Use the right rect depending on if a display port is set.
+  nsRect displayPort;
+  bool usingDisplayport = nsLayoutUtils::GetDisplayPort(mOuter->GetContent(), &displayPort);
+  return aRect.Intersects(ExpandRect(usingDisplayport ? displayPort : mScrollPort));
 }
 
 static void HandleScrollPref(nsIScrollable *aScrollable, int32_t aOrientation,
@@ -3544,6 +3580,8 @@ nsXULScrollFrame::Layout(nsBoxLayoutState& aState)
     mInner.mHadNonInitialReflow = true;
   }
 
+  mInner.UpdateSticky();
+
   // Set up overflow areas for block frames for the benefit of
   // text-overflow.
   nsIFrame* f = mInner.mScrolledFrame->GetContentInsertionFrame();
@@ -3711,6 +3749,17 @@ nsGfxScrollFrameInner::UpdateOverflow()
     return false;  // reflowing will update overflow
   }
   return mOuter->nsContainerFrame::UpdateOverflow();
+}
+
+void
+nsGfxScrollFrameInner::UpdateSticky()
+{
+  StickyScrollContainer* ssc = StickyScrollContainer::
+    GetStickyScrollContainerForScrollFrame(mOuter);
+  if (ssc) {
+    nsIScrollableFrame* scrollFrame = do_QueryFrame(mOuter);
+    ssc->UpdatePositions(scrollFrame->GetScrollPosition(), mOuter);
+  }
 }
 
 void

@@ -352,6 +352,10 @@ pref("browser.download.panel.shown", false);
 // enabled has been completed already.
 pref("browser.download.panel.firstSessionCompleted", false);
 
+#ifndef XP_MACOSX
+pref("browser.helperApps.deleteTempFileOnExit", true);
+#endif
+
 // search engines URL
 pref("browser.search.searchEnginesURL",      "https://addons.mozilla.org/%LOCALE%/firefox/search-engines/");
 
@@ -1066,6 +1070,10 @@ pref("devtools.toolbar.visible", false);
 pref("devtools.gcli.allowSet", false);
 pref("devtools.commands.dir", "");
 
+// Disable the app manager
+pref("devtools.appmanager.enabled", true);
+pref("devtools.appmanager.firstrun", true);
+
 // Toolbox preferences
 pref("devtools.toolbox.footer.height", 250);
 pref("devtools.toolbox.sidebar.width", 500);
@@ -1073,6 +1081,7 @@ pref("devtools.toolbox.host", "bottom");
 pref("devtools.toolbox.selectedTool", "webconsole");
 pref("devtools.toolbox.toolbarSpec", '["paintflashing toggle","tilt toggle","scratchpad","resize toggle"]');
 pref("devtools.toolbox.sideEnabled", true);
+pref("devtools.toolbox.zoomValue", "1");
 
 // Enable the Inspector
 pref("devtools.inspector.enabled", true);
@@ -1080,10 +1089,6 @@ pref("devtools.inspector.activeSidebar", "ruleview");
 pref("devtools.inspector.markupPreview", false);
 pref("devtools.inspector.remote", false);
 pref("devtools.inspector.show_pseudo_elements", true);
-
-// Enable the Layout View
-pref("devtools.layoutview.enabled", true);
-pref("devtools.layoutview.open", false);
 
 // Enable the Responsive UI tool
 pref("devtools.responsiveUI.enabled", true);
@@ -1097,6 +1102,7 @@ pref("devtools.debugger.chrome-debugging-port", 6080);
 pref("devtools.debugger.remote-host", "localhost");
 pref("devtools.debugger.remote-timeout", 20000);
 pref("devtools.debugger.pause-on-exceptions", false);
+pref("devtools.debugger.ignore-caught-exceptions", true);
 pref("devtools.debugger.source-maps-enabled", true);
 
 // The default Debugger UI settings

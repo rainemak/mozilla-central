@@ -11,7 +11,7 @@
 #include "mozilla/gfx/BaseRect.h"       // for BaseRect
 #include "mozilla/layers/Compositor.h"  // for Compositor
 #include "mozilla/layers/Effects.h"     // for TexturedEffect, Effect, etc
-#include "mozilla/layers/LayerTransaction.h"  // for ThebesBufferData
+#include "mozilla/layers/LayersMessages.h"  // for ThebesBufferData
 #include "nsAString.h"
 #include "nsPrintfCString.h"            // for nsPrintfCString
 #include "nsString.h"                   // for nsAutoCString
@@ -274,7 +274,8 @@ ContentHostSingleBuffered::EnsureDeprecatedTextureHost(TextureIdentifier aTextur
 
   *newHost = DeprecatedTextureHost::CreateDeprecatedTextureHost(aSurface.type(),
                                             aTextureInfo.mDeprecatedTextureHostFlags,
-                                            aTextureInfo.mTextureFlags);
+                                            aTextureInfo.mTextureFlags,
+                                            this);
 
   (*newHost)->SetBuffer(new SurfaceDescriptor(aSurface), aAllocator);
   Compositor* compositor = GetCompositor();
@@ -365,7 +366,8 @@ ContentHostDoubleBuffered::EnsureDeprecatedTextureHost(TextureIdentifier aTextur
 {
   RefPtr<DeprecatedTextureHost> newHost = DeprecatedTextureHost::CreateDeprecatedTextureHost(aSurface.type(),
                                                                aTextureInfo.mDeprecatedTextureHostFlags,
-                                                               aTextureInfo.mTextureFlags);
+                                                               aTextureInfo.mTextureFlags,
+                                                               this);
 
   newHost->SetBuffer(new SurfaceDescriptor(aSurface), aAllocator);
 
@@ -522,7 +524,8 @@ ContentHostIncremental::TextureCreationRequest::Execute(ContentHostIncremental* 
   RefPtr<DeprecatedTextureHost> newHost =
     DeprecatedTextureHost::CreateDeprecatedTextureHost(SurfaceDescriptor::TShmem,
                                    mTextureInfo.mDeprecatedTextureHostFlags,
-                                   mTextureInfo.mTextureFlags);
+                                   mTextureInfo.mTextureFlags,
+                                   nullptr);
   Compositor* compositor = aHost->GetCompositor();
   if (compositor) {
     newHost->SetCompositor(compositor);
@@ -532,7 +535,8 @@ ContentHostIncremental::TextureCreationRequest::Execute(ContentHostIncremental* 
     newHostOnWhite =
       DeprecatedTextureHost::CreateDeprecatedTextureHost(SurfaceDescriptor::TShmem,
                                      mTextureInfo.mDeprecatedTextureHostFlags,
-                                     mTextureInfo.mTextureFlags);
+                                     mTextureInfo.mTextureFlags,
+                                     nullptr);
     Compositor* compositor = aHost->GetCompositor();
     if (compositor) {
       newHostOnWhite->SetCompositor(compositor);

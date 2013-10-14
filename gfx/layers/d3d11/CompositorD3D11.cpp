@@ -60,8 +60,10 @@ struct DeviceAttachmentsD3D11
 };
 
 CompositorD3D11::CompositorD3D11(nsIWidget* aWidget)
-  : mWidget(aWidget)
-  , mAttachments(nullptr)
+  : mAttachments(nullptr)
+  , mWidget(aWidget)
+  , mHwnd(nullptr)
+  , mDisableSequenceForNextFrame(false)
 {
   sBackend = LAYERS_D3D11;
 }
@@ -107,6 +109,8 @@ CompositorD3D11::Initialize()
   if (!mContext) {
     return false;
   }
+
+  mHwnd = (HWND)mWidget->GetNativeData(NS_NATIVE_WINDOW);
 
   memset(&mVSConstants, 0, sizeof(VertexShaderConstants));
 
@@ -267,7 +271,7 @@ CompositorD3D11::Initialize()
     swapDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     // Use double buffering to enable flip
     swapDesc.BufferCount = 2;
-    swapDesc.Scaling = DXGI_SCALING_STRETCH;
+    swapDesc.Scaling = DXGI_SCALING_NONE;
     // All Metro style apps must use this SwapEffect
     swapDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
     swapDesc.Flags = 0;
@@ -302,7 +306,7 @@ CompositorD3D11::Initialize()
     swapDesc.SampleDesc.Quality = 0;
     swapDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swapDesc.BufferCount = 1;
-    swapDesc.OutputWindow = (HWND)mWidget->GetNativeData(NS_NATIVE_WINDOW);
+    swapDesc.OutputWindow = mHwnd;
     swapDesc.Windowed = TRUE;
     // We don't really need this flag, however it seems on some NVidia hardware
     // smaller area windows do not present properly without this flag. This flag
@@ -624,6 +628,15 @@ CompositorD3D11::BeginFrame(const Rect* aClipRectIn,
                             Rect* aClipRectOut,
                             Rect* aRenderBoundsOut)
 {
+  // Don't composite if we are minimised. Other than for the sake of efficency,
+  // this is important because resizing our buffers when mimised will fail and
+  // cause a crash when we're restored.
+  NS_ASSERTION(mHwnd, "Couldn't find an HWND when initialising?");
+  if (::IsIconic(mHwnd)) {
+    *aRenderBoundsOut = Rect();
+    return;
+  }
+
   UpdateRenderTarget();
 
   // Failed to create a render target.
@@ -677,13 +690,13 @@ CompositorD3D11::EndFrame()
   nsIntSize oldSize = mSize;
   EnsureSize();
   if (oldSize == mSize) {
-    mSwapChain->Present(0, 0);
-
+    mSwapChain->Present(0, mDisableSequenceForNextFrame ? DXGI_PRESENT_DO_NOT_SEQUENCE : 0);
+    mDisableSequenceForNextFrame = false;
     if (mTarget) {
       PaintToTarget();
     }
   }
-
+  
   mCurrentRT = nullptr;
 }
 
@@ -746,6 +759,7 @@ CompositorD3D11::VerifyBufferSize()
     mSwapChain->ResizeBuffers(2, mSize.width, mSize.height,
                               DXGI_FORMAT_B8G8R8A8_UNORM,
                               0);
+    mDisableSequenceForNextFrame = true;
 #endif
   } else {
     mSwapChain->ResizeBuffers(1, mSize.width, mSize.height,

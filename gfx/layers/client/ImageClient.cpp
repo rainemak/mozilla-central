@@ -97,6 +97,28 @@ TextureInfo ImageClientSingle::GetTextureInfo() const
   return TextureInfo(COMPOSITABLE_IMAGE);
 }
 
+void
+ImageClientSingle::FlushImage()
+{
+  if (mFrontBuffer) {
+    RemoveTextureClient(mFrontBuffer);
+    mFrontBuffer = nullptr;
+  }
+}
+
+void
+ImageClientBuffered::FlushImage()
+{
+  if (mFrontBuffer) {
+    RemoveTextureClient(mFrontBuffer);
+    mFrontBuffer = nullptr;
+  }
+  if (mBackBuffer) {
+    RemoveTextureClient(mBackBuffer);
+    mBackBuffer = nullptr;
+  }
+}
+
 bool
 ImageClientSingle::UpdateImage(ImageContainer* aContainer,
                                uint32_t aContentFlags)
@@ -115,6 +137,12 @@ ImageClientSingle::UpdateImage(ImageContainer* aContainer,
   if (image->AsSharedImage() && image->AsSharedImage()->GetTextureClient()) {
     // fast path: no need to allocate and/or copy image data
     RefPtr<TextureClient> texture = image->AsSharedImage()->GetTextureClient();
+
+    if (texture->IsSharedWithCompositor()) {
+      // XXX - temporary fix for bug 911941
+      // This will be changed with bug 912907
+      return false;
+    }
 
     if (mFrontBuffer) {
       RemoveTextureClient(mFrontBuffer);

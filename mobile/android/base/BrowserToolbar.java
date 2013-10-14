@@ -101,6 +101,14 @@ public class BrowserToolbar extends GeckoRelativeLayout
         public void onFilter(String searchText, AutocompleteHandler handler);
     }
 
+    public interface OnStartEditingListener {
+        public void onStartEditing();
+    }
+
+    public interface OnStopEditingListener {
+        public void onStopEditing();
+    }
+
     private LayoutParams mAwesomeBarParams;
     private View mUrlDisplayContainer;
     private View mUrlEditContainer;
@@ -128,10 +136,13 @@ public class BrowserToolbar extends GeckoRelativeLayout
     private LinearLayout mActionItemBar;
     private MenuPopup mMenuPopup;
     private List<? extends View> mFocusOrder;
+
     private OnActivateListener mActivateListener;
     private OnCommitListener mCommitListener;
     private OnDismissListener mDismissListener;
     private OnFilterListener mFilterListener;
+    private OnStartEditingListener mStartEditingListener;
+    private OnStopEditingListener mStopEditingListener;
 
     final private BrowserApp mActivity;
     private boolean mHasSoftMenuButton;
@@ -246,10 +257,10 @@ public class BrowserToolbar extends GeckoRelativeLayout
         mUrlEditContainer = findViewById(R.id.url_edit_container);
         mUrlEditText = (CustomEditText) findViewById(R.id.url_edit_text);
 
-        // This will clip the right edge's image at half of its width
+        // This will clip the right edge's image at 60% of its width
         mUrlBarRightEdge = (ImageView) findViewById(R.id.url_bar_right_edge);
         if (mUrlBarRightEdge != null) {
-            mUrlBarRightEdge.getDrawable().setLevel(5000);
+            mUrlBarRightEdge.getDrawable().setLevel(6000);
         }
 
         mTitle = (GeckoTextView) findViewById(R.id.url_bar_title);
@@ -861,11 +872,11 @@ public class BrowserToolbar extends GeckoRelativeLayout
             return;
         }
 
-        // If toolbar is in edit mode, this means the entry is expanded and the
-        // tabs button is translated offscreen. Don't trigger tabs counter
+        // If toolbar is in edit mode on a phone, this means the entry is expanded
+        // and the tabs button is translated offscreen. Don't trigger tabs counter
         // updates until the tabs button is back on screen.
         // See stopEditing()
-        if (!isEditing()) {
+        if (!isEditing() || HardwareUtils.isTablet()) {
             mTabsCounter.setCount(count);
 
             mTabs.setContentDescription((count > 1) ?
@@ -875,11 +886,11 @@ public class BrowserToolbar extends GeckoRelativeLayout
     }
 
     public void updateTabCount(int count) {
-        // If toolbar is in edit mode, this means the entry is expanded and the
-        // tabs button is translated offscreen. Don't trigger tabs counter
+        // If toolbar is in edit mode on a phone, this means the entry is expanded
+        // and the tabs button is translated offscreen. Don't trigger tabs counter
         // updates until the tabs button is back on screen.
         // See stopEditing()
-        if (isEditing()) {
+        if (isEditing() && !HardwareUtils.isTablet()) {
             return;
         }
 
@@ -1181,6 +1192,14 @@ public class BrowserToolbar extends GeckoRelativeLayout
         mFilterListener = listener;
     }
 
+    public void setOnStartEditingListener(OnStartEditingListener listener) {
+        mStartEditingListener = listener;
+    }
+
+    public void setOnStopEditingListener(OnStopEditingListener listener) {
+        mStopEditingListener = listener;
+    }
+
     private void showSoftInput() {
         InputMethodManager imm =
                (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -1267,6 +1286,10 @@ public class BrowserToolbar extends GeckoRelativeLayout
 
         mUrlEditText.setText(url != null ? url : "");
         mIsEditing = true;
+
+        if (mStartEditingListener != null) {
+            mStartEditingListener.onStartEditing();
+        }
 
         final int entryTranslation = getUrlBarEntryTranslation();
         final int curveTranslation = getUrlBarCurveTranslation();
@@ -1376,11 +1399,16 @@ public class BrowserToolbar extends GeckoRelativeLayout
         }
         mIsEditing = false;
 
+        if (mStopEditingListener != null) {
+            mStopEditingListener.onStopEditing();
+        }
+
         if (HardwareUtils.isTablet() || Build.VERSION.SDK_INT < 11) {
             hideUrlEditContainer();
-            updateTabCountAndAnimate(Tabs.getInstance().getDisplayCount());
 
             if (!HardwareUtils.isTablet()) {
+                updateTabCountAndAnimate(Tabs.getInstance().getDisplayCount());
+
                 if (mUrlBarRightEdge != null) {
                     ViewHelper.setTranslationX(mUrlBarRightEdge, 0);
                 }

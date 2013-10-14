@@ -49,6 +49,7 @@ pref("layers.acceleration.draw-fps", false);
 pref("layers.offmainthreadcomposition.animate-opacity", true);
 pref("layers.offmainthreadcomposition.animate-transform", true);
 pref("layers.use-deprecated-textures", false);
+pref("layers.force-tiles", true);
 pref("font.size.inflation.disabledInMasterProcess", true);
 pref("gfx.azpc.pan_repaint_interval", 5050);
 pref("gfx.azpc.fling_repaint_interval", 75);

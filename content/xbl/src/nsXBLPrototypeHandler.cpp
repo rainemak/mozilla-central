@@ -356,7 +356,7 @@ nsXBLPrototypeHandler::EnsureEventHandler(nsIScriptGlobalObject* aGlobal,
   if (pWindow) {
     JS::Rooted<JSObject*> cachedHandler(cx, pWindow->GetCachedXBLPrototypeHandler(this));
     if (cachedHandler) {
-      xpc_UnmarkGrayObject(cachedHandler);
+      JS::ExposeObjectToActiveJS(cachedHandler);
       aHandler.set(cachedHandler);
       NS_ENSURE_TRUE(aHandler, NS_ERROR_FAILURE);
       return NS_OK;
@@ -550,7 +550,7 @@ nsXBLPrototypeHandler::DispatchXULKeyCommand(nsIDOMEvent* aEvent)
     return NS_ERROR_FAILURE;
   }
 
-  // XXX We should use widget::Modifiers for supporting all modifiers.
+  // XXX We should use mozilla::Modifiers for supporting all modifiers.
 
   bool isAlt = false;
   bool isControl = false;

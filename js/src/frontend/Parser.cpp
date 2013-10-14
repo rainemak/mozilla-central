@@ -33,17 +33,12 @@
 #include "frontend/ParseMaps.h"
 #include "frontend/TokenStream.h"
 #include "jit/AsmJS.h"
-#include "vm/RegExpStatics.h"
 #include "vm/Shape.h"
 
 #include "jsatominlines.h"
-#include "jsfuninlines.h"
-#include "jsobjinlines.h"
 #include "jsscriptinlines.h"
 
-#include "frontend/ParseMaps-inl.h"
 #include "frontend/ParseNode-inl.h"
-#include "vm/ScopeObject-inl.h"
 
 using namespace js;
 using namespace js::gc;
@@ -2254,7 +2249,6 @@ Parser<FullParseHandler>::standaloneLazyFunction(HandleFunction fun, unsigned st
         return null();
     }
 
-
     if (fun->isNamedLambda()) {
         if (AtomDefnPtr p = pc->lexdeps->lookup(fun->name())) {
             Definition *dn = p.value().get<FullParseHandler>();
@@ -2266,6 +2260,9 @@ Parser<FullParseHandler>::standaloneLazyFunction(HandleFunction fun, unsigned st
     InternalHandle<Bindings*> bindings =
         InternalHandle<Bindings*>::fromMarkedLocation(&funbox->bindings);
     if (!pc->generateFunctionBindings(context, alloc, bindings))
+        return null();
+
+    if (!FoldConstants(context, &pn, this))
         return null();
 
     return pn;
@@ -6517,6 +6514,14 @@ Parser<ParseHandler>::arrayInitializer()
     return literal;
 }
 
+static JSAtom*
+DoubleToAtom(ExclusiveContext *cx, double value)
+{
+    // This is safe because doubles can not be moved.
+    Value tmp = DoubleValue(value);
+    return ToAtom<CanGC>(cx, HandleValue::fromMarkedLocation(&tmp));
+}
+
 template <typename ParseHandler>
 typename ParseHandler::Node
 Parser<ParseHandler>::objectLiteral()
@@ -6540,7 +6545,6 @@ Parser<ParseHandler>::objectLiteral()
         return null();
 
     RootedAtom atom(context);
-    Value tmp;
     for (;;) {
         TokenKind ltok = tokenStream.getToken(TokenStream::KeywordIsName);
         if (ltok == TOK_RC)
@@ -6550,8 +6554,7 @@ Parser<ParseHandler>::objectLiteral()
         Node propname;
         switch (ltok) {
           case TOK_NUMBER:
-            tmp = DoubleValue(tokenStream.currentToken().number());
-            atom = ToAtom<CanGC>(context, HandleValue::fromMarkedLocation(&tmp));
+            atom = DoubleToAtom(context, tokenStream.currentToken().number());
             if (!atom)
                 return null();
             propname = newNumber(tokenStream.currentToken());
@@ -6586,8 +6589,7 @@ Parser<ParseHandler>::objectLiteral()
                     propname = handler.newNumber(index, NoDecimal, pos());
                     if (!propname)
                         return null();
-                    tmp = DoubleValue(index);
-                    atom = ToAtom<CanGC>(context, HandleValue::fromMarkedLocation(&tmp));
+                    atom = DoubleToAtom(context, index);
                     if (!atom)
                         return null();
                 } else {
@@ -6596,9 +6598,7 @@ Parser<ParseHandler>::objectLiteral()
                         return null();
                 }
             } else if (tt == TOK_NUMBER) {
-                double number = tokenStream.currentToken().number();
-                tmp = DoubleValue(number);
-                atom = ToAtom<CanGC>(context, HandleValue::fromMarkedLocation(&tmp));
+                atom = DoubleToAtom(context, tokenStream.currentToken().number());
                 if (!atom)
                     return null();
                 propname = newNumber(tokenStream.currentToken());

@@ -53,9 +53,6 @@
 #include "jscompartmentinlines.h"
 #include "jsgcinlines.h"
 #include "jsinferinlines.h"
-#include "jsscriptinlines.h"
-
-#include "vm/Shape-inl.h"
 
 using namespace js;
 using namespace js::jit;
@@ -217,7 +214,7 @@ IonRuntime::initialize(JSContext *cx)
     AutoCompartment ac(cx, cx->atomsCompartment());
 
     IonContext ictx(cx, NULL);
-    AutoFlushCache afc("IonRuntime::initialize");
+    AutoFlushCache afc("IonRuntime::initialize", this);
 
     execAlloc_ = cx->runtime()->getExecAlloc(cx);
     if (!execAlloc_)
@@ -230,15 +227,19 @@ IonRuntime::initialize(JSContext *cx)
     if (!functionWrappers_ || !functionWrappers_->init())
         return false;
 
+    IonSpew(IonSpew_Codegen, "# Emitting exception tail stub");
     exceptionTail_ = generateExceptionTailStub(cx);
     if (!exceptionTail_)
         return false;
 
+    IonSpew(IonSpew_Codegen, "# Emitting bailout tail stub");
     bailoutTail_ = generateBailoutTailStub(cx);
     if (!bailoutTail_)
         return false;
 
     if (cx->runtime()->jitSupportsFloatingPoint) {
+        IonSpew(IonSpew_Codegen, "# Emitting bailout tables");
+
         // Initialize some Ion-only stubs that require floating-point support.
         if (!bailoutTables_.reserve(FrameSizeClass::ClassLimit().classId()))
             return false;
@@ -253,41 +254,50 @@ IonRuntime::initialize(JSContext *cx)
                 return false;
         }
 
+        IonSpew(IonSpew_Codegen, "# Emitting bailout handler");
         bailoutHandler_ = generateBailoutHandler(cx);
         if (!bailoutHandler_)
             return false;
 
+        IonSpew(IonSpew_Codegen, "# Emitting invalidator");
         invalidator_ = generateInvalidator(cx);
         if (!invalidator_)
             return false;
     }
 
+    IonSpew(IonSpew_Codegen, "# Emitting sequential arguments rectifier");
     argumentsRectifier_ = generateArgumentsRectifier(cx, SequentialExecution, &argumentsRectifierReturnAddr_);
     if (!argumentsRectifier_)
         return false;
 
 #ifdef JS_THREADSAFE
+    IonSpew(IonSpew_Codegen, "# Emitting parallel arguments rectifier");
     parallelArgumentsRectifier_ = generateArgumentsRectifier(cx, ParallelExecution, NULL);
     if (!parallelArgumentsRectifier_)
         return false;
 #endif
 
+    IonSpew(IonSpew_Codegen, "# Emitting EnterJIT sequence");
     enterJIT_ = generateEnterJIT(cx, EnterJitOptimized);
     if (!enterJIT_)
         return false;
 
+    IonSpew(IonSpew_Codegen, "# Emitting EnterBaselineJIT sequence");
     enterBaselineJIT_ = generateEnterJIT(cx, EnterJitBaseline);
     if (!enterBaselineJIT_)
         return false;
 
+    IonSpew(IonSpew_Codegen, "# Emitting Pre Barrier for Value");
     valuePreBarrier_ = generatePreBarrier(cx, MIRType_Value);
     if (!valuePreBarrier_)
         return false;
 
+    IonSpew(IonSpew_Codegen, "# Emitting Pre Barrier for Shape");
     shapePreBarrier_ = generatePreBarrier(cx, MIRType_Shape);
     if (!shapePreBarrier_)
         return false;
 
+    IonSpew(IonSpew_Codegen, "# Emitting VM function wrappers");
     for (VMFunction *fun = VMFunction::functions; fun; fun = fun->next) {
         if (!generateVMWrapper(cx, *fun))
             return false;
@@ -1149,10 +1159,10 @@ void
 jit::ToggleBarriers(JS::Zone *zone, bool needs)
 {
     JSRuntime *rt = zone->runtimeFromMainThread();
-    IonContext ictx(rt);
     if (!rt->hasIonRuntime())
         return;
 
+    IonContext ictx(rt);
     AutoFlushCache afc("ToggleBarriers", rt->ionRuntime());
     for (gc::CellIterUnderGC i(zone, gc::FINALIZE_SCRIPT); !i.done(); i.next()) {
         JSScript *script = i.get<JSScript>();
@@ -1306,8 +1316,8 @@ OptimizeMIR(MIRGenerator *mir)
     }
 
     if (js_IonOptions.rangeAnalysis) {
-        RangeAnalysis r(graph);
-        if (!r.addBetaNobes())
+        RangeAnalysis r(mir, graph);
+        if (!r.addBetaNodes())
             return false;
         IonSpewPass("Beta");
         AssertExtendedGraphCoherency(graph);
@@ -1323,7 +1333,7 @@ OptimizeMIR(MIRGenerator *mir)
         if (mir->shouldCancel("Range Analysis"))
             return false;
 
-        if (!r.removeBetaNobes())
+        if (!r.removeBetaNodes())
             return false;
         IonSpewPass("De-Beta");
         AssertExtendedGraphCoherency(graph);
@@ -1544,7 +1554,7 @@ AttachFinishedCompilations(JSContext *cx)
                 // Release the worker thread lock and root the compiler for GC.
                 AutoTempAllocatorRooter root(cx, &builder->temp());
                 AutoUnlockWorkerThreadState unlock(cx->runtime());
-                AutoFlushCache afc("AttachFinishedCompilations");
+                AutoFlushCache afc("AttachFinishedCompilations", cx->runtime()->ionRuntime());
                 success = codegen->link();
             }
 
@@ -1599,12 +1609,6 @@ IonCompile(JSContext *cx, JSScript *script,
     if (!script->ensureRanAnalysis(cx))
         return AbortReason_Alloc;
 
-    // Try-finally is not yet supported.
-    if (script->analysis()->hasTryFinally()) {
-        IonSpew(IonSpew_Abort, "Has try-finally.");
-        return AbortReason_Disable;
-    }
-
     LifoAlloc *alloc = cx->new_<LifoAlloc>(BUILDER_LIFO_ALLOC_PRIMARY_CHUNK_SIZE);
     if (!alloc)
         return AbortReason_Alloc;
@@ -1633,7 +1637,7 @@ IonCompile(JSContext *cx, JSScript *script,
 
     BaselineInspector inspector(cx, script);
 
-    AutoFlushCache afc("IonCompile");
+    AutoFlushCache afc("IonCompile", cx->runtime()->ionRuntime());
 
     types::AutoEnterCompilation enterCompiler(cx, CompilerOutputKind(executionMode));
     if (!enterCompiler.init(script))
@@ -1652,6 +1656,11 @@ IonCompile(JSContext *cx, JSScript *script,
     IonSpewNewFunction(graph, builderScript);
 
     if (!builder->build()) {
+        if (cx->isExceptionPending()) {
+            IonSpew(IonSpew_Abort, "Builder raised exception.");
+            return AbortReason_Error;
+        }
+
         IonSpew(IonSpew_Abort, "Builder failed to build.");
         return builder->abortReason();
     }
@@ -1832,6 +1841,9 @@ Compile(JSContext *cx, HandleScript script, BaselineFrame *osrFrame, jsbytecode 
     }
 
     AbortReason reason = IonCompile(cx, script, osrFrame, osrPc, constructing, executionMode);
+    if (reason == AbortReason_Error)
+        return Method_Error;
+
     if (reason == AbortReason_Disable)
         return Method_CantCompile;
 
@@ -2081,7 +2093,7 @@ EnterIon(JSContext *cx, EnterJitData &data)
         IonContext ictx(cx, NULL);
         JitActivation activation(cx, data.constructing);
         JSAutoResolveFlags rf(cx, RESOLVE_INFER);
-        AutoFlushInhibitor afi(cx->compartment()->ionCompartment());
+        AutoFlushInhibitor afi(cx->runtime()->ionRuntime());
 
         // Single transition point from Interpreter to Baseline.
         enter(data.jitcode, data.maxArgc, data.maxArgv, /* osrFrame = */NULL, data.calleeToken,
@@ -2362,7 +2374,7 @@ jit::Invalidate(types::TypeCompartment &types, FreeOp *fop,
                 const Vector<types::RecompileInfo> &invalid, bool resetUses)
 {
     IonSpew(IonSpew_Invalidate, "Start invalidation.");
-    AutoFlushCache afc ("Invalidate");
+    AutoFlushCache afc ("Invalidate", fop->runtime()->ionRuntime());
 
     // Add an invalidation reference to all invalidated IonScripts to indicate
     // to the traversal which frames have been invalidated.
@@ -2588,8 +2600,8 @@ jit::UsesBeforeIonRecompile(JSScript *script, jsbytecode *pc)
 void
 AutoFlushCache::updateTop(uintptr_t p, size_t len)
 {
-    IonContext *ictx = GetIonContext();
-    IonRuntime *irt = ictx->runtime->ionRuntime();
+    IonContext *ictx = MaybeGetIonContext();
+    IonRuntime *irt = (ictx != NULL) ? ictx->runtime->ionRuntime() : NULL;
     if (!irt || !irt->flusher())
         JSC::ExecutableAllocator::cacheFlush((void*)p, len);
     else
@@ -2600,34 +2612,27 @@ AutoFlushCache::AutoFlushCache(const char *nonce, IonRuntime *rt)
   : start_(0),
     stop_(0),
     name_(nonce),
+    runtime_(rt),
     used_(false)
 {
-    if (CurrentIonContext() != NULL)
-        rt = GetIonContext()->runtime->ionRuntime();
+    if (rt->flusher())
+        IonSpew(IonSpew_CacheFlush, "<%s ", nonce);
+    else
+        IonSpewCont(IonSpew_CacheFlush, "<%s ", nonce);
 
-    // If a compartment isn't available, then be a nop, nobody will ever see this flusher
-    if (rt) {
-        if (rt->flusher())
-            IonSpew(IonSpew_CacheFlush, "<%s ", nonce);
-        else
-            IonSpewCont(IonSpew_CacheFlush, "<%s ", nonce);
-        rt->setFlusher(this);
-    } else {
-        IonSpew(IonSpew_CacheFlush, "<%s DEAD>\n", nonce);
-    }
-    runtime_ = rt;
+    rt->setFlusher(this);
 }
 
-AutoFlushInhibitor::AutoFlushInhibitor(IonCompartment *ic)
-  : ic_(ic),
+AutoFlushInhibitor::AutoFlushInhibitor(IonRuntime *rt)
+  : runtime_(rt),
     afc(NULL)
 {
-    if (!ic)
-        return;
-    afc = ic->flusher();
-    // Ensure that called functions get a fresh flusher
-    ic->setFlusher(NULL);
-    // Ensure the current flusher has been flushed
+    afc = rt->flusher();
+
+    // Ensure that called functions get a fresh flusher.
+    rt->setFlusher(NULL);
+
+    // Ensure the current flusher has been flushed.
     if (afc) {
         afc->flushAnyway();
         IonSpewCont(IonSpew_CacheFlush, "}");
@@ -2635,11 +2640,11 @@ AutoFlushInhibitor::AutoFlushInhibitor(IonCompartment *ic)
 }
 AutoFlushInhibitor::~AutoFlushInhibitor()
 {
-    if (!ic_)
-        return;
-    JS_ASSERT(ic_->flusher() == NULL);
-    // Ensure any future modifications are recorded
-    ic_->setFlusher(afc);
+    JS_ASSERT(runtime_->flusher() == NULL);
+
+    // Ensure any future modifications are recorded.
+    runtime_->setFlusher(afc);
+
     if (afc)
         IonSpewCont(IonSpew_CacheFlush, "{");
 }

@@ -26,7 +26,7 @@
 #include "mozilla/layers/Compositor.h"  // for Compositor
 #include "mozilla/layers/CompositorTypes.h"
 #include "mozilla/layers/LayerManagerComposite.h"  // for LayerComposite
-#include "mozilla/layers/LayerTransaction.h"  // for TransformFunction, etc
+#include "mozilla/layers/LayersMessages.h"  // for TransformFunction, etc
 #include "nsAString.h"
 #include "nsCSSValue.h"                 // for nsCSSValue::Array, etc
 #include "nsPrintfCString.h"            // for nsPrintfCString
@@ -186,6 +186,7 @@ Layer::Layer(LayerManager* aManager, void* aImplData) :
   mUseTileSourceRect(false),
   mIsFixedPosition(false),
   mMargins(0, 0, 0, 0),
+  mStickyPositionData(nullptr),
   mDebugColorIndex(0),
   mAnimationGeneration(0)
 {}
@@ -1173,9 +1174,13 @@ Layer::Dump(FILE* aFile, const char* aPrefix, bool aDumpHtml)
     fprintf(aFile, ">");
   }
   DumpSelf(aFile, aPrefix);
+
+#ifdef MOZ_DUMP_PAINTING
   if (AsLayerComposite() && AsLayerComposite()->GetCompositableHost()) {
     AsLayerComposite()->GetCompositableHost()->Dump(aFile, aPrefix, aDumpHtml);
   }
+#endif
+
   if (aDumpHtml) {
     fprintf(aFile, "</a>");
   }
@@ -1275,6 +1280,14 @@ Layer::PrintInfo(nsACString& aTo, const char* aPrefix)
   }
   if (GetIsFixedPosition()) {
     aTo.AppendPrintf(" [isFixedPosition anchor=%f,%f]", mAnchor.x, mAnchor.y);
+  }
+  if (GetIsStickyPosition()) {
+    aTo.AppendPrintf(" [isStickyPosition scrollId=%d outer=%f,%f %fx%f "
+                     "inner=%f,%f %fx%f]", mStickyPositionData->mScrollId,
+                     mStickyPositionData->mOuter.x, mStickyPositionData->mOuter.y,
+                     mStickyPositionData->mOuter.width, mStickyPositionData->mOuter.height,
+                     mStickyPositionData->mInner.x, mStickyPositionData->mInner.y,
+                     mStickyPositionData->mInner.width, mStickyPositionData->mInner.height);
   }
 
   return aTo;

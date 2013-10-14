@@ -69,6 +69,28 @@ public:
                                 StereoMode aStereoMode) = 0;
 };
 
+/**
+ * Holds the shared data of a TextureClient, to be destroyed later.
+ *
+ * TextureClient's destructor initiates the destruction sequence of the
+ * texture client/host pair. If the shared data is to be deallocated on the
+ * host side, there is nothing to do.
+ * On the other hand, if the client data must be deallocated on the client
+ * side, the CompositableClient will ask the TextureClient to drop its shared
+ * data in the form of a TextureClientData object. The compositable will keep
+ * this object until it has received from the host side the confirmation that
+ * the compositor is not using the texture and that it is completely safe to
+ * deallocate the shared data.
+ *
+ * See:
+ *  - CompositableClient::RemoveTextureClient
+ *  - CompositableClient::OnReplyTextureRemoved
+ */
+class TextureClientData {
+public:
+  virtual void DeallocateSharedData(ISurfaceAllocator* allocator) = 0;
+  virtual ~TextureClientData() {}
+};
 
 /**
  * TextureClient is a thin abstraction over texture data that need to be shared
@@ -106,7 +128,7 @@ public:
 
   virtual bool Lock(OpenMode aMode)
   {
-    return true;
+    return IsValid();
   }
 
   virtual void Unlock() {}
@@ -144,6 +166,8 @@ public:
 
   virtual gfx::IntSize GetSize() const = 0;
 
+  virtual TextureClientData* DropTextureData() = 0;
+
   TextureFlags GetFlags() const { return mFlags; }
 
   /**
@@ -158,6 +182,15 @@ public:
   bool IsSharedWithCompositor() const { return mShared; }
 
   bool ShouldDeallocateInDestructor() const;
+
+  /**
+   * If this method returns false users of TextureClient are not allowed
+   * to access the shared data.
+   */
+  bool IsValid() const { return mValid; }
+
+  void MarkInvalid() { mValid = false; }
+
 protected:
   void AddFlags(TextureFlags  aFlags)
   {
@@ -175,6 +208,7 @@ protected:
   uint64_t mID;
   TextureFlags mFlags;
   bool mShared;
+  bool mValid;
 };
 
 /**
@@ -258,6 +292,8 @@ public:
 
   virtual bool IsAllocated() const MOZ_OVERRIDE { return mAllocated; }
 
+  virtual TextureClientData* DropTextureData() MOZ_OVERRIDE;
+
   ISurfaceAllocator* GetAllocator() const;
 
   ipc::Shmem& GetShmem() { return mShmem; }
@@ -290,6 +326,8 @@ public:
   virtual size_t GetBufferSize() const MOZ_OVERRIDE { return mBufSize; }
 
   virtual bool IsAllocated() const MOZ_OVERRIDE { return mBuffer != nullptr; }
+
+  virtual TextureClientData* DropTextureData() MOZ_OVERRIDE;
 
 protected:
   uint8_t* mBuffer;

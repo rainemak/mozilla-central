@@ -9,19 +9,18 @@
 
 #include "nscore.h"
 #include "nsDebug.h"
+#include "nsEvent.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/TimeStamp.h"
 #include <windows.h>
 
 class nsWindowBase;
-class nsGUIEvent;
 struct nsIntPoint;
 
 namespace mozilla {
 namespace widget {
 
 class ModifierKeyState;
-class WheelEvent;
 
 struct MSGResult;
 
@@ -32,6 +31,7 @@ public:
   static void Initialize();
   static void Shutdown();
 
+  static bool NeedsMessage(UINT aMsg);
   static bool ProcessMessage(nsWindowBase* aWidget,
                              UINT msg,
                              WPARAM wParam,

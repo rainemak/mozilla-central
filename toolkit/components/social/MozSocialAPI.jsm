@@ -230,10 +230,10 @@ function attachToWindow(provider, targetWindow) {
                 .QueryInterface(Ci.nsIDocShell)
                 .chromeEventHandler;
     while (elt) {
-      if (elt.nodeName == "panel") {
+      if (elt.localName == "panel") {
         elt.hidePopup();
         break;
-      } else if (elt.nodeName == "chatbox") {
+      } else if (elt.localName == "chatbox") {
         elt.close();
         break;
       }
@@ -302,7 +302,7 @@ function findChromeWindowForChats(preferredWindow) {
   }
   while (enumerator.hasMoreElements()) {
     let win = enumerator.getNext();
-    if (win && isWindowGoodForChats(win))
+    if (!win.closed && isWindowGoodForChats(win))
       topMost = win;
   }
   return topMost;

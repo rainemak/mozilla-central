@@ -29,6 +29,11 @@ const backgroundPageThumbsContent = {
     docShell.allowMedia = false;
     docShell.allowPlugins = false;
     docShell.allowContentRetargeting = false;
+    let defaultFlags = Ci.nsIRequest.LOAD_ANONYMOUS |
+                       Ci.nsIRequest.LOAD_BYPASS_CACHE |
+                       Ci.nsIRequest.INHIBIT_CACHING |
+                       Ci.nsIWebNavigation.LOAD_FLAGS_BYPASS_HISTORY;
+    docShell.defaultLoadFlags = defaultFlags;
 
     addMessageListener("BackgroundPageThumbs:capture",
                        this._onCapture.bind(this));
@@ -67,8 +72,6 @@ const backgroundPageThumbsContent = {
     PageThumbs._captureToCanvas(content, canvas);
     let captureTime = new Date() - captureDate;
 
-    let channel = docShell.currentDocumentChannel;
-    let isErrorResponse = PageThumbs._isChannelErrorResponse(channel);
     let finalURL = this._webNav.currentURI.spec;
     let fileReader = Cc["@mozilla.org/files/filereader;1"].
                      createInstance(Ci.nsIDOMFileReader);
@@ -77,7 +80,6 @@ const backgroundPageThumbsContent = {
         id: requestID,
         imageData: fileReader.result,
         finalURL: finalURL,
-        wasErrorResponse: isErrorResponse,
         telemetry: {
           CAPTURE_PAGE_LOAD_TIME_MS: pageLoadTime,
           CAPTURE_CANVAS_DRAW_TIME_MS: captureTime,

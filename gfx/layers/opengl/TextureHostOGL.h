@@ -8,6 +8,7 @@
 
 #include <stddef.h>                     // for size_t
 #include <stdint.h>                     // for uint64_t
+#include "CompositableHost.h"
 #include "GLContextTypes.h"             // for GLContext
 #include "GLDefs.h"                     // for GLenum, LOCAL_GL_CLAMP_TO_EDGE, etc
 #include "GLTextureImage.h"             // for TextureImage
@@ -28,8 +29,6 @@
 #include "nsCOMPtr.h"                   // for already_AddRefed
 #include "nsDebug.h"                    // for NS_WARNING
 #include "nsISupportsImpl.h"            // for TextureImage::Release, etc
-#include "nsRect.h"                     // for nsIntRect
-#include "nsSize.h"                     // for nsIntSize
 #include "nsTraceRefcnt.h"              // for MOZ_COUNT_CTOR, etc
 #include "LayerManagerOGLProgram.h"     // for ShaderProgramType, etc
 #ifdef MOZ_WIDGET_GONK
@@ -40,6 +39,8 @@ class gfxImageSurface;
 class gfxReusableSurfaceWrapper;
 class nsIntRegion;
 struct nsIntPoint;
+struct nsIntRect;
+struct nsIntSize;
 
 namespace mozilla {
 namespace gfx {
@@ -52,6 +53,29 @@ namespace layers {
 class Compositor;
 class CompositorOGL;
 class TextureImageDeprecatedTextureHostOGL;
+
+/**
+ * CompositableQuirks implementation for the Gonk OpenGL backend.
+ * Share a same texture between TextureHosts in the same CompositableHost.
+ * By shareing the texture among the TextureHosts, number of texture allocations
+ * can be reduced than texture allocation in every TextureHosts.
+ * From Bug 912134, use only one texture among all TextureHosts degrade
+ * the rendering performance.
+ * CompositableQuirksGonkOGL chooses in a middile of them.
+ */
+class CompositableQuirksGonkOGL : public CompositableQuirks
+{
+public:
+  CompositableQuirksGonkOGL();
+  virtual ~CompositableQuirksGonkOGL();
+
+  virtual void SetCompositor(Compositor* aCompositor) MOZ_OVERRIDE;
+  GLuint GetTexture();
+  gl::GLContext* gl() const;
+protected:
+  RefPtr<CompositorOGL> mCompositor;
+  GLuint mTexture;
+};
 
 /*
  * TextureHost implementations for the OpenGL backend.
@@ -265,6 +289,7 @@ protected:
   SharedTextureShareType mShareType;
   GLenum mTextureTarget;
   GLenum mWrapMode;
+  GLenum mOwnedTexture;
 };
 
 /**

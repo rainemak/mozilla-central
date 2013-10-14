@@ -162,6 +162,7 @@ pref("layout.spellcheckDefault", 0);
 
 /* new html5 forms */
 pref("dom.experimental_forms", true);
+pref("dom.forms.number", true);
 
 /* extension manager and xpinstall */
 pref("xpinstall.whitelist.add", "addons.mozilla.org");
@@ -714,6 +715,10 @@ pref("app.orientation.default", "");
 pref("memory.free_dirty_pages", true);
 
 pref("layout.imagevisibility.enabled", false);
+pref("layout.imagevisibility.numscrollportwidths", 1);
+pref("layout.imagevisibility.numscrollportheights", 1);
+
+pref("layers.force-tiles", true);
 
 // Enable the dynamic toolbar
 pref("browser.chrome.dynamictoolbar", true);
@@ -778,3 +783,4 @@ pref("general.useragent.override.youtube.com", "Android; Tablet;#Android; Mobile
 
 // When true, phone number linkification is enabled.
 pref("browser.ui.linkify.phone", false);
+

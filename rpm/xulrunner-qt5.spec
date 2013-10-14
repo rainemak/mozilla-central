@@ -21,7 +21,9 @@ BuildRequires:  pkgconfig(gstreamer-0.10)
 BuildRequires:  pkgconfig(gstreamer-app-0.10)
 BuildRequires:  pkgconfig(gstreamer-plugins-base-0.10)
 BuildRequires:  pkgconfig(nemo-gstreamer-interfaces-0.10)
+%ifarch %arm
 BuildRequires:  pkgconfig(libresourceqt5)
+%endif
 BuildRequires:  qt5-qttools
 BuildRequires:  qt5-default
 BuildRequires:  autoconf213

@@ -74,15 +74,16 @@ class RangeAnalysis
                                   MBasicBlock *block);
 
   protected:
+    MIRGenerator *mir;
     MIRGraph &graph_;
 
   public:
-    MOZ_CONSTEXPR RangeAnalysis(MIRGraph &graph) :
-        graph_(graph) {}
-    bool addBetaNobes();
+    MOZ_CONSTEXPR RangeAnalysis(MIRGenerator *mir, MIRGraph &graph) :
+        mir(mir), graph_(graph) {}
+    bool addBetaNodes();
     bool analyze();
     bool addRangeAssertions();
-    bool removeBetaNobes();
+    bool removeBetaNodes();
     bool truncate();
 
   private:

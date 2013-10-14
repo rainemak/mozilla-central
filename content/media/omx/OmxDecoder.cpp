@@ -27,6 +27,7 @@
 #include "GonkNativeWindowClient.h"
 #include "OMXCodecProxy.h"
 #include "OmxDecoder.h"
+#include "nsISeekableStream.h"
 
 #ifdef PR_LOGGING
 PRLogModuleInfo *gOmxDecoderLog;
@@ -471,7 +472,11 @@ bool OmxDecoder::AllocateMediaResources()
 
   if ((mVideoTrack != nullptr) && (mVideoSource == nullptr)) {
     mNativeWindow = new GonkNativeWindow();
+#if defined(MOZ_WIDGET_GONK) && ANDROID_VERSION >= 18
+    mNativeWindowClient = new GonkNativeWindowClient(mNativeWindow->getBufferQueue());
+#else
     mNativeWindowClient = new GonkNativeWindowClient(mNativeWindow);
+#endif
 
     // Experience with OMX codecs is that only the HW decoders are
     // worth bothering with, at least on the platforms where this code
@@ -622,7 +627,7 @@ void OmxDecoder::NotifyDataArrived(const char* aBuffer, uint32_t aLength, int64_
     return;
   }
 
-  mMP3FrameParser.NotifyDataArrived(aBuffer, aLength, aOffset);
+  mMP3FrameParser.Parse(aBuffer, aLength, aOffset);
 
   int64_t durationUs = mMP3FrameParser.GetDuration();
 
@@ -631,7 +636,7 @@ void OmxDecoder::NotifyDataArrived(const char* aBuffer, uint32_t aLength, int64_
 
     MOZ_ASSERT(mDecoder);
     ReentrantMonitorAutoEnter mon(mDecoder->GetReentrantMonitor());
-    mDecoder->UpdateMediaDuration(mDurationUs);
+    mDecoder->UpdateEstimatedMediaDuration(mDurationUs);
   }
 }
 
