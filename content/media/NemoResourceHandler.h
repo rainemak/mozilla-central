@@ -4,26 +4,28 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifndef G_STREAMER_RESOURCE_HANDLER
-#define G_STREAMER_RESOURCE_HANDLER
-
-#include "mozilla/Mutex.h"
+#ifndef NEMO_RESOURCE_HANDLER
+#define NEMO_RESOURCE_HANDLER
 
 namespace mozilla {
 
-class GStreamerResourceHandler
+class NemoResourceHandler
 {
 public:
-    GStreamerResourceHandler();
-    virtual ~GStreamerResourceHandler();
-    bool IsWaitingMediaResources();
-    bool IsDormantNeeded();
-    void SetResource(void* resource);
+    static void AquireResources(void* aHolder);
+    static void ReleaseResources(void* aHolder);
 private:
+    NemoResourceHandler();
+    virtual ~NemoResourceHandler();
+    void Aquire();
+    void Release();
+    bool CanDestroy();
+
+    static NemoResourceHandler* mGlobalHandler;
     void* mResourceSet;
-    Mutex mLock;
+    int mCounter;
 };
 
 } // namespace mozilla
 
-#endif
+#endif // NEMO_RESOURCE_HANDLER

@@ -1591,7 +1591,7 @@ public:
             mEGLImage =
                 sEGLLibrary.fCreateImage(EGL_DISPLAY(),
                                          EGL_NO_CONTEXT,
-                                         LOCAL_EGL_NATIVE_PIXMAP,
+                                         LOCAL_EGL_NATIVE_PIXMAP_KHR,
                                          (EGLClientBuffer)xsurface->XDrawable(),
                                          nullptr);
 

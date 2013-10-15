@@ -78,3 +78,5 @@ ac_add_options --with-arch=armv7-a
 ac_add_options --with-float-abi=hard
 ac_add_options --with-fpu=neon
 
+ac_add_options --disable-dbus
+ac_add_options --disable-necko-wifi

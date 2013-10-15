@@ -32,7 +32,6 @@ class PlanarYCbCrImage;
 }
 
 class AbstractMediaDecoder;
-class GStreamerResourceHandler;
 
 class GStreamerReader : public MediaDecoderReader
 {
@@ -60,10 +59,6 @@ public:
   virtual bool HasVideo() {
     return mInfo.mHasVideo;
   }
-
-  virtual bool IsWaitingMediaResources();
-  virtual bool IsDormantNeeded();
-  virtual void ReleaseMediaResources();
 
 private:
 
@@ -180,7 +175,6 @@ private:
   int fpsNum;
   int fpsDen;
   GstElement* mPlaySink;
-  GStreamerResourceHandler* mResourcesSet;
 };
 
 } // namespace mozilla

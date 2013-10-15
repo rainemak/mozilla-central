@@ -19,7 +19,6 @@ CPP_SOURCES += [
     'GStreamerReader.cpp',
     'GStreamerMozVideoBuffer.cpp',
     'GStreamerLoader.cpp',
-    'GStreamerResourceHandler.cpp',
 ]
 
 LIBRARY_NAME = 'gkcongstreamer_s'

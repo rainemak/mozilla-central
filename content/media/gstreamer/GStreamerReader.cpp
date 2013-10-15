@@ -15,7 +15,6 @@
 #include "mozilla/dom/TimeRanges.h"
 #include "mozilla/Preferences.h"
 #include "GStreamerLoader.h"
-#include "GStreamerResourceHandler.h"
 
 namespace mozilla {
 
@@ -265,25 +264,6 @@ void GStreamerReader::PlayBinSourceSetup(GstAppSrc* aSource)
   gst_caps_unref(caps);
 }
 
-bool GStreamerReader::IsWaitingMediaResources()
-{
-    return mResourcesSet ? mResourcesSet->IsWaitingMediaResources() : false;
-}
-
-bool GStreamerReader::IsDormantNeeded()
-{
-    return mResourcesSet ? mResourcesSet->IsDormantNeeded() : false;
-}
-
-void GStreamerReader::ReleaseMediaResources()
-{
-    if (mResourcesSet)
-    {
-        delete mResourcesSet;
-        mResourcesSet = nullptr;
-    }
-}
-
 nsresult GStreamerReader::ReadMetadata(VideoInfo* aInfo,
                                        MetadataTags** aTags)
 {
@@ -408,8 +388,6 @@ nsresult GStreamerReader::ReadMetadata(VideoInfo* aInfo,
   /* set the pipeline to PLAYING so that it starts decoding and queueing data in
    * the appsinks */
   gst_element_set_state(mPlayBin, GST_STATE_PLAYING);
-
-  mResourcesSet = new GStreamerResourceHandler();
 
   return NS_OK;
 }
