@@ -73,7 +73,8 @@ GStreamerReader::GStreamerReader(AbstractMediaDecoder* aDecoder)
   mLastReportedByteOffset(0),
   fpsNum(0),
   fpsDen(0),
-  mPlaySink(nullptr)
+  mPlaySink(nullptr),
+  mPlayingStartedOnce(false)
 {
   MOZ_COUNT_CTOR(GStreamerReader);
 
@@ -101,6 +102,7 @@ GStreamerReader::~GStreamerReader()
       gst_object_unref(mSource);
     gst_element_set_state(mPlayBin, GST_STATE_NULL);
     gst_object_unref(mPlayBin);
+    mPlayingStartedOnce = false;
     mPlayBin = nullptr;
     mPlaySink = nullptr;
     mVideoSink = nullptr;
@@ -195,6 +197,20 @@ nsresult GStreamerReader::Init(MediaDecoderReader* aCloneDonor)
   }
 
   return NS_OK;
+}
+
+void GStreamerReader::Play()
+{
+  if (mPlaySink && mPlayBin && mPlayingStartedOnce) {
+    gst_element_set_state(mPlayBin, GST_STATE_PLAYING);
+  }
+}
+
+void GStreamerReader::Pause()
+{
+  if (mPlaySink && mPlayBin && mPlayingStartedOnce) {
+    gst_element_set_state(mPlayBin, GST_STATE_PAUSED);
+  }
 }
 
 GstBusSyncReply
@@ -330,6 +346,7 @@ nsresult GStreamerReader::ReadMetadata(VideoInfo* aInfo,
       g_free(debug);
       gst_element_set_state(mPlayBin, GST_STATE_NULL);
       gst_message_unref(message);
+      mPlayingStartedOnce = false;
       ret = NS_ERROR_FAILURE;
     } else {
       gst_message_unref(message);
@@ -354,6 +371,7 @@ nsresult GStreamerReader::ReadMetadata(VideoInfo* aInfo,
        (GstMessageType)(GST_MESSAGE_ASYNC_DONE | GST_MESSAGE_ERROR));
     if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_ERROR) {
       gst_element_set_state(mPlayBin, GST_STATE_NULL);
+      mPlayingStartedOnce = false;
       gst_message_unref(message);
       return NS_ERROR_FAILURE;
     }
@@ -388,6 +406,7 @@ nsresult GStreamerReader::ReadMetadata(VideoInfo* aInfo,
   /* set the pipeline to PLAYING so that it starts decoding and queueing data in
    * the appsinks */
   gst_element_set_state(mPlayBin, GST_STATE_PLAYING);
+  mPlayingStartedOnce = true;
 
   return NS_OK;
 }

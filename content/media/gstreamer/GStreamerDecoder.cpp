@@ -13,7 +13,38 @@ namespace mozilla {
 
 MediaDecoderStateMachine* GStreamerDecoder::CreateStateMachine()
 {
-  return new MediaDecoderStateMachine(this, new GStreamerReader(this));
+  return new MediaDecoderStateMachine(this, mReader);
+}
+
+void
+GStreamerDecoder::ReleaseStateMachine()
+{
+  mReader = nullptr;
+  MediaDecoder::ReleaseStateMachine();
+}
+
+nsresult
+GStreamerDecoder::Load(nsIStreamListener** aListener,
+                       MediaDecoder* aCloneDonor)
+{
+  mReader = new GStreamerReader(this);
+  return MediaDecoder::Load(aListener, aCloneDonor);
+}
+
+nsresult GStreamerDecoder::Play()
+{
+  if (mReader)
+    mReader->Play();
+
+  return MediaDecoder::Play();
+}
+
+void GStreamerDecoder::Pause()
+{
+  if (mReader)
+    mReader->Pause();
+
+  MediaDecoder::Pause();
 }
 
 bool

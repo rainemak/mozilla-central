@@ -24,3 +24,5 @@ ac_add_options --disable-dbus
 ac_add_options --disable-updater
 ac_add_options --disable-gamepad
 ac_add_options --with-x
+ac_add_options --disable-dbus
+ac_add_options --disable-necko-wifi

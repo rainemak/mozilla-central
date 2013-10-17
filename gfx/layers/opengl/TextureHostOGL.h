@@ -289,7 +289,6 @@ protected:
   SharedTextureShareType mShareType;
   GLenum mTextureTarget;
   GLenum mWrapMode;
-  GLenum mOwnedTexture;
 };
 
 /**
