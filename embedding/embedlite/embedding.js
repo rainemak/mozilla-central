@@ -67,7 +67,6 @@ pref("ui.dragThresholdX", 25);
 pref("ui.dragThresholdY", 25);
 pref("embedlite.dispatch_mouse_events", false); // Will dispatch mouse events if page using them
 pref("media.gstreamer.enabled", true);
-pref("media.prefer-gstreamer", true);
 // Disable X backend on GTK
 pref("gfx.xrender.enabled", false);
 pref("gfx.qt.rgb16.force", true);
