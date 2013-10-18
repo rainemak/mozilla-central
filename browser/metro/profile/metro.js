@@ -36,6 +36,8 @@ pref("prompts.tab_modal.enabled", true);
 pref("layers.offmainthreadcomposition.enabled", true);
 pref("layers.async-pan-zoom.enabled", true);
 pref("layers.componentalpha.enabled", false);
+// Disabled on aurora and up for now
+pref("apzc.asynczoom.disabled", true);
 pref("gfx.azpc.touch_start_tolerance", "0.1"); // dpi * tolerance = pixel threshold
 pref("gfx.axis.fling_friction", "0.002");
 
@@ -374,6 +376,9 @@ pref("geo.wifi.uri", "https://www.googleapis.com/geolocation/v1/geolocate?key=%G
 
 // JS error console
 pref("devtools.errorconsole.enabled", false);
+
+// snapped view
+pref("browser.ui.snapped.maxWidth", 600);
 
 // kinetic tweakables
 pref("browser.ui.kinetic.updateInterval", 16);

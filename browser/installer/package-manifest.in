@@ -200,6 +200,7 @@
 @BINPATH@/components/dom_notification.xpt
 @BINPATH@/components/dom_html.xpt
 @BINPATH@/components/dom_indexeddb.xpt
+@BINPATH@/components/dom_inputmethod.xpt
 @BINPATH@/components/dom_offline.xpt
 @BINPATH@/components/dom_json.xpt
 @BINPATH@/components/dom_power.xpt
@@ -549,6 +550,10 @@
 @BINPATH@/components/dom_webspeechsynth.xpt
 #endif
 
+; InputMethod API
+@BINPATH@/components/MozKeyboard.js
+@BINPATH@/components/InputMethod.manifest
+
 ; Modules
 @BINPATH@/browser/modules/*
 @BINPATH@/modules/*
@@ -793,4 +798,8 @@ bin/libfreebl_32int64_3.so
 @BINPATH@/metro/components
 @BINPATH@/metro/defaults
 @BINPATH@/metro/modules
+#endif
+
+#ifdef MOZ_ASAN
+@BINPATH@/llvm-symbolizer
 #endif

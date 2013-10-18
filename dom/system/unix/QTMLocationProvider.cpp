@@ -13,9 +13,8 @@ NS_IMPL_ISUPPORTS1(QTMLocationProvider, nsIGeolocationProvider)
 QTMLocationProvider::QTMLocationProvider()
 {
     mLocation = QGeoPositionInfoSource::createDefaultSource(this);
-    if (mLocation) {
+    if (mLocation)
         connect(mLocation, SIGNAL(positionUpdated(QGeoPositionInfo)), this, SLOT(positionUpdated(QGeoPositionInfo)));
-    }
 }
 
 QTMLocationProvider::~QTMLocationProvider()

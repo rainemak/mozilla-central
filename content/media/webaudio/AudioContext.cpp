@@ -394,8 +394,11 @@ AudioContext::CreatePeriodicWave(const Float32Array& aRealData,
   }
 
   nsRefPtr<PeriodicWave> periodicWave =
-    new PeriodicWave(this, aRealData.Data(), aRealData.Length(),
-                     aImagData.Data(), aImagData.Length());
+    new PeriodicWave(this, aRealData.Data(), aImagData.Data(),
+                     aImagData.Length(), aRv);
+  if (aRv.Failed()) {
+    return nullptr;
+  }
   return periodicWave.forget();
 }
 
@@ -437,6 +440,18 @@ void
 AudioContext::RemoveFromDecodeQueue(WebAudioDecodeJob* aDecodeJob)
 {
   mDecodeJobs.RemoveElement(aDecodeJob);
+}
+
+void
+AudioContext::RegisterActiveNode(AudioNode* aNode)
+{
+  mActiveNodes.PutEntry(aNode);
+}
+
+void
+AudioContext::UnregisterActiveNode(AudioNode* aNode)
+{
+  mActiveNodes.RemoveEntry(aNode);
 }
 
 void
@@ -495,7 +510,10 @@ AudioContext::Graph() const
 MediaStream*
 AudioContext::DestinationStream() const
 {
-  return Destination()->Stream();
+  if (Destination()) {
+    return Destination()->Stream();
+  }
+  return nullptr;
 }
 
 double
@@ -524,6 +542,11 @@ void
 AudioContext::Shutdown()
 {
   Suspend();
+
+  // Release references to active nodes.
+  // Active AudioNodes don't unregister in destructors, at which point the
+  // Node is already unregistered.
+  mActiveNodes.Clear();
 
   // Stop all audio buffer source nodes, to make sure that they release
   // their self-references.
@@ -554,7 +577,7 @@ AudioContext::Shutdown()
   }
 
   // For offline contexts, we can destroy the MediaStreamGraph at this point.
-  if (mIsOffline) {
+  if (mIsOffline && mDestination) {
     mDestination->OfflineShutdown();
   }
 }

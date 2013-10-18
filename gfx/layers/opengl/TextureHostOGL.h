@@ -55,22 +55,23 @@ class CompositorOGL;
 class TextureImageDeprecatedTextureHostOGL;
 
 /**
- * CompositableQuirks implementation for the Gonk OpenGL backend.
+ * CompositableBackendSpecificData implementation for the Gonk OpenGL backend.
  * Share a same texture between TextureHosts in the same CompositableHost.
  * By shareing the texture among the TextureHosts, number of texture allocations
  * can be reduced than texture allocation in every TextureHosts.
  * From Bug 912134, use only one texture among all TextureHosts degrade
  * the rendering performance.
- * CompositableQuirksGonkOGL chooses in a middile of them.
+ * CompositableDataGonkOGL chooses in a middile of them.
  */
-class CompositableQuirksGonkOGL : public CompositableQuirks
+class CompositableDataGonkOGL : public CompositableBackendSpecificData
 {
 public:
-  CompositableQuirksGonkOGL();
-  virtual ~CompositableQuirksGonkOGL();
+  CompositableDataGonkOGL();
+  virtual ~CompositableDataGonkOGL();
 
   virtual void SetCompositor(Compositor* aCompositor) MOZ_OVERRIDE;
   GLuint GetTexture();
+  void DeleteTextureIfPresent();
   gl::GLContext* gl() const;
 protected:
   RefPtr<CompositorOGL> mCompositor;
@@ -919,6 +920,8 @@ public:
   }
 
   virtual LayerRenderState GetRenderState() MOZ_OVERRIDE;
+
+  GLuint GetGLTexture();
 
 private:
   gl::GLContext* gl() const;

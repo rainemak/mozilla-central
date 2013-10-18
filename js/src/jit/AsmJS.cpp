@@ -917,6 +917,81 @@ enum NeedsBoundsCheck {
 
 /*****************************************************************************/
 
+// The Asm.js heap length is constrained by the x64 backend heap access scheme
+// to be a multiple of the page size which is 4096 bytes, and also constrained
+// by the limits of ARM backends 'cmp immediate' instruction which supports a
+// complex range for the immediate argument.
+//
+// ARMv7 mode supports the following immediate constants, and the Thumb T2
+// instruction encoding also supports the subset of immediate constants used.
+//  abcdefgh 00000000 00000000 00000000
+//  00abcdef gh000000 00000000 00000000
+//  0000abcd efgh0000 00000000 00000000
+//  000000ab cdefgh00 00000000 00000000
+//  00000000 abcdefgh 00000000 00000000
+//  00000000 00abcdef gh000000 00000000
+//  00000000 0000abcd efgh0000 00000000
+//  ...
+//
+// The 4096 page size constraint restricts the length to:
+//  xxxxxxxx xxxxxxxx xxxx0000 00000000
+//
+// Intersecting all the above constraints gives:
+//  Heap length 0x40000000 to 0xff000000 quanta 0x01000000
+//  Heap length 0x10000000 to 0x3fc00000 quanta 0x00400000
+//  Heap length 0x04000000 to 0x0ff00000 quanta 0x00100000
+//  Heap length 0x01000000 to 0x03fc0000 quanta 0x00040000
+//  Heap length 0x00400000 to 0x00ff0000 quanta 0x00010000
+//  Heap length 0x00100000 to 0x003fc000 quanta 0x00004000
+//  Heap length 0x00001000 to 0x000ff000 quanta 0x00001000
+//
+uint32_t
+js::RoundUpToNextValidAsmJSHeapLength(uint32_t length)
+{
+    if (length < 0x00001000u) // Minimum length is the pages size of 4096.
+        return 0x1000u;
+    if (length < 0x00100000u) // < 1M quanta 4K
+        return (length + 0x00000fff) & ~0x00000fff;
+    if (length < 0x00400000u) // < 4M quanta 16K
+        return (length + 0x00003fff) & ~0x00003fff;
+    if (length < 0x01000000u) // < 16M quanta 64K
+        return (length + 0x0000ffff) & ~0x0000ffff;
+    if (length < 0x04000000u) // < 64M quanta 256K
+        return (length + 0x0003ffff) & ~0x0003ffff;
+    if (length < 0x10000000u) // < 256M quanta 1M
+        return (length + 0x000fffff) & ~0x000fffff;
+    if (length < 0x40000000u) // < 1024M quanta 4M
+        return (length + 0x003fffff) & ~0x003fffff;
+    // < 4096M quanta 16M.  Note zero is returned if over 0xff000000 but such
+    // lengths are not currently valid.
+    JS_ASSERT(length <= 0xff000000);
+    return (length + 0x00ffffff) & ~0x00ffffff;
+}
+
+bool
+js::IsValidAsmJSHeapLength(uint32_t length)
+{
+    if (length <  AsmJSAllocationGranularity)
+        return false;
+    if (length <= 0x00100000u)
+        return (length & 0x00000fff) == 0;
+    if (length <= 0x00400000u)
+        return (length & 0x00003fff) == 0;
+    if (length <= 0x01000000u)
+        return (length & 0x0000ffff) == 0;
+    if (length <= 0x04000000u)
+        return (length & 0x0003ffff) == 0;
+    if (length <= 0x10000000u)
+        return (length & 0x000fffff) == 0;
+    if (length <= 0x40000000u)
+        return (length & 0x003fffff) == 0;
+    if (length <= 0xff000000u)
+        return (length & 0x00ffffff) == 0;
+    return false;
+}
+
+/*****************************************************************************/
+
 namespace {
 
 typedef Vector<PropertyName*,1> LabelVector;
@@ -4859,9 +4934,9 @@ CheckFunction(ModuleCompiler &m, LifoAlloc &lifo, MIRGenerator **mir, ModuleComp
     m.parser().release(mark);
 
     // Copy the cumulative minimum heap size constraint to the MIR for use in analysis.  The length
-    // is also constrained to be a power of two, so firstly round up - a larger 'heap required
+    // is also constrained to particular lengths, so firstly round up - a larger 'heap required
     // length' can help range analysis to prove that bounds checks are not needed.
-    size_t len = mozilla::RoundUpPow2((size_t) m.minHeapLength());
+    uint32_t len = js::RoundUpToNextValidAsmJSHeapLength(m.minHeapLength());
     m.requireHeapLengthToBeAtLeast(len);
 
     *mir = f.extractMIR();
@@ -4982,6 +5057,29 @@ CheckFunctionsSequential(ModuleCompiler &m)
 
 #ifdef JS_WORKER_THREADS
 
+// Currently, only one asm.js parallel compilation is allowed at a time.
+// This RAII class attempts to claim this parallel compilation using atomic ops
+// on rt->workerThreadState->asmJSCompilationInProgress.
+class ParallelCompilationGuard
+{
+    WorkerThreadState *parallelState_;
+  public:
+    ParallelCompilationGuard() : parallelState_(NULL) {}
+    ~ParallelCompilationGuard() {
+        if (parallelState_) {
+            JS_ASSERT(parallelState_->asmJSCompilationInProgress == true);
+            parallelState_->asmJSCompilationInProgress = false;
+        }
+    }
+    bool claim(WorkerThreadState *state) {
+        JS_ASSERT(!parallelState_);
+        if (!state->asmJSCompilationInProgress.compareExchange(false, true))
+            return false;
+        parallelState_ = state;
+        return true;
+    }
+};
+
 static bool
 ParallelCompilationEnabled(ExclusiveContext *cx)
 {
@@ -5015,13 +5113,14 @@ static AsmJSParallelTask *
 GetFinishedCompilation(ModuleCompiler &m, ParallelGroupState &group)
 {
     AutoLockWorkerThreadState lock(*m.cx()->workerThreadState());
+    AutoPauseCurrentWorkerThread maybePause(m.cx());
 
     while (!group.state.asmJSWorkerFailed()) {
         if (!group.state.asmJSFinishedList.empty()) {
             group.outstandingJobs--;
             return group.state.asmJSFinishedList.popCopy();
         }
-        group.state.wait(WorkerThreadState::MAIN);
+        group.state.wait(WorkerThreadState::CONSUMER);
     }
 
     return NULL;
@@ -5139,10 +5238,12 @@ CancelOutstandingJobs(ModuleCompiler &m, ParallelGroupState &group)
     // Eliminate tasks that failed without adding to the finished list.
     group.outstandingJobs -= group.state.harvestFailedAsmJSJobs();
 
+    AutoPauseCurrentWorkerThread maybePause(m.cx());
+
     // Any remaining tasks are therefore undergoing active compilation.
     JS_ASSERT(group.outstandingJobs >= 0);
     while (group.outstandingJobs > 0) {
-        group.state.wait(WorkerThreadState::MAIN);
+        group.state.wait(WorkerThreadState::CONSUMER);
 
         group.outstandingJobs -= group.state.harvestFailedAsmJSJobs();
         group.outstandingJobs -= group.state.asmJSFinishedList.length();
@@ -5159,6 +5260,15 @@ static const size_t LIFO_ALLOC_PARALLEL_CHUNK_SIZE = 1 << 12;
 static bool
 CheckFunctionsParallel(ModuleCompiler &m)
 {
+    // If parallel compilation isn't enabled (not enough cores, disabled by
+    // pref, etc) or another thread is currently compiling asm.js in parallel,
+    // fall back to sequential compilation. (We could lift the latter
+    // constraint by hoisting asmJS* state out of WorkerThreadState so multiple
+    // concurrent asm.js parallel compilations don't race.)
+    ParallelCompilationGuard g;
+    if (!ParallelCompilationEnabled(m.cx()) || !g.claim(m.cx()->workerThreadState()))
+        return CheckFunctionsSequential(m);
+
     // Saturate all worker threads plus the main thread.
     WorkerThreadState &state = *m.cx()->workerThreadState();
     size_t numParallelJobs = state.numThreads + 1;
@@ -6333,13 +6443,8 @@ CheckModule(ExclusiveContext *cx, AsmJSParser &parser, ParseNode *stmtList,
         return false;
 
 #ifdef JS_WORKER_THREADS
-    if (ParallelCompilationEnabled(cx)) {
-        if (!CheckFunctionsParallel(m))
-            return false;
-    } else {
-        if (!CheckFunctionsSequential(m))
-            return false;
-    }
+    if (!CheckFunctionsParallel(m))
+        return false;
 #else
     if (!CheckFunctionsSequential(m))
         return false;

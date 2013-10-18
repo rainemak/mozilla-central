@@ -15,6 +15,7 @@
 
     "layout/forms/test/test_bug478219.xhtml":"window.closed not working, bug 907795",
 
+    "content/media/test":"bug 918299",
     "content/media/test/test_bug448534.html": "Timed out, bug 894922? Bug 902677 is for the timing out of a lot of media tests",
     "content/media/mediasource/test/test_MediaSource.html": " ReferenceError: MediaSource is not defined",
     "content/media/test/test_autoplay_contentEditable.html": "bug 899074 - timeouts",
@@ -66,14 +67,14 @@
     "content/media/webspeech/synth/test/test_speech_simple.html": "Test timed out",
 
     "dom/imptests/editing/selecttest/test_addRange.html": "oom?, bug 775227",
-    "dom/imptests/webapps/DOMCore/tests/approved/test_Range-insertNode.html":"oom?, bug 775227",
-    "dom/imptests/webapps/DOMCore/tests/approved/test_Range-cloneContents.html":"",
-    "dom/imptests/webapps/DOMCore/tests/approved/test_Range-compareBoundaryPoints.html":"times out, bug 862196",
-    "dom/imptests/webapps/DOMCore/tests/approved/test_Range-deleteContents.html":"",
-    "dom/imptests/webapps/DOMCore/tests/approved/test_Range-extractContents.html":"",
-    "dom/imptests/webapps/DOMCore/tests/approved/test_Range-set.html":"",
-    "dom/imptests/webapps/DOMCore/tests/approved/test_Range-surroundContents.html":"",
-    "dom/imptests/webapps/DOMCore/tests/approved/test_Range-mutations.html":"Test timed out.",
+    "dom/imptests/html/dom/ranges/test_Range-insertNode.html":"oom?, bug 775227",
+    "dom/imptests/html/dom/ranges/test_Range-cloneContents.html":"",
+    "dom/imptests/html/dom/ranges/test_Range-compareBoundaryPoints.html":"times out, bug 862196",
+    "dom/imptests/html/dom/ranges/test_Range-deleteContents.html":"",
+    "dom/imptests/html/dom/ranges/test_Range-extractContents.html":"",
+    "dom/imptests/html/dom/ranges/test_Range-set.html":"",
+    "dom/imptests/html/dom/ranges/test_Range-surroundContents.html":"",
+    "dom/imptests/html/dom/ranges/test_Range-mutations.html":"Test timed out.",
     "dom/encoding/test/test_stringencoding.html":"Test timed out on b2g board",
 
     "content/events/test/test_bug615597.html":"bug 900969, 5 tests",
@@ -204,6 +205,7 @@
     "content/base/test/csp/test_CSP_frameancestors.html":"observer not working",
     "content/base/test/csp/test_CSP.html":"observer not working",
     "content/base/test/csp/test_bug836922_npolicies.html":"observer not working",
+    "content/base/test/csp/test_CSP_bug916446.html":"observer not working",
 
     "content/base/test/test_CrossSiteXHR_origin.html":"https not working, bug 907770",
     "content/base/test/test_bug326337.html":"popup windows don't have specialpowers installed, could be solved with sendmessage/receivemessage",

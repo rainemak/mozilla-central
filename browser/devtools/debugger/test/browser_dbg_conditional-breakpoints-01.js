@@ -8,6 +8,9 @@
 const TAB_URL = EXAMPLE_URL + "doc_conditional-breakpoints.html";
 
 function test() {
+  // Linux debug test slaves are a bit slow at this test sometimes.
+  requestLongerTimeout(2);
+
   let gTab, gDebuggee, gPanel, gDebugger;
   let gEditor, gSources, gBreakpoints, gBreakpointsAdded, gBreakpointsRemoving;
 
@@ -36,7 +39,6 @@ function test() {
       .then(() => resumeAndTestBreakpoint(29))
       .then(() => resumeAndTestNoBreakpoint())
       .then(() => reloadActiveTab(gPanel, gDebugger.EVENTS.BREAKPOINT_SHOWN, 13))
-      .then(() => ensureThreadClientState(gPanel, "resumed"))
       .then(() => testAfterReload())
       .then(() => closeDebuggerAndFinish(gPanel))
       .then(null, aError => {

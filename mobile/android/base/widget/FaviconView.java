@@ -62,16 +62,9 @@ public class FaviconView extends ImageView {
      * in this view with the coloured background.
      */
     private void formatImage() {
-        // If we're called before bitmap is set, just show the default.
-        if (mIconBitmap == null) {
-            setImageResource(0);
-            hideBackground();
-            return;
-        }
-
-        // If we're called before size set, abort.
-        if (mActualWidth == 0 || mActualHeight == 0) {
-            hideBackground();
+        // If we're called before bitmap is set, or before size is set, show blank.
+        if (mIconBitmap == null || mActualWidth == 0 || mActualHeight == 0) {
+            showNoImage();
             return;
         }
 
@@ -141,6 +134,11 @@ public class FaviconView extends ImageView {
      *                     (Favicons class), so as to exploit caching.
      */
     private void updateImageInternal(Bitmap bitmap, String key, boolean allowScaling) {
+        if (bitmap == null) {
+            showDefaultFavicon();
+            return;
+        }
+
         // Reassigning the same bitmap? Don't bother.
         if (mUnscaledBitmap == bitmap) {
             return;
@@ -152,6 +150,27 @@ public class FaviconView extends ImageView {
 
         // Possibly update the display.
         formatImage();
+    }
+
+    private void showDefaultFavicon() {
+        setImageResource(R.drawable.favicon);
+        hideBackground();
+    }
+
+    private void showNoImage() {
+        setImageBitmap(null);
+        hideBackground();
+    }
+
+    /**
+     * Clear image and background shown by this view.
+     */
+    public void clearImage() {
+        showNoImage();
+        mUnscaledBitmap = null;
+        mIconBitmap = null;
+        mIconKey = null;
+        mScalingExpected = false;
     }
 
     /**

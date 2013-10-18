@@ -222,6 +222,7 @@ AsyncPanZoomController::InitializeGlobalState()
 }
 
 AsyncPanZoomController::AsyncPanZoomController(uint64_t aLayersId,
+                                               APZCTreeManager* aTreeManager,
                                                GeckoContentController* aGeckoContentController,
                                                GestureBehavior aGestures)
   :  mLayersId(aLayersId),
@@ -243,7 +244,8 @@ AsyncPanZoomController::AsyncPanZoomController(uint64_t aLayersId,
      mAsyncScrollTimeoutTask(nullptr),
      mDisableNextTouchBatch(false),
      mHandlingTouchQueue(false),
-     mDelayPanning(false)
+     mDelayPanning(false),
+     mTreeManager(aTreeManager)
 {
   MOZ_COUNT_CTOR(AsyncPanZoomController);
 
@@ -284,6 +286,7 @@ AsyncPanZoomController::Destroy()
   mPrevSibling = nullptr;
   mLastChild = nullptr;
   mParent = nullptr;
+  mTreeManager = nullptr;
 }
 
 /* static */float
@@ -1152,17 +1155,6 @@ bool AsyncPanZoomController::SampleContentTransformForFrame(const TimeStamp& aSa
   return requestAnimationFrame;
 }
 
-gfxPoint
-AsyncPanZoomController::GetTempScrollOffset()
-{
-  CSSPoint diff;
-  {
-    ReentrantMonitorAutoEnter lock(mMonitor);
-    diff = mLastContentPaintMetrics.mScrollOffset - mFrameMetrics.mScrollOffset;
-  }
-  return gfxPoint(diff.x, diff.y);
-}
-
 ViewTransform AsyncPanZoomController::GetCurrentAsyncTransform() {
   ReentrantMonitorAutoEnter lock(mMonitor);
 
@@ -1208,11 +1200,6 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aLayerMetri
 
     mX.CancelTouch();
     mY.CancelTouch();
-
-    // XXX If this is the very first time we're getting a layers update we need to
-    // trigger another repaint, or the B2G browser shows stale content. This needs
-    // to be investigated and fixed.
-    needContentRepaint |= (isDefault && !aLayerMetrics.IsDefault());
 
     mFrameMetrics = aLayerMetrics;
     mState = NOTHING;
@@ -1477,6 +1464,17 @@ bool AsyncPanZoomController::Matches(const ScrollableLayerGuid& aGuid)
   // TODO: also check the presShellId, once that is fully propagated
   // everywhere in RenderFrameParent and AndroidJNI.
   return aGuid.mLayersId == mLayersId && aGuid.mScrollId == mFrameMetrics.mScrollId;
+}
+
+gfxPoint
+AsyncPanZoomController::GetTempScrollOffset()
+{
+  CSSPoint diff;
+  {
+    ReentrantMonitorAutoEnter lock(mMonitor);
+    diff = mLastContentPaintMetrics.mScrollOffset - mFrameMetrics.mScrollOffset;
+  }
+  return gfxPoint(diff.x, diff.y);
 }
 
 }

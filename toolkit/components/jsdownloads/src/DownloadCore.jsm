@@ -1611,7 +1611,16 @@ DownloadCopySaver.prototype = {
         // background file saver may have already removed the file.
         try {
           yield OS.File.remove(targetPath);
-        } catch (e2 if e2 instanceof OS.File.Error && e2.becauseNoSuchFile) { }
+        } catch (e2) {
+          // If we failed during the operation, we report the error but use the
+          // original one as the failure reason of the download.  Note that on
+          // Windows we may get an access denied error instead of a no such file
+          // error if the file existed before, and was recently deleted.
+          if (!(e2 instanceof OS.File.Error &&
+                (e2.becauseNoSuchFile || e2.becauseAccessDenied))) {
+            Cu.reportError(e2);
+          }
+        }
         throw ex;
       }
     }.bind(this));
@@ -1882,6 +1891,23 @@ DownloadLegacySaver.prototype = {
             yield file.close();
           } catch (ex if ex instanceof OS.File.Error && ex.becauseExists) { }
         }
+      } catch (ex) {
+        // Ensure we always remove the final target file on failure,
+        // independently of which code path failed.  In some cases, the
+        // component executing the download may have already removed the file.
+        try {
+          yield OS.File.remove(this.download.target.path);
+        } catch (e2) {
+          // If we failed during the operation, we report the error but use the
+          // original one as the failure reason of the download.  Note that on
+          // Windows we may get an access denied error instead of a no such file
+          // error if the file existed before, and was recently deleted.
+          if (!(e2 instanceof OS.File.Error &&
+                (e2.becauseNoSuchFile || e2.becauseAccessDenied))) {
+            Cu.reportError(e2);
+          }
+        }
+        throw ex;
       } finally {
         // We don't need the reference to the request anymore.
         this.request = null;
@@ -1901,14 +1927,8 @@ DownloadLegacySaver.prototype = {
       return this.copySaver.cancel.apply(this.copySaver, arguments);
     }
 
-    // Synchronously cancel the operation as soon as the object is connected.
+    // Cancel the operation as soon as the object is connected.
     this.deferCanceled.resolve();
-
-    // We don't necessarily receive status notifications after we call "cancel",
-    // but cancellation through nsICancelable should be synchronous, thus force
-    // the rejection of the execution promise immediately.
-    this.deferExecuted.reject(new DownloadError(Cr.NS_ERROR_FAILURE,
-                                                "Download canceled."));
   },
 
   /**

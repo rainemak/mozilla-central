@@ -346,8 +346,6 @@ public:
         property_get("ro.build.version.sdk", propValue, "0");
         if (atoi(propValue) < 15)
             gUseBackingSurface = false;
-#else
-        gUseBackingSurface = Preferences::GetBool("egl.use_backing_surface", gUseBackingSurface);
 #endif
 
         bool current = MakeCurrent();
@@ -482,6 +480,15 @@ public:
             return;
 
         // Else, surface changed...
+        if (Screen()) {
+            /* Blit `draw` to `read` if we need to, before we potentially juggle
+             * `read` around. If we don't, we might attach a different `read`,
+             * and *then* hit AssureBlitted, which will blit a dirty `draw` onto
+             * the wrong `read`!
+             */
+            Screen()->AssureBlitted();
+        }
+
         mCurSurface = eglSurface;
         MakeCurrent(true);
     }
