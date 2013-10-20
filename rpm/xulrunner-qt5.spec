@@ -117,6 +117,11 @@ chmod +x %{buildroot}%{_libdir}/%{name}-%{greversion}/*.so
 %{__rm} -rf ${RPM_BUILD_ROOT}%{_libdir}/%{name}-%{greversion}/dictionaries
 ln -s %{_datadir}/myspell ${RPM_BUILD_ROOT}%{_libdir}/%{name}-%{greversion}/dictionaries
 
+%post
+# >> post
+touch /var/lib/_MOZEMBED_CACHE_CLEAN_
+# << post
+
 %files
 %defattr(-,root,root,-)
 %attr(755,-,-) %{_bindir}/*
