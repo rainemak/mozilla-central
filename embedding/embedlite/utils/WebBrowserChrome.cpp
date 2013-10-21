@@ -392,6 +392,7 @@ WebBrowserChrome::HandleEvent(nsIDOMEvent* aEvent)
     float y = evY + scrollOffset.y;
     uint32_t width = evW + (x < 0 ? x : 0);
     uint32_t height = evH + (y < 0 ? y : 0);
+    LOGT("Before OnScrolledAreaChanged evX: %g, evY: %g, evW: %g, evH: %g, x: %g, y: %g, width: %g, height: %g", evX, evY, evW, evH, x, y, width, height);
     mListener->OnScrolledAreaChanged(width, height);
 
     nsCOMPtr<nsIDOMEventTarget> target = do_QueryInterface(window->GetChromeEventHandler());
@@ -408,6 +409,7 @@ WebBrowserChrome::HandleEvent(nsIDOMEvent* aEvent)
     }
     mFirstPaint = true;
     nsIntPoint offset = GetScrollOffset(docWin);
+    LOGT("Before OnFirstPaint offset.x: %g, offset.y: %g", offset.x, offset.y);
     mListener->OnFirstPaint(offset.x, offset.y);
   } else if (type.EqualsLiteral(MOZ_scroll)) {
     nsCOMPtr<nsIDOMEventTarget> target;
