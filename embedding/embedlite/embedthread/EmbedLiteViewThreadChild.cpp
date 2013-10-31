@@ -733,8 +733,8 @@ EmbedLiteViewThreadChild::RecvHandleKeyPressEvent(const int& domKeyCode, const i
   int tmpCharCode = charCode;
   if (tmpCharCode == 0)
   {
-    uint32_t shiftedLatinChar = 0;
-    uint32_t unshiftedLatinChar = 0;
+    uint32_t shiftedLatinChar = tmpCharCode;
+    uint32_t unshiftedLatinChar = tmpCharCode;
     WidgetUtils::GetLatinCharCodeForKeyCode(domKeyCode,
                                             gmodifiers,
                                             &unshiftedLatinChar,
@@ -761,8 +761,8 @@ EmbedLiteViewThreadChild::RecvHandleKeyReleaseEvent(const int& domKeyCode, const
   int tmpCharCode = charCode;
   if (tmpCharCode == 0)
   {
-    uint32_t shiftedLatinChar = 0;
-    uint32_t unshiftedLatinChar = 0;
+    uint32_t shiftedLatinChar = tmpCharCode;
+    uint32_t unshiftedLatinChar = tmpCharCode;
     WidgetUtils::GetLatinCharCodeForKeyCode(domKeyCode,
                                             gmodifiers,
                                             &unshiftedLatinChar,
