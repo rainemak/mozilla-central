@@ -728,10 +728,25 @@ EmbedLiteViewThreadChild::RecvHandleKeyPressEvent(const int& domKeyCode, const i
   nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebNavigation);
   nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
   NS_ENSURE_TRUE(utils, true);
+
+  // charCode is const ref
+  int tmpCharCode = charCode;
+  if (tmpCharCode == 0)
+  {
+    uint32_t shiftedLatinChar = 0;
+    uint32_t unshiftedLatinChar = 0;
+    WidgetUtils::GetLatinCharCodeForKeyCode(domKeyCode,
+                                            gmodifiers,
+                                            &unshiftedLatinChar,
+                                            &shiftedLatinChar);
+    tmpCharCode = unshiftedLatinChar;
+  }
+
   bool handled = false;
   // If the key isn't autorepeat, we need to send the initial down event
-  utils->SendKeyEvent(NS_LITERAL_STRING("keydown"), domKeyCode, charCode, gmodifiers, 0, &handled);
-  utils->SendKeyEvent(NS_LITERAL_STRING("keypress"), domKeyCode, charCode, gmodifiers, 0, &handled);
+  LOGT("recv dom:%i, mod:%i, char:'%i'", domKeyCode, gmodifiers, tmpCharCode);
+  utils->SendKeyEvent(NS_LITERAL_STRING("keydown"), domKeyCode, tmpCharCode, gmodifiers, 0, &handled);
+  utils->SendKeyEvent(NS_LITERAL_STRING("keypress"), domKeyCode, tmpCharCode, gmodifiers, 0, &handled);
   return true;
 }
 
@@ -741,8 +756,22 @@ EmbedLiteViewThreadChild::RecvHandleKeyReleaseEvent(const int& domKeyCode, const
   nsCOMPtr<nsPIDOMWindow> window = do_GetInterface(mWebNavigation);
   nsCOMPtr<nsIDOMWindowUtils> utils = do_GetInterface(window);
   NS_ENSURE_TRUE(utils, true);
+
+  // charCode is const ref
+  int tmpCharCode = charCode;
+  if (tmpCharCode == 0)
+  {
+    uint32_t shiftedLatinChar = 0;
+    uint32_t unshiftedLatinChar = 0;
+    WidgetUtils::GetLatinCharCodeForKeyCode(domKeyCode,
+                                            gmodifiers,
+                                            &unshiftedLatinChar,
+                                            &shiftedLatinChar);
+    tmpCharCode = unshiftedLatinChar;
+  }
+
   bool handled = false;
-  utils->SendKeyEvent(NS_LITERAL_STRING("keyup"), domKeyCode, charCode, gmodifiers, 0, &handled);
+  utils->SendKeyEvent(NS_LITERAL_STRING("keyup"), domKeyCode, tmpCharCode, gmodifiers, 0, &handled);
   return true;
 }
 
