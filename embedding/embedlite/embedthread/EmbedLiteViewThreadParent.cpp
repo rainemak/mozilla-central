@@ -47,6 +47,12 @@ class EmbedAsyncPanZoomController : public AsyncPanZoomController
         ScheduleComposite();
         RequestContentRepaint();
     }
+
+    void HandleZoomAndResolutionUpdate(const CSSToScreenScale& aZoom) {
+        ReentrantMonitorAutoEnter lock(mMonitor);
+        // Bring the resolution back in sync with the zoom.
+        SetZoomAndResolution(aZoom);
+    }
 };
 
 class EmbedContentController : public GeckoContentController
@@ -426,7 +432,7 @@ bool
 EmbedLiteViewThreadParent::RecvOnScrolledAreaChanged(const uint32_t& aWidth,
                                                      const uint32_t& aHeight)
 {
-  LOGNI("area[%u,%u]", aWidth, aHeight);
+  LOGT("area[%u,%u]", aWidth, aHeight);
   if (mViewAPIDestroyed) {
     return true;
   }
@@ -597,9 +603,9 @@ EmbedLiteViewThreadParent::LoadFrameScript(const char* aURI)
 void
 EmbedLiteViewThreadParent::DoSendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage)
 {
-  LOGT("msgName:%ls, msg:%ls", aMessageName, aMessage);
   const nsDependentString msgname(aMessageName);
   const nsDependentString msg(aMessage);
+  LOGT("msgName:%s, msg:%s", NS_ConvertUTF16toUTF8(msgname).get(), NS_ConvertUTF16toUTF8(msg).get());
   unused << SendAsyncMessage(msgname,
                              msg);
 }
@@ -731,6 +737,16 @@ EmbedLiteViewThreadParent::RecvGetGLViewSize(gfxSize* aSize)
   *aSize = mGLViewPortSize;
   return true;
 }
+
+//bool
+//EmbedLiteViewThreadParent::RecvUpdateZoomAndResolution(const CSSToScreenScale& aZoom)
+//{
+//    LOGT("update zoom[%g]", aZoom.scale);
+//    if (mController) {
+//        mController->HandleZoomAndResolutionUpdate(aZoom);
+//    }
+//    return true;
+//}
 
 void
 EmbedLiteViewThreadParent::SetGLViewPortSize(int width, int height)

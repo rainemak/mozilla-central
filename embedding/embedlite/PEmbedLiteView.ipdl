@@ -20,6 +20,8 @@ using nsMouseEvent;
 using InputData;
 using MultiTouchInput;
 using mozilla::CSSIntPoint;
+using mozilla::CSSToScreenScale;
+
 
 namespace mozilla {
 namespace embedlite {
@@ -85,6 +87,10 @@ parent:
       * the new scroll offset for that frame is sent.
       */
     UpdateScrollOffset(uint32_t aPresShellId, ViewID aViewId, CSSIntPoint aScrollOffset);
+
+    /**
+     * UpdateZoomAndResolution(CSSToScreenScale aZoom);
+     */
 
     ZoomToRect(CSSRect aRect);
     async SetBackgroundColor(nscolor color);
