@@ -31,6 +31,8 @@
 #include "EmbedLiteAppService.h"
 #include "nsIWidgetListener.h"
 
+#define btoa(x) ((x)?"true":"false")
+
 using namespace mozilla::layers;
 using namespace mozilla::widget;
 
@@ -76,6 +78,7 @@ EmbedLiteViewThreadChild::EmbedLiteViewThreadChild(const uint32_t& aId, const ui
   : mId(aId)
   , mOuterId(0)
   , mViewSize(0, 0)
+  , mViewResized(false)
   , mDispatchSynthMouseEvents(true)
   , mIMEComposing(false)
 {
@@ -490,14 +493,19 @@ EmbedLiteViewThreadChild::RecvRemoveMessageListeners(const InfallibleTArray<nsSt
 bool
 EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
 {
+  mViewResized = aSize.width != mViewSize.width && aSize.height != mViewSize.height;
+
   mViewSize = aSize;
-  LOGT("sz[%g,%g]", mViewSize.width, mViewSize.height);
+  LOGT("sz[%g,%g] view resized: %s pointer: %p", mViewSize.width, mViewSize.height, btoa(mViewResized), this);
 
   if (!mWebBrowser) {
     return true;
   }
 
   mHelper->mInnerSize = ScreenIntSize::FromUnknownSize(gfx::IntSize(aSize.width, aSize.height));
+
+  LOGT("mInnerSize w:%d h:%d", mHelper->mInnerSize.width, mHelper->mInnerSize.height);
+
   nsCOMPtr<nsIBaseWindow> baseWindow = do_QueryInterface(mWebBrowser);
   baseWindow->SetPositionAndSize(0, 0, mViewSize.width, mViewSize.height, true);
   baseWindow->SetVisibility(true);
@@ -572,13 +580,22 @@ EmbedLiteViewThreadChild::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
     return true;
   }
 
+
+  FrameMetrics metrics(aFrameMetrics);
+  LOGT("view resized: %s", btoa(mViewResized));
+  if (mViewResized && mHelper->HandlePossibleViewportChange()) {
+    metrics = mHelper->mMetrics;
+    mViewResized = false;
+  }
+
+
   for (unsigned int i = 0; i < mControllerListeners.Length(); i++) {
-    mControllerListeners[i]->RequestContentRepaint(aFrameMetrics);
+    mControllerListeners[i]->RequestContentRepaint(metrics);
   }
 
   bool ret = true;
   if (sHandleDefaultAZPC.viewport) {
-    ret = mHelper->RecvUpdateFrame(aFrameMetrics);
+    ret = mHelper->RecvUpdateFrame(metrics);
   }
 
   return ret;

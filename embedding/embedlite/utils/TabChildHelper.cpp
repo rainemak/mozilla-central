@@ -217,6 +217,7 @@ TabChildHelper::InitTabChildGlobal()
 
   chromeHandler->AddEventListener(NS_LITERAL_STRING("DOMMetaAdded"), this, false);
   chromeHandler->AddEventListener(NS_LITERAL_STRING("scroll"), this, false);
+  chromeHandler->AddEventListener(NS_LITERAL_STRING("MozScrolledAreaChanged"), this, false);
 
   return true;
 }
@@ -289,7 +290,8 @@ TabChildHelper::HandleEvent(nsIDOMEvent* aEvent)
 {
   nsAutoString eventType;
   aEvent->GetType(eventType);
-  if (eventType.EqualsLiteral("DOMMetaAdded")) {
+  if (eventType.EqualsLiteral("DOMMetaAdded") ||
+      eventType.EqualsLiteral("MozScrolledAreaChanged")) {
     // This meta data may or may not have been a meta viewport tag. If it was,
     // we should handle it immediately.
     HandlePossibleViewportChange();
@@ -355,6 +357,7 @@ TabChildHelper::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
     MOZ_ASSERT(NS_SUCCEEDED(rv));
 
     if (NS_SUCCEEDED(rv) && aFrameMetrics.mPresShellId == presShellId) {
+      LOGT("root scroll id");
       return ProcessUpdateFrame(aFrameMetrics);
     }
   } else {
@@ -363,6 +366,7 @@ TabChildHelper::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
     nsCOMPtr<nsIContent> content = nsLayoutUtils::FindContentFor(
                                       aFrameMetrics.mScrollId);
     if (content) {
+      LOGT("process sub frame");
       return ProcessUpdateSubframe(content, aFrameMetrics);
     }
   }
@@ -370,6 +374,7 @@ TabChildHelper::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
   // We've recieved a message that is out of date and we want to ignore.
   // However we can't reply without painting so we reply by painting the
   // exact same thing as we did before.
+  LOGT("process with last metrics");
   return ProcessUpdateFrame(mLastMetrics);
 }
 
@@ -432,6 +437,7 @@ TabChildHelper::ProcessUpdateFrame(const FrameMetrics& aFrameMetrics)
         data.AppendPrintf(" }");
     data.AppendPrintf(" }");
 
+    LOGT("viewport changed: %s", NS_ConvertUTF16toUTF8(data).get());
     RecvAsyncMessage(NS_LITERAL_STRING("Viewport:Change"), data);
   }
 
@@ -451,6 +457,7 @@ TabChildHelper::ProcessUpdateFrame(const FrameMetrics& aFrameMetrics)
   // set the resolution
   LayoutDeviceToLayerScale resolution = aFrameMetrics.mZoom
     / aFrameMetrics.mDevPixelsPerCSSPixel * ScreenToLayerScale(1);
+  LOGT("set resolution :%g", resolution.scale);
   utils->SetResolution(resolution.scale, resolution.scale);
 
   // and set the display port
@@ -865,11 +872,11 @@ TabChildHelper::SetCSSViewport(const CSSSize& aSize)
   }
 }
 
-void
+bool
 TabChildHelper::HandlePossibleViewportChange()
 {
   if (sDisableViewportHandler) {
-    return;
+    return false;
   }
   nsCOMPtr<nsIDOMDocument> domDoc;
   mView->mWebNavigation->GetDocument(getter_AddRefs(domDoc));
@@ -878,6 +885,9 @@ TabChildHelper::HandlePossibleViewportChange()
   nsCOMPtr<nsIDOMWindowUtils> utils(GetDOMWindowUtils());
 
   nsViewportInfo viewportInfo = nsContentUtils::GetViewportInfo(document, mInnerSize);
+
+  LOGT("mInnerSize w:%d h:%d", mInnerSize.width, mInnerSize.height);
+
   mView->SendUpdateZoomConstraints(viewportInfo.IsZoomAllowed(),
                                    viewportInfo.GetMinZoom().scale,
                                    viewportInfo.GetMaxZoom().scale);
@@ -885,11 +895,12 @@ TabChildHelper::HandlePossibleViewportChange()
   float screenW = mInnerSize.width;
   float screenH = mInnerSize.height;
   CSSSize viewport(viewportInfo.GetSize());
+  LOGT("viewport w:%g h:%g", viewport.width, viewport.height);
 
   // We're not being displayed in any way; don't bother doing anything because
   // that will just confuse future adjustments.
   if (!screenW || !screenH) {
-    return;
+    return false;
   }
 
   // Make sure the viewport height is not shorter than the window when the page
@@ -914,7 +925,7 @@ TabChildHelper::HandlePossibleViewportChange()
   // window.innerWidth before they are painted have a correct value (bug
   // 771575).
   if (!mContentDocumentIsDisplayed) {
-    return;
+    return false;
   }
 
   nsPresContext* presContext = GetPresContext();
@@ -948,12 +959,14 @@ TabChildHelper::HandlePossibleViewportChange()
   }
   if (!pageSize.width) {
     // Return early rather than divide by 0.
-    return;
+    return false;
   }
 
   CSSToScreenScale minScale(mInnerSize.width / pageSize.width);
   minScale = clamped(minScale, viewportInfo.GetMinZoom(), viewportInfo.GetMaxZoom());
-  NS_ENSURE_TRUE_VOID(minScale.scale); // (return early rather than divide by 0)
+  NS_ENSURE_TRUE(minScale.scale, false); // (return early rather than divide by 0)
+
+  LOGT("before max: %g %g min scale: %g", viewport.height, screenH, minScale.scale);
 
   viewport.height = std::max(viewport.height, screenH / minScale.scale);
   SetCSSViewport(viewport);
@@ -965,6 +978,9 @@ TabChildHelper::HandlePossibleViewportChange()
 
   FrameMetrics metrics(mLastMetrics);
   metrics.mViewport = CSSRect(CSSPoint(), viewport);
+
+  LOGT("FrameMetrics w/h %g %g", metrics.mViewport.width, metrics.mViewport.height);
+
   metrics.mScrollableRect = CSSRect(CSSPoint(), pageSize);
   metrics.mCompositionBounds = ScreenIntRect(ScreenIntPoint(), mInnerSize);
 
@@ -1011,9 +1027,14 @@ TabChildHelper::HandlePossibleViewportChange()
   // This is the root layer, so the cumulative resolution is the same
   // as the resolution.
   metrics.mResolution = metrics.mCumulativeResolution / LayoutDeviceToParentLayerScale(1);
+
+  LOGT("metrics cumulative reso %g mReso %g", metrics.mCumulativeResolution.scale, metrics.mResolution.scale);
+
   utils->SetResolution(metrics.mResolution.scale, metrics.mResolution.scale);
 
   // Force a repaint with these metrics. This, among other things, sets the
   // displayport, so we start with async painting.
   ProcessUpdateFrame(metrics);
+  mMetrics = metrics;
+  return true;
 }
