@@ -737,7 +737,7 @@ EmbedLiteViewThreadParent::RecvUpdateZoomAndResolution(const CSSToScreenScale& a
 {
     LOGT("update zoom[%g]", aZoom.scale);
     if (mController) {
-        mContoller->SetZoomAndResolution(aZoom);
+        mController->SetZoomAndResolution(aZoom);
     }
     return true;
 }
