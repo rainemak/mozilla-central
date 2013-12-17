@@ -1413,6 +1413,8 @@ void AsyncPanZoomController::SetZoomAndResolution(const CSSToScreenScale& aZoom)
   mFrameMetrics.mCumulativeResolution = aZoom / mFrameMetrics.mDevPixelsPerCSSPixel * ScreenToLayerScale(1);
   // The parent resolution will not have changed.
   mFrameMetrics.mResolution = mFrameMetrics.mCumulativeResolution / parentResolution;
+
+  printf("zoom: %g reso: %g \n", mFrameMetrics.mZoom.scale, mFrameMetrics.mResolution.scale);
 }
 
 void AsyncPanZoomController::UpdateZoomConstraints(bool aAllowZoom,

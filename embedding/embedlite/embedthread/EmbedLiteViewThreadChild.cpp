@@ -491,6 +491,8 @@ EmbedLiteViewThreadChild::RecvRemoveMessageListeners(const InfallibleTArray<nsSt
 bool
 EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
 {
+  bool viewResized = aSize.width != mViewSize.width && aSize.height != mViewSize.height;
+
   mViewSize = aSize;
   LOGT("sz[%g,%g]", mViewSize.width, mViewSize.height);
 
@@ -502,6 +504,11 @@ EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
   nsCOMPtr<nsIBaseWindow> baseWindow = do_QueryInterface(mWebBrowser);
   baseWindow->SetPositionAndSize(0, 0, mViewSize.width, mViewSize.height, true);
   baseWindow->SetVisibility(true);
+
+  if (viewResized) {
+      LOGT("orientation changed! -> process");
+      mHelper->HandlePossibleViewportChange();
+  }
 
   return true;
 }

@@ -426,7 +426,7 @@ bool
 EmbedLiteViewThreadParent::RecvOnScrolledAreaChanged(const uint32_t& aWidth,
                                                      const uint32_t& aHeight)
 {
-  LOGNI("area[%u,%u]", aWidth, aHeight);
+  LOGT("area[%u,%u]", aWidth, aHeight);
   if (mViewAPIDestroyed) {
     return true;
   }
@@ -597,9 +597,9 @@ EmbedLiteViewThreadParent::LoadFrameScript(const char* aURI)
 void
 EmbedLiteViewThreadParent::DoSendAsyncMessage(const PRUnichar* aMessageName, const PRUnichar* aMessage)
 {
-  LOGT("msgName:%ls, msg:%ls", aMessageName, aMessage);
   const nsDependentString msgname(aMessageName);
   const nsDependentString msg(aMessage);
+  LOGT("msgName:%s, msg:%s", NS_ConvertUTF16toUTF8(msgname).get(), NS_ConvertUTF16toUTF8(msg).get());
   unused << SendAsyncMessage(msgname,
                              msg);
 }
@@ -730,6 +730,12 @@ EmbedLiteViewThreadParent::RecvGetGLViewSize(gfxSize* aSize)
 {
   *aSize = mGLViewPortSize;
   return true;
+}
+
+void
+EmbedLiteViewThreadParent::RecvNotifyLayersUpdated(const FrameMetrics& aLayerMetrics, bool aIsFirstPaint)
+{
+    LOGT("-- do sync scale: %g", aLayerMetrics.mZoom.scale);
 }
 
 void

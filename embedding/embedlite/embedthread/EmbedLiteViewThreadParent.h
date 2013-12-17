@@ -135,6 +135,7 @@ protected:
                                    const int32_t& aCause,
                                    const int32_t& aFocusChange);
   virtual bool RecvGetGLViewSize(gfxSize* aSize);
+  virtual void RecvNotifyLayersUpdated(const FrameMetrics& aLayerMetrics, bool aIsFirstPaint);
   void UpdateLastResolution(const float aResolution);
 
 private:
