@@ -732,13 +732,14 @@ EmbedLiteViewThreadParent::RecvGetGLViewSize(gfxSize* aSize)
   return true;
 }
 
-void
+bool
 EmbedLiteViewThreadParent::RecvUpdateZoomAndResolution(const CSSToScreenScale& aZoom)
 {
     LOGT("update zoom[%g]", aZoom.scale);
     if (mController) {
         mContoller->SetZoomAndResolution(aZoom);
     }
+    return true;
 }
 
 void

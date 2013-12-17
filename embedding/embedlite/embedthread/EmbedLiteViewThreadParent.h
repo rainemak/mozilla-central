@@ -117,7 +117,7 @@ protected:
   virtual bool RecvUpdateScrollOffset(const uint32_t& aPresShellId,
                                       const mozilla::layers::FrameMetrics::ViewID& aViewId,
                                       const CSSIntPoint& aScrollOffset);
-  virtual void RecvUpdateZoomAndResolution(const CSSToScreenScale& aZoom);
+  virtual bool RecvUpdateZoomAndResolution(const CSSToScreenScale& aZoom);
   virtual bool RecvZoomToRect(const CSSRect& aRect);
   virtual bool RecvSetBackgroundColor(const nscolor& aColor);
   virtual bool RecvCancelDefaultPanZoom() MOZ_OVERRIDE;
