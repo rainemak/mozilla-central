@@ -20,6 +20,8 @@ using nsMouseEvent;
 using InputData;
 using MultiTouchInput;
 using mozilla::CSSIntPoint;
+using mozilla::CSSToScreenScale;
+
 
 namespace mozilla {
 namespace embedlite {
