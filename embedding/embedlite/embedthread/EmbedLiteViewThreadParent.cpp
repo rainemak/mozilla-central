@@ -47,6 +47,12 @@ class EmbedAsyncPanZoomController : public AsyncPanZoomController
         ScheduleComposite();
         RequestContentRepaint();
     }
+
+    void HandleZoomAndResolutionUpdate(const CSSToScreenScale& aZoom) {
+        ReentrantMonitorAutoEnter lock(mMonitor);
+        // Bring the resolution back in sync with the zoom.
+        SetZoomAndResolution(aZoom);
+    }
 };
 
 class EmbedContentController : public GeckoContentController
@@ -737,7 +743,7 @@ EmbedLiteViewThreadParent::RecvUpdateZoomAndResolution(const CSSToScreenScale& a
 {
     LOGT("update zoom[%g]", aZoom.scale);
     if (mController) {
-        mController->SetZoomAndResolution(aZoom);
+        mController->HandleZoomAndResolutionUpdate(aZoom);
     }
     return true;
 }

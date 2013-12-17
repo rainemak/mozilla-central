@@ -216,8 +216,8 @@ TabChildHelper::InitTabChildGlobal()
 
   chromeHandler->AddEventListener(NS_LITERAL_STRING("DOMMetaAdded"), this, false);
   chromeHandler->AddEventListener(NS_LITERAL_STRING("scroll"), this, false);
-  chromeHandler->AddEventListener(NS_LITERAL_STRING("MozAfterPaint"), this, false);
-  chromeHandler->AddEventListener(NS_LITERAL_STRING("MozScrolledAreaChanged"), this, false);
+//  chromeHandler->AddEventListener(NS_LITERAL_STRING("MozAfterPaint"), this, false);
+//  chromeHandler->AddEventListener(NS_LITERAL_STRING("MozScrolledAreaChanged"), this, false);
 
   return true;
 }
@@ -295,9 +295,10 @@ TabChildHelper::HandleEvent(nsIDOMEvent* aEvent)
 {
   nsAutoString eventType;
   aEvent->GetType(eventType);
-  if (eventType.EqualsLiteral("DOMMetaAdded") ||
-      eventType.EqualsLiteral("MozAfterPaint") ||
-      eventType.EqualsLiteral("MozScrolledAreaChanged")) {
+  if (eventType.EqualsLiteral("DOMMetaAdded")) {
+//          ||
+//      eventType.EqualsLiteral("MozAfterPaint") ||
+//      eventType.EqualsLiteral("MozScrolledAreaChanged")) {
     // This meta data may or may not have been a meta viewport tag. If it was,
     // we should handle it immediately.
     HandlePossibleViewportChange();
@@ -482,6 +483,7 @@ TabChildHelper::ProcessUpdateFrame(const FrameMetrics& aFrameMetrics)
   // set the resolution
   LayoutDeviceToLayerScale resolution = aFrameMetrics.mZoom
     / aFrameMetrics.mDevPixelsPerCSSPixel * ScreenToLayerScale(1);
+  LOGT(" set resolution :%g", resolution.scale);
   utils->SetResolution(resolution.scale, resolution.scale);
 
   // and set the display port
@@ -899,11 +901,11 @@ TabChildHelper::SetCSSViewport(const CSSSize& aSize)
   }
 }
 
-void
+bool
 TabChildHelper::HandlePossibleViewportChange()
 {
   if (sDisableViewportHandler) {
-    return;
+    return false;
   }
   nsCOMPtr<nsIDOMDocument> domDoc;
   mView->mWebNavigation->GetDocument(getter_AddRefs(domDoc));
@@ -930,7 +932,7 @@ TabChildHelper::HandlePossibleViewportChange()
   // We're not being displayed in any way; don't bother doing anything because
   // that will just confuse future adjustments.
   if (!screenW || !screenH) {
-    return;
+    return false;
   }
 
   // Make sure the viewport height is not shorter than the window when the page
@@ -955,7 +957,7 @@ TabChildHelper::HandlePossibleViewportChange()
   // window.innerWidth before they are painted have a correct value (bug
   // 771575).
   if (!mContentDocumentIsDisplayed) {
-    return;
+    return false;
   }
 
   nsPresContext* presContext = GetPresContext();
@@ -989,12 +991,12 @@ TabChildHelper::HandlePossibleViewportChange()
   }
   if (!pageSize.width) {
     // Return early rather than divide by 0.
-    return;
+    return false;
   }
 
   CSSToScreenScale minScale(mInnerSize.width / pageSize.width);
   minScale = clamped(minScale, viewportInfo.GetMinZoom(), viewportInfo.GetMaxZoom());
-  NS_ENSURE_TRUE_VOID(minScale.scale); // (return early rather than divide by 0)
+  NS_ENSURE_TRUE(minScale.scale, false); // (return early rather than divide by 0)
 
   LOGT("before max: %g %g min scale: %g", viewport.height, screenH, minScale.scale);
 
@@ -1063,9 +1065,11 @@ TabChildHelper::HandlePossibleViewportChange()
 
   utils->SetResolution(metrics.mResolution.scale, metrics.mResolution.scale);
 
-  mView->SendUpdateZoomAndResolution(metrics.mZoom);
+  //mView->SendUpdateZoomAndResolution(metrics.mZoom);
 
   // Force a repaint with these metrics. This, among other things, sets the
   // displayport, so we start with async painting.
   ProcessUpdateFrame(metrics);
+  mMetrics = metrics;
+  return true;
 }
