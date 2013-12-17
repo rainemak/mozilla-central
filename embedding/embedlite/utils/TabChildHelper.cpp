@@ -1063,7 +1063,7 @@ TabChildHelper::HandlePossibleViewportChange()
 
   utils->SetResolution(metrics.mResolution.scale, metrics.mResolution.scale);
 
-  mView->SendNotifyLayersUpdated(metrics, isFirstPaint);
+  mView->SendUpdateZoomAndResolution(metrics.mZoom);
 
   // Force a repaint with these metrics. This, among other things, sets the
   // displayport, so we start with async painting.

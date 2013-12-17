@@ -733,9 +733,12 @@ EmbedLiteViewThreadParent::RecvGetGLViewSize(gfxSize* aSize)
 }
 
 void
-EmbedLiteViewThreadParent::RecvNotifyLayersUpdated(const FrameMetrics& aLayerMetrics, bool aIsFirstPaint)
+EmbedLiteViewThreadParent::RecvUpdateZoomAndResolution(const CSSToScreenScale& aZoom)
 {
-    LOGT("-- do sync scale: %g", aLayerMetrics.mZoom.scale);
+    LOGT("update zoom[%g]", aZoom.scale);
+    if (mController) {
+        mContoller->SetZoomAndResolution(aZoom);
+    }
 }
 
 void

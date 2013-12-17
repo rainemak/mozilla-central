@@ -86,6 +86,8 @@ parent:
       */
     UpdateScrollOffset(uint32_t aPresShellId, ViewID aViewId, CSSIntPoint aScrollOffset);
 
+    UpdateZoomAndResolution(CSSToScreenScale aZoom);
+
     ZoomToRect(CSSRect aRect);
     async SetBackgroundColor(nscolor color);
     async CancelDefaultPanZoom();

@@ -117,6 +117,7 @@ protected:
   virtual bool RecvUpdateScrollOffset(const uint32_t& aPresShellId,
                                       const mozilla::layers::FrameMetrics::ViewID& aViewId,
                                       const CSSIntPoint& aScrollOffset);
+  virtual void RecvUpdateZoomAndResolution(const CSSToScreenScale& aZoom);
   virtual bool RecvZoomToRect(const CSSRect& aRect);
   virtual bool RecvSetBackgroundColor(const nscolor& aColor);
   virtual bool RecvCancelDefaultPanZoom() MOZ_OVERRIDE;
@@ -135,7 +136,6 @@ protected:
                                    const int32_t& aCause,
                                    const int32_t& aFocusChange);
   virtual bool RecvGetGLViewSize(gfxSize* aSize);
-  virtual void RecvNotifyLayersUpdated(const FrameMetrics& aLayerMetrics, bool aIsFirstPaint);
   void UpdateLastResolution(const float aResolution);
 
 private:
