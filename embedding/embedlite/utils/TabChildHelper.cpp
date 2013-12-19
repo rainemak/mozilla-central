@@ -290,8 +290,8 @@ TabChildHelper::HandleEvent(nsIDOMEvent* aEvent)
 {
   nsAutoString eventType;
   aEvent->GetType(eventType);
-  if (eventType.EqualsLiteral("DOMMetaAdded") ||
-      eventType.EqualsLiteral("MozScrolledAreaChanged")) {
+  // Should this also handle "MozScrolledAreaChanged".
+  if (eventType.EqualsLiteral("DOMMetaAdded")) {
     // This meta data may or may not have been a meta viewport tag. If it was,
     // we should handle it immediately.
     HandlePossibleViewportChange();

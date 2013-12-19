@@ -494,7 +494,7 @@ EmbedLiteViewThreadChild::RecvRemoveMessageListeners(const InfallibleTArray<nsSt
 bool
 EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
 {
-  mViewResized = aSize.width != mViewSize.width || aSize.height != mViewSize.height;
+  mViewResized = aSize != mViewSize;
 
   mViewSize = aSize;
   LOGT("new sz[%g,%g], old sz[%g,%g], view resized: %s pointer: %p", mViewSize.width, mViewSize.height, aSize.width, aSize.height, btoa(mViewResized), this);
