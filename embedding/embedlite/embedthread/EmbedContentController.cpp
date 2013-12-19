@@ -30,7 +30,21 @@ void EmbedContentController::RequestContentRepaint(const FrameMetrics& aFrameMet
 {
     // We always need to post requests into the "UI thread" otherwise the
     // requests may get processed out of order.
-    LOGT();
+    LOGC("EmbedLiteViewPort", " i=(%ld %lld) cb=(%d %d %d %d) dp=(%.3f %.3f %.3f %.3f) v=(%.3f %.3f %.3f %.3f) " \
+             "s=(%.3f %.3f) sr=(%.3f %.3f %.3f %.3f) z=(%.3f %.3f %.3f %.3f)\n", \
+             aFrameMetrics.mPresShellId, aFrameMetrics.mScrollId, \
+             aFrameMetrics.mCompositionBounds.x, aFrameMetrics.mCompositionBounds.y, \
+             aFrameMetrics.mCompositionBounds.width, aFrameMetrics.mCompositionBounds.height, \
+             aFrameMetrics.mDisplayPort.x, aFrameMetrics.mDisplayPort.y, \
+             aFrameMetrics.mDisplayPort.width, aFrameMetrics.mDisplayPort.height, \
+             aFrameMetrics.mViewport.x, aFrameMetrics.mViewport.y, \
+             aFrameMetrics.mViewport.width, aFrameMetrics.mViewport.height, \
+             aFrameMetrics.mScrollOffset.x, aFrameMetrics.mScrollOffset.y, \
+             aFrameMetrics.mScrollableRect.x, aFrameMetrics.mScrollableRect.y, \
+             aFrameMetrics.mScrollableRect.width, aFrameMetrics.mScrollableRect.height, \
+             aFrameMetrics.mDevPixelsPerCSSPixel.scale, aFrameMetrics.mResolution.scale, \
+             aFrameMetrics.mCumulativeResolution.scale, aFrameMetrics.mZoom.scale);
+
     mUILoop->PostTask(
         FROM_HERE,
         NewRunnableMethod(this, &EmbedContentController::DoRequestContentRepaint,

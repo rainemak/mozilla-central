@@ -496,8 +496,8 @@ EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
 {
   mViewResized = aSize != mViewSize;
 
-  mViewSize = aSize;
   LOGT("new sz[%g,%g], old sz[%g,%g], view resized: %s pointer: %p", mViewSize.width, mViewSize.height, aSize.width, aSize.height, btoa(mViewResized), this);
+  mViewSize = aSize;
 
   if (!mWebBrowser) {
     return true;
@@ -585,7 +585,7 @@ EmbedLiteViewThreadChild::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
   FrameMetrics metrics(aFrameMetrics);
   LOGT("view resized: %s", btoa(mViewResized));
   if (mViewResized && mHelper->HandlePossibleViewportChange()) {
-    metrics = mHelper->mMetrics;
+    metrics = mHelper->mFrameMetrics;
     mViewResized = false;
   }
 
@@ -896,6 +896,7 @@ EmbedLiteViewThreadChild::OnFirstPaint(int32_t aX, int32_t aY)
     unused << SendSetBackgroundColor(bgcolor);
   }
 
+  LOGT("viewSize[%g,%g]", mViewSize.width, mViewSize.height);
   unused << RecvSetViewSize(mViewSize);
 
   return SendOnFirstPaint(aX, aY) ? NS_OK : NS_ERROR_FAILURE;
@@ -922,7 +923,21 @@ EmbedLiteViewThreadChild::OnTitleChanged(const PRUnichar* aTitle)
 NS_IMETHODIMP
 EmbedLiteViewThreadChild::OnUpdateDisplayPort()
 {
-  LOGNI();
+  LOGC("EmbedLiteViewPort", " i=(%ld %lld) cb=(%d %d %d %d) dp=(%.3f %.3f %.3f %.3f) v=(%.3f %.3f %.3f %.3f) " \
+           "s=(%.3f %.3f) sr=(%.3f %.3f %.3f %.3f) z=(%.3f %.3f %.3f %.3f)\n", \
+           mHelper->mFrameMetrics.mPresShellId, mHelper->mFrameMetrics.mScrollId, \
+           mHelper->mFrameMetrics.mCompositionBounds.x, mHelper->mFrameMetrics.mCompositionBounds.y, \
+           mHelper->mFrameMetrics.mCompositionBounds.width, mHelper->mFrameMetrics.mCompositionBounds.height, \
+           mHelper->mFrameMetrics.mDisplayPort.x, mHelper->mFrameMetrics.mDisplayPort.y, \
+           mHelper->mFrameMetrics.mDisplayPort.width, mHelper->mFrameMetrics.mDisplayPort.height, \
+           mHelper->mFrameMetrics.mViewport.x, mHelper->mFrameMetrics.mViewport.y, \
+           mHelper->mFrameMetrics.mViewport.width, mHelper->mFrameMetrics.mViewport.height, \
+           mHelper->mFrameMetrics.mScrollOffset.x, mHelper->mFrameMetrics.mScrollOffset.y, \
+           mHelper->mFrameMetrics.mScrollableRect.x, mHelper->mFrameMetrics.mScrollableRect.y, \
+           mHelper->mFrameMetrics.mScrollableRect.width, mHelper->mFrameMetrics.mScrollableRect.height, \
+           mHelper->mFrameMetrics.mDevPixelsPerCSSPixel.scale, mHelper->mFrameMetrics.mResolution.scale, \
+           mHelper->mFrameMetrics.mCumulativeResolution.scale, mHelper->mFrameMetrics.mZoom.scale);
+  mHelper->HandlePossibleViewportChange();
   return NS_OK;
 }
 
