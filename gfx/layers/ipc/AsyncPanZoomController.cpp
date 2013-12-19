@@ -1257,6 +1257,8 @@ void AsyncPanZoomController::ScheduleComposite() {
 }
 
 void AsyncPanZoomController::RequestContentRepaint() {
+    APZC_LOG_FM(mFrameMetrics, "foo 1 %p RequestContentRepaint", this);
+
   mFrameMetrics.mDisplayPort =
     CalculatePendingDisplayPort(mFrameMetrics,
                                 GetVelocityVector(),
@@ -1281,6 +1283,8 @@ void AsyncPanZoomController::RequestContentRepaint() {
       mFrameMetrics.mZoom == mLastPaintRequestMetrics.mZoom) {
     return;
   }
+
+  APZC_LOG_FM(mFrameMetrics, "bar 1 %p RequestContentRepaint", this);
 
   SendAsyncScrollEvent();
   ScheduleContentRepaint(mFrameMetrics);
@@ -1453,7 +1457,7 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aLayerMetri
 
   bool isDefault = mFrameMetrics.IsDefault();
   mFrameMetrics.mMayHaveTouchListeners = aLayerMetrics.mMayHaveTouchListeners;
-  APZC_LOG_FM(aLayerMetrics, "%p got a NotifyLayersUpdated with aIsFirstPaint=%d", this, aIsFirstPaint);
+  APZC_LOG_FM(aLayerMetrics, "%p got a NotifyLayersUpdated with aIsFirstPaint=%d aIsDefault=%d", this, aIsFirstPaint, isDefault);
 
   LogRendertraceRect("page", "brown", aLayerMetrics.mScrollableRect);
   LogRendertraceRect("painted displayport", "green",
@@ -1479,6 +1483,7 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aLayerMetri
 
     mFrameMetrics = aLayerMetrics;
     SetState(NOTHING);
+    APZC_LOG_FM(mFrameMetrics, "%p cleanup frame metrics needContentRepaint=%d\n", this, needContentRepaint);
   } else {
     // If we're not taking the aLayerMetrics wholesale we still need to pull
     // in some things into our local mFrameMetrics because these things are
@@ -1490,6 +1495,7 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aLayerMetri
     mFrameMetrics.mZoom.scale *= parentResolutionChange;
     mFrameMetrics.mResolution = aLayerMetrics.mResolution;
     mFrameMetrics.mCumulativeResolution = aLayerMetrics.mCumulativeResolution;
+    APZC_LOG_FM(mFrameMetrics, "%p pull in some things into local framemetrics needContentRepaint=%d\n", this, needContentRepaint);
   }
 
   if (needContentRepaint) {

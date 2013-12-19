@@ -165,6 +165,7 @@ EmbedLiteViewListener* const EmbedContentController::GetListener() const
 void EmbedContentController::DoRequestContentRepaint(const FrameMetrics& aFrameMetrics)
 {
     if (!GetListener()->RequestContentRepaint()) {
+        LOGT("jep");
         unused << mRenderFrame->SendUpdateFrame(aFrameMetrics);
     }
 }
