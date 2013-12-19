@@ -177,6 +177,7 @@ EmbedLiteViewThreadChild::InitGeckoWindow(const uint32_t& parentId)
   }
 
   rv = baseWindow->InitWindow(0, mWidget, 0, 0, mViewSize.width, mViewSize.height);
+  LOGT("window sz[%g, %g]", mViewSize.width, mViewSize.height);
   if (NS_FAILED(rv)) {
     return;
   }
@@ -493,10 +494,10 @@ EmbedLiteViewThreadChild::RecvRemoveMessageListeners(const InfallibleTArray<nsSt
 bool
 EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
 {
-  mViewResized = aSize.width != mViewSize.width && aSize.height != mViewSize.height;
+  mViewResized = aSize.width != mViewSize.width || aSize.height != mViewSize.height;
 
   mViewSize = aSize;
-  LOGT("sz[%g,%g] view resized: %s pointer: %p", mViewSize.width, mViewSize.height, btoa(mViewResized), this);
+  LOGT("new sz[%g,%g], old sz[%g,%g], view resized: %s pointer: %p", mViewSize.width, mViewSize.height, aSize.width, aSize.height, btoa(mViewResized), this);
 
   if (!mWebBrowser) {
     return true;

@@ -217,7 +217,7 @@ TabChildHelper::InitTabChildGlobal()
 
   chromeHandler->AddEventListener(NS_LITERAL_STRING("DOMMetaAdded"), this, false);
   chromeHandler->AddEventListener(NS_LITERAL_STRING("scroll"), this, false);
-  chromeHandler->AddEventListener(NS_LITERAL_STRING("MozScrolledAreaChanged"), this, false);
+//  chromeHandler->AddEventListener(NS_LITERAL_STRING("MozScrolledAreaChanged"), this, false);
 
   return true;
 }
