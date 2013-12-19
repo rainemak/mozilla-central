@@ -437,7 +437,20 @@ TabChildHelper::ProcessUpdateFrame(const FrameMetrics& aFrameMetrics)
         data.AppendPrintf(" }");
     data.AppendPrintf(" }");
 
-    LOGT("viewport changed: %s", NS_ConvertUTF16toUTF8(data).get());
+    LOGC("EmbedLiteViewPort", " i=(%ld %lld) cb=(%d %d %d %d) dp=(%.3f %.3f %.3f %.3f) v=(%.3f %.3f %.3f %.3f) " \
+             "s=(%.3f %.3f) sr=(%.3f %.3f %.3f %.3f) z=(%.3f %.3f %.3f %.3f)\n", \
+             aFrameMetrics.mPresShellId, aFrameMetrics.mScrollId, \
+             aFrameMetrics.mCompositionBounds.x, aFrameMetrics.mCompositionBounds.y, \
+             aFrameMetrics.mCompositionBounds.width, aFrameMetrics.mCompositionBounds.height, \
+             aFrameMetrics.mDisplayPort.x, aFrameMetrics.mDisplayPort.y, \
+             aFrameMetrics.mDisplayPort.width, aFrameMetrics.mDisplayPort.height, \
+             aFrameMetrics.mViewport.x, aFrameMetrics.mViewport.y, \
+             aFrameMetrics.mViewport.width, aFrameMetrics.mViewport.height, \
+             aFrameMetrics.mScrollOffset.x, aFrameMetrics.mScrollOffset.y, \
+             aFrameMetrics.mScrollableRect.x, aFrameMetrics.mScrollableRect.y, \
+             aFrameMetrics.mScrollableRect.width, aFrameMetrics.mScrollableRect.height, \
+             aFrameMetrics.mDevPixelsPerCSSPixel.scale, aFrameMetrics.mResolution.scale, \
+             aFrameMetrics.mCumulativeResolution.scale, aFrameMetrics.mZoom.scale);
     RecvAsyncMessage(NS_LITERAL_STRING("Viewport:Change"), data);
   }
 
@@ -975,7 +988,7 @@ TabChildHelper::HandlePossibleViewportChange()
 
   viewport.height = std::max(viewport.height, screenH / minScale.scale);
   SetCSSViewport(viewport);
-  LOGC("EmbedLiteViewPort", "viewport sz: [%g, ‰g], screen sz: [%g, %g]", viewport.width, viewport.height, screenW, screenH);
+  LOGC("EmbedLiteViewPort", "viewport sz: [%g, %g], screen sz: [%g, %g]", viewport.width, viewport.height, screenW, screenH);
 
   float oldScreenWidth = mLastMetrics.mCompositionBounds.width;
   if (!oldScreenWidth) {
