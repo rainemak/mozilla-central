@@ -54,7 +54,7 @@
 #include "nsThreadUtils.h"              // for NS_IsMainThread
 #include "nsTraceRefcnt.h"              // for MOZ_COUNT_CTOR, etc
 
-// #define APZC_ENABLE_RENDERTRACE
+#define APZC_ENABLE_RENDERTRACE
 
 //#define APZC_LOG(...)
 #define APZC_LOG(...) printf_stderr("APZC: " __VA_ARGS__)
