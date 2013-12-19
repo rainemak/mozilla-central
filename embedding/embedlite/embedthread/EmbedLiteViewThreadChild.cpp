@@ -496,7 +496,7 @@ EmbedLiteViewThreadChild::RecvSetViewSize(const gfxSize& aSize)
 {
   mViewResized = aSize != mViewSize;
 
-  LOGT("new sz[%g,%g], old sz[%g,%g], view resized: %s pointer: %p", mViewSize.width, mViewSize.height, aSize.width, aSize.height, btoa(mViewResized), this);
+  LOGT("old sz[%g,%g], new sz[%g,%g], view resized: %s pointer: %p", mViewSize.width, mViewSize.height, aSize.width, aSize.height, btoa(mViewResized), this);
   mViewSize = aSize;
 
   if (!mWebBrowser) {
