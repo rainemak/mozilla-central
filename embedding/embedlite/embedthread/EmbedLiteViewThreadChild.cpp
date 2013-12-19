@@ -937,7 +937,8 @@ EmbedLiteViewThreadChild::OnUpdateDisplayPort()
            mHelper->mFrameMetrics.mScrollableRect.width, mHelper->mFrameMetrics.mScrollableRect.height, \
            mHelper->mFrameMetrics.mDevPixelsPerCSSPixel.scale, mHelper->mFrameMetrics.mResolution.scale, \
            mHelper->mFrameMetrics.mCumulativeResolution.scale, mHelper->mFrameMetrics.mZoom.scale);
-  mHelper->HandlePossibleViewportChange();
+  // If this happens to change viewport metrics successfully. Use updated values on the next RecvUpdateFrame
+  mViewResized = mHelper->HandlePossibleViewportChange();
   return NS_OK;
 }
 
