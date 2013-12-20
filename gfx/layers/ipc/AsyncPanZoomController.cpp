@@ -755,6 +755,7 @@ nsEventStatus AsyncPanZoomController::OnScale(const PinchGestureInput& aEvent) {
         ScrollBy(neededDisplacement);
       }
 
+      APZC_LOG("%p OnScale about to schedule composite on state=%d scale=%.3f\n", this, mState, mFrameMetrics.mZoom.scale);
       ScheduleComposite();
       // We don't want to redraw on every scale, so don't use
       // RequestContentRepaint()
@@ -1496,10 +1497,16 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aLayerMetri
     mFrameMetrics.mCompositionBounds = aLayerMetrics.mCompositionBounds;
     float parentResolutionChange = aLayerMetrics.GetParentResolution().scale
                                  / mFrameMetrics.GetParentResolution().scale;
-    mFrameMetrics.mZoom.scale *= parentResolutionChange;
+    // Geometry changed. Need to keep mZoom level of previous geometry.
+    if (needContentRepaint) {
+        mFrameMetrics.mZoom.scale = aLayerMetrics.mZoom.scale;
+    } else {
+        mFrameMetrics.mZoom.scale *= parentResolutionChange;
+    }
     mFrameMetrics.mResolution = aLayerMetrics.mResolution;
     mFrameMetrics.mCumulativeResolution = aLayerMetrics.mCumulativeResolution;
 
+    APZC_LOG("Old mZoom: %.3f new mZoom %.3f\n", mFrameMetrics.mZoom.scale, aLayerMetrics.mZoom.scale);
     APZC_LOG("Old mCulativeResolution: %.3f new mCumulationResolution %.3f\n", mFrameMetrics.mCumulativeResolution.scale, aLayerMetrics.mCumulativeResolution.scale);
 
     APZC_LOG_FM(mFrameMetrics, "%p NotifyLayersUpdated pull in somethings into local framemetrics needContentRepaint=%d\n", this, needContentRepaint);
