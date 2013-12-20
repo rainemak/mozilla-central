@@ -1458,6 +1458,7 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aLayerMetri
   bool isDefault = mFrameMetrics.IsDefault();
   mFrameMetrics.mMayHaveTouchListeners = aLayerMetrics.mMayHaveTouchListeners;
   APZC_LOG_FM(aLayerMetrics, "%p got a NotifyLayersUpdated with aIsFirstPaint=%d aIsDefault=%d", this, aIsFirstPaint, isDefault);
+  APZC_LOG_FM(mFrameMetrics, "%p got a NotifyLayersUpdated current mFrameMetrics", this);
 
   LogRendertraceRect("page", "brown", aLayerMetrics.mScrollableRect);
   LogRendertraceRect("painted displayport", "green",
@@ -1469,8 +1470,11 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aLayerMetri
       aLayerMetrics.mCompositionBounds.height == mFrameMetrics.mCompositionBounds.height) {
     // Remote content has sync'd up to the composition geometry
     // change, so we can accept the viewport it's calculated.
-    if (mFrameMetrics.mViewport.width != aLayerMetrics.mViewport.width)
+    if (mFrameMetrics.mViewport.width != aLayerMetrics.mViewport.width) {
+      mFrameMetrics.mDisplayPort = aLayerMetrics.mDisplayPort;
       needContentRepaint = true;
+    }
+
     mFrameMetrics.mViewport = aLayerMetrics.mViewport;
   }
 
@@ -1483,7 +1487,7 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aLayerMetri
 
     mFrameMetrics = aLayerMetrics;
     SetState(NOTHING);
-    APZC_LOG_FM(mFrameMetrics, "%p cleanup frame metrics needContentRepaint=%d\n", this, needContentRepaint);
+    APZC_LOG_FM(mFrameMetrics, "%p NotifyLayersUpdated cleanup frame metrics needContentRepaint=%d\n", this, needContentRepaint);
   } else {
     // If we're not taking the aLayerMetrics wholesale we still need to pull
     // in some things into our local mFrameMetrics because these things are
@@ -1495,7 +1499,7 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aLayerMetri
     mFrameMetrics.mZoom.scale *= parentResolutionChange;
     mFrameMetrics.mResolution = aLayerMetrics.mResolution;
     mFrameMetrics.mCumulativeResolution = aLayerMetrics.mCumulativeResolution;
-    APZC_LOG_FM(mFrameMetrics, "%p pull in some things into local framemetrics needContentRepaint=%d\n", this, needContentRepaint);
+    APZC_LOG_FM(mFrameMetrics, "%p NotifyLayersUpdated pull in somethings into local framemetrics needContentRepaint=%d\n", this, needContentRepaint);
   }
 
   if (needContentRepaint) {
