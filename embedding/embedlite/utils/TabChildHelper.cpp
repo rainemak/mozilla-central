@@ -886,7 +886,7 @@ TabChildHelper::SetCSSViewport(const CSSSize& aSize)
 }
 
 bool
-TabChildHelper::HandlePossibleViewportChange(bool forceRepaint)
+TabChildHelper::HandlePossibleViewportChange()
 {
   if (sDisableViewportHandler) {
     return false;
@@ -1053,9 +1053,7 @@ TabChildHelper::HandlePossibleViewportChange(bool forceRepaint)
 
   // Force a repaint with these metrics. This, among other things, sets the
   // displayport, so we start with async painting.
-  if (forceRepaint) {
-    ProcessUpdateFrame(metrics);
-  }
+  ProcessUpdateFrame(metrics);
   mFrameMetrics = metrics;
   return true;
 }
