@@ -1499,6 +1499,9 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aLayerMetri
     mFrameMetrics.mZoom.scale *= parentResolutionChange;
     mFrameMetrics.mResolution = aLayerMetrics.mResolution;
     mFrameMetrics.mCumulativeResolution = aLayerMetrics.mCumulativeResolution;
+
+    APZC_LOG("Old mCulativeResolution: %.3f new mCumulationResolution %.3f\n", mFrameMetrics.mCumulativeResolution.scale, aLayerMetrics.mCumulativeResolution.scale);
+
     APZC_LOG_FM(mFrameMetrics, "%p NotifyLayersUpdated pull in somethings into local framemetrics needContentRepaint=%d\n", this, needContentRepaint);
   }
 
