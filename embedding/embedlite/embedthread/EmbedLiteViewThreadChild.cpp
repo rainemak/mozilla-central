@@ -584,7 +584,7 @@ EmbedLiteViewThreadChild::RecvUpdateFrame(const FrameMetrics& aFrameMetrics)
 
   FrameMetrics metrics(aFrameMetrics);
   LOGT("view resized: %s", btoa(mViewResized));
-  if (mViewResized && mHelper->HandlePossibleViewportChange()) {
+  if (mViewResized && mHelper->HandlePossibleViewportChange(false)) {
     metrics = mHelper->mFrameMetrics;
     mViewResized = false;
   }
@@ -938,7 +938,7 @@ EmbedLiteViewThreadChild::OnUpdateDisplayPort()
            mHelper->mFrameMetrics.mDevPixelsPerCSSPixel.scale, mHelper->mFrameMetrics.mResolution.scale, \
            mHelper->mFrameMetrics.mCumulativeResolution.scale, mHelper->mFrameMetrics.mZoom.scale);
   // If this happens to change viewport metrics successfully. Use updated values on the next RecvUpdateFrame
-  mViewResized = mHelper->HandlePossibleViewportChange();
+//  mViewResized = mHelper->HandlePossibleViewportChange();
   return NS_OK;
 }
 

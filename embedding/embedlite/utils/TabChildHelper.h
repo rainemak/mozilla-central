@@ -94,7 +94,7 @@ private:
   // viewport data on a document may have changed. If it didn't
   // change, this function doesn't do anything.  However, it should
   // not be called all the time as it is fairly expensive.
-  bool HandlePossibleViewportChange();
+  bool HandlePossibleViewportChange(bool forceRepaint = true);
 
   friend class EmbedLiteViewThreadChild;
   EmbedLiteViewThreadChild* mView;
