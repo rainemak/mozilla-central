@@ -913,7 +913,7 @@ EmbedLiteViewThreadChild::OnTitleChanged(const PRUnichar* aTitle)
 NS_IMETHODIMP
 EmbedLiteViewThreadChild::OnUpdateDisplayPort()
 {
-  LOGNI();
+  LOG_FM(mHelper->mFrameMetrics);
   return NS_OK;
 }
 

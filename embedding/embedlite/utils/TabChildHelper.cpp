@@ -371,10 +371,12 @@ TabChildHelper::ProcessUpdateFrame(const FrameMetrics& aFrameMetrics)
         data.AppendPrintf(" }");
     data.AppendPrintf(" }");
 
+    LOG_FM(aFrameMetrics);
     RecvAsyncMessage(NS_LITERAL_STRING("Viewport:Change"), data);
   }
 
   mLastRootMetrics = newMetrics;
+  LOGC("EmbedLiteViewPort", "set scale :%g", aFrameMetrics.mZoom.scale);
 
   return true;
 }
@@ -788,9 +790,12 @@ TabChildHelper::HandlePossibleViewportChange()
                                      viewportInfo.GetMaxZoom().scale);
   }
 
+  LOGC("EmbedLiteViewPort", "mInnerSize w:%d h:%d", mInnerSize.width, mInnerSize.height);
+
   float screenW = mInnerSize.width;
   float screenH = mInnerSize.height;
   CSSSize viewport(viewportInfo.GetSize());
+  LOGC("EmbedLiteViewPort", "viewport w:%g h:%g", viewport.width, viewport.height);
 
   // We're not being displayed in any way; don't bother doing anything because
   // that will just confuse future adjustments.
@@ -818,6 +823,11 @@ TabChildHelper::HandlePossibleViewportChange()
     return false;
   }
 
+// LOGC("EmbedLiteViewPort", "viewport info zoom contraints %d %.3f %.3f send min scale %.3f", viewportInfo.IsZoomAllowed(), \
+//                                                                                              viewportInfo.GetMinZoom().scale, \
+//                                                                                              viewportInfo.GetMaxZoom().scale, \
+//                                                                                              minScale.scale);
+// LOGC("EmbedLiteViewPort", "viewport sz: [%g, %g], screen sz: [%g, %g]", viewport.width, viewport.height, screenW, screenH);
 
   float oldScreenWidth = mLastRootMetrics.mCompositionBounds.width;
   if (!oldScreenWidth) {
@@ -827,6 +837,7 @@ TabChildHelper::HandlePossibleViewportChange()
   FrameMetrics metrics(mLastRootMetrics);
   metrics.mViewport = CSSRect(CSSPoint(), viewport);
   metrics.mCompositionBounds = ScreenIntRect(ScreenIntPoint(), mInnerSize);
+  LOGC("EmbedLiteViewPort", "viewport metrics sz: [%g, %g]", metrics.mViewport.width, metrics.mViewport.height);
 
   // This change to the zoom accounts for all types of changes I can conceive:
   // 1. screen size changes, CSS viewport does not (pages with no meta viewport
