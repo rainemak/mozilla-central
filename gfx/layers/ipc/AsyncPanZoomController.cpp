@@ -1436,6 +1436,7 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aLayerMetri
     // change, so we can accept the viewport it's calculated.
     if (mFrameMetrics.mViewport.width != aLayerMetrics.mViewport.width ||
         mFrameMetrics.mViewport.height != aLayerMetrics.mViewport.height) {
+      mFrameMetrics.mDisplayPort = aLayerMetrics.mDisplayPort;
       needContentRepaint = true;
     }
     mFrameMetrics.mViewport = aLayerMetrics.mViewport;
@@ -1458,7 +1459,12 @@ void AsyncPanZoomController::NotifyLayersUpdated(const FrameMetrics& aLayerMetri
     mFrameMetrics.mCompositionBounds = aLayerMetrics.mCompositionBounds;
     float parentResolutionChange = aLayerMetrics.GetParentResolution().scale
                                  / mFrameMetrics.GetParentResolution().scale;
-    mFrameMetrics.mZoom.scale *= parentResolutionChange;
+    // Geometry changed. Need to keep mZoom level of previous geometry.
+    if (needContentRepaint) {
+        mFrameMetrics.mZoom.scale = aLayerMetrics.mZoom.scale;
+    } else {
+        mFrameMetrics.mZoom.scale *= parentResolutionChange;
+    }
     mFrameMetrics.mResolution = aLayerMetrics.mResolution;
     mFrameMetrics.mCumulativeResolution = aLayerMetrics.mCumulativeResolution;
 
